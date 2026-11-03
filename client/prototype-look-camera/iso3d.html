@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway: the chosen direction for "Look and camera" (https://github.com/DeRusto/runic/issues/5):
+  real 3D in three.js, fixed isometric orthographic camera, low-poly models, C's bottom-bar UI as HTML over the canvas.
+  The player is the user's AE adventurer (.glb, static, unrigged). Ground, bushes, trees and the Thornback are
+  placeholder low-poly shapes. Click a tile to walk (8-way, a tile every 600 ms). Mouse wheel zooms.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runic iso 3D prototype</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #1b2330; color: #eee; font: 13px/1.35 system-ui, sans-serif; overflow: hidden; }
+  body { display: grid; grid-template-rows: 1fr 140px; }
+  #game { position: relative; min-height: 0; } #game canvas { display: block; }
+  #bubble { position: absolute; transform: translate(-50%, -100%); color: #ff0; font-weight: 700; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: none; white-space: nowrap; }
+  #bottom { display: grid; grid-template-columns: minmax(200px, 1fr) auto 180px; gap: 12px; background: linear-gradient(#3a3f4a, #23262d); border-top: 2px solid #8892a6; padding: 8px 12px; }
+  #chat { display: flex; flex-direction: column; min-width: 0; }
+  #log { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; }
+  #log b { color: #ffd76a; }
+  #chat input { font: inherit; background: #0005; color: #fff; border: 1px solid #fff2; padding: 3px 6px; }
+  #inv { display: grid; grid-template-columns: repeat(10, 28px); gap: 3px; align-content: start; }
+  .slot { width: 28px; height: 28px; border: 1px solid #0006; background: #0003; display: grid; place-items: center; }
+  .berry { width: 14px; height: 14px; border-radius: 50%; background: #c0283a; box-shadow: inset -3px -3px 0 #0004; }
+  .herb { width: 8px; height: 18px; border-radius: 4px; background: #3c9a3c; }
+  #skills > div { margin-bottom: 10px; }
+  .bar { height: 6px; background: #0005; } .bar i { display: block; height: 100%; background: #e2b33a; }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head>
+<body>
+<div id="game"><div id="bubble"></div></div>
+<div id="bottom">
+  <div id="chat"><div id="log"></div><input id="say" maxlength="80" placeholder="Say something, then Enter"></div>
+  <div id="inv"></div>
+  <div id="skills"></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// ---- HTML UI ----
+document.getElementById('inv').innerHTML = Array.from({ length: 30 }, (_, i) => `<div class="slot">${i < 9 ? '<span class="berry"></span>' : i < 12 ? '<span class="herb"></span>' : ''}</div>`).join('');
+document.getElementById('skills').innerHTML = [['Combat', 3, 40], ['Foraging', 5, 75]].map(([n, l, p]) => `<div><div>${n} <b>${l}</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`).join('');
+const log = (who, text) => { const d = document.createElement('div'); d.innerHTML = `<b>${who}:</b> `; d.append(text); document.getElementById('log').append(d); };
+[['Wren', 'anyone seen herb bushes up north?'], ['Pike', 'thicket past the village, top right'], ['Wren', 'ty']].forEach(m => log(...m));
+
+// ---- world: one 40×40 region (the real one is 64×64); tile (x, y) sits at world (x, 0, y) ----
+const N = 40, G = 0, P = 1, B = 2;
+const hash = (x, y) => Math.abs((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1);
+const tile = (x, y) => {
+  if (x >= 9 && x <= 15 && y >= 17 && y <= 23) return P;
+  if (y === 20 || x === 12) return P;
+  if (x >= 24 && x <= 37 && y >= 3 && y <= 14 && hash(x, y) < 0.18) return B;
+  return G;
+};
+
+const game = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio); renderer.shadowMap.enabled = true;
+game.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#1b2330');
+scene.add(new THREE.HemisphereLight(0xdfefff, 0x3a4a2a, 1.6));
+const sun = new THREE.DirectionalLight(0xfff2d8, 2.2);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15 });
+scene.add(sun, sun.target);
+
+// fixed isometric camera: looking down the (1,1,1) diagonal, orthographic
+const VIEW = 6; // half the tiles visible vertically
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+function resize() {
+  const w = game.clientWidth, h = game.clientHeight, a = w / h;
+  renderer.setSize(w, h); Object.assign(cam, { left: -VIEW * a, right: VIEW * a, top: VIEW, bottom: -VIEW }); cam.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+game.addEventListener('wheel', e => { cam.zoom = THREE.MathUtils.clamp(cam.zoom * (e.deltaY > 0 ? 0.9 : 1.1), 0.6, 2.5); cam.updateProjectionMatrix(); e.preventDefault(); }, { passive: false });
+
+// ground: one instanced, flat-shaded slab per tile, colour jittered
+const flat = c => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+const ground = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.2, 1), flat(0xffffff), N * N);
+ground.receiveShadow = true;
+const m4 = new THREE.Matrix4(), col = new THREE.Color();
+for (let y = 0, i = 0; y < N; y++) for (let x = 0; x < N; x++, i++) {
+  const path = tile(x, y) === P, j = hash(x + 99, y) * 0.08;
+  m4.makeTranslation(x, path ? -0.13 : -0.1 + j * 0.3, y); ground.setMatrixAt(i, m4);
+  ground.setColorAt(i, col.set(path ? 0xa77b4f : 0x5d9e3c).offsetHSL(0, 0, j - 0.04));
+}
+scene.add(ground);
+
+// bushes, a ring of trees round the thicket, placeholder Thornbacks
+const leaf = flat(0x2f7d32), berry = flat(0xc0283a), trunk = flat(0x6b4a2b), pine = flat(0x24603a), hide = flat(0x5a3d2b), spine = flat(0xd8c9a0);
+const add = (mesh, x, y, z) => { mesh.position.set(x, y, z); mesh.castShadow = true; scene.add(mesh); return mesh; };
+for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  if (tile(x, y) === B) {
+    add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 0), leaf), x, 0.3, y);
+    for (let k = 0; k < 4; k++) add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), berry), x + Math.cos(k * 1.7) * 0.3, 0.35 + (k % 2) * 0.15, y + Math.sin(k * 1.7) * 0.3);
+  }
+  const edge = x >= 22 && x <= 39 && y >= 1 && y <= 16 && !(x >= 24 && x <= 37 && y >= 3 && y <= 14);
+  if (edge && hash(x, y + 7) < 0.45) {
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.6, 5), trunk), x, 0.3, y);
+    add(new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.3, 6), pine), x, 1.2, y);
+  }
+}
+const thornbacks = [[28, 30], [33, 27], [30, 34]].map(([x, y]) => {
+  const g = new THREE.Group();
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.75), hide), { castShadow: true }));
+  for (let k = 0; k < 5; k++) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.25, 4), spine); s.position.set(0, 0.25, -0.3 + k * 0.15); s.rotation.x = -0.4; g.add(s); }
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.25), hide); head.position.set(0, -0.02, 0.45); g.add(head);
+  g.position.set(x, 0.3, y); g.rotation.y = hash(x, y) * 6; scene.add(g); return g;
+});
+
+// hover outline
+const cursor = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]].map(([a, b]) => new THREE.Vector3(a, 0.02, b))), new THREE.LineBasicMaterial({ color: 0xffff66 }));
+scene.add(cursor);
+
+// player: the user's adventurer
+const player = (await new GLTFLoader().loadAsync('assets/adventurer.glb')).scene;
+player.traverse(o => { o.castShadow = true; });
+player.scale.setScalar(1.15);
+let at = { x: 12, y: 20 }, target = null, slide = null;
+player.position.set(at.x, 0, at.y); scene.add(player);
+
+// click-to-move on the ground plane
+const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
+const pick = e => {
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam);
+  if (!ray.ray.intersectPlane(plane, hit)) return null;
+  const t = { x: Math.round(hit.x), y: Math.round(hit.z) };
+  return t.x >= 0 && t.y >= 0 && t.x < N && t.y < N ? t : null;
+};
+renderer.domElement.addEventListener('pointermove', e => { const t = pick(e); cursor.visible = !!t; if (t) cursor.position.set(t.x, 0, t.y); });
+renderer.domElement.addEventListener('pointerdown', e => { target = pick(e) ?? target; });
+setInterval(() => { // a tile every 2 ticks of 300 ms
+  if (!target) return;
+  const dx = Math.sign(target.x - at.x), dy = Math.sign(target.y - at.y);
+  if (!dx && !dy) { target = null; return; }
+  slide = { from: new THREE.Vector3(at.x, 0, at.y), start: performance.now() };
+  at = { x: at.x + dx, y: at.y + dy };
+  player.rotation.y = Math.atan2(dx, dy);
+}, 600);
+
+// chat bubble over the head
+const bubble = document.getElementById('bubble'); let bubbleTimer;
+document.getElementById('say').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.value.trim()) return;
+  log('You', e.target.value); bubble.textContent = e.target.value; e.target.value = '';
+  clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => bubble.textContent = '', 3000);
+});
+
+const ISO = new THREE.Vector3(20, 20, 20), head = new THREE.Vector3();
+renderer.setAnimationLoop(t => {
+  if (slide) { const k = Math.min(1, (performance.now() - slide.start) / 600); player.position.lerpVectors(slide.from, new THREE.Vector3(at.x, 0, at.y), k); if (k === 1) slide = null; }
+  thornbacks.forEach((g, i) => g.position.y = 0.3 + Math.abs(Math.sin(t / 400 + i)) * 0.03);
+  cam.position.copy(player.position).add(ISO); cam.lookAt(player.position);
+  sun.position.copy(player.position).add(new THREE.Vector3(-6, 12, 4)); sun.target.position.copy(player.position);
+  renderer.render(scene, cam);
+  head.copy(player.position).setY(1.3).project(cam);
+  bubble.style.left = `${(head.x + 1) / 2 * game.clientWidth}px`; bubble.style.top = `${(1 - head.y) / 2 * game.clientHeight}px`;
+});
+window.dbg = { get at() { return at; }, set target(t) { target = t; } };
+</script>
+</body>

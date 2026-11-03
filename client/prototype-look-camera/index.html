@@ -1,0 +1,203 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway: answers "Look and camera" (https://github.com/DeRusto/runic/issues/5).
+  Three variants of Runic's screen, switchable via ?variant=A|B|C (or ← / → keys):
+    A  flat top-down pixel art, 16 px art at 2× zoom, fixed side panel + chat box under the view
+    B  top-down painted art at 48 px tiles, full-window view with an overlay HUD
+    C  2:1 isometric diamonds (64×32), full-width bottom bar
+  Art: Phaser AE (Sprite Factory) player + ground tiles, and the earlier side-on painted Thornback.
+  Click a tile to walk there (8-way, a tile every 600 ms, as decided). Type in chat and press Enter.
+  Run: python -m http.server 8080 -d client/prototype-look-camera, then open http://localhost:8080/?variant=A
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runic look prototype</title>
+<script src="https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #111; color: #eee; font: 13px/1.35 system-ui, sans-serif; }
+  #switcher { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 99; display: flex; gap: 10px; align-items: center;
+    background: #fff; color: #000; padding: 6px 12px; border-radius: 999px; box-shadow: 0 2px 12px #0008; font-weight: 600; }
+  #switcher button { border: 0; background: #ddd; border-radius: 999px; width: 28px; height: 28px; cursor: pointer; font-size: 15px; }
+  .slot { width: 36px; height: 36px; border: 1px solid #0006; background: #0003; display: grid; place-items: center; }
+  .berry { width: 14px; height: 14px; border-radius: 50%; background: #8a2be2; box-shadow: inset -3px -3px 0 #0004; }
+  .herb { width: 8px; height: 18px; border-radius: 4px; background: #3c9a3c; }
+  .bar { height: 6px; background: #0005; } .bar i { display: block; height: 100%; background: #e2b33a; }
+  #log div b { color: #ffd76a; }
+  input { font: inherit; }
+
+  /* A: classic fixed frame */
+  body.A { display: grid; place-content: center; background: #2b2118; font-family: "Courier New", monospace; }
+  body.A #frame { display: grid; grid-template-columns: 640px 220px; grid-template-rows: 448px 150px; gap: 6px;
+    background: #4a3a28; padding: 6px; border: 3px solid #1a120a; }
+  body.A #game { grid-row: 1; grid-column: 1; border: 2px solid #1a120a; }
+  body.A #side { grid-row: 1 / 3; grid-column: 2; background: #6b5538; border: 2px solid #1a120a; padding: 6px; }
+  body.A #chat { grid-row: 2; grid-column: 1; background: #000; border: 2px solid #1a120a; display: flex; flex-direction: column; padding: 4px 6px; }
+  body.A #log { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; color: #ff0; }
+  body.A #chat input { background: #000; color: #0ff; border: 0; border-top: 1px solid #333; outline: 0; }
+  body.A .tabs { display: flex; gap: 4px; margin-bottom: 6px; } body.A .tabs button { flex: 1; font: inherit; background: #3d2f1e; color: #eee; border: 1px solid #1a120a; cursor: pointer; }
+  body.A .tabs button.on { background: #9b7a4c; color: #000; }
+  body.A #inv { display: grid; grid-template-columns: repeat(5, 36px); gap: 4px; justify-content: center; }
+  body.A #skills > div { margin: 8px 0; }
+
+  /* B: full window, floating overlay HUD */
+  body.B #game { position: fixed; inset: 0; }
+  body.B #chat { position: fixed; left: 12px; bottom: 12px; width: 380px; background: #0008; border-radius: 10px; padding: 8px; backdrop-filter: blur(3px); }
+  body.B #log { height: 120px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  body.B #chat input { width: 100%; margin-top: 6px; background: #0006; color: #fff; border: 1px solid #fff3; border-radius: 6px; padding: 4px 6px; }
+  body.B #skills { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
+  body.B #skills > div { background: #0008; border-radius: 10px; padding: 6px 10px; min-width: 110px; }
+  body.B #bagBtn { position: fixed; right: 12px; bottom: 12px; width: 56px; height: 56px; border-radius: 50%; border: 0; background: #0009; color: #fff; font-size: 24px; cursor: pointer; }
+  body.B #side { position: fixed; right: 12px; bottom: 80px; background: #000a; border-radius: 10px; padding: 8px; display: none; }
+  body.B #side.open { display: block; }
+  body.B #inv { display: grid; grid-template-columns: repeat(6, 36px); gap: 4px; }
+  body.B .tabs { display: none; }
+
+  /* C: game above a full-width bottom bar */
+  body.C { display: grid; grid-template-rows: 1fr 140px; }
+  body.C #game { min-height: 0; }
+  body.C #bottom { display: grid; grid-template-columns: 1fr auto 260px; gap: 12px; background: linear-gradient(#3a3f4a, #23262d); border-top: 2px solid #8892a6; padding: 8px 12px; }
+  body.C #chat { display: flex; flex-direction: column; min-width: 0; }
+  body.C #log { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; }
+  body.C #chat input { background: #0005; color: #fff; border: 1px solid #fff2; padding: 3px 6px; }
+  body.C #inv { display: grid; grid-template-columns: repeat(10, 36px); gap: 3px; }
+  body.C #skills > div { margin-bottom: 10px; }
+  body.C .tabs { display: none; }
+</style>
+</head>
+<body>
+<div id="switcher"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+<div id="root"></div>
+<script>
+const KEYS = ['A', 'B', 'C'];
+const NAMES = { A: 'Flat pixel, side panel', B: 'Painted, overlay HUD', C: 'Isometric, bottom bar' };
+const V = KEYS.includes(new URLSearchParams(location.search).get('variant')) ? new URLSearchParams(location.search).get('variant') : 'A';
+document.body.className = V;
+document.getElementById('label').textContent = `${V} (${NAMES[V]})`;
+const go = d => { const u = new URL(location); u.searchParams.set('variant', KEYS[(KEYS.indexOf(V) + d + KEYS.length) % KEYS.length]); location.replace(u); };
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+  if (V === 'B' && e.key === 'i') document.getElementById('side').classList.toggle('open');
+});
+
+// ---- DOM UI: same pieces, different frame per variant ----
+const inv = Array.from({ length: 30 }, (_, i) => i < 9 ? 'berry' : i < 12 ? 'herb' : '');
+const invHtml = `<div id="inv">${inv.map(k => `<div class="slot">${k ? `<span class="${k}"></span>` : ''}</div>`).join('')}</div>`;
+const skillsHtml = `<div id="skills">${[['Combat', 3, 40], ['Foraging', 5, 75]].map(([n, l, p]) =>
+  `<div><div>${n} <b>${l}</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`).join('')}</div>`;
+const chatHtml = `<div id="chat"><div id="log"></div><input id="say" maxlength="80" placeholder="Say something, then Enter"></div>`;
+const root = document.getElementById('root');
+if (V === 'A') root.outerHTML = `<div id="frame"><div id="game"></div>
+  <div id="side"><div class="tabs"><button class="on" data-t="inv">Inventory</button><button data-t="skills">Skills</button></div>${invHtml}${skillsHtml}</div>${chatHtml}</div>`;
+if (V === 'B') root.outerHTML = `<div id="game"></div>${chatHtml}${skillsHtml}<button id="bagBtn" title="Inventory (I)">🎒</button><div id="side">${invHtml}</div>`;
+if (V === 'C') root.outerHTML = `<div id="game"></div><div id="bottom">${chatHtml}${invHtml}${skillsHtml}</div>`;
+if (V === 'A') {
+  const show = t => { document.getElementById('inv').style.display = t === 'inv' ? '' : 'none'; document.getElementById('skills').style.display = t === 'skills' ? '' : 'none';
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); };
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => show(b.dataset.t)); show('inv');
+}
+if (V === 'B') document.getElementById('bagBtn').onclick = () => document.getElementById('side').classList.toggle('open');
+const log = (who, text) => { const d = document.createElement('div'); d.innerHTML = `<b>${who}:</b> `; d.append(text); document.getElementById('log').append(d); };
+[['Wren', 'anyone seen herb bushes up north?'], ['Pike', 'thicket past the village, top right'], ['Wren', 'ty']].forEach(m => log(...m));
+
+// ---- world: one 40×40 region (the real one is 64×64): village, thicket, field ----
+const N = 40, G = 0, P = 1, B = 2;
+const hash = (x, y) => (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+const tile = (x, y) => {
+  if (x >= 9 && x <= 15 && y >= 17 && y <= 23) return P;          // village square
+  if (y === 20 || x === 12) return P;                               // roads
+  if (x >= 24 && x <= 37 && y >= 3 && y <= 14 && Math.abs(hash(x, y)) < 0.18) return B; // thicket
+  return G;
+};
+
+// per-variant geometry: tile size, sprite boxes, projection
+const ISO = V === 'C';
+const T = V === 'A' ? 16 : 48;
+const SIZES = { A: { player: [16, 16], tb: [18, 14] }, B: { player: [48, 56], tb: [64, 48] }, C: { player: [40, 46], tb: [56, 40] } }[V];
+const toScreen = (x, y) => ISO ? { x: (x - y) * 32, y: (x + y) * 16 } : { x: x * T + T / 2, y: y * T + T / 2 };
+const toTile = (sx, sy) => ISO ? { x: Math.round((sx / 32 + sy / 16) / 2), y: Math.round((sy / 16 - sx / 32) / 2) } : { x: Math.floor(sx / T), y: Math.floor(sy / T) };
+
+// downscale AE's big painted images to the size each variant draws them at
+function bake(scene, key, src, w, h, mode) {
+  const img = scene.textures.get(src).getSourceImage();
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+  // AE's "seamless" tiles came back with a ragged dark rim, so crop it off
+  const cx = img.width * 0.08, cy = img.height * 0.08, cw = img.width - 2 * cx, ch = img.height - 2 * cy;
+  if (mode === 'iso') { const s = w / Math.SQRT2; g.translate(w / 2, h / 2); g.scale(1, 0.5); g.rotate(Math.PI / 4); g.drawImage(img, cx, cy, cw, ch, -s / 2, -s / 2, s, s); }
+  else if (mode === 'fill') g.drawImage(img, cx, cy, cw, ch, 0, 0, w, h);
+  else { const k = Math.min(w / img.width, h / img.height); g.drawImage(img, (w - img.width * k) / 2, h - img.height * k, img.width * k, img.height * k); } // fit, bottom centre
+  scene.textures.addCanvas(key, c);
+}
+
+class World extends Phaser.Scene {
+  preload() {
+    for (const k of ['player', 'grass', 'path', 'bush']) this.load.image('src-' + k, `assets/${k}.png`);
+    for (let i = 1; i <= 4; i++) this.load.image('src-tb' + i, `assets/thornback-${i}.webp`);
+  }
+  create() {
+    const [tw, th] = ISO ? [64, 32] : [T, T];
+    ['grass', 'path', 'bush'].forEach(k => bake(this, k, 'src-' + k, tw, th, ISO ? 'iso' : 'fill'));
+    bake(this, 'player', 'src-player', ...SIZES.player);
+    for (let i = 1; i <= 4; i++) bake(this, 'tb' + i, 'src-tb' + i, ...SIZES.tb);
+    this.anims.create({ key: 'tb-idle', frames: [1, 2, 3, 4].map(i => ({ key: 'tb' + i })), frameRate: 5, repeat: -1 });
+
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const s = toScreen(x, y);
+      this.add.image(s.x, s.y, ['grass', 'path', 'bush'][tile(x, y)]).setDepth(-1e6);
+    }
+    const feet = (x, y) => { const s = toScreen(x, y); return { x: s.x, y: s.y + (ISO ? 8 : T * 0.35) }; };
+    for (const [x, y] of [[28, 30], [33, 27], [30, 34]]) {
+      const f = feet(x, y);
+      this.add.sprite(f.x, f.y, 'tb1').setOrigin(0.5, 1).setFlipX(x % 2 === 0).setDepth(f.y).play('tb-idle');
+    }
+
+    this.at = { x: 12, y: 20 }; this.target = null;
+    const f = feet(12, 20);
+    this.player = this.add.image(f.x, f.y, 'player').setOrigin(0.5, 1).setDepth(f.y);
+    this.feet = feet;
+
+    this.cursor = this.add.graphics().setDepth(1e6);
+    this.input.on('pointermove', p => this.drawCursor(toTile(p.worldX, p.worldY)));
+    this.input.on('pointerdown', p => { const t = toTile(p.worldX, p.worldY); if (t.x >= 0 && t.y >= 0 && t.x < N && t.y < N) this.target = t; });
+    this.time.addEvent({ delay: 600, loop: true, callback: () => this.step() }); // a tile every 2 ticks of 300 ms
+
+    const cam = this.cameras.main;
+    if (V === 'A') cam.setZoom(2).setRoundPixels(true);
+    cam.startFollow(this.player, V === 'A');
+    cam.setBackgroundColor(ISO ? '#1b2330' : '#203018');
+
+    this.bubble = this.add.text(0, 0, '', { fontFamily: V === 'A' ? 'Courier New' : 'system-ui', fontSize: V === 'A' ? 8 : 14, color: '#ffff00', stroke: '#000', strokeThickness: V === 'A' ? 2 : 3, resolution: 2 })
+      .setOrigin(0.5, 1).setDepth(1e6 + 1);
+    document.getElementById('say').addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || !e.target.value.trim()) return;
+      log('You', e.target.value); this.bubble.setText(e.target.value).setVisible(true); e.target.value = '';
+      clearTimeout(this.bubbleTimer); this.bubbleTimer = setTimeout(() => this.bubble.setVisible(false), 3000);
+    });
+  }
+  drawCursor(t) {
+    const g = this.cursor.clear().lineStyle(V === 'A' ? 1 : 2, 0xffff66, 0.9); const s = toScreen(t.x, t.y);
+    if (ISO) g.strokePoints([{ x: s.x, y: s.y - 16 }, { x: s.x + 32, y: s.y }, { x: s.x, y: s.y + 16 }, { x: s.x - 32, y: s.y }], true);
+    else g.strokeRect(s.x - T / 2, s.y - T / 2, T, T);
+  }
+  step() {
+    if (!this.target) return;
+    const dx = Math.sign(this.target.x - this.at.x), dy = Math.sign(this.target.y - this.at.y);
+    if (!dx && !dy) { this.target = null; return; }
+    this.at = { x: this.at.x + dx, y: this.at.y + dy };
+    const f = this.feet(this.at.x, this.at.y);
+    if (!ISO && dx) this.player.setFlipX(dx < 0);
+    this.tweens.add({ targets: this.player, x: f.x, y: f.y, duration: 600, onUpdate: () => this.player.setDepth(this.player.y) });
+  }
+  update() { this.bubble.setPosition(this.player.x, this.player.y - this.player.displayHeight - 2); }
+}
+
+window.game = new Phaser.Game({ type: Phaser.WEBGL, parent: 'game', pixelArt: V === 'A', scale: { mode: Phaser.Scale.RESIZE }, scene: World });
+</script>
+</body>

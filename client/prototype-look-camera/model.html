@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway: the user's low-poly adventurer (.glb) seen from each candidate camera, full res and shrunk to sprite size. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Runic model views</title>
+<style>
+  body { margin: 0; background: #203018; color: #eee; font: 13px system-ui, sans-serif; padding: 16px; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  figure { margin: 0; background: #0003; padding: 8px; border-radius: 8px; }
+  canvas { display: block; image-rendering: pixelated; }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head>
+<body>
+<div class="row" id="row"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// pitch = degrees down from horizontal, yaw = turn around the model
+const VIEWS = [['Top-down (A/B)', 90, 0], ['3/4 oblique', 50, 0], ['Isometric (C)', 30, 45], ['Side', 0, 90]];
+const SIZES = [256, 48, 32, 16];
+
+const gltf = await new GLTFLoader().loadAsync('assets/adventurer.glb');
+const scene = new THREE.Scene();
+scene.add(gltf.scene, new THREE.HemisphereLight(0xffffff, 0x445533, 2.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(1, 2, 1); scene.add(sun);
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(256, 256);
+const cam = new THREE.OrthographicCamera(-0.6, 0.6, 0.6, -0.6, 0.01, 10);
+
+for (const [name, pitch, yaw] of VIEWS) {
+  const p = THREE.MathUtils.degToRad(pitch), y = THREE.MathUtils.degToRad(yaw);
+  cam.position.set(Math.sin(y) * Math.cos(p) * 3, 0.5 + Math.sin(p) * 3, Math.cos(y) * Math.cos(p) * 3);
+  cam.up.set(0, pitch === 90 ? 0 : 1, pitch === 90 ? -1 : 0);
+  cam.lookAt(0, 0.5, 0);
+  renderer.render(scene, cam);
+  const fig = document.createElement('figure');
+  fig.innerHTML = `<figcaption>${name}</figcaption>`;
+  const row = document.createElement('div'); row.className = 'row'; row.style.alignItems = 'end';
+  for (const s of SIZES) { // shrink, then show at 128 px so the pixel loss is visible
+    const small = document.createElement('canvas'); small.width = small.height = s;
+    small.getContext('2d').drawImage(renderer.domElement, 0, 0, s, s);
+    const big = document.createElement('canvas'); big.width = big.height = s === 256 ? 256 : 128;
+    const g = big.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(small, 0, 0, big.width, big.height);
+    const f = document.createElement('figure'); f.append(big, Object.assign(document.createElement('figcaption'), { textContent: `${s} px` }));
+    row.append(f);
+  }
+  fig.append(row); document.getElementById('row').append(fig);
+}
+</script>
+</body>
+</html>
