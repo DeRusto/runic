@@ -33,6 +33,14 @@ _Avoid_: Mob, monster, NPC
 **Thornback**:
 The one enemy type in the first playable slice: a spiny, boar-like beast that fights back only when attacked.
 
+**Leash**:
+How far an enemy follows a player who walks away from a fight, before it gives up, walks home and recovers.
+_Avoid_: Aggro range, chase radius
+
+**Tick**:
+The fixed step the world moves in; every move, swing, pick and timer happens on a tick.
+_Avoid_: Frame, turn, cycle
+
 ### Skills
 
 **Skill**:
@@ -48,6 +56,10 @@ The skill trained by picking food from bushes; the food heals when eaten.
 _Avoid_: Gathering, herbalism
 
 ### Players
+
+**Action**:
+The one thing a player is currently doing (walking, foraging or fighting); a new click replaces it.
+_Avoid_: Task, job, activity
 
 **Inventory**:
 The fixed set of slots a player carries items in, one item per slot.
