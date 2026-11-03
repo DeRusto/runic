@@ -57,6 +57,14 @@ _Avoid_: Gathering, herbalism
 
 ### Players
 
+**Account**:
+A friend's login: a username and password. Each account has exactly one player, who goes by the account's username.
+_Avoid_: User, profile, character slot
+
+**Invite code**:
+The one shared secret a friend must give to create an account.
+_Avoid_: Referral, key
+
 **Action**:
 The one thing a player is currently doing (walking, foraging or fighting); a new click replaces it.
 _Avoid_: Task, job, activity
