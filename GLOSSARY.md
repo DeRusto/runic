@@ -30,8 +30,9 @@ _Avoid_: Node, resource, plant
 A creature in a field that players fight to train Combat.
 _Avoid_: Mob, monster, NPC
 
-**Thornback**:
-The one enemy type in the first playable slice: a spiny, boar-like beast that fights back only when attacked.
+**Spider**:
+The one enemy type in the first playable slice: a large spider that fights back only when attacked.
+_Avoid_: Thornback (its old name)
 
 **Leash**:
 How far an enemy follows a player who walks away from a fight, before it gives up, walks home and recovers.

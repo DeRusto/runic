@@ -7,5 +7,5 @@ The client draws the world in real 3D with three.js, through a fixed isometric o
 - The UI (chat, inventory, skills) is HTML over the canvas, not drawn in the engine.
 - Tiles are 1 world unit; tile (x, y) sits at world (x, 0, y), and clicks pick a tile by casting a ray onto the ground plane.
 - Characters and props come from KayKit packs (Adventurers, Character Animations, Forest Nature): CC0, already rigged on one shared skeleton, with separate animation clips that play on any character as skinned animation in three.js. Making and animating our own with Meshy was dropped for them; Phaser AE's 3D tool was passed over earlier because it costs more and makes static meshes only.
-- KayKit has no four-legged creatures, so the Thornback's model and animations still need a source.
+- KayKit has no creatures, so the slice's enemy, the Spider, comes from Quaternius's CC0 Easy Enemy Pack. That pack ships FBX, not glTF, so it needs converting or loading with `FBXLoader`, and its materials load with opacity 0 until forced to 1.
 - The server side (Colyseus, the tick, saving) is unchanged.
