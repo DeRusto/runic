@@ -48,8 +48,20 @@ A trainable ability with its own experience and level, raised by doing the match
 _Avoid_: Stat, attribute, profession
 
 **Combat**:
-The skill trained by fighting enemies.
-_Avoid_: Melee, fighting
+The skill that raises how often and how hard a player hits; trained by dealing damage to enemies.
+_Avoid_: Melee, fighting, attack
+
+**Hitpoints**:
+The skill that sets a player's maximum health; trained by dealing damage. Players start at level 10.
+_Avoid_: HP skill, vitality, constitution
+
+**Health**:
+How much damage a player can still take before dying; at most their Hitpoints level.
+_Avoid_: Hitpoints (that's the skill), life
+
+**Defense**:
+The skill that makes a player harder to hit; trained by being attacked, whether the swing lands or misses.
+_Avoid_: Armour, block, defence
 
 **Foraging**:
 The skill trained by picking food from bushes; the food heals when eaten.
