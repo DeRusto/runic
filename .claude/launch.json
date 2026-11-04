@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8080", "-d", "client/prototype-look-camera"],
       "port": 8080
+    },
+    {
+      "name": "models-prototype",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8081", "-d", "client/prototype-models"],
+      "port": 8081
     }
   ]
 }

@@ -1,0 +1,426 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway: "How models move and fight" (https://github.com/DeRusto/runic/issues/12).
+  A fake 300 ms server tick drives rigged KayKit players and the Quaternius Spider, so each clip can be judged against
+  the real timings (a tile every 2 ticks, a swing every 8). The panel on the right switches every open choice live.
+  Click ground to walk, a Spider to fight, a bush to forage. E eats. Wheel zooms. Any option also works as a URL param.
+  Run: python -m http.server 8081 -d client/prototype-models
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runic model motion prototype</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #1b2330; color: #eee; font: 13px/1.35 system-ui, sans-serif; overflow: hidden; }
+  body { display: grid; grid-template-columns: 1fr 320px; }
+  #game { position: relative; min-width: 0; overflow: hidden; } #game canvas { display: block; }
+  #panel { background: #23262d; border-left: 2px solid #8892a6; padding: 10px; overflow-y: auto; }
+  #panel h2 { font-size: 12px; margin: 12px 0 4px; color: #ffd76a; text-transform: uppercase; letter-spacing: .05em; }
+  label { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 6px; margin: 3px 0; }
+  select, input[type=range] { width: 100%; min-width: 0; font: inherit; background: #0004; color: #fff; border: 1px solid #fff3; }
+  button { font: inherit; background: #3a3f4a; color: #fff; border: 1px solid #8892a6; padding: 3px 8px; cursor: pointer; margin: 2px 2px 2px 0; }
+  pre { margin: 0; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+  #log { height: 170px; overflow: hidden; color: #bbb; display: flex; flex-direction: column; justify-content: flex-end; }
+  .pop { position: absolute; transform: translate(-50%, -100%); font-weight: 800; pointer-events: none; text-shadow: 0 0 3px #000, 0 0 3px #000; white-space: nowrap; }
+  .bar { position: absolute; transform: translate(-50%, -100%); width: 44px; height: 5px; background: #400; border: 1px solid #0008; pointer-events: none; }
+  .bar i { display: block; height: 100%; background: #4c4; }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head>
+<body>
+<div id="game"></div>
+<div id="panel">
+  <div><button id="eat">Eat (E)</button><button id="low">My health to 1</button><button id="weak">Spider to 1 HP</button><button id="anim">Reset fight</button></div>
+  <div id="opts"></div>
+  <h2>State</h2><pre id="state"></pre>
+  <h2>Events</h2><pre id="log"></pre>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+const TICK = 300;
+
+// ---- every open choice; [key, label, options or [min,max,step], default] ----
+const OPTS = [
+  ['#', 'Moving'],
+  ['walk', 'Walk clip', ['Walking_A', 'Walking_B', 'Walking_C', 'Running_A', 'Running_B'], 'Running_A'],
+  ['walkSpeed', 'Walk clip speed', [0.5, 5, 0.05], 2],
+  ['spiderWalkSpeed', 'Spider walk speed', [0.5, 3, 0.05], 2.9],
+  ['fade', 'Crossfade (s)', [0, 0.4, 0.02], 0.12],
+  ['#', 'Fighting'],
+  ['attack', 'Attack clip', ['Melee_Unarmed_Attack_Punch_A', 'Melee_Unarmed_Attack_Kick', 'Melee_1H_Attack_Chop'], 'Melee_Unarmed_Attack_Punch_A'],
+  ['stance', 'Between swings', ['Melee_Unarmed_Idle', 'Idle_A', 'Melee_2H_Idle'], 'Melee_Unarmed_Idle'],
+  ['impact', 'Hit shows', ['at the clip contact', 'on the tick'], 'at the clip contact'],
+  ['contact', 'Player contact (s)', [0, 1, 0.05], 0.55],
+  ['spiderContact', 'Spider contact (s)', [0, 1, 0.05], 0.45],
+  ['spiderPhase', 'Spider swings', ['same tick as player', '4 ticks after player'], '4 ticks after player'],
+  ['spiderHit', 'Spider shows hit', ['flash', 'flash + nudge', 'flash + squash', 'nothing'], 'flash + nudge'],
+  ['playerHit', 'Player shows hit', ['flash', 'Hit_A unless mid-swing', 'Hit_A always', 'nothing'], 'Hit_A unless mid-swing'],
+  ['numbers', 'Damage numbers', ['on', 'off'], 'on'],
+  ['#', 'Foraging and eating'],
+  ['forage', 'Forage clip', ['PickUp', 'Interact', 'Working_A', 'Use_Item'], 'PickUp'],
+  ['forageN', 'Attempt every (ticks)', [4, 8, 1], 8],
+  ['eatMoving', 'Eat while walking', ['full-body clip', 'no clip, heal number only'], 'no clip, heal number only'],
+  ['#', 'Dying'],
+  ['death', 'Player death', ['server holds 5 ticks', 'corpse copy, respawn at once', 'snap, respawn next tick'], 'server holds 5 ticks'],
+  ['deathClip', 'Death clip', ['Death_A', 'Death_B'], 'Death_A'],
+  ['spawn', 'Respawn clip', ['Spawn_Ground', 'Spawn_Air', 'none'], 'Spawn_Ground'],
+  ['#', 'Assets'],
+  ['model', 'Player model', ['Knight', 'Barbarian'], 'Knight', true],
+  ['spiderFormat', 'Spider loaded as', ['fbx', 'glb'], 'glb', true],
+];
+const params = new URLSearchParams(location.search), opt = {};
+const optsEl = document.getElementById('opts');
+for (const [key, label, choices, def, reload] of OPTS) {
+  if (key === '#') { optsEl.insertAdjacentHTML('beforeend', `<h2>${label}</h2>`); continue; }
+  const numeric = typeof choices[0] === 'number';
+  opt[key] = params.get(key) ?? def; if (numeric) opt[key] = +opt[key];
+  const row = document.createElement('label'); row.textContent = label;
+  const input = numeric ? Object.assign(document.createElement('input'), { type: 'range', min: choices[0], max: choices[1], step: choices[2] }) : document.createElement('select');
+  if (!numeric) input.innerHTML = choices.map(c => `<option>${c}</option>`).join('');
+  input.value = opt[key]; input.title = String(opt[key]);
+  input.addEventListener('input', () => {
+    opt[key] = numeric ? +input.value : input.value; input.title = String(opt[key]); say(`${label} = ${opt[key]}`);
+    if (reload) { params.set(key, opt[key]); location.search = params; }
+  });
+  row.append(input); optsEl.append(row);
+}
+const logEl = document.getElementById('log');
+let tick = 0;
+function say(text) { const d = document.createElement('div'); d.textContent = `${String(tick).padStart(4)} ${text}`; logEl.append(d); while (logEl.children.length > 14) logEl.firstChild.remove(); }
+
+// ---- scene, same lights and isometric camera as iso3d.html ----
+const N = 24, game = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio); renderer.shadowMap.enabled = true; game.prepend(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#1b2330');
+scene.add(new THREE.HemisphereLight(0xdfefff, 0x3a4a2a, 1.6));
+const sun = new THREE.DirectionalLight(0xfff2d8, 2.2);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15 });
+scene.add(sun, sun.target);
+const VIEW = 6, cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+function resize() {
+  const w = game.clientWidth, h = game.clientHeight, a = w / h;
+  renderer.setSize(w, h); Object.assign(cam, { left: -VIEW * a, right: VIEW * a, top: VIEW, bottom: -VIEW }); cam.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+game.addEventListener('wheel', e => { cam.zoom = THREE.MathUtils.clamp(cam.zoom * (e.deltaY > 0 ? 0.9 : 1.1), 0.6, 2.5); cam.updateProjectionMatrix(); e.preventDefault(); }, { passive: false });
+
+const hash = (x, y) => Math.abs((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1);
+const VILLAGE = { x: 4, y: 18 };
+const ground = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.2, 1), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), N * N);
+ground.receiveShadow = true;
+const m4 = new THREE.Matrix4(), col = new THREE.Color();
+for (let y = 0, i = 0; y < N; y++) for (let x = 0; x < N; x++, i++) {
+  const path = Math.abs(x - VILLAGE.x) <= 2 && Math.abs(y - VILLAGE.y) <= 2, j = hash(x + 99, y) * 0.08;
+  m4.makeTranslation(x, -0.1, y); ground.setMatrixAt(i, m4);
+  ground.setColorAt(i, col.set(path ? 0xa77b4f : 0x5d9e3c).offsetHSL(0, 0, j - 0.04));
+}
+scene.add(ground);
+const cursor = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]].map(([a, b]) => new THREE.Vector3(a, 0.02, b))), new THREE.LineBasicMaterial({ color: 0xffff66 }));
+scene.add(cursor);
+
+// ---- assets ----
+const gltf = new GLTFLoader();
+const CLIP_PACKS = ['MovementBasic', 'General', 'CombatMelee', 'Tools'];
+const clips = {};
+for (const g of await Promise.all(CLIP_PACKS.map(p => gltf.loadAsync(`assets/Rig_Medium_${p}.glb`)))) for (const c of g.animations) clips[c.name] = c;
+
+const loadCharacter = async file => {
+  const g = await gltf.loadAsync(`assets/${file}.glb`);
+  const nodes = []; g.scene.traverse(o => { if (o.isMesh) nodes.push(`${o.name}${o.isSkinnedMesh ? '' : '*'}`); });
+  say(`${file} meshes (* = rigid): ${nodes.join(', ')}`);
+  // Weapons are out of scope: rigid meshes parented to hand bones are the held props
+  g.scene.traverse(o => { if (o.isMesh && !o.isSkinnedMesh && /sword|shield|axe|dagger|mug|staff|bow|wand/i.test(o.name)) o.visible = false; });
+  return g.scene;
+};
+
+// Spider: FBX as shipped, or converted in memory to a GLB to prove the round trip keeps skeleton and clips
+const fixFbx = o => o.traverse(c => { if (c.isMesh) { for (const m of [c.material].flat()) { m.opacity = 1; m.transparent = false; } } });
+let spiderInfo = '';
+const loadSpider = async () => {
+  const t0 = performance.now();
+  const fbx = await new FBXLoader().loadAsync('assets/Spider.fbx');
+  fixFbx(fbx);
+  const t1 = performance.now();
+  spiderInfo = `Spider.fbx 1233 KB, load+parse ${(t1 - t0) | 0} ms`;
+  if (opt.spiderFormat !== 'glb') return { model: fbx, clips: fbx.animations };
+  const buffer = await new GLTFExporter().parseAsync(fbx, { binary: true, animations: fbx.animations });
+  const t2 = performance.now();
+  const g = await gltf.parseAsync(buffer, '');
+  spiderInfo += `\nconverted GLB ${(buffer.byteLength / 1024) | 0} KB, parse ${(performance.now() - t2) | 0} ms`;
+  return { model: g.scene, clips: g.animations };
+};
+const [hero, friend, bushSrc, spiderSrc] = await Promise.all([
+  loadCharacter(opt.model), loadCharacter(opt.model === 'Knight' ? 'Barbarian' : 'Knight'), gltf.loadAsync('assets/Bush_1_A_Color1.gltf'), loadSpider(),
+]);
+say(`Spider clips: ${spiderSrc.clips.map(c => `${c.name} ${c.duration.toFixed(2)}s`).join(', ')}`);
+const spiderClips = {};
+for (const c of spiderSrc.clips) for (const k of ['Idle', 'Walk', 'Attack', 'Death']) if (c.name.toLowerCase().includes(k.toLowerCase())) spiderClips[k] = c;
+
+// ---- an entity: tile position, one looping clip, one-shot clips on top ----
+function fit(model, { height, width }) {
+  // A skinned mesh's box comes from its bones, so they must be current before measuring
+  model.updateMatrixWorld(true); model.traverse(o => o.skeleton?.update());
+  const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3());
+  model.scale.multiplyScalar(height ? height / size.y : width / Math.max(size.x, size.z));
+  const after = new THREE.Box3().setFromObject(model);
+  model.position.y -= after.min.y;
+}
+function makeEntity(model, clipSet, at) {
+  const group = new THREE.Group(); group.add(model); scene.add(group);
+  model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.material = [o.material].flat().map(m => m.clone()); if (o.material.length === 1) o.material = o.material[0]; } });
+  const mixer = new THREE.AnimationMixer(model);
+  const e = { group, model, mixer, at: { ...at }, slide: null, walkUntil: 0, yaw: 0, kick: new THREE.Vector3(), squash: 0, baseName: null, cur: null, shot: null, shotName: '', keep: false, sink: 0, modelY: model.position.y };
+  group.position.set(at.x, 0, at.y);
+  const start = (name, speed, loop) => {
+    const a = mixer.clipAction(clipSet[name]);
+    if (e.cur === a && loop) { a.setEffectiveTimeScale(speed); return a; }
+    a.reset().setEffectiveTimeScale(speed).setEffectiveWeight(1).setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    a.clampWhenFinished = !loop;
+    if (e.cur && e.cur !== a) { e.cur.fadeOut(opt.fade); a.fadeIn(opt.fade); }
+    a.play(); e.cur = a; return a;
+  };
+  e.base = (name, speed = 1) => { if (e.shot) { e.baseName = name; e.baseSpeed = speed; return; } if (e.baseName === name && e.cur) { e.cur.setEffectiveTimeScale(speed); e.baseSpeed = speed; return; } e.baseName = name; e.baseSpeed = speed; start(name, speed, true); };
+  e.once = (name, { speed = 1, keep = false, hold = false } = {}) => { e.shot = null; const a = start(name, speed, false); e.shot = a; e.shotName = name; e.keep = keep; e.hold = hold; };
+  e.endShot = () => { if (e.shot) { e.shot = null; e.shotName = ''; e.hold = false; start(e.baseName, e.baseSpeed, true); } };
+  mixer.addEventListener('finished', ev => { if (ev.action === e.shot && !e.hold) e.endShot(); });
+  e.flash = () => {
+    e.model.traverse(o => { if (o.isMesh) for (const m of [o.material].flat()) if (m.emissive) m.emissive.setRGB(0.7, 0.05, 0.05); });
+    setTimeout(() => e.model.traverse(o => { if (o.isMesh) for (const m of [o.material].flat()) if (m.emissive) m.emissive.setRGB(0, 0, 0); }), 140);
+  };
+  e.bar = document.createElement('div'); e.bar.className = 'bar'; e.bar.innerHTML = '<i></i>'; game.append(e.bar);
+  return e;
+}
+
+fit(hero, { height: 1.15 }); fit(friend, { height: 1.15 });
+const player = makeEntity(hero, clips, { x: 10, y: 12 });
+Object.assign(player, { action: null, target: null, moveCool: 0, swing: 0, forageCool: 0, health: 10, max: 10, dead: 0, food: 6 });
+player.base('Idle_A');
+const other = makeEntity(friend, clips, { x: 9, y: 14 }); other.base('Idle_A'); other.bar.remove(); // the same clips on a second character
+
+const spiders = [[15, 10], [17, 13], [14, 15]].map(([x, y]) => {
+  const model = SkeletonUtils.clone(spiderSrc.model);
+  fit(model, { width: 1.1 });
+  const s = makeEntity(model, spiderClips, { x, y });
+  Object.assign(s, { home: { x, y }, hp: 8, max: 8, swing: 0, foe: null, fightStart: null, moveCool: 0, target: null, dead: 0, spider: true });
+  s.base('Idle'); s.mixer.setTime(hash(x, y) * 2);
+  s.hit = new THREE.Mesh(new THREE.BoxGeometry(1, 0.9, 1), new THREE.MeshBasicMaterial({ visible: false })); s.hit.position.y = 0.45; s.hit.userData.spider = s; s.group.add(s.hit);
+  return s;
+});
+
+const bushes = [[7, 8], [5, 10], [9, 6]].map(([x, y]) => {
+  const g = bushSrc.scene.clone(true); g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const box = new THREE.Box3().setFromObject(g); const k = 0.9 / Math.max(box.getSize(new THREE.Vector3()).x, 0.01);
+  g.scale.setScalar(k); g.position.set(x, 0, y); g.rotation.y = hash(x, y) * 6; scene.add(g);
+  const b = { at: { x, y }, picks: 5, regrow: 0, group: g, berries: [] };
+  for (let i = 0; i < 5; i++) { const berry = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial({ color: 0xc0283a, flatShading: true })); berry.position.set(x + Math.cos(i * 1.3) * 0.32, 0.3 + (i % 3) * 0.14, y + Math.sin(i * 1.3) * 0.32); scene.add(berry); b.berries.push(berry); }
+  return b;
+});
+
+// ---- the fake server tick ----
+const dist = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const step = (e, to) => {
+  const dx = Math.sign(to.x - e.at.x), dy = Math.sign(to.y - e.at.y);
+  if (!dx && !dy) return false;
+  e.slide = { from: e.group.position.clone(), start: performance.now() };
+  e.at = { x: e.at.x + dx, y: e.at.y + dy }; e.yaw = Math.atan2(dx, dy);
+  e.walkUntil = performance.now() + 2 * TICK + 60;
+  if (e.shot && !e.keep) e.endShot();
+  return true;
+};
+const face = (e, to) => { if (to.x !== e.at.x || to.y !== e.at.y) e.yaw = Math.atan2(to.x - e.at.x, to.y - e.at.y); };
+const later = (s, fn) => opt.impact === 'on the tick' ? fn() : setTimeout(fn, s * 1000);
+const roll = (chance, min, max) => Math.random() < chance ? min + Math.floor(Math.random() * (max - min + 1)) : 0;
+
+function playerSwing(s) {
+  player.once(opt.attack);
+  const dmg = roll(0.42, 1, 2); s.hp = Math.max(0, s.hp - dmg);
+  say(`player swings: ${dmg ? dmg + ' damage' : 'miss'}, Spider ${s.hp}/8`);
+  if (s.foe !== player) { s.foe = player; s.fightStart = { ...s.at }; s.swing = (opt.spiderPhase === 'same tick as player' ? 8 : 4) + 1; } // +1: it counts down later this same tick
+  const dead = s.hp === 0; if (dead) { s.dead = 1; s.foe = null; s.deadAt = tick; player.action = null; }
+  later(opt.contact, () => {
+    pop(s, dmg ? String(dmg) : 'miss', dmg ? '#ff5a4a' : '#9fc7ff'); s.shownHp = s.hp;
+    if (dmg && !dead) {
+      if (opt.spiderHit.includes('flash')) s.flash();
+      if (opt.spiderHit.includes('nudge')) s.kick.set(s.at.x - player.at.x, 0, s.at.y - player.at.y).normalize().multiplyScalar(0.18);
+      if (opt.spiderHit.includes('squash')) s.squash = 1;
+    }
+    if (dead) { s.once('Death', { hold: true }); say('Spider dies'); }
+  });
+}
+function spiderSwing(s) {
+  s.once('Attack');
+  const dmg = roll(0.35, 1, 2); player.health = Math.max(0, player.health - dmg);
+  say(`Spider swings: ${dmg ? dmg + ' damage' : 'miss'}, player ${player.health}/10`);
+  const dead = player.health === 0; if (dead) die(s);
+  later(opt.spiderContact, () => {
+    pop(player, dmg ? String(dmg) : 'miss', dmg ? '#ff5a4a' : '#9fc7ff'); player.shownHealth = player.health;
+    if (!dmg || player.dead || dead) return;
+    if (opt.playerHit === 'flash') player.flash();
+    if (opt.playerHit === 'Hit_A always' || (opt.playerHit === 'Hit_A unless mid-swing' && !player.shot)) player.once('Hit_A');
+  });
+}
+function die(s) {
+  say(`player dies (${opt.death})`);
+  player.action = null; player.target = null; player.slide = null;
+  spiders.forEach(x => { if (x.foe === player) { x.foe = null; x.target = x.home; } });
+  if (opt.death === 'server holds 5 ticks') { player.dead = 5; later(opt.spiderContact, () => player.once(opt.deathClip, { hold: true })); return; }
+  player.dead = 1;
+  if (opt.death === 'corpse copy, respawn at once') {
+    const corpse = makeEntity(SkeletonUtils.clone(player.model), clips, player.at); corpse.bar.remove(); corpse.yaw = player.yaw; corpse.group.rotation.y = player.yaw;
+    corpse.model.position.copy(player.model.position); corpse.base('Idle_A');
+    corpse.once(opt.deathClip, { hold: true }); corpse.corpseAt = performance.now(); corpses.push(corpse);
+    player.model.visible = false;
+  }
+}
+const corpses = [];
+function respawn() {
+  player.at = { ...VILLAGE }; player.group.position.set(VILLAGE.x, 0, VILLAGE.y); player.health = player.shownHealth = player.max;
+  player.model.visible = true; player.hold = false; player.shot = null; player.endShot; player.baseName = null; player.cur?.stop(); player.cur = null;
+  player.base('Idle_A');
+  if (opt.spawn !== 'none') player.once(opt.spawn);
+  say('player respawns in the village');
+}
+
+setInterval(() => {
+  tick++;
+  if (player.dead && --player.dead === 0) respawn();
+  else if (!player.dead) {
+    // moving: toward a tile, or next to what the action is on
+    const a = player.action, goal = a ? a.on.at : player.target;
+    const near = a && dist(player.at, goal) <= 1;
+    if (goal && !near && player.moveCool <= 0) {
+      if (step(player, goal)) player.moveCool = 2; else player.target = null;
+    }
+    player.moveCool--; player.swing--; player.forageCool--;
+    if (a?.type === 'fight' && near && !a.on.dead) {
+      face(player, goal); if (player.swing <= 0) { playerSwing(a.on); player.swing = 8; }
+    }
+    if (a?.type === 'forage' && near) {
+      face(player, goal);
+      if (a.on.picks === 0) { say('bush is empty'); player.action = null; }
+      else if (player.forageCool <= 0) {
+        const dur = clips[opt.forage].duration, speed = Math.max(1, dur / (opt.forageN * TICK / 1000));
+        player.once(opt.forage, { speed }); player.forageCool = opt.forageN;
+        const ok = Math.random() < 0.6, bush = a.on;
+        if (ok) bush.picks--;
+        say(`pick attempt: ${ok ? 'berry' : 'nothing'}, clip at ${speed.toFixed(2)}x`);
+        later(dur * 0.4 / speed, () => { if (ok) { bush.berries[bush.picks].visible = false; pop(player, '+berry', '#ffb0c0'); if (bush.picks === 0) bush.regrow = 50; } else pop(player, '...', '#aaa'); });
+      }
+    }
+  }
+  for (const b of bushes) if (b.regrow && --b.regrow === 0) { b.picks = 5; b.berries.forEach(x => x.visible = true); say('bush regrew'); }
+  for (const s of spiders) {
+    if (s.dead) {
+      if (tick - s.deadAt === 100) { // respawn at home
+        s.dead = 0; s.hp = s.shownHp = 8; s.sink = 0; s.hold = false; s.shot = null; s.cur?.stop(); s.cur = null; s.baseName = null; s.base('Idle');
+        s.at = { ...s.home }; s.group.position.set(s.home.x, 0, s.home.y); s.model.visible = true; s.scaleIn = 0; say('Spider respawns');
+      }
+      continue;
+    }
+    s.swing--; s.moveCool--;
+    if (s.foe && !player.dead) {
+      if (dist(player.at, s.fightStart) > 4) { s.foe = null; s.target = s.home; s.hp = s.shownHp = 8; if (player.action?.on === s) player.action = null; say('Spider leashed, walks home'); }
+      else if (dist(player.at, s.at) > 1) { if (s.moveCool <= 0) { step(s, player.at); s.moveCool = 2; } }
+      else { face(s, player.at); if (s.swing <= 0) { spiderSwing(s); s.swing = 8; } }
+    } else if (s.target) {
+      if (s.moveCool <= 0) { if (step(s, s.target)) s.moveCool = 2; else s.target = null; }
+    } else if (Math.random() < 0.1 && s.moveCool <= 0) {
+      s.target = { x: s.home.x + Math.floor(Math.random() * 5) - 2, y: s.home.y + Math.floor(Math.random() * 5) - 2 };
+    }
+  }
+}, TICK);
+
+// ---- input ----
+const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitP = new THREE.Vector3();
+const aim = e => { const r = renderer.domElement.getBoundingClientRect(); ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), cam); };
+const pickTile = () => { if (!ray.ray.intersectPlane(plane, hitP)) return null; const t = { x: Math.round(hitP.x), y: Math.round(hitP.z) }; return t.x >= 0 && t.y >= 0 && t.x < N && t.y < N ? t : null; };
+renderer.domElement.addEventListener('pointermove', e => { aim(e); const t = pickTile(); cursor.visible = !!t; if (t) cursor.position.set(t.x, 0, t.y); });
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (player.dead) return;
+  aim(e);
+  const s = ray.intersectObjects(spiders.filter(x => !x.dead).map(x => x.hit))[0]?.object.userData.spider;
+  const t = pickTile(), b = t && bushes.find(x => dist(x.at, t) === 0);
+  player.target = null; player.action = null;
+  if (s) { player.action = { type: 'fight', on: s }; say('action: fight'); }
+  else if (b) { player.action = { type: 'forage', on: b }; say('action: forage'); }
+  else if (t) player.target = t;
+});
+function eat() {
+  if (player.dead || !player.food) return;
+  player.food--; player.health = player.shownHealth = Math.min(player.max, player.health + 2); player.swing += 4;
+  pop(player, '+2', '#7dff7d'); say(`eats a berry, next swing +4 ticks, ${player.food} left`);
+  if (player.slide && opt.eatMoving !== 'full-body clip') return;
+  player.once('Use_Item', { speed: clips.Use_Item.duration / (4 * TICK / 1000), keep: true });
+}
+document.getElementById('eat').onclick = eat;
+addEventListener('keydown', e => { if (e.key === 'e') eat(); });
+document.getElementById('low').onclick = () => { player.health = player.shownHealth = 1; };
+document.getElementById('weak').onclick = () => { spiders.forEach(s => { if (!s.dead) s.hp = s.shownHp = 1; }); };
+document.getElementById('anim').onclick = () => location.reload();
+
+// ---- floating numbers and bars ----
+const pops = [], v = new THREE.Vector3();
+const place = (el, pos, y) => { v.copy(pos).setY(y).project(cam); el.style.left = `${(v.x + 1) / 2 * game.clientWidth}px`; el.style.top = `${(1 - v.y) / 2 * game.clientHeight}px`; };
+function pop(e, text, color) {
+  if (opt.numbers === 'off' && !text.startsWith('+')) return;
+  const el = Object.assign(document.createElement('div'), { className: 'pop', textContent: text }); el.style.color = color; game.append(el);
+  pops.push({ el, pos: e.group.position.clone(), start: performance.now() });
+}
+
+// ---- every frame ----
+const stateEl = document.getElementById('state'), clock = new THREE.Clock(), ISO = new THREE.Vector3(20, 20, 20);
+const tileV = new THREE.Vector3();
+const frameEntity = (e, dt, now, walkClip, idleClip, walkSpeed) => {
+  if (e.slide) { const k = Math.min(1, (now - e.slide.start) / (2 * TICK)); e.group.position.lerpVectors(e.slide.from, tileV.set(e.at.x, 0, e.at.y), k); if (k === 1) e.slide = null; }
+  e.base(now < e.walkUntil ? walkClip : idleClip, now < e.walkUntil ? walkSpeed : 1);
+  e.mixer.update(dt);
+  let d = e.yaw - e.group.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); e.group.rotation.y += d * Math.min(1, dt * 14);
+};
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta(), now = performance.now();
+  frameEntity(player, dt, now, opt.walk, player.action?.type === 'fight' && dist(player.at, player.action.on.at) <= 1 ? opt.stance : 'Idle_A', opt.walkSpeed);
+  frameEntity(other, dt, now, 'Walking_A', 'Idle_A', 1);
+  for (const s of spiders) {
+    if (s.dead) { s.mixer.update(dt); if (tick - s.deadAt > 7) { s.sink += dt * 0.5; s.model.position.y = s.modelY - s.sink; if (s.sink > 1) s.model.visible = false; } }
+    else { frameEntity(s, dt, now, 'Walk', 'Idle', opt.spiderWalkSpeed); s.model.position.y = s.modelY; }
+    s.kick.multiplyScalar(Math.max(0, 1 - dt * 9)); s.model.position.x = s.kick.x * Math.cos(s.group.rotation.y) - s.kick.z * Math.sin(s.group.rotation.y); s.model.position.z = s.kick.x * Math.sin(s.group.rotation.y) + s.kick.z * Math.cos(s.group.rotation.y);
+    if (s.squash > 0) s.squash = Math.max(0, s.squash - dt * 6);
+    s.group.scale.set(1 + s.squash * 0.12, 1 - s.squash * 0.22, 1 + s.squash * 0.12);
+    if (s.scaleIn !== undefined) { s.scaleIn = Math.min(1, s.scaleIn + dt * 2); s.group.scale.setScalar(s.scaleIn); if (s.scaleIn === 1) s.scaleIn = undefined; }
+    place(s.bar, s.group.position, 1.1); s.bar.style.display = !s.dead && (s.shownHp ?? s.hp) < s.max ? '' : 'none'; s.bar.firstChild.style.width = `${(s.shownHp ?? s.hp) / s.max * 100}%`;
+  }
+  for (const c of corpses) { c.mixer.update(dt); const age = (now - c.corpseAt) / 1000; if (age > 2) { c.group.position.y = -(age - 2) * 0.5; if (age > 4) { c.group.visible = false; } } }
+  place(player.bar, player.group.position, 1.45); player.bar.firstChild.style.width = `${(player.shownHealth ?? player.health) / player.max * 100}%`;
+  for (let i = pops.length - 1; i >= 0; i--) { const p = pops[i], age = (now - p.start) / 900; place(p.el, p.pos, 1.3 + age * 0.7); p.el.style.opacity = 1 - age * age; if (age >= 1) { p.el.remove(); pops.splice(i, 1); } }
+  cam.position.copy(player.group.position).add(ISO); cam.lookAt(player.group.position);
+  sun.position.copy(player.group.position).add(new THREE.Vector3(-6, 12, 4)); sun.target.position.copy(player.group.position);
+  renderer.render(scene, cam);
+
+  const walkCycle = clips[opt.walk].duration / opt.walkSpeed;
+  const a = player.action;
+  stateEl.textContent = [
+    `tick ${tick}  tile ${player.at.x},${player.at.y}`,
+    `action ${a?.type ?? (player.target ? 'walking' : 'none')}  ${player.dead ? 'DEAD ' + player.dead : ''}`,
+    `health ${player.health}/10  food ${player.food}`,
+    `swing in ${Math.max(0, player.swing)}  pick in ${Math.max(0, player.forageCool)}`,
+    `clip ${player.shotName || player.baseName}`,
+    `walk cycle ${walkCycle.toFixed(2)}s = ${(walkCycle / 0.6).toFixed(2)} tiles per cycle`,
+    `spiders ${spiders.map(s => s.dead ? 'dead' : s.hp).join(' ')}`,
+    `punch ${clips[opt.attack].duration.toFixed(2)}s of a 2.40s swing`,
+    `pick ${clips[opt.forage].duration.toFixed(2)}s of a ${(opt.forageN * 0.3).toFixed(2)}s attempt`,
+    spiderInfo,
+  ].join('\n');
+});
+window.dbg = { player, spiders, bushes, clips, spiderClips, opt, get tick() { return tick; } };
+</script>
+</body>
+</html>
