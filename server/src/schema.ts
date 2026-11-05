@@ -6,6 +6,8 @@ export const accounts = sqliteTable("accounts", {
   usernameLower: text("username_lower").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   cutOff: integer("cut_off", { mode: "boolean" }).notNull().default(false),
+  /** A token carrying any other number was issued before the last password reset. */
+  tokenVersion: integer("token_version").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

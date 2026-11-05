@@ -21,16 +21,18 @@ async function boot() {
 /** Makes the newest migration pending again, as if this build had just added it. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
-  sqlite.exec(`DROP TABLE players;
+  sqlite.exec(`ALTER TABLE accounts DROP COLUMN token_version;
     DELETE FROM __drizzle_migrations WHERE id = (SELECT max(id) FROM __drizzle_migrations)`);
   sqlite.close();
 }
 
-function hasTable(file: string, table: string) {
+function hasLatestMigration(file: string) {
   const sqlite = new DatabaseSync(file);
   const row = sqlite
-    .prepare("SELECT 1 FROM sqlite_master WHERE name = ?")
-    .get(table);
+    .prepare(
+      "SELECT 1 FROM pragma_table_info('accounts') WHERE name = 'token_version'",
+    )
+    .get();
   sqlite.close();
   return row !== undefined;
 }
@@ -60,8 +62,8 @@ test("pending migrations copy the database first, with its data, before migratin
 
   const [copy] = copies();
   expect(copies()).toHaveLength(1);
-  expect(hasTable(copy!, "players")).toBe(false);
-  expect(hasTable(path, "players")).toBe(true);
+  expect(hasLatestMigration(copy!)).toBe(false);
+  expect(hasLatestMigration(path)).toBe(true);
   const sqlite = new DatabaseSync(copy!);
   expect(sqlite.prepare("SELECT username FROM accounts").all()).toEqual([
     { username: "Kept" },

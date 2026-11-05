@@ -2,7 +2,8 @@ import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { JWT } from "@colyseus/auth";
 import { createEndpoint, createRouter } from "@colyseus/core";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
 import { db } from "./db.ts";
 import { accounts } from "./schema.ts";
@@ -33,8 +34,12 @@ async function passwordMatches(password: string, stored: string) {
   );
 }
 
-function issueToken({ id, username }: { id: number; username: string }) {
-  return JWT.sign({ id, username }, { expiresIn: "30d" });
+function issueToken({
+  id,
+  username,
+  tokenVersion,
+}: typeof accounts.$inferSelect) {
+  return JWT.sign({ id, username, tokenVersion }, { expiresIn: "30d" });
 }
 
 function findAccount(username: string) {
@@ -45,9 +50,11 @@ function findAccount(username: string) {
     .get();
 }
 
-/** The account a token belongs to, or null if the token is bad or the account is cut off. */
+/** The account a token belongs to, or null if the token is bad or cancelled or the account is cut off. */
 export async function accountForToken(token: string) {
-  const payload = await JWT.verify<{ id: number }>(token).catch(() => null);
+  const payload = await JWT.verify<{ id: number; tokenVersion: number }>(
+    token,
+  ).catch(() => null);
   if (!payload) return null;
   const account = db
     .select()
@@ -55,6 +62,7 @@ export async function accountForToken(token: string) {
     .where(eq(accounts.id, payload.id))
     .get();
   if (!account || account.cutOff) return null;
+  if (account.tokenVersion !== payload.tokenVersion) return null;
   return { id: account.id, username: account.username };
 }
 
@@ -62,10 +70,13 @@ export function isValidPassword(password: string) {
   return password.length >= MIN_PASSWORD && password.length <= MAX_PASSWORD;
 }
 
-/** Returns false if there is no such account. */
+/** Also cancels every token issued so far. Returns false if there is no such account. */
 export async function resetPassword(username: string, password: string) {
   const passwordHash = await hashPassword(password);
-  return setAccount(username, { passwordHash });
+  return setAccount(username, {
+    passwordHash,
+    tokenVersion: sql`${accounts.tokenVersion} + 1`,
+  });
 }
 
 /** Returns false if there is no such account. */
@@ -75,7 +86,7 @@ export function cutOff(username: string) {
 
 function setAccount(
   username: string,
-  fields: Partial<typeof accounts.$inferInsert>,
+  fields: SQLiteUpdateSetSource<typeof accounts>,
 ) {
   const updated = db
     .update(accounts)

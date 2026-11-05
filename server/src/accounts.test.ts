@@ -149,11 +149,15 @@ test("a valid token joins the room; none or garbage does not", async () => {
 
 test("an expired token does not join", async () => {
   const { token } = await (await register("Jack")).json();
-  const { id, username } = (await JWT.verify(token)) as {
+  const { id, username, tokenVersion } = (await JWT.verify(token)) as {
     id: number;
     username: string;
+    tokenVersion: number;
   };
-  const expired = await JWT.sign({ id, username }, { expiresIn: -1 });
+  const expired = await JWT.sign(
+    { id, username, tokenVersion },
+    { expiresIn: -1 },
+  );
   await expect(join_(expired)).rejects.toMatchObject({ code: 525 });
 });
 const admin = (...args: string[]) =>
@@ -176,6 +180,19 @@ test("the admin script resets a password", async () => {
   await admin("reset-password", "Lee", "newpassword");
   expect((await login("Lee")).status).toBe(401);
   expect((await login("Lee", "newpassword")).status).toBe(200);
+});
+
+test("a password reset cancels tokens issued before it, and not ones issued after", async () => {
+  const { token: before } = await (await register("Noa")).json();
+  const { token: other } = await (await register("Oli")).json();
+  await admin("reset-password", "Noa", "newpassword");
+  await expect(join_(before)).rejects.toMatchObject({ code: 525 });
+
+  const { token: after } = await (await login("Noa", "newpassword")).json();
+  const room = await join_(after);
+  await room.leave();
+  const untouched = await join_(other);
+  await untouched.leave();
 });
 
 test("the admin script fails on an unknown account or a password outside the rule", async () => {
