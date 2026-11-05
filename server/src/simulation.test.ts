@@ -305,3 +305,71 @@ describe("Spiders", () => {
     });
   });
 });
+
+const EMPTY_INVENTORY = Array<string>(30).fill("");
+
+test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 10 health", () => {
+  expect(sim.saveOf("a")).toEqual({
+    x: 1,
+    y: 1,
+    combatXp: 0,
+    defenseXp: 0,
+    foragingXp: 0,
+    hitpointsXp: 4050,
+    health: 10,
+    inventory: EMPTY_INVENTORY,
+  });
+});
+
+const SAVED = {
+  x: 2,
+  y: 2,
+  combatXp: 1,
+  defenseXp: 2,
+  foragingXp: 3,
+  hitpointsXp: 4100,
+  health: 7,
+  inventory: ["berry", ...EMPTY_INVENTORY.slice(1)],
+};
+
+test("a returning player comes back exactly as saved", () => {
+  sim.addPlayer("b", SAVED);
+  expect(sim.saveOf("b")).toEqual(SAVED);
+});
+
+test.each([
+  ["now blocks", { x: 0, y: 0 }],
+  ["is off the grid", { x: 200, y: 200 }],
+])(
+  "a saved tile that %s becomes the respawn tile, and the rest is kept",
+  (_, tile) => {
+    sim.addPlayer("b", { ...SAVED, ...tile });
+    expect(sim.saveOf("b")).toEqual({ ...SAVED, x: 1, y: 1 });
+  },
+);
+
+test("a save has the tile the player walked to", () => {
+  sim.queueWalk("a", { x: 2, y: 1 });
+  runTicks(1);
+  expect(sim.saveOf("a")).toMatchObject({ x: 2, y: 1 });
+});
+
+test("a player who is gone has no save", () => {
+  sim.removePlayer("a");
+  expect(sim.saveOf("a")).toBeUndefined();
+});
+
+test("a log out intent applies at the next tick, once", () => {
+  sim.queueLogout("a");
+  expect(sim.loggedOut).toEqual([]);
+  runTicks(2);
+  expect(sim.loggedOut).toEqual(["a"]);
+});
+
+test("a log out intent from someone no longer in the region is ignored", () => {
+  sim.queueLogout("ghost");
+  sim.queueLogout("a");
+  sim.removePlayer("a");
+  runTicks(1);
+  expect(sim.loggedOut).toEqual([]);
+});

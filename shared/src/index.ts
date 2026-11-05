@@ -5,6 +5,18 @@ export const WORLD_ROOM = "world";
 export const WALK_INTENT = "walk";
 /** The target intent's message type; its payload is the clicked Spider's id in state. */
 export const TARGET_INTENT = "target";
+/** The log out intent's message type; it has no payload. */
+export const LOGOUT_INTENT = "logout";
+
+/** Closes the old connection when the same account logs in again. */
+export const TAKEN_OVER_CLOSE_CODE = 4011;
+
+export const INVENTORY_SLOTS = 30;
+/** An inventory slot with no item in it. */
+export const EMPTY_SLOT = "";
+/** Level 10; every other skill starts at 0 XP, level 1 (spec §5). */
+export const STARTING_HITPOINTS_XP = 4050;
+export const STARTING_HEALTH = 10;
 
 export const TICK_MS = 300;
 /** How often the server checks whether a tick is due; ticks land within this of on time. */

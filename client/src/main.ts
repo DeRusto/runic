@@ -1,8 +1,14 @@
-import { Client } from "@colyseus/sdk";
-import { parseRegion, REGION_GRID, respawnTile } from "@runic/shared";
+import { Client, CloseCode } from "@colyseus/sdk";
+import {
+  LOGOUT_INTENT,
+  parseRegion,
+  REGION_GRID,
+  respawnTile,
+  TAKEN_OVER_CLOSE_CODE,
+} from "@runic/shared";
 import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
-import { joinWorld } from "./login.ts";
+import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers } from "./players.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
@@ -22,6 +28,20 @@ const ticks = document.getElementById("ticks")!;
 const room = await joinWorld(new Client(location.origin));
 showPlayers(room, newFigure);
 walkOnClick(room, tiles, showSpiders(room, newSpider));
+
+const logout = document.getElementById("logout")!;
+logout.hidden = false;
+logout.onclick = () => room.send(LOGOUT_INTENT);
+// The server decides whether a log out goes through, so the token stays until it does.
+room.onLeave((code) => {
+  logout.hidden = true;
+  if (code === CloseCode.CONSENTED) {
+    forgetToken();
+    location.reload();
+  } else if (code === TAKEN_OVER_CLOSE_CODE) {
+    ticks.textContent = "Logged in somewhere else. Reload to play here.";
+  }
+});
 
 let last = performance.now();
 room.onStateChange((state: { tick: number }) => {

@@ -10,3 +10,18 @@ export const accounts = sqliteTable("accounts", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+/** One row per account that has ever been saved; no row means a new account. */
+export const players = sqliteTable("players", {
+  accountId: integer("account_id")
+    .primaryKey()
+    .references(() => accounts.id),
+  combatXp: integer("combat_xp").notNull(),
+  defenseXp: integer("defense_xp").notNull(),
+  foragingXp: integer("foraging_xp").notNull(),
+  hitpointsXp: integer("hitpoints_xp").notNull(),
+  x: integer().notNull(),
+  y: integer().notNull(),
+  health: integer().notNull(),
+  inventory: text({ mode: "json" }).notNull().$type<string[]>(),
+});
