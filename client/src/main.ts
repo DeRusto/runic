@@ -7,18 +7,20 @@ import {
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
 import { showBottomBar } from "./bottomBar.ts";
-import { loadCharacters } from "./characters.ts";
+import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers } from "./players.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
+import { showSpiders } from "./spiders.ts";
 
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure] = await Promise.all([
+const [newFigure, newSpider] = await Promise.all([
   loadCharacters(),
+  loadSpiders(),
   addRegionMeshes(scene, tiles),
 ]);
 document.getElementById("loading")!.remove();
@@ -26,7 +28,7 @@ document.getElementById("loading")!.remove();
 const ticks = document.getElementById("ticks")!;
 const room = await joinWorld(new Client(location.origin));
 const sayOverhead = showPlayers(room, newFigure);
-walkOnClick(room, tiles);
+walkOnClick(room, tiles, showSpiders(room, newSpider));
 showBottomBar(room, sayOverhead);
 
 const logout = document.getElementById("logout")!;

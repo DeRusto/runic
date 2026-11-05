@@ -5,11 +5,18 @@ import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
 
 const HEIGHT = 1.15;
 const CROSSFADE_S = 0.12;
-const RUN_SPEED = 2;
 const TURN_RATE = 14;
 const SLIDE_MS = WALK_TICKS_PER_TILE * TICK_MS;
 // A little past the slide, so a slightly late patch for the next step doesn't flicker to Idle_A mid-walk.
 const RUN_HOLD_MS = SLIDE_MS + 60;
+
+const PLAYER_GAIT = { idle: "Idle_A", move: "Running_A", moveSpeed: 2 };
+export const SPIDER_GAIT = {
+  idle: "Spider_Idle",
+  move: "Spider_Walk",
+  moveSpeed: 2.9,
+};
+const SPIDER_WIDTH = 1.1;
 
 const CHARACTERS = ["Knight", "Barbarian"] as const;
 const CLIP_PACKS = [
@@ -28,7 +35,7 @@ export function characterFor(name: string) {
   return CHARACTERS[(hash ^ (hash >>> 15)) & 1];
 }
 
-/** A model standing on a player's tile: slides between tiles, faces its way, and plays its clips. */
+/** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
 export class Figure {
   readonly mixer: THREE.AnimationMixer;
   private from: THREE.Vector3;
@@ -43,12 +50,13 @@ export class Figure {
     private tile: Tile,
     readonly model: THREE.Object3D,
     private clips: Map<string, THREE.AnimationClip>,
+    private gait = PLAYER_GAIT,
   ) {
     model.position.set(tile.x, model.position.y, tile.y);
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.mixer = new THREE.AnimationMixer(model);
-    this.play("Idle_A");
+    this.play(gait.idle);
   }
 
   play(name: string, speed = 1) {
@@ -78,8 +86,8 @@ export class Figure {
     const running = now - this.slideStart < RUN_HOLD_MS;
     if (running !== this.running) {
       this.running = running;
-      if (running) this.play("Running_A", RUN_SPEED);
-      else this.play("Idle_A");
+      if (running) this.play(this.gait.move, this.gait.moveSpeed);
+      else this.play(this.gait.idle);
     }
 
     const dt = (now - this.lastFrame) / 1000;
@@ -92,7 +100,7 @@ export class Figure {
   }
 }
 
-function fitHeight(model: THREE.Object3D) {
+function fit(model: THREE.Object3D, scaleFor: (size: THREE.Vector3) => number) {
   // A skinned mesh's box comes from its bones, so they must be current before measuring.
   model.updateMatrixWorld(true);
   model.traverse((o) => {
@@ -100,7 +108,7 @@ function fitHeight(model: THREE.Object3D) {
     if (o instanceof THREE.Mesh) o.castShadow = true;
   });
   const box = new THREE.Box3().setFromObject(model);
-  const scale = HEIGHT / (box.max.y - box.min.y);
+  const scale = scaleFor(box.getSize(new THREE.Vector3()));
   model.scale.setScalar(scale);
   model.position.y = -box.min.y * scale;
 }
@@ -113,10 +121,25 @@ export async function loadCharacters() {
     [...CHARACTERS, ...CLIP_PACKS].map(load),
   );
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
-  Object.values(models).forEach(fitHeight);
+  Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
   const clips = new Map(
     packs.flatMap((pack) => pack.animations).map((c) => [c.name, c]),
   );
   return (tile: Tile, name: string) =>
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
+}
+
+export function fitSpider(model: THREE.Object3D) {
+  fit(model, (size) => SPIDER_WIDTH / Math.max(size.x, size.z));
+}
+
+/** Loads the Spider once; every Figure it then makes shares its clips. */
+export async function loadSpiders() {
+  const { scene, animations } = await new GLTFLoader().loadAsync(
+    "/models/Spider.glb",
+  );
+  fitSpider(scene);
+  const clips = new Map(animations.map((c) => [c.name, c]));
+  return (tile: Tile) =>
+    new Figure(tile, cloneSkinned(scene), clips, SPIDER_GAIT);
 }

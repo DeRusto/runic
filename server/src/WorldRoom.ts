@@ -5,6 +5,7 @@ import {
   MAX_CHAT_LENGTH,
   parseRegion,
   REGION_GRID,
+  TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
@@ -25,6 +26,8 @@ export class WorldRoom extends Room {
   messages = {
     [WALK_INTENT]: (client: Client, to: Tile) =>
       this.sim.queueWalk(client.sessionId, to),
+    [TARGET_INTENT]: (client: Client, spider: string) =>
+      this.sim.queueTarget(client.sessionId, spider),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {

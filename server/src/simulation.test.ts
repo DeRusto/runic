@@ -1,5 +1,5 @@
-import { parseRegion } from "@runic/shared";
-import { beforeEach, expect, test } from "vitest";
+import { parseRegion, REGION_GRID } from "@runic/shared";
+import { beforeEach, describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 // The respawn tile is (1,1); a wall splits off the tile at (5,1).
@@ -120,6 +120,190 @@ test("a player who leaves mid-walk is gone, along with their queued intent", () 
   sim.removePlayer("a");
   runTicks(4);
   expect(sim.state.players.has("a")).toBe(false);
+});
+
+describe("Spiders", () => {
+  const NEVER_WANDER = () => 0.99;
+
+  const spiderSim = (rows: string[], random = NEVER_WANDER) =>
+    new Simulation(parseRegion(rows.join("\n")), random);
+
+  const spiderTile = (s: Simulation, id = "0") => {
+    const { x, y } = s.state.spiders.get(id)!;
+    return { x, y };
+  };
+
+  test("one starts at each home, with full health, idle and no target", () => {
+    const s = spiderSim(["TTTTTT", "TRS..T", "T...ST", "TTTTTT"]);
+    expect(s.state.spiders.size).toBe(2);
+    expect(spiderTile(s, "0")).toEqual({ x: 2, y: 1 });
+    expect(spiderTile(s, "1")).toEqual({ x: 4, y: 2 });
+    expect(s.state.spiders.get("0")).toMatchObject({
+      health: 8,
+      target: "",
+      state: "idle",
+    });
+  });
+
+  test("the real region has a Spider on every home", () => {
+    const s = new Simulation(parseRegion(REGION_GRID), NEVER_WANDER);
+    expect(s.state.spiders.size).toBe(8);
+  });
+
+  test.each([
+    [0.0999, true],
+    [0.1, false],
+  ])("a roll of %d each tick steps: %s", (roll, steps) => {
+    const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"], () => roll);
+    s.tick();
+    expect(spiderTile(s).x !== 2).toBe(steps);
+  });
+
+  test("a step takes 2 ticks, however lucky the rolls", () => {
+    const s = spiderSim(["TTTTTTT", "TRS...T", "TTTTTTT"], () => 0);
+    const moves = Array.from({ length: 6 }, () => {
+      const before = spiderTile(s);
+      s.tick();
+      return before.x !== spiderTile(s).x;
+    });
+    expect(moves).toEqual([true, false, true, false, true, false]);
+  });
+
+  test("it only steps to adjacent tiles it can walk to, past no blocked corner", () => {
+    // From the home at (2,2), the tree and the rock beside it rule out both diagonals up.
+    const rows = ["TTTTTTT", "TR...TT", "TTSoTTT", "TTTTTTT"];
+    const legal = new Set(["2,2", "1,1", "2,1", "3,1", "4,1"]);
+    let seed = 1;
+    const s = spiderSim(
+      rows,
+      () => (seed = (seed * 16807) % 2147483647) / 2147483647,
+    );
+    for (let i = 0; i < 2000; i++) {
+      const before = spiderTile(s);
+      s.tick();
+      const after = spiderTile(s);
+      expect(legal.has(`${after.x},${after.y}`)).toBe(true);
+      expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+      if (before.x === 2 && before.y === 2) expect(after.x).toBe(2);
+    }
+  });
+
+  test("it never wanders more than 5 tiles from home, but does reach 5", () => {
+    const row = `TRS${".".repeat(20)}T`;
+    let seed = 7;
+    const s = spiderSim(
+      ["T".repeat(row.length), row, "T".repeat(row.length)],
+      () => (seed = (seed * 16807) % 2147483647) / 2147483647,
+    );
+    const seen = new Set<number>();
+    for (let i = 0; i < 20000; i++) {
+      s.tick();
+      seen.add(spiderTile(s).x);
+    }
+    expect(Math.max(...seen)).toBe(2 + 5);
+    expect(Math.min(...seen)).toBe(1);
+  });
+
+  test("a Spider that isn't idle doesn't wander", () => {
+    const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"], () => 0);
+    s.state.spiders.get("0")!.state = "fighting";
+    s.tick();
+    expect(spiderTile(s)).toEqual({ x: 2, y: 1 });
+  });
+
+  describe("targeting", () => {
+    const WIDE = ["TTTTTTTTTT", "TR.......T", "T......S.T", "TTTTTTTTTT"];
+
+    test("clicking one walks the player next to it, then stops", () => {
+      const s = spiderSim(WIDE);
+      s.addPlayer("a");
+      s.queueTarget("a", "0");
+      for (let i = 0; i < 30; i++) s.tick();
+      const { x, y } = s.state.players.get("a")!;
+      expect(Math.max(Math.abs(x - 7), Math.abs(y - 2))).toBe(1);
+    });
+
+    test("the player follows it when it moves, and stops once next to it again", () => {
+      const s = spiderSim(WIDE);
+      s.addPlayer("a");
+      s.queueTarget("a", "0");
+      for (let i = 0; i < 30; i++) s.tick();
+      Object.assign(s.state.spiders.get("0")!, { x: 2, y: 1 });
+      for (let i = 0; i < 30; i++) s.tick();
+      const { x, y } = s.state.players.get("a")!;
+      expect(Math.max(Math.abs(x - 2), Math.abs(y - 1))).toBe(1);
+    });
+
+    test("next to means a legal step, so it won't stop across a blocked corner", () => {
+      // (3,1) and (4,2) touch diagonally, but the rocks at (4,1) and (3,2) block that step.
+      const s = spiderSim(["TTTTTT", "T..RoT", "T..oST", "T....T", "TTTTTT"]);
+      s.addPlayer("a");
+      s.queueTarget("a", "0");
+      for (let i = 0; i < 30; i++) s.tick();
+      const { x, y } = s.state.players.get("a")!;
+      expect(Math.max(Math.abs(x - 4), Math.abs(y - 2))).toBe(1);
+      expect(y).toBe(3);
+    });
+
+    test("a player already next to it doesn't move", () => {
+      const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"]);
+      s.addPlayer("a");
+      s.queueTarget("a", "0");
+      s.tick();
+      expect(s.state.players.get("a")!.x).toBe(1);
+    });
+
+    test("walking somewhere else stops the following", () => {
+      const s = spiderSim(WIDE);
+      s.addPlayer("a");
+      s.queueTarget("a", "0");
+      s.queueWalk("a", { x: 1, y: 2 });
+      for (let i = 0; i < 30; i++) s.tick();
+      expect(s.state.players.get("a")).toMatchObject({ x: 1, y: 2 });
+    });
+
+    test("a Spider click replaces a walk queued the same tick", () => {
+      const s = spiderSim(["TTTTTT", "TR..ST", "T....T", "TTTTTT"]);
+      s.addPlayer("a");
+      s.queueWalk("a", { x: 1, y: 2 });
+      s.queueTarget("a", "0");
+      for (let i = 0; i < 30; i++) s.tick();
+      expect(s.state.players.get("a")!.x).toBe(3);
+    });
+
+    test("targeting can't beat the walking speed", () => {
+      const s = spiderSim(WIDE);
+      s.addPlayer("a");
+      for (let i = 0; i < 4; i++) {
+        s.queueTarget("a", "0");
+        s.tick();
+      }
+      expect(s.state.players.get("a")!.x).toBe(3);
+    });
+
+    test.each([
+      ["no such Spider", "9"],
+      ["inherited key", "constructor"],
+      ["not a string", 0],
+      ["null", null],
+      ["an object", {}],
+    ])("an invalid target is ignored and keeps the walk: %s", (_, bad) => {
+      const s = spiderSim(WIDE);
+      s.addPlayer("a");
+      s.queueWalk("a", { x: 3, y: 1 });
+      s.queueTarget("a", bad as never);
+      for (let i = 0; i < 30; i++) s.tick();
+      expect(s.state.players.get("a")).toMatchObject({ x: 3, y: 1 });
+    });
+
+    test("a target from someone not in the region is ignored", () => {
+      const s = spiderSim(WIDE);
+      s.queueTarget("ghost", "0");
+      s.tick();
+      expect(s.state.players.has("ghost")).toBe(false);
+    });
+  });
 });
 
 const EMPTY_INVENTORY = Array<string>(30).fill("");
