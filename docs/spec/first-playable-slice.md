@@ -81,7 +81,7 @@ An idle Spider has a 1-in-10 chance each tick to step to an adjacent walkable ti
 
 ### Foraging
 
-- Clicking a bush walks the player next to it. They then make one attempt every N ticks, starting on arrival **[D5]**.
+- Clicking a bush walks the player next to it. They then make one attempt every N ticks, starting on arrival **[D5]**. The pick timer belongs to the player, so an attempt within the last N ticks delays the first one at any bush, and re-clicking can't beat N ticks **[D17]**.
 - Trying stops when a pick succeeds, the bush runs out, the inventory is full, or the player clicks something else. So **one successful pick ends the action: one click, one food**, as [Server simulation model](https://github.com/DeRusto/runic/issues/6) has it.
 - A failed pick gives nothing and doesn't use up the bush. Only a success gives experience.
 - Picks are shared between players. A partly picked bush doesn't regrow until it runs out.
@@ -243,7 +243,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 - Characters: KayKit Adventurers on `Rig_Medium`. Each player gets Knight or Barbarian from a hash of their username **[Q5]**.
 - Clips: `Rig_Medium_General`, `Rig_Medium_MovementBasic`, `Rig_Medium_CombatMelee` as they ship (about 2.5 MB), loaded once and shared across characters.
 - Spider: Quaternius Easy Enemy Pack. Convert `Spider.fbx` to GLB once with `GLTFExporter`, forcing material opacity to 1, and commit the GLB. Update the skeleton before `Box3.setFromObject` when measuring it, or it scales to almost nothing.
-- Props and bushes: KayKit Forest Nature free tier. Two bush models for berry and herb, or a tint if the free tier has no two that differ clearly. A run-out bush is the same model shrunk and greyed in code.
+- Props and bushes: KayKit Forest Nature free tier. Two bush models for berry and herb, each with its own tint so they read apart at a distance. A run-out bush is the same model shrunk and greyed in code.
 - Copies of the character, clip, Spider and bush files are on the [`prototype/models-move-and-fight`](https://github.com/DeRusto/runic/tree/prototype/models-move-and-fight/client/prototype-models) branch, a useful reference for the clip code too.
 - Sound: none in the slice **[Q1]**.
 
@@ -352,6 +352,7 @@ These filled small gaps and were accepted in review.
 | D14 | Login form, logout button, health readout, nameplates, health bars only when hurt, facing, no number for regeneration | [#5](https://github.com/DeRusto/runic/issues/5)'s UI frame didn't cover them |
 | D15 | Client rejoins when reconnecting fails | A restart invalidates every reconnect token, and [#15](https://github.com/DeRusto/runic/issues/15) promises players auto-reconnect |
 | D16 | `node --import tsx`, wider dev proxy, Coolify scheduled task for the nightly copy | [#15](https://github.com/DeRusto/runic/issues/15) needs signals delivered and a job to run; `tsx`'s own forwarding is unchecked |
+| D17 | Pick timers persist between actions, and win over D5 when an attempt is still due | Same as D2: otherwise re-clicking gives a free instant attempt |
 
 ## 15. Check while building
 

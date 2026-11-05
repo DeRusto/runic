@@ -1,11 +1,12 @@
 import {
   bushId,
   tileHash,
+  type BushKind,
   type GroundKind,
+  type PropKind,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const SLAB_HEIGHT = 0.2;
@@ -22,81 +23,42 @@ const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 
 const white = new THREE.Color(0xffffff);
 
-/** One coloured piece of a prop's model, moved into place and ready to merge. */
-function part(
-  geometry: THREE.BufferGeometry,
-  color: number,
-  x: number,
-  y: number,
-  z: number,
-) {
-  const piece = geometry.index ? geometry.toNonIndexed() : geometry;
-  piece.translate(x, y, z);
-  const { r, g, b } = new THREE.Color(color);
-  const colors = Array.from(
-    { length: piece.attributes.position!.count },
-    () => [r, g, b],
-  ).flat();
-  piece.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  return piece;
-}
+const BUSH_MODELS: Record<BushKind, string> = {
+  berryBush: "Bush_2_B",
+  herbBush: "Bush_4_B",
+};
+const PROP_MODELS: Record<PropKind, { scale: number; models: string[] }> = {
+  tree: { scale: 0.45, models: ["Tree_1_A", "Tree_2_A", "Tree_4_A"] },
+  rock: { scale: 0.65, models: ["Rock_1_E", "Rock_2_C"] },
+  tuft: { scale: 0.5, models: ["Grass_1_B", "Grass_2_B"] },
+};
 
-const TRUNK = 0x6b4a2b;
-const PINE = 0x24603a;
-const LEAF = 0x3c8a3f;
-const ROCK = 0x8a8f94;
-const TUFT = 0x7cc04f;
-
-// shortcut: trees, rocks and tufts are built here because only the bush of KayKit Forest Nature is in the repo, swap in the pack's models when it is committed.
-function propVariants(): Record<
-  "tree" | "rock" | "tuft",
-  THREE.BufferGeometry[]
-> {
-  const merged = (...parts: THREE.BufferGeometry[]) => mergeGeometries(parts)!;
-  const blade = (x: number, z: number, height: number) =>
-    part(new THREE.ConeGeometry(0.05, height, 4), TUFT, x, height / 2, z);
-  return {
-    tree: [
-      merged(
-        part(new THREE.CylinderGeometry(0.08, 0.13, 0.6, 5), TRUNK, 0, 0.3, 0),
-        part(new THREE.ConeGeometry(0.48, 1.3, 6), PINE, 0, 1.2, 0),
-      ),
-      merged(
-        part(new THREE.CylinderGeometry(0.08, 0.12, 0.5, 5), TRUNK, 0, 0.25, 0),
-        part(new THREE.ConeGeometry(0.5, 0.8, 6), PINE, 0, 0.85, 0),
-        part(new THREE.ConeGeometry(0.36, 0.7, 6), PINE, 0, 1.4, 0),
-      ),
-      merged(
-        part(new THREE.CylinderGeometry(0.08, 0.13, 0.7, 5), TRUNK, 0, 0.35, 0),
-        part(new THREE.IcosahedronGeometry(0.5, 0), LEAF, 0, 1.05, 0),
-      ),
-    ],
-    rock: [
-      merged(part(new THREE.DodecahedronGeometry(0.36, 0), ROCK, 0, 0.2, 0)),
-      merged(
-        part(new THREE.IcosahedronGeometry(0.3, 0), ROCK, -0.08, 0.18, 0),
-        part(new THREE.IcosahedronGeometry(0.18, 0), ROCK, 0.22, 0.1, 0.12),
-      ),
-    ],
-    tuft: [
-      merged(blade(0, 0, 0.3), blade(0.14, 0.06, 0.2), blade(-0.1, 0.12, 0.24)),
-      merged(
-        blade(-0.15, -0.1, 0.26),
-        blade(0.08, -0.04, 0.32),
-        blade(0.16, 0.16, 0.18),
-      ),
-    ],
-  };
+async function loadModel(name: string) {
+  const { scene } = await new GLTFLoader().loadAsync(
+    `/models/${name}_Color1.gltf`,
+  );
+  return scene.children[0] as THREE.Mesh;
 }
 
 /** A slab per tile and the props and bushes on them, all fixed but for bushes: returns how to show one run out or not. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
-  const bush = await new GLTFLoader().loadAsync("/models/Bush_1_A_Color1.gltf");
-  const bushMesh = bush.scene.children[0] as THREE.Mesh;
-  const bushMap = (bushMesh.material as THREE.MeshStandardMaterial).map;
-  bushMesh.geometry.computeBoundingBox();
-  const bushScale =
-    BUSH_WIDTH / bushMesh.geometry.boundingBox!.getSize(new THREE.Vector3()).x;
+  const [berryBush, herbBush, ...propMeshes] = await Promise.all(
+    [
+      ...Object.values(BUSH_MODELS),
+      ...Object.values(PROP_MODELS).flatMap(({ models }) => models),
+    ].map(loadModel),
+  );
+  const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
+  const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
+  for (const [kind, { models }] of Object.entries(PROP_MODELS)) {
+    propVariants[kind as PropKind] = propMeshes
+      .splice(0, models.length)
+      .map((mesh) => mesh.geometry);
+  }
+  // The whole pack paints from one texture, so one material covers every model.
+  const material = new THREE.MeshLambertMaterial({
+    map: (berryBush!.material as THREE.MeshStandardMaterial).map,
+  });
 
   const slabs = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, SLAB_HEIGHT, 1),
@@ -109,20 +71,22 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     THREE.BufferGeometry,
     { matrix: THREE.Matrix4; color: THREE.Color }[]
   >();
+  /** Returns the placement's index in its geometry's InstancedMesh. */
   const place = (
     geometry: THREE.BufferGeometry,
     matrix: THREE.Matrix4,
     color = white,
   ) => {
     if (!placements.has(geometry)) placements.set(geometry, []);
-    placements.get(geometry)!.push({ matrix, color });
+    return placements.get(geometry)!.push({ matrix, color }) - 1;
   };
 
-  /** Each bush's index in the bushes' InstancedMesh. */
-  const bushSlots = new Map<string, number>();
-  let bushes!: THREE.InstancedMesh;
+  /** Where each bush is drawn. */
+  const bushSlots = new Map<
+    string,
+    { geometry: THREE.BufferGeometry; slot: number }
+  >();
 
-  const variants = propVariants();
   const matrix = new THREE.Matrix4();
   const color = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
@@ -148,36 +112,29 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       );
       const at = new THREE.Vector3(x, top, y);
       if (bush) {
-        const scale = new THREE.Vector3().setScalar(bushScale);
-        bushSlots.set(bushId({ x, y }), bushSlots.size);
-        place(
-          bushMesh.geometry,
+        const { geometry } = bushMeshes[bush];
+        geometry.computeBoundingBox();
+        const scale = new THREE.Vector3().setScalar(
+          BUSH_WIDTH / geometry.boundingBox!.getSize(new THREE.Vector3()).x,
+        );
+        const slot = place(
+          geometry,
           new THREE.Matrix4().compose(at, rotation, scale),
           new THREE.Color(BUSH_TINT[bush]),
         );
+        bushSlots.set(bushId({ x, y }), { geometry, slot });
       } else if (prop) {
-        const options = variants[prop];
+        const options = propVariants[prop];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        place(
-          geometry,
-          new THREE.Matrix4().compose(at, rotation, new THREE.Vector3(1, 1, 1)),
-        );
+        const scale = new THREE.Vector3().setScalar(PROP_MODELS[prop].scale);
+        place(geometry, new THREE.Matrix4().compose(at, rotation, scale));
       }
     }),
   );
   scene.add(slabs);
 
-  const propMaterial = new THREE.MeshLambertMaterial({
-    flatShading: true,
-    vertexColors: true,
-  });
-  const bushMaterial = new THREE.MeshLambertMaterial({
-    flatShading: true,
-    map: bushMap,
-  });
+  const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
   for (const [geometry, list] of placements) {
-    const material =
-      geometry === bushMesh.geometry ? bushMaterial : propMaterial;
     const mesh = new THREE.InstancedMesh(geometry, material, list.length);
     list.forEach((item, i) => {
       mesh.setMatrixAt(i, item.matrix);
@@ -185,12 +142,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     });
     mesh.castShadow = true;
     scene.add(mesh);
-    if (geometry === bushMesh.geometry) bushes = mesh;
+    meshes.set(geometry, mesh);
   }
 
   return (id: string, runOut: boolean) => {
-    const slot = bushSlots.get(id)!;
-    const { matrix, color } = placements.get(bushMesh.geometry)![slot]!;
+    const { geometry, slot } = bushSlots.get(id)!;
+    const bushes = meshes.get(geometry)!;
+    const { matrix, color } = placements.get(geometry)![slot]!;
     bushes.setMatrixAt(
       slot,
       runOut ? matrix.clone().scale(RUN_OUT_SCALE) : matrix,
