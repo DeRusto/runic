@@ -1,6 +1,13 @@
+import type { BushKind } from "./foraging.ts";
+
 export type GroundKind = "grass" | "thicket" | "path";
-export type PropKind = "tree" | "rock" | "tuft" | "berryBush" | "herbBush";
-export type TileKind = { ground: GroundKind; prop?: PropKind; blocks: boolean };
+export type PropKind = "tree" | "rock" | "tuft";
+export type TileKind = {
+  ground: GroundKind;
+  prop?: PropKind;
+  bush?: BushKind;
+  blocks: boolean;
+};
 export type Tile = { x: number; y: number };
 
 /** What each character of the text grid means (spec §3). Look a tile up here to ask what it is. */
@@ -12,8 +19,8 @@ export const TILE_KINDS = {
   t: { ground: "thicket", prop: "tree", blocks: true },
   o: { ground: "grass", prop: "rock", blocks: true },
   '"': { ground: "grass", prop: "tuft", blocks: false },
-  b: { ground: "thicket", prop: "berryBush", blocks: true },
-  h: { ground: "thicket", prop: "herbBush", blocks: true },
+  b: { ground: "thicket", bush: "berryBush", blocks: true },
+  h: { ground: "thicket", bush: "herbBush", blocks: true },
   S: { ground: "grass", blocks: false },
   R: { ground: "path", blocks: false },
 } as const satisfies Record<string, TileKind>;
@@ -36,6 +43,25 @@ export function respawnTile(tiles: TileKind[][]): Tile {
   const y = tiles.findIndex((row) => row.includes(TILE_KINDS.R));
   return { x: tiles[y]!.indexOf(TILE_KINDS.R), y };
 }
+
+/** Distance in 8-way tiles. */
+export const tilesApart = (a: Tile, b: Tile) =>
+  Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+
+const DIRECTIONS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+] as const;
+
+/** The 8 tiles around `tile`, whether or not they're on the grid. */
+export const neighbours = ({ x, y }: Tile): Tile[] =>
+  DIRECTIONS.map(([dx, dy]) => ({ x: x + dx, y: y + dy }));
 
 /** A stable 32-bit hash of a tile, for its colour, model variant and rotation. */
 export function tileHash(x: number, y: number): number {

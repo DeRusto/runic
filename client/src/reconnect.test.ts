@@ -1,5 +1,6 @@
+import { TAKEN_OVER_CLOSE_CODE } from "@runic/shared";
 import { expect, test, vi } from "vitest";
-import { rejoin } from "./reconnect.ts";
+import { isTakenOver, rejoin } from "./reconnect.ts";
 
 const NO_WAIT = 0;
 
@@ -38,6 +39,17 @@ test("it keeps trying while the server is down or not yet accepting joins", asyn
   expect(await rejoin("build-1", version, join, vi.fn(), NO_WAIT)).toBe("room");
   expect(version).toHaveBeenCalledTimes(3);
   expect(join).toHaveBeenCalledTimes(2);
+});
+
+test("a join replaced by a newer login stops, or trying again would kick that login", async () => {
+  const replaced = { code: TAKEN_OVER_CLOSE_CODE };
+  const join = vi.fn(() => Promise.reject(replaced));
+  await expect(
+    rejoin("build-1", async () => "build-1", join, vi.fn(), NO_WAIT),
+  ).rejects.toBe(replaced);
+  expect(join).toHaveBeenCalledTimes(1);
+  expect(isTakenOver(replaced)).toBe(true);
+  expect(isTakenOver(new Error("no room yet"))).toBe(false);
 });
 
 test("a dev build has no version, so it never reloads", async () => {

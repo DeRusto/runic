@@ -28,15 +28,9 @@ function atContact(
   contactMs: number,
   onHit: () => void,
 ) {
-  if (overhead) overhead.pendingDamage += damage;
+  overhead?.holdBlow(damage);
   setTimeout(() => {
-    if (overhead) {
-      overhead.pendingDamage -= damage;
-      overhead.pop(
-        damage ? String(damage) : "miss",
-        damage ? "damage" : "miss",
-      );
-    }
+    overhead?.showBlow(damage);
     if (damage) onHit();
   }, contactMs);
 }
@@ -49,7 +43,8 @@ export function showFights(room: WorldConnection) {
     room.onStateChange.once(() => {
       room.state.players.forEach((player, id) => {
         const figure = playerFigures.get(id);
-        if (!player.dead && figure?.downed) figure.respawn();
+        if (player.dead && !figure?.downed) figure?.alreadyDown("Death_A");
+        else if (!player.dead && figure?.downed) figure.respawn();
       });
       room.state.spiders.forEach((spider, id) => {
         const figure = spiderFigures.get(id)!;
@@ -108,7 +103,7 @@ export function showFights(room: WorldConnection) {
         setTimeout(() => {
           playerOverheads
             .get(event.player)
-            ?.say(event.success ? "Picked!" : "No luck");
+            ?.pop(event.success ? "Picked!" : "No luck", "pick");
           if (event.player === room.sessionId) revealPick();
         }, PICK_RESULT_AT * clipMs);
       } else if (event.type === "eaten") {

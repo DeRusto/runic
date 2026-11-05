@@ -383,3 +383,77 @@ test("a log out intent from someone no longer in the region is ignored", () => {
   runTicks(1);
   expect(sim.loggedOut).toEqual([]);
 });
+
+describe("a player's synced action", () => {
+  // The respawn tile is (1,1), with a Spider's home at (3,1) and a bush at (6,1).
+  const ROWS = ["TTTTTTTT", "TR.S..bT", "T......T", "TTTTTTTT"];
+  const MISS = 0.99;
+  const start = (roll = MISS) => {
+    const s = new Simulation(parseRegion(ROWS.join("\n")), () => roll);
+    s.addPlayer("a");
+    return s;
+  };
+  const action = (s: Simulation) => s.state.players.get("a")!.action;
+
+  test("nothing, until a click: then walking, and nothing again on arrival", () => {
+    const s = start();
+    expect(action(s)).toBe("");
+    s.queueWalk("a", { x: 3, y: 2 });
+    s.tick();
+    expect(action(s)).toBe("walking");
+    s.tick();
+    s.tick();
+    expect(s.state.players.get("a")).toMatchObject({ x: 3, y: 2 });
+    expect(action(s)).toBe("");
+  });
+
+  test("foraging from the click on, through the walk there, until the pick", () => {
+    const unlucky = start();
+    unlucky.queueForage("a", "6,1");
+    for (let i = 0; i < 8; i++) {
+      unlucky.tick();
+      expect(action(unlucky)).toBe("foraging");
+    }
+    const lucky = start(0);
+    lucky.queueForage("a", "6,1");
+    for (let i = 0; i < 8; i++) lucky.tick();
+    expect(action(lucky)).toBe("");
+  });
+
+  test("fighting from the click on, and a new click replaces it", () => {
+    const s = start();
+    s.queueTarget("a", "0");
+    s.tick();
+    expect(action(s)).toBe("fighting");
+    s.queueWalk("a", { x: 1, y: 2 });
+    s.tick();
+    expect(action(s)).toBe("walking");
+  });
+
+  test("a drop ends it", () => {
+    const s = start();
+    s.queueTarget("a", "0");
+    s.tick();
+    s.dropPlayer("a");
+    expect(action(s)).toBe("");
+    s.tick();
+    expect(action(s)).toBe("");
+  });
+
+  test("death ends it", () => {
+    // The player's swing misses; the Spider's, 4 ticks later, hits for 1.
+    const rolls = [MISS, 0, 0];
+    const s = new Simulation(
+      parseRegion(["TTTTT", "TRS.T", "TTTTT"].join("\n")),
+      () => rolls.shift() ?? MISS,
+    );
+    s.addPlayer("a");
+    s.state.players.get("a")!.health = 1;
+    s.queueTarget("a", "0");
+    s.tick();
+    expect(action(s)).toBe("fighting");
+    for (let i = 0; i < 4; i++) s.tick();
+    expect(s.state.players.get("a")!.dead).toBe(true);
+    expect(action(s)).toBe("");
+  });
+});

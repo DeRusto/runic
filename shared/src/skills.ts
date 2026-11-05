@@ -6,6 +6,10 @@ export const xpForLevel = (level: number) => 50 * (level - 1) ** 2;
 /** Experience stops here. */
 export const MAX_XP = xpForLevel(MAX_LEVEL);
 
+/** Awards experience, up to where it stops. */
+export const addXp = (xp: number, gained: number) =>
+  Math.min(xp + gained, MAX_XP);
+
 /** Only experience is stored; level is always worked out from it. */
 export const levelFor = (xp: number) =>
   Math.min(Math.floor(Math.sqrt(xp / 50)) + 1, MAX_LEVEL);

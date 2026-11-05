@@ -102,7 +102,7 @@ function fought(rows = CORRIDOR) {
   return s;
 }
 
-describe("the chase", () => {
+describe("a fighting Spider following its target", () => {
   test("a fighting Spider follows its target at a tile per 2 ticks and stops next to them", () => {
     const s = fought();
     Object.assign(player(s), { x: 6 }); // Inside the leash: 4 tiles from the start tile.

@@ -14,7 +14,7 @@
       canvas {
         display: block;
       }
-      #ticks {
+      #status {
         position: fixed;
         top: 8px;
         left: 8px;
@@ -75,6 +75,9 @@
       .pop.heal {
         color: #5fe36a;
       }
+      .pop.pick {
+        color: #ffd27a;
+      }
       @keyframes pop {
         from {
           transform: translate(-50%, 0);
@@ -129,7 +132,7 @@
         color: inherit;
         font-size: 10px;
       }
-      #stats {
+      #player-panel {
         display: grid;
         grid-template-columns: 1fr auto;
         gap: 4px 8px;
@@ -165,7 +168,7 @@
     </style>
   </head>
   <body>
-    <p id="ticks">Connecting…</p>
+    <p id="status">Connecting…</p>
     <div id="overheads"></div>
     <section id="bar" hidden>
       <div id="chat">
@@ -175,7 +178,7 @@
         </form>
       </div>
       <div id="slots" aria-label="Inventory"></div>
-      <div id="stats">
+      <div id="player-panel">
         <div id="skills"></div>
         <div id="health"></div>
         <button id="logout" type="button">Log out</button>

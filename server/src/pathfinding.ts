@@ -1,23 +1,11 @@
-import type { Tile, TileKind } from "@runic/shared";
-
-const DIRECTIONS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [1, 1],
-  [1, -1],
-  [-1, 1],
-  [-1, -1],
-] as const;
+import { neighbours, type Tile, type TileKind } from "@runic/shared";
 
 /** The tiles one legal step from `from`. A diagonal needs both tiles beside it clear. */
 export function legalSteps(tiles: TileKind[][], from: Tile): Tile[] {
   const clear = (x: number, y: number) => tiles[y]?.[x]?.blocks === false;
-  return DIRECTIONS.map(([dx, dy]) => ({
-    x: from.x + dx,
-    y: from.y + dy,
-  })).filter(({ x, y }) => clear(x, y) && clear(x, from.y) && clear(from.x, y));
+  return neighbours(from).filter(
+    ({ x, y }) => clear(x, y) && clear(x, from.y) && clear(from.x, y),
+  );
 }
 
 /**
@@ -26,10 +14,7 @@ export function legalSteps(tiles: TileKind[][], from: Tile): Tile[] {
  */
 function tilesNextTo(tiles: TileKind[][], to: Tile): Tile[] {
   const clear = (x: number, y: number) => tiles[y]?.[x]?.blocks === false;
-  return DIRECTIONS.map(([dx, dy]) => ({
-    x: to.x + dx,
-    y: to.y + dy,
-  })).filter(
+  return neighbours(to).filter(
     ({ x, y }) =>
       clear(x, y) &&
       (x === to.x || y === to.y || (clear(x, to.y) && clear(to.x, y))),

@@ -38,7 +38,7 @@ export const SWING_INTERVAL_TICKS = 8;
 export const SPIDER_FIRST_SWING_DELAY_TICKS = 4;
 export const EAT_SWING_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
-export const SPIDER_RESPAWN_TICKS = 100;
+export const SPIDER_RETURN_TICKS = 100;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 export const REGEN_INTERVAL_TICKS = 20;
@@ -61,6 +61,10 @@ export const SPIDER_MAX_DAMAGE = 2;
 export const XP_PER_DAMAGE_DEALT = 6;
 export const DEFENSE_XP_PER_SPIDER_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
+
+export type SpiderState = "idle" | "fighting" | "going home" | "dead";
+/** What a player is doing; "" for nothing. */
+export type PlayerAction = "" | "walking" | "foraging" | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";

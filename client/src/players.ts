@@ -20,6 +20,7 @@ export function showPlayers(
   callbacks.onAdd("players", (player, id) => {
     const figure = newFigure(player, player.username);
     scene.add(figure.model);
+    if (player.dead) figure.alreadyDown("Death_A");
     figures.set(id, figure);
     overheads.set(id, new Overhead(player.username));
   });

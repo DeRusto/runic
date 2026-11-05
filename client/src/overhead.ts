@@ -13,7 +13,7 @@ export class Overhead {
   private fill = document.createElement("i");
   private clearSaid?: ReturnType<typeof setTimeout>;
   /** Blows the server has decided but the clips haven't reached yet, so the bar doesn't show them. */
-  pendingDamage = 0;
+  private pendingDamage = 0;
 
   constructor(username: string) {
     const name = document.createElement("div");
@@ -31,6 +31,16 @@ export class Overhead {
     const shown = health + this.pendingDamage;
     this.bar.hidden = shown >= max || shown <= 0;
     this.fill.style.width = `${(shown / max) * 100}%`;
+  }
+
+  /** Keeps a blow off the bar until `showBlow`, when its clip connects. */
+  holdBlow(damage: number) {
+    this.pendingDamage += damage;
+  }
+
+  showBlow(damage: number) {
+    this.pendingDamage -= damage;
+    this.pop(damage ? String(damage) : "miss", damage ? "damage" : "miss");
   }
 
   /** A number that floats up from here and fades; its look comes from `kind`'s CSS class. */

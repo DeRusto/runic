@@ -12,6 +12,9 @@ const CLIPS = new Map(
   ]),
 );
 CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
+const DEATH_S = 1.5;
+CLIPS.set("Death_A", new THREE.AnimationClip("Death_A", DEATH_S, []));
+CLIPS.set("Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, []));
 
 function figureAt(tile: { x: number; y: number }) {
   return new Figure(tile, new THREE.Object3D(), CLIPS);
@@ -25,6 +28,31 @@ function clipState(figure: Figure, name: string) {
     speed: action.getEffectiveTimeScale(),
   };
 }
+
+describe("a player already dead when first seen", () => {
+  const deathClip = (figure: Figure) =>
+    figure.mixer.clipAction(CLIPS.get("Death_A")!);
+
+  it("lies in the clip's last pose, with no fall to watch", () => {
+    const figure = figureAt({ x: 1, y: 1 });
+    figure.alreadyDown("Death_A");
+    figure.update(16);
+    expect(figure.downed).toBe(true);
+    expect(deathClip(figure).time).toBe(DEATH_S);
+    figure.update(32);
+    expect(deathClip(figure).time).toBe(DEATH_S);
+    expect(figure.downed).toBe(true);
+  });
+
+  it("gets up when the respawn comes", () => {
+    const figure = figureAt({ x: 1, y: 1 });
+    figure.alreadyDown("Death_A");
+    figure.update(16);
+    figure.respawn();
+    expect(figure.downed).toBe(false);
+    expect(clipState(figure, "Spawn_Ground").running).toBe(true);
+  });
+});
 
 describe("characterFor", () => {
   it("gives a name the same character every time", () => {
