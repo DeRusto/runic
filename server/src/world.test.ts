@@ -5,7 +5,8 @@ import { TICK_MS, WORLD_ROOM } from "@runic/shared";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { startServer } from "./server.ts";
 
-const PORT = 25671;
+// per-process so parallel worktrees don't collide
+const PORT = 25000 + (process.pid % 5000);
 const client = new Client(`http://localhost:${PORT}`);
 let server: Awaited<ReturnType<typeof startServer>>;
 
