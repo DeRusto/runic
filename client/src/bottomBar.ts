@@ -56,24 +56,27 @@ export function showBottomBar(
   };
 
   const slots = Array.from({ length: INVENTORY_SLOTS }, () => {
-    const slot = document.createElement("div");
-    document.getElementById("slots")!.append(slot);
-    return slot;
+    return document.createElement("div");
   });
+  document.getElementById("slots")!.replaceChildren(...slots);
 
   const skills = SKILLS.map(([name, field]) => {
     const row = document.createElement("label");
     const text = document.createElement("span");
     const bar = document.createElement("progress");
     row.append(text, bar);
-    document.getElementById("skills")!.append(row);
-    return { name, field, text, bar };
+    return { name, field, text, bar, row };
   });
+  document
+    .getElementById("skills")!
+    .replaceChildren(...skills.map((skill) => skill.row));
 
   const health = document.getElementById("health")!;
   const bar = document.getElementById("bar")!;
   bar.hidden = false;
 
+  // A room left mid-hold never reveals, and a rejoin comes back through here.
+  holdingPick = false;
   let foragingXp: number | undefined;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);

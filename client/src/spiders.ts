@@ -34,9 +34,15 @@ export function showSpiders(
       figure.update(now);
       hitBox.position.copy(figure.model.position).setY(HIT_BOX_HEIGHT / 2);
     }
-    requestAnimationFrame(frame);
+    nextFrame = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  let nextFrame = requestAnimationFrame(frame);
+
+  room.onLeave(() => {
+    cancelAnimationFrame(nextFrame);
+    for (const { figure, hitBox } of figures)
+      scene.remove(figure.model, hitBox);
+  });
 
   return (raycaster: THREE.Raycaster) => {
     const live = [...hitBoxes.keys()].filter(

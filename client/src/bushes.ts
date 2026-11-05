@@ -42,6 +42,8 @@ export function showBushes(
     callbacks.listen(bush, "picksLeft", (picks) => setRunOut(id, picks === 0));
   });
 
+  room.onLeave(() => scene.remove(...hitBoxes.keys()));
+
   return (raycaster: THREE.Raycaster) => {
     const hit = raycaster.intersectObjects([...hitBoxes.keys()])[0];
     return hit && hitBoxes.get(hit.object);
