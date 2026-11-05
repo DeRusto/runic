@@ -322,8 +322,6 @@ Each is a thin working slice that builds on those above it. No tickets exist yet
 | "Its part of the field" | Within 5 tiles of home | [#14](https://github.com/DeRusto/runic/issues/14) |
 | Regeneration of 1% of max health | 5% | Review (§13) |
 
-**Stale text, not yet fixed:** ADR 0003 still offers `FBXLoader` for the Spider, and [#12](https://github.com/DeRusto/runic/issues/12) has since settled on a converted GLB.
-
 ## 13. Rulings from review
 
 - **Q1. Sound.** The map says to use Phaser AE for sound, but no ticket asks for any sound in the slice. *Ruling: no sound, and no `ae/` folder until it's needed.*

@@ -1,9 +1,11 @@
+import { readFileSync } from "node:fs";
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { describe, expect, it } from "vitest";
-import { characterFor, Figure } from "./characters.ts";
+import { characterFor, Figure, fitSpider, SPIDER_GAIT } from "./characters.ts";
 
 const CLIPS = new Map(
-  ["Idle_A", "Running_A"].map((name) => [
+  ["Idle_A", "Running_A", "Spider_Idle", "Spider_Walk"].map((name) => [
     name,
     new THREE.AnimationClip(name, 1, []),
   ]),
@@ -112,5 +114,58 @@ describe("Figure", () => {
     Object.assign(tile, to);
     for (let now = 0; now <= 600; now += 16) figure.update(now);
     expect(figure.model.rotation.y).toBeCloseTo(yaw);
+  });
+});
+
+describe("a Spider's Figure", () => {
+  it("idles on Spider_Idle and moves on Spider_Walk looped at 2.9x", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = new Figure(tile, new THREE.Object3D(), CLIPS, SPIDER_GAIT);
+    figure.update(16);
+    expect(clipState(figure, "Spider_Idle").running).toBe(true);
+
+    tile.x = 1;
+    figure.update(16);
+    expect(clipState(figure, "Spider_Walk").running).toBe(true);
+    expect(clipState(figure, "Spider_Walk").speed).toBe(2.9);
+
+    figure.update(1000);
+    figure.update(1200);
+    expect(clipState(figure, "Spider_Idle").weight).toBe(1);
+  });
+});
+
+describe("Spider.glb", () => {
+  const load = async () => {
+    const { buffer } = readFileSync("client/public/models/Spider.glb");
+    return new GLTFLoader().parseAsync(buffer as ArrayBuffer, "");
+  };
+
+  it("has the clips the spec names, and opaque materials", async () => {
+    const { scene, animations } = await load();
+    expect(animations.map((clip) => clip.name)).toEqual(
+      expect.arrayContaining([
+        "Spider_Idle",
+        "Spider_Walk",
+        "Spider_Attack",
+        "Spider_Death",
+      ]),
+    );
+    scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      for (const material of [o.material].flat()) {
+        expect(material.opacity).toBe(1);
+        expect(material.transparent).toBe(false);
+      }
+    });
+  });
+
+  it("fits to about 1.1 units wide, standing on the ground", async () => {
+    const { scene } = await load();
+    fitSpider(scene);
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    expect(Math.max(size.x, size.z)).toBeCloseTo(1.1);
+    expect(box.min.y).toBeCloseTo(0);
   });
 });

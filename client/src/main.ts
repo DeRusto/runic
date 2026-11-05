@@ -6,19 +6,22 @@ import {
   respawnTile,
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
-import { loadCharacters } from "./characters.ts";
+import { showBottomBar } from "./bottomBar.ts";
+import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
+import { showSpiders } from "./spiders.ts";
 
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure] = await Promise.all([
+const [newFigure, newSpider] = await Promise.all([
   loadCharacters(),
+  loadSpiders(),
   addRegionMeshes(scene, tiles),
 ]);
 document.getElementById("loading")!.remove();
@@ -27,9 +30,11 @@ const ticks = document.getElementById("ticks")!;
 const logout = document.getElementById("logout")!;
 const client = new Client(location.origin);
 
+/** Everything that shows a room tidies up after itself in that room's onLeave. */
 function enterWorld(room: WorldConnection) {
-  const hidePlayers = showPlayers(room, newFigure);
-  const stopClicks = walkOnClick(room, tiles);
+  const sayOverhead = showPlayers(room, newFigure);
+  walkOnClick(room, tiles, showSpiders(room, newSpider));
+  showBottomBar(room, sayOverhead);
 
   logout.hidden = false;
   logout.onclick = () => room.send(LOGOUT_INTENT);
@@ -42,8 +47,6 @@ function enterWorld(room: WorldConnection) {
     } else if (code === TAKEN_OVER_CLOSE_CODE) {
       ticks.textContent = "Logged in somewhere else. Reload to play here.";
     } else {
-      hidePlayers();
-      stopClicks();
       ticks.textContent = "Reconnecting…";
       enterWorld(
         await rejoin(
