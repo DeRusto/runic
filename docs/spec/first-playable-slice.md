@@ -159,7 +159,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 **Room**
 - One room holds the whole region, with no interest management.
 - It's created at server start with `autoDispose = false`, so bushes and Spiders keep running while nobody's online **[D10]**. Clients use `join`, never `joinOrCreate`, so a second world can't appear **[D10]**.
-- `setFixedTimestep(step, 1000/300)`, `patchRate = null`, and one `broadcastPatch()` per tick (ADR 0001). A joining client gets the full state once.
+- Our own 300 ms accumulator in `setTimestep`, checked every 20 ms rather than `setFixedTimestep(step, 1000/300)`, whose timer drifts and doubles a patch about every 9 s; `patchRate = null`, and one `broadcastPatch()` per tick (ADR 0001). A joining client gets the full state once.
 - `onAuth` verifies the JWT and refuses accounts that are cut off.
 
 **Each tick, in order** **[D11]**
@@ -287,7 +287,7 @@ Each build ticket has its own tests. The slice as a whole is done when, on `runi
 
 ## 11. Suggested build tickets
 
-Each is a thin working slice that builds on those above it. No tickets exist yet.
+Each is a thin working slice that builds on those above it. They are now GitHub issues #17 to #34.
 
 | # | Ticket | Delivers | Needs |
 |---|---|---|---|

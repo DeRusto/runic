@@ -178,11 +178,11 @@ test("the admin script resets a password", async () => {
   expect((await login("Lee", "newpassword")).status).toBe(200);
 });
 
-test("the admin script fails on an unknown account or a short password", async () => {
+test("the admin script fails on an unknown account or a password outside the rule", async () => {
   await register("Mia");
   await expect(admin("cut-off", "Nobody")).rejects.toThrow("No account");
   await expect(admin("reset-password", "Mia", "short")).rejects.toThrow(
-    "at least 8",
+    "8 to 200 characters",
   );
   expect((await login("Mia")).status).toBe(200);
 });

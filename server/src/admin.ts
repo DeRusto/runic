@@ -1,4 +1,9 @@
-import { cutOff, isValidPassword, resetPassword } from "./accounts.ts";
+import {
+  cutOff,
+  isValidPassword,
+  PASSWORD_RULE,
+  resetPassword,
+} from "./accounts.ts";
 import { openDatabase } from "./db.ts";
 
 const USAGE =
@@ -8,8 +13,7 @@ const [command, username, password] = process.argv.slice(2);
 const database = await openDatabase();
 let found: boolean;
 if (command === "reset-password" && username && password) {
-  if (!isValidPassword(password))
-    throw new Error("Passwords need at least 8 characters");
+  if (!isValidPassword(password)) throw new Error(PASSWORD_RULE);
   found = await resetPassword(username, password);
 } else if (command === "cut-off" && username) {
   found = cutOff(username);

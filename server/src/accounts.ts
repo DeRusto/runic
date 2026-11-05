@@ -11,6 +11,7 @@ const USERNAME = /^[A-Za-z0-9_]{3,12}$/;
 const MIN_PASSWORD = 8;
 // scrypt runs on whatever arrives, so an unbounded password is a cheap way to burn CPU
 const MAX_PASSWORD = 200;
+export const PASSWORD_RULE = `Passwords are ${MIN_PASSWORD} to ${MAX_PASSWORD} characters`;
 const scryptAsync = promisify(scrypt) as (
   password: string,
   salt: Buffer,
@@ -107,7 +108,7 @@ const register = createEndpoint(
     }
     if (!isValidPassword(password)) {
       throw ctx.error(400, {
-        message: `Passwords are ${MIN_PASSWORD} to ${MAX_PASSWORD} characters`,
+        message: PASSWORD_RULE,
       });
     }
     const [account] = db

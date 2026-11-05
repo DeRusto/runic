@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { parseRegion, REGION_GRID, tileHash, TILE_KINDS } from "./index.ts";
+import {
+  neighbours,
+  parseRegion,
+  REGION_GRID,
+  tileHash,
+  TILE_KINDS,
+  tilesApart,
+} from "./index.ts";
 
 const lines = REGION_GRID.trim().split("\n");
 const region = parseRegion(REGION_GRID);
@@ -93,14 +100,29 @@ describe("parseRegion", () => {
     expect(tiles[0]![1]).toMatchObject({ ground: "grass", blocks: false });
     expect(tiles[1]![0]).toMatchObject({
       ground: "thicket",
-      prop: "berryBush",
+      bush: "berryBush",
       blocks: true,
     });
+    expect(tiles[1]![0]).not.toHaveProperty("prop");
     expect(tiles[1]![1]).toMatchObject({ ground: "path", blocks: false });
   });
 
   it("refuses an unknown character", () => {
     expect(() => parseRegion("T?")).toThrow('"?"');
+  });
+});
+
+describe("tile math", () => {
+  it("measures distance in 8-way tiles, so a diagonal counts as one", () => {
+    expect(tilesApart({ x: 1, y: 1 }, { x: 4, y: 3 })).toBe(3);
+    expect(tilesApart({ x: 4, y: 3 }, { x: 4, y: 3 })).toBe(0);
+  });
+
+  it("gives the 8 tiles around a tile, not the tile itself", () => {
+    const around = neighbours({ x: 5, y: 5 }).map(({ x, y }) => key(x, y));
+    expect(around.sort()).toEqual(
+      ["4,4", "4,5", "4,6", "5,4", "5,6", "6,4", "6,5", "6,6"].sort(),
+    );
   });
 });
 

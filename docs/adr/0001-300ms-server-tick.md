@@ -6,4 +6,4 @@ The server simulates the world in fixed 300 ms ticks. Every move, swing, pick an
 
 - Walking is one tile every 2 ticks (600 ms per tile). A one-tile-per-tick run stays possible.
 - Clients slide each move over 600 ms and do no prediction, so an input takes up to one tick (300 ms) to show.
-- Colyseus: `setFixedTimestep(step, 1000/300)`, `patchRate = null`, and one `broadcastPatch()` per tick.
+- Colyseus: our own accumulator (`tickStepper`) in `setTimestep`, checked every 20 ms, with `patchRate = null` and one `broadcastPatch()` per tick. Not `setFixedTimestep(step, 1000/300)`: its 300 ms timer drifts against its own accumulator, so about every 9 s two steps ran 1 ms apart and two patches went out back to back (measured in #17).

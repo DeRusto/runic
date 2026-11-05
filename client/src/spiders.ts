@@ -1,12 +1,11 @@
 import { Callbacks } from "@colyseus/sdk";
-import { SPIDER_HEALTH } from "@runic/shared";
-import * as THREE from "three";
+import { SPIDER_HEALTH, type SpiderState } from "@runic/shared";
+import type * as THREE from "three";
 import type { Figure, loadSpiders } from "./characters.ts";
+import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
 import type { WorldConnection } from "./players.ts";
 import { scene } from "./scene.ts";
-
-const HIT_BOX_HEIGHT = 0.9;
 
 export const spiderFigures = new Map<string, Figure>();
 export const spiderOverheads = new Map<string, Overhead>();
@@ -19,17 +18,14 @@ export function showSpiders(
   const figures: { id: string; figure: Figure; hitBox: THREE.Mesh }[] = [];
   const hitBoxes = new Map<
     THREE.Object3D,
-    { id: string; tile: { x: number; y: number; state: string } }
+    { id: string; tile: { x: number; y: number; state: SpiderState } }
   >();
-  const shape = new THREE.BoxGeometry(1, HIT_BOX_HEIGHT, 1);
-  const unseen = new THREE.MeshBasicMaterial({ visible: false });
 
   Callbacks.get(room).onAdd("spiders", (spider, id) => {
     const figure = newSpider(spider);
     scene.add(figure.model);
     // A plain box, not the skinned mesh, so a click between the legs still counts.
-    const hitBox = new THREE.Mesh(shape, unseen);
-    scene.add(hitBox);
+    const hitBox = newHitBox();
     figures.push({ id, figure, hitBox });
     hitBoxes.set(hitBox, { id, tile: spider });
     // Dead when we joined, so its death is over and only its return is still to come.

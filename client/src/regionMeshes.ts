@@ -89,7 +89,7 @@ function propVariants(): Record<
   };
 }
 
-/** A slab per tile and the props on them, all fixed but for bushes: returns how to show one run out or not. */
+/** A slab per tile and the props and bushes on them, all fixed but for bushes: returns how to show one run out or not. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const bush = await new GLTFLoader().loadAsync("/models/Bush_1_A_Color1.gltf");
   const bushMesh = bush.scene.children[0] as THREE.Mesh;
@@ -140,22 +140,22 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
-      if (!tile.prop) return;
+      const { bush, prop } = tile;
+      if (!bush && !prop) return;
       const rotation = new THREE.Quaternion().setFromAxisAngle(
         up,
         (((hash >>> 16) & 255) / 256) * Math.PI * 2,
       );
       const at = new THREE.Vector3(x, top, y);
-      const { prop } = tile;
-      if (prop === "berryBush" || prop === "herbBush") {
+      if (bush) {
         const scale = new THREE.Vector3().setScalar(bushScale);
         bushSlots.set(bushId({ x, y }), bushSlots.size);
         place(
           bushMesh.geometry,
           new THREE.Matrix4().compose(at, rotation, scale),
-          new THREE.Color(BUSH_TINT[prop]),
+          new THREE.Color(BUSH_TINT[bush]),
         );
-      } else {
+      } else if (prop) {
         const options = variants[prop];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
         place(

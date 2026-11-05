@@ -3,6 +3,7 @@ import {
   BUSHES,
   bushId,
   bushRefusal,
+  addXp,
   COMBAT_LEVELS_PER_DAMAGE,
   COMBAT_LOCK_TICKS,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
@@ -13,7 +14,6 @@ import {
   FOOD_HEALS,
   INVENTORY_SLOTS,
   levelFor,
-  MAX_XP,
   pickChance,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
@@ -24,12 +24,13 @@ import {
   REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
   LEASH_TILES,
+  tilesApart,
   SPIDER_FIRST_SWING_DELAY_TICKS,
   SPIDER_HEALTH,
   SPIDER_HIT_CHANCE,
   SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL,
   SPIDER_MAX_DAMAGE,
-  SPIDER_RESPAWN_TICKS,
+  SPIDER_RETURN_TICKS,
   SPIDER_WANDER_CHANCE,
   SPIDER_WANDER_TILES,
   SWING_INTERVAL_TICKS,
@@ -38,6 +39,8 @@ import {
   STARTING_HITPOINTS_XP,
   WALK_TICKS_PER_TILE,
   type BushKind,
+  type PlayerAction,
+  type SpiderState,
   XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
@@ -45,10 +48,6 @@ import {
 } from "@runic/shared";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
-
-/** Distance in 8-way tiles. */
-const tilesApart = (a: Tile, b: Tile) =>
-  Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 export const Player = schema(
   {
@@ -64,6 +63,7 @@ export const Player = schema(
     inventory: t.array("string"),
     /** The id of the Spider this player is after, or "". */
     target: t.string().default(""),
+    action: t.string<PlayerAction>().default(""),
     dead: t.boolean().default(false),
   },
   "Player",
@@ -75,7 +75,7 @@ export const Spider = schema(
     y: t.uint8(),
     health: t.uint8().default(SPIDER_HEALTH),
     target: t.string().default(""),
-    state: t.string().default("idle"),
+    state: t.string<SpiderState>().default("idle"),
   },
   "Spider",
 );
@@ -100,7 +100,8 @@ export class Simulation {
     string,
     { to: Tile } | { spider: string } | { bush: string }
   >();
-  private walks = new Map<
+  /** What a player's action and timers need that clients don't. */
+  private unsyncedPlayers = new Map<
     string,
     {
       path: Tile[];
@@ -119,7 +120,8 @@ export class Simulation {
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
   private queuedEats = new Map<string, number>();
-  private spiderHomes = new Map<
+  /** Each Spider's home tile, plus the timers clients don't need. */
+  private unsyncedSpiders = new Map<
     string,
     Tile & {
       nextStepTick: number;
@@ -144,17 +146,17 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { prop } = kind;
-        if (prop === "berryBush" || prop === "herbBush") {
-          this.bushSites.set(bushId({ x, y }), { x, y, kind: prop });
+        const { bush } = kind;
+        if (bush) {
+          this.bushSites.set(bushId({ x, y }), { x, y, kind: bush });
           this.state.bushes.set(
             bushId({ x, y }),
-            Object.assign(new Bush(), { picksLeft: BUSHES[prop].picks }),
+            Object.assign(new Bush(), { picksLeft: BUSHES[bush].picks }),
           );
         }
         if (kind !== TILE_KINDS.S) return;
-        const id = String(this.spiderHomes.size);
-        this.spiderHomes.set(id, {
+        const id = String(this.unsyncedSpiders.size);
+        this.unsyncedSpiders.set(id, {
           x,
           y,
           nextStepTick: 0,
@@ -176,7 +178,7 @@ export class Simulation {
     });
     player.inventory = new ArraySchema(...inventory);
     this.state.players.set(id, player);
-    this.walks.set(id, {
+    this.unsyncedPlayers.set(id, {
       path: [],
       nextStepTick: 0,
       nextSwingTick: 0,
@@ -231,7 +233,7 @@ export class Simulation {
 
   removePlayer(id: string) {
     this.state.players.delete(id);
-    this.walks.delete(id);
+    this.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
     this.queuedLogouts.delete(id);
@@ -239,21 +241,26 @@ export class Simulation {
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
   dropPlayer(id: string) {
-    const walk = this.walks.get(id)!;
-    walk.path = [];
-    walk.spider = walk.bush = undefined;
-    walk.dropped = true;
+    this.clearAction(id);
+    this.unsyncedPlayers.get(id)!.dropped = true;
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
     this.queuedLogouts.delete(id);
   }
 
+  private clearAction(id: string) {
+    const unsynced = this.unsyncedPlayers.get(id)!;
+    unsynced.path = [];
+    unsynced.spider = unsynced.bush = undefined;
+    Object.assign(this.state.players.get(id)!, { target: "", action: "" });
+  }
+
   reconnectPlayer(id: string) {
-    this.walks.get(id)!.dropped = false;
+    this.unsyncedPlayers.get(id)!.dropped = false;
   }
 
   lockRunning(id: string) {
-    return this.state.tick < (this.walks.get(id)?.lockEndTick ?? 0);
+    return this.state.tick < (this.unsyncedPlayers.get(id)?.lockEndTick ?? 0);
   }
 
   queueLogout(id: string) {
@@ -301,13 +308,13 @@ export class Simulation {
 
   private eat(id: string, slot: number) {
     const player = this.state.players.get(id)!;
-    const walk = this.walks.get(id)!;
+    const unsynced = this.unsyncedPlayers.get(id)!;
     const heals = FOOD_HEALS.get(player.inventory[slot]);
-    if (heals === undefined || this.state.tick < walk.nextEatTick) return;
-    walk.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
+    if (heals === undefined || this.state.tick < unsynced.nextEatTick) return;
+    unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
     // From now if no swing is waiting, or a past timer would swallow the delay.
-    walk.nextSwingTick =
-      Math.max(walk.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
+    unsynced.nextSwingTick =
+      Math.max(unsynced.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
     player.inventory[slot] = EMPTY_SLOT;
     const health = Math.min(player.health + heals, player.maxHealth);
     this.events.push({
@@ -333,22 +340,22 @@ export class Simulation {
 
   private applyIntents() {
     for (const [id, action] of this.queuedActions) {
-      const walk = this.walks.get(id)!;
-      walk.bush = undefined;
+      const unsynced = this.unsyncedPlayers.get(id)!;
+      unsynced.bush = undefined;
       if ("spider" in action) {
-        walk.spider = action.spider;
+        unsynced.spider = action.spider;
       } else if ("bush" in action) {
-        walk.spider = undefined;
+        unsynced.spider = undefined;
         const path = pathNextTo(
           this.tiles,
           this.state.players.get(id)!,
           this.bushSites.get(action.bush)!,
         );
-        walk.path = path ?? [];
-        if (path) walk.bush = action.bush;
+        unsynced.path = path ?? [];
+        if (path) unsynced.bush = action.bush;
       } else {
-        walk.spider = undefined;
-        walk.path = findPath(
+        unsynced.spider = undefined;
+        unsynced.path = findPath(
           this.tiles,
           this.state.players.get(id)!,
           action.to,
@@ -359,7 +366,7 @@ export class Simulation {
     for (const [id, slot] of this.queuedEats) this.eat(id, slot);
     this.queuedEats.clear();
     for (const id of this.queuedLogouts) {
-      if (this.state.tick >= this.walks.get(id)!.lockEndTick) {
+      if (this.state.tick >= this.unsyncedPlayers.get(id)!.lockEndTick) {
         this.loggedOut.push(id);
       }
     }
@@ -367,45 +374,45 @@ export class Simulation {
   }
 
   private advancePlayers() {
-    for (const [id, walk] of this.walks) {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
-      if (this.state.tick < walk.nextStepTick) continue;
+      if (this.state.tick < unsynced.nextStepTick) continue;
       const player = this.state.players.get(id)!;
-      if (walk.spider !== undefined) {
+      if (unsynced.spider !== undefined) {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
         // stopping short of that is exactly "next to" (spec D1).
-        const spider = this.state.spiders.get(walk.spider)!;
-        walk.path = findPath(this.tiles, player, spider).slice(0, -1);
+        const spider = this.state.spiders.get(unsynced.spider)!;
+        unsynced.path = findPath(this.tiles, player, spider).slice(0, -1);
       }
-      if (!walk.path.length) continue;
-      Object.assign(player, walk.path.shift());
-      walk.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+      if (!unsynced.path.length) continue;
+      Object.assign(player, unsynced.path.shift());
+      unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
   }
 
   /** After the steps, so the first attempt lands on the tick of arrival (D5). */
   private advancePicks() {
-    for (const [id, walk] of this.walks) {
-      if (walk.bush === undefined || walk.path.length) continue;
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      if (unsynced.bush === undefined || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
-      const site = this.bushSites.get(walk.bush)!;
-      const bush = this.state.bushes.get(walk.bush)!;
+      const site = this.bushSites.get(unsynced.bush)!;
+      const bush = this.state.bushes.get(unsynced.bush)!;
       if (bushRefusal(site.kind, bush.picksLeft, player)) {
-        walk.bush = undefined;
+        unsynced.bush = undefined;
         continue;
       }
-      if (this.state.tick < walk.nextPickTick) continue;
+      if (this.state.tick < unsynced.nextPickTick) continue;
       const level = levelFor(player.foragingXp);
-      walk.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      unsynced.nextPickTick = this.state.tick + pickIntervalTicks(level);
       const success = this.random() < pickChance(site.kind, level);
       this.events.push({ type: "pick", player: id, success });
       if (!success) continue;
       const { xp, food, regrowTicks } = BUSHES[site.kind];
-      player.foragingXp = Math.min(player.foragingXp + xp, MAX_XP);
+      player.foragingXp = addXp(player.foragingXp, xp);
       player.inventory[player.inventory.indexOf(EMPTY_SLOT)] = food;
       if (--bush.picksLeft === 0)
         site.regrowTick = this.state.tick + regrowTicks;
-      walk.bush = undefined;
+      unsynced.bush = undefined;
     }
   }
 
@@ -419,17 +426,26 @@ export class Simulation {
 
   /** After the moves, so the first swing lands on the tick the player arrives. */
   private advancePlayerSwings() {
-    for (const [id, walk] of this.walks) {
-      if (walk.spider === undefined) continue;
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      if (unsynced.spider === undefined) continue;
       const player = this.state.players.get(id)!;
-      const spider = this.state.spiders.get(walk.spider)!;
-      if (this.state.tick < walk.nextSwingTick) continue;
+      const spider = this.state.spiders.get(unsynced.spider)!;
+      if (this.state.tick < unsynced.nextSwingTick) continue;
       if (!this.nextTo(player, spider)) continue;
-      walk.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
-      this.playerSwing(id, player, walk.spider, spider);
+      unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
+      this.playerSwing(id, player, unsynced.spider, spider);
     }
-    for (const [id, walk] of this.walks) {
-      this.state.players.get(id)!.target = walk.spider ?? "";
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const player = this.state.players.get(id)!;
+      player.target = unsynced.spider ?? "";
+      player.action =
+        unsynced.spider !== undefined
+          ? "fighting"
+          : unsynced.bush !== undefined
+            ? "foraging"
+            : unsynced.path.length
+              ? "walking"
+              : "";
     }
   }
 
@@ -464,8 +480,8 @@ export class Simulation {
       spider.health, // No XP for overkill.
     );
     const xp = damage * XP_PER_DAMAGE_DEALT;
-    player.combatXp = Math.min(player.combatXp + xp, MAX_XP);
-    player.hitpointsXp = Math.min(player.hitpointsXp + xp, MAX_XP);
+    player.combatXp = addXp(player.combatXp, xp);
+    player.hitpointsXp = addXp(player.hitpointsXp, xp);
     player.maxHealth = levelFor(player.hitpointsXp);
     this.events.push({
       type: "playerSwing",
@@ -474,7 +490,7 @@ export class Simulation {
       damage,
     });
 
-    const home = this.spiderHomes.get(spiderId)!;
+    const home = this.unsyncedSpiders.get(spiderId)!;
     if (spider.state !== "fighting") {
       spider.state = "fighting";
       home.fightStart = { x: spider.x, y: spider.y };
@@ -490,12 +506,12 @@ export class Simulation {
 
     spider.state = "dead";
     spider.target = "";
-    home.returnTick = this.state.tick + SPIDER_RESPAWN_TICKS;
+    home.returnTick = this.state.tick + SPIDER_RETURN_TICKS;
     this.events.push({ type: "spiderDied", spider: spiderId });
-    for (const walk of this.walks.values()) {
-      if (walk.spider !== spiderId) continue;
-      walk.spider = undefined;
-      walk.path = [];
+    for (const unsynced of this.unsyncedPlayers.values()) {
+      if (unsynced.spider !== spiderId) continue;
+      unsynced.spider = undefined;
+      unsynced.path = [];
     }
   }
 
@@ -534,11 +550,9 @@ export class Simulation {
       player.health,
     );
     player.health -= damage;
-    player.defenseXp = Math.min(
-      player.defenseXp +
-        DEFENSE_XP_PER_SPIDER_SWING +
-        damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
-      MAX_XP,
+    player.defenseXp = addXp(
+      player.defenseXp,
+      DEFENSE_XP_PER_SPIDER_SWING + damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
     );
     this.events.push({
       type: "spiderSwing",
@@ -551,30 +565,29 @@ export class Simulation {
 
   /** Not refreshed while dropped, or a Spider's swings would hold them here until killed (Q3). */
   lock(id: string) {
-    const walk = this.walks.get(id)!;
-    if (!walk.dropped) walk.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
+    const unsynced = this.unsyncedPlayers.get(id)!;
+    if (!unsynced.dropped)
+      unsynced.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
   }
 
   private die(id: string, player: InstanceType<typeof Player>) {
-    const walk = this.walks.get(id)!;
     player.dead = true;
-    player.target = "";
-    walk.path = [];
-    walk.spider = walk.bush = undefined;
-    walk.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
+    this.clearAction(id);
+    this.unsyncedPlayers.get(id)!.respawnTick =
+      this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
 
   private advancePlayerTimers() {
     const regenerates = this.state.tick % REGEN_INTERVAL_TICKS === 0;
-    for (const [id, walk] of this.walks) {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
       if (player.dead) {
-        if (this.state.tick < walk.respawnTick) continue;
+        if (this.state.tick < unsynced.respawnTick) continue;
         Object.assign(player, this.respawned(player), { dead: false });
-        walk.lockEndTick = 0;
+        unsynced.lockEndTick = 0;
         this.events.push({ type: "playerRespawned", player: id });
-      } else if (regenerates && this.state.tick >= walk.lockEndTick) {
+      } else if (regenerates && this.state.tick >= unsynced.lockEndTick) {
         const heals = Math.ceil(
           (player.maxHealth * REGEN_PERCENT_OF_MAX_HEALTH) / 100,
         );
@@ -584,7 +597,7 @@ export class Simulation {
   }
 
   private advanceSpiderReturns() {
-    for (const [id, home] of this.spiderHomes) {
+    for (const [id, home] of this.unsyncedSpiders) {
       const spider = this.state.spiders.get(id)!;
       if (spider.state !== "dead" || this.state.tick < home.returnTick) {
         continue;
@@ -600,7 +613,7 @@ export class Simulation {
   }
 
   private advanceSpiders() {
-    for (const [id, home] of this.spiderHomes) {
+    for (const [id, home] of this.unsyncedSpiders) {
       const spider = this.state.spiders.get(id)!;
       if (spider.state === "fighting") {
         const target = this.state.players.get(spider.target);

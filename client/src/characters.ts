@@ -108,6 +108,12 @@ export class Figure {
     this.current = next;
   }
 
+  /** Dead since before we saw it, so the fall is over: its death clip's last pose, held. */
+  alreadyDown(clip: string) {
+    this.once(clip, 1, true);
+    this.current!.time = this.clips.get(clip)!.duration;
+  }
+
   /** Plays a clip once over the gait's clips, then goes back to them, or stays on it with `held`. */
   once(name: string, speed = 1, held = false) {
     this.play(name, speed, THREE.LoopOnce);
