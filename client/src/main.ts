@@ -1,5 +1,6 @@
 import { Client } from "@colyseus/sdk";
 import { parseRegion, REGION_GRID, respawnTile } from "@runic/shared";
+import { loadCharacters } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { joinWorld } from "./login.ts";
 import { showPlayers } from "./players.ts";
@@ -9,11 +10,15 @@ import { focusOn, scene } from "./scene.ts";
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-await addRegionMeshes(scene, tiles);
+const [newFigure] = await Promise.all([
+  loadCharacters(),
+  addRegionMeshes(scene, tiles),
+]);
+document.getElementById("loading")!.remove();
 
 const ticks = document.getElementById("ticks")!;
 const room = await joinWorld(new Client(location.origin));
-showPlayers(room);
+showPlayers(room, newFigure);
 walkOnClick(room, tiles);
 
 let last = performance.now();

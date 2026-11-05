@@ -22,10 +22,21 @@
         color: #eee;
         font: 12px system-ui;
       }
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        margin: 0;
+        background: #1b2330;
+        color: #eee;
+        font: 16px system-ui;
+      }
     </style>
   </head>
   <body>
     <p id="ticks">Connecting…</p>
+    <p id="loading">Loading…</p>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
