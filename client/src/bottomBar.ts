@@ -1,5 +1,6 @@
 import {
   CHAT,
+  EAT_INTENT,
   EMPTY_SLOT,
   INVENTORY_SLOTS,
   levelFor,
@@ -56,8 +57,11 @@ export function showBottomBar(
     input.value = "";
   };
 
-  const slots = Array.from({ length: INVENTORY_SLOTS }, () => {
-    return document.createElement("div");
+  const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.onclick = () => room.send(EAT_INTENT, i);
+    return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
 
@@ -88,7 +92,10 @@ export function showBottomBar(
     if (food !== undefined && foodNow > food) holdingPick = true;
     food = foodNow;
     showHeld = () => {
-      slots.forEach((slot, i) => (slot.textContent = me.inventory[i] ?? ""));
+      slots.forEach((slot, i) => {
+        slot.textContent = me.inventory[i] ?? "";
+        slot.disabled = !slot.textContent;
+      });
       for (const skill of skills) {
         const xp = me[skill.field];
         skill.text.textContent = `${skill.name} ${levelFor(xp)}`;

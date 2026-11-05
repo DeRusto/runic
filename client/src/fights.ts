@@ -19,6 +19,7 @@ const PLAYER_CONTACT_MS = 550;
 const SPIDER_CONTACT_MS = 450;
 /** How far through `PickUp` the result of a pick shows (spec §7). */
 const PICK_RESULT_AT = 0.4;
+const EAT_CLIP_SPEED = 1.33;
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
 function atContact(
@@ -86,6 +87,10 @@ export function showFights(room: WorldConnection) {
             ?.say(event.success ? "Picked!" : "No luck");
           if (event.player === room.sessionId) revealPick();
         }, PICK_RESULT_AT * clipMs);
+      } else if (event.type === "eaten") {
+        playerOverheads.get(event.player)?.pop(`+${event.healed}`, "heal");
+        const figure = playerFigures.get(event.player);
+        if (figure && !figure.moving) figure.once("Use_Item", EAT_CLIP_SPEED);
       }
     }
   });

@@ -56,6 +56,20 @@ describe("Figure", () => {
     });
   });
 
+  it("is moving from the moment its tile changes until its slide and run hold end", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    expect(figure.moving).toBe(false);
+
+    tile.x = 1;
+    expect(figure.moving).toBe(true); // Before the next frame has seen it.
+    figure.update(100);
+    expect(figure.moving).toBe(true);
+    figure.update(2000);
+    expect(figure.moving).toBe(false);
+  });
+
   it("runs at 2x, crossfading over 0.12 s, when its tile changes", () => {
     const tile = { x: 0, y: 0 };
     const figure = figureAt(tile);

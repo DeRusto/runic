@@ -7,6 +7,8 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The forage intent's message type; its payload is the clicked bush's id in state. */
 export const FORAGE_INTENT = "forage";
+/** The eat intent's message type; its payload is the clicked inventory slot's index. */
+export const EAT_INTENT = "eat";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
@@ -66,7 +68,8 @@ export type WorldEvent =
   | { type: "spiderSwing"; spider: string; player: string; damage: number }
   | { type: "spiderDied"; spider: string }
   | { type: "spiderReturned"; spider: string }
-  | { type: "pick"; player: string; success: boolean };
+  | { type: "pick"; player: string; success: boolean }
+  | { type: "eaten"; player: string; healed: number };
 
 export * from "./foraging.ts";
 export * from "./region.ts";

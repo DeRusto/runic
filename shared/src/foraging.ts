@@ -8,6 +8,11 @@ export const BUSHES = {
   herbBush: { level: 10, picks: 3, regrowTicks: 100, xp: 25, food: "herb" },
 } as const;
 export type BushKind = keyof typeof BUSHES;
+/** Health an item heals when eaten; anything else isn't food. */
+export const FOOD_HEALS = new Map([
+  ["berry", 2],
+  ["herb", 5],
+]);
 
 /** A bush's key in state: its tile, since its kind and place come from the grid. */
 export const bushId = ({ x, y }: Tile) => `${x},${y}`;
