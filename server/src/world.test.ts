@@ -11,6 +11,7 @@ import {
 } from "@runic/shared";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { startServer } from "./server.ts";
+import { testToken } from "./testToken.ts";
 
 // per-process so parallel worktrees don't collide
 const PORT = 25000 + (process.pid % 5000);
@@ -19,6 +20,7 @@ let server: Awaited<ReturnType<typeof startServer>>;
 
 beforeAll(async () => {
   server = await startServer(PORT);
+  client.auth.token = await testToken(PORT);
 });
 afterAll(() => server.gracefullyShutdown(false));
 

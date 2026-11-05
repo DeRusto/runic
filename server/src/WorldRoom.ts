@@ -6,6 +6,7 @@ import {
   WALK_INTENT,
   type Tile,
 } from "@runic/shared";
+import { accountForToken } from "./accounts.ts";
 import { Simulation } from "./simulation.ts";
 import { tickStepper } from "./tickStepper.ts";
 
@@ -18,6 +19,11 @@ export class WorldRoom extends Room {
     [WALK_INTENT]: (client: Client, to: Tile) =>
       this.sim.queueWalk(client.sessionId, to),
   };
+
+  // Static, so a refused token fails at matchmaking, before any seat is reserved.
+  static async onAuth(token: string) {
+    return accountForToken(token);
+  }
 
   onCreate() {
     // Not setFixedTimestep(step, 1000/300): its 300 ms timer drifts against its own
