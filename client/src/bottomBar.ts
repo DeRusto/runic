@@ -1,5 +1,6 @@
 import {
   CHAT,
+  EMPTY_SLOT,
   INVENTORY_SLOTS,
   levelFor,
   levelProgress,
@@ -77,14 +78,15 @@ export function showBottomBar(
 
   // A room left mid-hold never reveals, and a rejoin comes back through here.
   holdingPick = false;
-  let foragingXp: number | undefined;
+  let food: number | undefined;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
-    if (foragingXp !== undefined && me.foragingXp > foragingXp)
-      holdingPick = true;
-    foragingXp = me.foragingXp;
+    // Food, not XP: XP stops rising at the cap. Only a pick adds food.
+    const foodNow = me.inventory.filter((item) => item !== EMPTY_SLOT).length;
+    if (food !== undefined && foodNow > food) holdingPick = true;
+    food = foodNow;
     showHeld = () => {
       slots.forEach((slot, i) => (slot.textContent = me.inventory[i] ?? ""));
       for (const skill of skills) {
