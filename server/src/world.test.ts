@@ -1,8 +1,15 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { Client } from "@colyseus/sdk";
 import { matchMaker } from "@colyseus/core";
-import { TICK_MS, WORLD_ROOM } from "@runic/shared";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import {
+  parseRegion,
+  REGION_GRID,
+  respawnTile,
+  TICK_MS,
+  WALK_INTENT,
+  WORLD_ROOM,
+} from "@runic/shared";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
 
@@ -34,6 +41,27 @@ test("a joining client receives one patch per tick, every 300 ms", async () => {
   patches.forEach((tick, i) => expect(tick).toBe(ticks[0]! + i + 1));
   const gaps = times.slice(2).map((t, i) => t - times[i + 1]!);
   gaps.forEach((gap) => expect(Math.abs(gap - TICK_MS)).toBeLessThan(100));
+});
+
+test("a walk intent moves the player on the server, and others see it", async () => {
+  const walker = await client.join(WORLD_ROOM);
+  const watcher = await client.join(WORLD_ROOM);
+  const { x, y } = respawnTile(parseRegion(REGION_GRID));
+
+  walker.send(WALK_INTENT, { x: x + 2, y });
+
+  await vi.waitFor(
+    () => {
+      const seen = watcher.state.players.get(walker.sessionId);
+      expect({ x: seen.x, y: seen.y }).toEqual({ x: x + 2, y });
+    },
+    { timeout: TICK_MS * 6, interval: 50 },
+  );
+  await walker.leave();
+  await vi.waitFor(() =>
+    expect(watcher.state.players.has(walker.sessionId)).toBe(false),
+  );
+  await watcher.leave();
 });
 
 test("the world room exists at start and survives everyone leaving", async () => {

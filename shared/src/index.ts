@@ -1,6 +1,9 @@
 export const SERVER_PORT = 2567;
 export const WORLD_ROOM = "world";
 
+/** The walk intent's message type; its payload is the clicked Tile. */
+export const WALK_INTENT = "walk";
+
 export const TICK_MS = 300;
 /** How often the server checks whether a tick is due; ticks land within this of on time. */
 export const TICK_DRIVER_MS = 20;

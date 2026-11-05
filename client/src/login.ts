@@ -1,5 +1,6 @@
 import { type Client, ErrorCode } from "@colyseus/sdk";
 import { WORLD_ROOM } from "@runic/shared";
+import type { WorldRoom } from "../../server/src/WorldRoom.ts";
 
 const TOKEN_KEY = "runic.token";
 
@@ -101,7 +102,7 @@ export async function joinWorld(client: Client) {
     storeToken(token);
     client.auth.token = token;
     try {
-      return await client.join(WORLD_ROOM);
+      return await client.join<WorldRoom>(WORLD_ROOM);
     } catch (error) {
       if ((error as { code?: number }).code !== ErrorCode.AUTH_FAILED)
         throw error;
