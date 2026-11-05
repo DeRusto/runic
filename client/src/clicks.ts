@@ -20,7 +20,7 @@ export function walkOnClick(room: WorldConnection, tiles: TileKind[][]) {
   scene.add(marker);
   let hideMarker: ReturnType<typeof setTimeout>;
 
-  renderer.domElement.addEventListener("click", (event) => {
+  const onClick = (event: MouseEvent) => {
     pointer.set(
       (event.clientX / innerWidth) * 2 - 1,
       -(event.clientY / innerHeight) * 2 + 1,
@@ -37,5 +37,12 @@ export function walkOnClick(room: WorldConnection, tiles: TileKind[][]) {
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
 
     room.send(WALK_INTENT, { x, y });
-  });
+  };
+  renderer.domElement.addEventListener("click", onClick);
+
+  return () => {
+    renderer.domElement.removeEventListener("click", onClick);
+    clearTimeout(hideMarker);
+    scene.remove(marker);
+  };
 }

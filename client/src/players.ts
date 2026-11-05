@@ -5,7 +5,10 @@ import { focusOn, scene } from "./scene.ts";
 
 export type WorldConnection = Room<WorldRoom, WorldRoom["state"]>;
 
-/** Draws everyone at the tiles the server says. The camera follows our own. */
+/**
+ * Draws everyone at the tiles the server says. The camera follows our own.
+ * Returns what clears them all away again, for when this connection is over.
+ */
 export function showPlayers(
   room: WorldConnection,
   newFigure: Awaited<ReturnType<typeof loadCharacters>>,
@@ -28,7 +31,12 @@ export function showPlayers(
     for (const figure of figures.values()) figure.update(now);
     const own = figures.get(room.sessionId)?.model.position;
     if (own) focusOn(own.x, own.z);
-    requestAnimationFrame(frame);
+    nextFrame = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  let nextFrame = requestAnimationFrame(frame);
+
+  return () => {
+    cancelAnimationFrame(nextFrame);
+    for (const figure of figures.values()) scene.remove(figure.model);
+  };
 }
