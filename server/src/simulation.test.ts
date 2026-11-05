@@ -232,7 +232,9 @@ describe("Spiders", () => {
       Object.assign(s.state.spiders.get("0")!, { x: 2, y: 1 });
       for (let i = 0; i < 30; i++) s.tick();
       const { x, y } = s.state.players.get("a")!;
-      expect(Math.max(Math.abs(x - 2), Math.abs(y - 1))).toBe(1);
+      const spider = s.state.spiders.get("0")!; // It chases back, so they meet between.
+      expect(x).toBeLessThan(6);
+      expect(Math.max(Math.abs(x - spider.x), Math.abs(y - spider.y))).toBe(1);
     });
 
     test("next to means a legal step, so it won't stop across a blocked corner", () => {
