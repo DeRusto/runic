@@ -25,7 +25,11 @@ const [newFigure, newSpider, setBushRunOut] = await Promise.all([
   loadCharacters(),
   loadSpiders(),
   addRegionMeshes(scene, tiles),
-]);
+]).catch((error) => {
+  document.getElementById("loading")!.textContent =
+    "Could not load the game. Reload to try again.";
+  throw error;
+});
 document.getElementById("loading")!.remove();
 
 const status = document.getElementById("status")!;
@@ -53,6 +57,8 @@ function enterWorld(room: WorldConnection) {
   // The server decides whether a log out goes through, so the token stays until it does.
   room.onLeave(async (code) => {
     logout.hidden = true;
+    // Its controls would send to the room just left. A rejoin's showBottomBar brings it back.
+    document.getElementById("bar")!.hidden = true;
     if (code === CloseCode.CONSENTED) {
       forgetToken();
       location.reload();

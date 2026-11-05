@@ -105,10 +105,19 @@ test("everyone online is saved every 100 ticks", async () => {
 
 test("a clean shutdown saves everyone, and a restart brings them back", async () => {
   const client = await clientFor("Restart");
-  const to = await stepEast(await joined(client));
+  const room = await joined(client);
+  const to = await stepEast(room);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  const player = world.sim.state.players.get(room.sessionId)!;
+  player.foragingXp = 300;
+  player.inventory[0] = "berry";
 
   await server.gracefullyShutdown(false);
   server = await startServer(PORT);
 
-  expect(tileOf(await joined(client))).toEqual(to);
+  const back = await joined(client);
+  expect(tileOf(back)).toEqual(to);
+  const saved = (back.state as any).players.get(back.sessionId);
+  expect(saved.foragingXp).toBe(300);
+  expect(saved.inventory[0]).toBe("berry");
 });

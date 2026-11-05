@@ -1,3 +1,4 @@
+import { matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
   CHAT,
@@ -5,9 +6,10 @@ import {
   WORLD_ROOM,
   type ChatLine,
 } from "@runic/shared";
-import { afterAll, beforeAll, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, expect, onTestFinished, test, vi } from "vitest";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
+import type { WorldRoom } from "./WorldRoom.ts";
 
 const PORT = 35000 + (process.pid % 5000);
 let server: Awaited<ReturnType<typeof startServer>>;
@@ -59,11 +61,11 @@ test("the speaker hears their own line", async () => {
   unbind();
 });
 
-test("a chat line arrives before the next tick", async () => {
-  await new Promise((resolve) => listener.onStateChange.once(resolve));
-  const { tick } = listener.state as { tick: number };
-  await heardFrom("quick");
-  expect((listener.state as { tick: number }).tick).toBe(tick);
+test("a chat line needs no tick to arrive", async () => {
+  const { sim } = matchMaker.getLocalRoomById(listener.roomId) as WorldRoom;
+  const held = vi.spyOn(sim, "tick").mockImplementation(() => {});
+  onTestFinished(() => held.mockRestore());
+  expect(await heardFrom("quick")).toEqual(["quick"]);
 });
 
 test("the limit counts the trimmed length", async () => {

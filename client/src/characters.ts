@@ -70,6 +70,7 @@ export class Figure {
   private growth = 1;
   private fullScale: number;
   private kick = new THREE.Vector3();
+  private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
   fightTile?: Tile;
 
@@ -201,7 +202,8 @@ export class Figure {
         if (o instanceof THREE.Mesh) o.material.emissive?.setHex(hex);
       });
     paint(0xb30d0d);
-    setTimeout(() => paint(0), FLASH_MS);
+    clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => paint(0), FLASH_MS);
   }
 
   /** A small shove away from whoever hit it, gone in a moment. */

@@ -2,6 +2,7 @@ import {
   INVENTORY_SLOTS,
   MAX_XP,
   parseRegion,
+  pickIntervalTicks,
   xpForLevel,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
@@ -248,6 +249,17 @@ test("re-clicking can't attempt faster than the interval", () => {
     ticks.push(...attemptTicks(1));
   }
   expect(ticks).toEqual([1, 9]);
+});
+
+test("clicking another bush can't attempt faster than the interval", () => {
+  addAt("b", xpForLevel(10), 5, 2);
+  roll = FAIL;
+  sim.queueForage("b", BERRY);
+  expect(attemptTicks(1)).toEqual([1]);
+
+  sim.queueForage("b", HERB);
+  const interval = pickIntervalTicks(10);
+  expect(attemptTicks(interval)).toEqual([1 + interval]);
 });
 
 test("joining again can't attempt faster than the interval", () => {
