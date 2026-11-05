@@ -42,6 +42,7 @@ export const SPIDER_RESPAWN_TICKS = 100;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 export const REGEN_INTERVAL_TICKS = 20;
+export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const SAVE_INTERVAL_TICKS = 100;
 
 export const SPIDER_HEALTH = 8;
@@ -68,6 +69,8 @@ export type WorldEvent =
   | { type: "playerSwing"; player: string; spider: string; damage: number }
   | { type: "spiderSwing"; spider: string; player: string; damage: number }
   | { type: "spiderDied"; spider: string }
+  | { type: "playerDied"; player: string }
+  | { type: "playerRespawned"; player: string }
   | { type: "spiderReturned"; spider: string }
   | { type: "pick"; player: string; success: boolean }
   | { type: "eaten"; player: string; healed: number };

@@ -1,4 +1,4 @@
-import { MAX_XP, parseRegion, type WorldEvent } from "@runic/shared";
+import { bushId, MAX_XP, parseRegion, type WorldEvent } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 import type { PlayerSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
@@ -382,18 +382,221 @@ describe("the Spider's swing", () => {
       MAX_XP,
     );
   });
+});
 
-  // Until player death (#29) lands, so nobody can save or stand at 0 health.
-  test("a hit can't take the last health point", () => {
-    const hurt = spiderSwingWith({ health: 2 }, 0, 0.99);
-    expect(hurt.health).toBe(1);
-    expect(hurt.defenseXp).toBe(10);
+describe("dying", () => {
+  // Saved at (3,1), next to the Spider's home and away from the respawn tile (1,1).
+  // The player misses on tick 1, and the Spider's hit on tick 5 rolls 2 damage.
+  const dying = (saved: Partial<PlayerSave> = {}) => {
+    const s = fight(NEXT_TO, MISS, 0, 0.99);
+    s.addPlayer("a", { ...SAVE, x: 3, health: 1, ...saved });
+    s.queueTarget("a", "0");
+    return s;
+  };
+
+  test("a hit at 1 health kills, counting as a hit for 1, and the Spider gives up at once", () => {
+    const s = dying();
+    const events = run(s, 5);
+    expect(player(s)).toMatchObject({
+      health: 0,
+      dead: true,
+      target: "",
+      defenseXp: 10,
+    });
+    expect(events.slice(-2)).toMatchObject([
+      { type: "spiderSwing", damage: 1 },
+      { type: "playerDied", player: "a" },
+    ]);
+    // Already on its home tile, so giving up is over at once.
+    expect(spider(s)).toMatchObject({ state: "idle", target: "" });
+  });
+
+  test("a walk ends at death too", () => {
+    const s = dying();
+    run(s, 4);
+    s.queueWalk("a", { x: 5, y: 1 });
+    run(s, 1);
+    expect(player(s)).toMatchObject({ x: 4, dead: true });
+    run(s, 4);
+    expect(player(s).x).toBe(4);
+  });
+
+  test("they stay on their tile for 5 ticks, then respawn at full health with everything kept", () => {
+    const inventory = Array<string>(30).fill("");
+    inventory[3] = "berry";
+    const s = dying({ combatXp: 200, inventory });
+    run(s, 5);
+    expect(run(s, 4)).toEqual([]);
+    expect(player(s)).toMatchObject({ x: 3, y: 1, health: 0, dead: true });
+    expect(run(s, 1)).toMatchObject([{ type: "playerRespawned", player: "a" }]);
+    expect(player(s)).toMatchObject({
+      x: 1,
+      y: 1,
+      health: 10,
+      dead: false,
+      combatXp: 200,
+      defenseXp: 10,
+    });
+    expect(player(s).inventory[3]).toBe("berry");
+  });
+
+  test("the fight doesn't resume after the respawn", () => {
+    const s = dying();
+    run(s, 10);
+    expect(swingTicks(run(s, 20), "playerSwing")).toEqual([]);
+  });
+
+  test("a dead player's walk, target and eat intents are ignored", () => {
+    const inventory = Array<string>(30).fill("");
+    inventory[0] = "berry";
+    const s = dying({ inventory });
+    run(s, 5);
+    s.queueWalk("a", { x: 5, y: 1 });
+    s.queueEat("a", 0);
+    s.queueTarget("a", "0");
+    expect(run(s, 1)).toEqual([]);
+    expect(player(s)).toMatchObject({ x: 3, health: 0, target: "" });
+    expect(player(s).inventory[0]).toBe("berry");
+    run(s, 10);
+    expect(player(s).x).toBe(1);
+  });
+
+  test("a dead player's forage intent is ignored", () => {
+    const s = fight(["TTTTTTT", "TRS.b.T", "TTTTTTT"], MISS, 0, 0.99);
+    s.addPlayer("a", { ...SAVE, x: 3, health: 1 });
+    s.queueTarget("a", "0");
+    run(s, 5);
+    s.queueForage("a", bushId({ x: 4, y: 1 }));
+    expect(run(s, 4)).toEqual([]);
+  });
+
+  test("a dead player saves as already respawned, while still lying where they fell", () => {
+    const s = dying({ combatXp: 200 });
+    run(s, 5);
+    expect(s.saveOf("a")).toMatchObject({
+      x: 1,
+      y: 1,
+      health: 10,
+      combatXp: 200,
+      defenseXp: 10,
+    });
+    expect(player(s)).toMatchObject({ x: 3, health: 0 });
+  });
+});
+
+describe("regeneration", () => {
+  test("heals on every 20th tick, with no event, and stops at the maximum", () => {
+    const s = fight();
+    s.addPlayer("a", { ...SAVE, health: 8 });
+    expect(run(s, 19)).toEqual([]);
+    expect(player(s).health).toBe(8);
+    expect(run(s, 1)).toEqual([]);
+    expect(player(s).health).toBe(9);
+    run(s, 40);
+    expect(player(s).health).toBe(10);
+  });
+
+  test.each([
+    { hitpointsXp: 4050, heals: 1 }, // Level 10.
+    { hitpointsXp: 18050, heals: 1 }, // Level 20.
+    { hitpointsXp: 20000, heals: 2 }, // Level 21.
+    { hitpointsXp: MAX_XP, heals: 5 }, // Level 99.
+  ])(
+    "with $hitpointsXp Hitpoints XP it heals $heals, 5% rounded up",
+    ({ hitpointsXp, heals }) => {
+      const s = fight();
+      s.addPlayer("a", { ...SAVE, hitpointsXp, health: 1 });
+      run(s, 20);
+      expect(player(s).health).toBe(1 + heals);
+    },
+  );
+
+  test("pauses while a combat lock runs", () => {
+    const s = fight(NEXT_TO, 0, 0);
+    spider(s).health = 1; // Dies on tick 1, the last swing, so the lock ends on tick 35.
+    s.addPlayer("a", { ...SAVE, health: 5 });
+    s.queueTarget("a", "0");
+    run(s, 39);
+    expect(player(s).health).toBe(5);
+    run(s, 1);
+    expect(player(s).health).toBe(6);
+  });
+});
+
+describe("combat lock", () => {
+  /** Whether a log out queued now goes through on the next tick. */
+  const logsOut = (s: Simulation) => {
+    s.queueLogout("a");
+    run(s, 1);
+    return s.loggedOut.splice(0).includes("a");
+  };
+
+  /** Ends the fight, so no swing comes after the one that set the lock. */
+  const part = (s: Simulation) => {
+    s.queueWalk("a", { x: player(s).x, y: player(s).y });
+    spider(s).state = "going home";
+    spider(s).target = "";
+  };
+
+  const HIT_OR_MISS = [
+    { name: "hit", rolls: [0, 0] },
+    { name: "miss", rolls: [MISS] },
+  ];
+
+  test("nobody is locked before a swing", () => {
+    const s = fight();
+    s.addPlayer("a", SAVE);
+    expect(logsOut(s)).toBe(true);
+  });
+
+  test.each(HIT_OR_MISS)(
+    "a $name by the player locks them for 34 ticks",
+    ({ rolls }) => {
+      const s = fight(NEXT_TO, ...rolls);
+      s.addPlayer("a", SAVE);
+      s.queueTarget("a", "0");
+      run(s, 1); // The swing lands on tick 1, so the lock ends on tick 35.
+      part(s);
+      run(s, 32);
+      expect(logsOut(s)).toBe(false); // Tick 34.
+      expect(logsOut(s)).toBe(true); // Tick 35.
+    },
+  );
+
+  test.each(HIT_OR_MISS)(
+    "a Spider's $name sets the lock again",
+    ({ rolls }) => {
+      const s = fight(NEXT_TO, MISS, ...rolls);
+      s.addPlayer("a", SAVE);
+      s.queueTarget("a", "0");
+      run(s, 5); // The swing lands on tick 5, so the lock ends on tick 39.
+      part(s);
+      run(s, 32);
+      expect(logsOut(s)).toBe(false); // Tick 38.
+      expect(logsOut(s)).toBe(true); // Tick 39.
+    },
+  );
+
+  test("a dead player can't log out, and the lock clears at respawn", () => {
     const s = fight(NEXT_TO, MISS, 0, 0.99);
     s.addPlayer("a", { ...SAVE, health: 1 });
     s.queueTarget("a", "0");
-    const events = run(s, 5);
-    expect(player(s)).toMatchObject({ health: 1, defenseXp: 6 });
-    expect(events.at(-1)).toMatchObject({ type: "spiderSwing", damage: 0 });
+    run(s, 5);
+    expect(player(s).dead).toBe(true);
+    for (let tick = 6; tick <= 10; tick++) expect(logsOut(s)).toBe(false);
+    expect(player(s).dead).toBe(false);
+    expect(logsOut(s)).toBe(true);
+  });
+
+  test("a refused log out doesn't go through later by itself", () => {
+    const s = fight();
+    s.addPlayer("a", SAVE);
+    s.queueTarget("a", "0");
+    run(s, 1);
+    expect(logsOut(s)).toBe(false);
+    part(s);
+    run(s, 50);
+    expect(s.loggedOut).toEqual([]);
   });
 });
 

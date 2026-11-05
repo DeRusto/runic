@@ -4,6 +4,7 @@ import {
   bushId,
   bushRefusal,
   COMBAT_LEVELS_PER_DAMAGE,
+  COMBAT_LOCK_TICKS,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_SPIDER_SWING,
   EAT_INTERVAL_TICKS,
@@ -16,8 +17,11 @@ import {
   pickChance,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
+  PLAYER_DEAD_TICKS,
   PLAYER_HIT_CHANCE,
   PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
+  REGEN_INTERVAL_TICKS,
+  REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
   LEASH_TILES,
   SPIDER_FIRST_SWING_DELAY_TICKS,
@@ -60,6 +64,7 @@ export const Player = schema(
     inventory: t.array("string"),
     /** The id of the Spider this player is after, or "". */
     target: t.string().default(""),
+    dead: t.boolean().default(false),
   },
   "Player",
 );
@@ -106,6 +111,9 @@ export class Simulation {
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
       nextEatTick: number;
+      /** The combat lock runs until this tick. */
+      lockEndTick: number;
+      respawnTick: number;
     }
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
@@ -173,6 +181,8 @@ export class Simulation {
       nextSwingTick: 0,
       nextPickTick: 0,
       nextEatTick: 0,
+      lockEndTick: 0,
+      respawnTick: 0,
     });
   }
 
@@ -208,7 +218,14 @@ export class Simulation {
       hitpointsXp,
       health,
       inventory: [...player.inventory],
+      // Or a save during death could bring someone back with 0 health (D13).
+      ...(player.dead && this.respawned(player)),
     };
+  }
+
+  /** What dying changes, once it's over. */
+  private respawned(player: InstanceType<typeof Player>) {
+    return { ...respawnTile(this.tiles), health: player.maxHealth };
   }
 
   removePlayer(id: string) {
@@ -223,9 +240,15 @@ export class Simulation {
     if (this.state.players.has(id)) this.queuedLogouts.add(id);
   }
 
+  /** Checked as an intent arrives. Enough, since death comes after intents apply in a tick. */
+  private alive(id: string) {
+    const player = this.state.players.get(id);
+    return player !== undefined && !player.dead;
+  }
+
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
   queueWalk(id: string, to: Tile) {
-    if (!this.state.players.has(id)) return;
+    if (!this.alive(id)) return;
     if (!Number.isInteger(to?.x) || !Number.isInteger(to?.y)) return;
     if (!this.tiles[to.y]?.[to.x]) return;
     this.queuedActions.set(id, { to: { x: to.x, y: to.y } });
@@ -233,7 +256,7 @@ export class Simulation {
 
   /** `spider` comes straight off the network, so anything but a live Spider's id is ignored. */
   queueTarget(id: string, spider: string) {
-    if (!this.state.players.has(id)) return;
+    if (!this.alive(id)) return;
     const target = this.state.spiders.get(spider);
     if (!target || target.state === "dead") return;
     this.queuedActions.set(id, { spider });
@@ -243,7 +266,7 @@ export class Simulation {
   queueForage(id: string, bush: string) {
     const player = this.state.players.get(id);
     const site = this.bushSites.get(bush);
-    if (!player || !site) return;
+    if (!player || !site || player.dead) return;
     const { picksLeft } = this.state.bushes.get(bush)!;
     if (bushRefusal(site.kind, picksLeft, player)) return;
     this.queuedActions.set(id, { bush });
@@ -251,7 +274,7 @@ export class Simulation {
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
-    if (!this.state.players.has(id)) return;
+    if (!this.alive(id)) return;
     if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
     this.queuedEats.set(id, slot);
   }
@@ -283,6 +306,7 @@ export class Simulation {
     this.advancePicks();
     this.advancePlayerSwings();
     this.advanceSpiders();
+    this.advancePlayerTimers();
     this.advanceBushes();
     this.advanceSpiderReturns();
   }
@@ -314,7 +338,11 @@ export class Simulation {
     this.queuedActions.clear();
     for (const [id, slot] of this.queuedEats) this.eat(id, slot);
     this.queuedEats.clear();
-    this.loggedOut.push(...this.queuedLogouts);
+    for (const id of this.queuedLogouts) {
+      if (this.state.tick >= this.walks.get(id)!.lockEndTick) {
+        this.loggedOut.push(id);
+      }
+    }
     this.queuedLogouts.clear();
   }
 
@@ -406,6 +434,7 @@ export class Simulation {
     spiderId: string,
     spider: InstanceType<typeof Spider>,
   ) {
+    this.lock(id);
     const combat = levelFor(player.combatXp);
     const damage = Math.min(
       this.rollDamage(
@@ -475,14 +504,14 @@ export class Simulation {
       return;
     }
     home.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
+    this.lock(spider.target);
     const defense = levelFor(player.defenseXp);
-    // shortcut: a hit can't take the last health point, so nobody stands or saves at 0, until player death (#29) lets it.
     const damage = Math.min(
       this.rollDamage(
         SPIDER_HIT_CHANCE + SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL * (defense - 1),
         SPIDER_MAX_DAMAGE,
       ),
-      player.health - 1,
+      player.health,
     );
     player.health -= damage;
     player.defenseXp = Math.min(
@@ -497,6 +526,39 @@ export class Simulation {
       player: spider.target,
       damage,
     });
+    if (player.health === 0) this.die(spider.target, player);
+  }
+
+  private lock(id: string) {
+    this.walks.get(id)!.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
+  }
+
+  private die(id: string, player: InstanceType<typeof Player>) {
+    const walk = this.walks.get(id)!;
+    player.dead = true;
+    player.target = "";
+    walk.path = [];
+    walk.spider = walk.bush = undefined;
+    walk.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
+    this.events.push({ type: "playerDied", player: id });
+  }
+
+  private advancePlayerTimers() {
+    const regenerates = this.state.tick % REGEN_INTERVAL_TICKS === 0;
+    for (const [id, walk] of this.walks) {
+      const player = this.state.players.get(id)!;
+      if (player.dead) {
+        if (this.state.tick < walk.respawnTick) continue;
+        Object.assign(player, this.respawned(player), { dead: false });
+        walk.lockEndTick = 0;
+        this.events.push({ type: "playerRespawned", player: id });
+      } else if (regenerates && this.state.tick >= walk.lockEndTick) {
+        const heals = Math.ceil(
+          (player.maxHealth * REGEN_PERCENT_OF_MAX_HEALTH) / 100,
+        );
+        player.health = Math.min(player.health + heals, player.maxHealth);
+      }
+    }
   }
 
   private advanceSpiderReturns() {
@@ -527,7 +589,7 @@ export class Simulation {
         ) {
           this.stepSpider(spider, home, target, true);
           this.spiderSwing(id, spider, target, home);
-          continue;
+          if (target.health > 0) continue;
         }
         spider.state = "going home";
         spider.target = "";

@@ -73,6 +73,13 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "spiderDied") {
         const spider = spiderFigures.get(event.spider)!;
         setTimeout(() => spider.dieAndSink("Spider_Death"), PLAYER_CONTACT_MS);
+      } else if (event.type === "playerDied") {
+        setTimeout(
+          () => playerFigures.get(event.player)?.once("Death_A", 1, true),
+          SPIDER_CONTACT_MS,
+        );
+      } else if (event.type === "playerRespawned") {
+        playerFigures.get(event.player)?.respawn();
       } else if (event.type === "spiderReturned") {
         spiderFigures.get(event.spider)!.reappear();
       } else if (event.type === "pick") {

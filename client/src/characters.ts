@@ -152,8 +152,8 @@ export class Figure {
     this.sinks = true;
   }
 
-  /** Back from the dead on its tile, wherever it died, scaling up. */
-  reappear() {
+  /** Jumps to its tile, wherever it died, and lets go of the death clip. */
+  private backOnTile() {
     const { to, tile } = this;
     to.set(tile.x, to.y, tile.y);
     this.from.copy(to);
@@ -161,6 +161,17 @@ export class Figure {
     this.shot = undefined;
     this.held = this.sinks = this.sinking = false;
     this.sunk = 0;
+  }
+
+  /** A player back from the dead, rising from the ground. */
+  respawn() {
+    this.backOnTile();
+    this.once("Spawn_Ground");
+  }
+
+  /** A Spider back from the dead, scaling up. */
+  reappear() {
+    this.backOnTile();
     this.growth = 0;
     this.model.visible = true;
     this.playBase();
