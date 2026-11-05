@@ -1,4 +1,11 @@
-import { EVENTS, type WorldEvent } from "@runic/shared";
+import {
+  EVENTS,
+  levelFor,
+  pickIntervalTicks,
+  TICK_MS,
+  type WorldEvent,
+} from "@runic/shared";
+import { revealPick } from "./bottomBar.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -10,6 +17,8 @@ import type { Overhead } from "./overhead.ts";
 // The moment each swing clip connects (spec §7). The server decided on the tick.
 const PLAYER_CONTACT_MS = 550;
 const SPIDER_CONTACT_MS = 450;
+/** How far through `PickUp` the result of a pick shows (spec §7). */
+const PICK_RESULT_AT = 0.4;
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
 function atContact(
@@ -65,6 +74,18 @@ export function showFights(room: WorldConnection) {
         setTimeout(() => spider.dieAndSink("Spider_Death"), PLAYER_CONTACT_MS);
       } else if (event.type === "spiderReturned") {
         spiderFigures.get(event.spider)!.reappear();
+      } else if (event.type === "pick") {
+        const figure = playerFigures.get(event.player);
+        const player = room.state.players.get(event.player);
+        if (!figure || !player) continue;
+        const interval = pickIntervalTicks(levelFor(player.foragingXp));
+        const clipMs = figure.onceWithin("PickUp", interval * TICK_MS);
+        setTimeout(() => {
+          playerOverheads
+            .get(event.player)
+            ?.say(event.success ? "Picked!" : "No luck");
+          if (event.player === room.sessionId) revealPick();
+        }, PICK_RESULT_AT * clipMs);
       }
     }
   });

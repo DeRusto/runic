@@ -2,6 +2,7 @@ import { CloseCode, Room, type Client } from "@colyseus/core";
 import {
   CHAT,
   EVENTS,
+  FORAGE_INTENT,
   LOGOUT_INTENT,
   MAX_CHAT_LENGTH,
   parseRegion,
@@ -29,6 +30,8 @@ export class WorldRoom extends Room {
       this.sim.queueWalk(client.sessionId, to),
     [TARGET_INTENT]: (client: Client, spider: string) =>
       this.sim.queueTarget(client.sessionId, spider),
+    [FORAGE_INTENT]: (client: Client, bush: string) =>
+      this.sim.queueForage(client.sessionId, bush),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {

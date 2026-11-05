@@ -21,6 +21,38 @@ export function legalSteps(tiles: TileKind[][], from: Tile): Tile[] {
 }
 
 /**
+ * The clear tiles next to `to` (spec D1), even when `to` itself blocks, as a bush does.
+ * Same corner rule as legalSteps, which can't start on a blocking tile.
+ */
+function tilesNextTo(tiles: TileKind[][], to: Tile): Tile[] {
+  const clear = (x: number, y: number) => tiles[y]?.[x]?.blocks === false;
+  return DIRECTIONS.map(([dx, dy]) => ({
+    x: to.x + dx,
+    y: to.y + dy,
+  })).filter(
+    ({ x, y }) =>
+      clear(x, y) &&
+      (x === to.x || y === to.y || (clear(x, to.y) && clear(to.x, y))),
+  );
+}
+
+/** The fewest steps to a tile next to `to`, or undefined if none can be reached. */
+export function pathNextTo(
+  tiles: TileKind[][],
+  from: Tile,
+  to: Tile,
+): Tile[] | undefined {
+  let best: Tile[] | undefined;
+  for (const goal of tilesNextTo(tiles, to)) {
+    const path = findPath(tiles, from, goal);
+    const end = path.at(-1) ?? from;
+    if (end.x !== goal.x || end.y !== goal.y) continue;
+    if (!best || path.length < best.length) best = path;
+  }
+  return best;
+}
+
+/**
  * The tiles to step on, in order and not counting `from`: the fewest steps to `to`,
  * or to the reachable tile nearest it (spec §4).
  */
