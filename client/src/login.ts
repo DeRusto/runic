@@ -95,6 +95,9 @@ function askForToken() {
   });
 }
 
+/** The next visit shows the form instead of joining straight away. */
+export const forgetToken = () => storeToken(null);
+
 /** Joins the world with the stored token, showing the form until one is accepted. */
 export async function joinWorld(client: Client) {
   for (;;) {
