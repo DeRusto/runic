@@ -128,6 +128,12 @@ export class Figure {
     return this.shot !== undefined;
   }
 
+  /** Walking, including a step the patch has brought but no frame has shown yet. */
+  get moving() {
+    const { tile, to } = this;
+    return this.running || tile.x !== to.x || tile.y !== to.z;
+  }
+
   private endShot() {
     this.shot = undefined;
     this.playBase();

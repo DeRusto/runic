@@ -6,7 +6,10 @@ import {
   COMBAT_LEVELS_PER_DAMAGE,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_SPIDER_SWING,
+  EAT_INTERVAL_TICKS,
+  EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
+  FOOD_HEALS,
   INVENTORY_SLOTS,
   levelFor,
   MAX_XP,
@@ -97,8 +100,11 @@ export class Simulation {
       bush?: string;
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
+      nextEatTick: number;
     }
   >();
+  /** Apart from the action, which eating doesn't replace (spec §4). */
+  private queuedEats = new Map<string, number>();
   private spiderHomes = new Map<
     string,
     Tile & { nextStepTick: number; nextSwingTick: number; returnTick: number }
@@ -155,6 +161,7 @@ export class Simulation {
       nextStepTick: 0,
       nextSwingTick: 0,
       nextPickTick: 0,
+      nextEatTick: 0,
     });
   }
 
@@ -197,6 +204,7 @@ export class Simulation {
     this.state.players.delete(id);
     this.walks.delete(id);
     this.queuedActions.delete(id);
+    this.queuedEats.delete(id);
     this.queuedLogouts.delete(id);
   }
 
@@ -228,6 +236,32 @@ export class Simulation {
     const { picksLeft } = this.state.bushes.get(bush)!;
     if (bushRefusal(site.kind, picksLeft, player)) return;
     this.queuedActions.set(id, { bush });
+  }
+
+  /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
+  queueEat(id: string, slot: number) {
+    if (!this.state.players.has(id)) return;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    this.queuedEats.set(id, slot);
+  }
+
+  private eat(id: string, slot: number) {
+    const player = this.state.players.get(id)!;
+    const walk = this.walks.get(id)!;
+    const heals = FOOD_HEALS.get(player.inventory[slot]);
+    if (heals === undefined || this.state.tick < walk.nextEatTick) return;
+    walk.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
+    // From now if no swing is waiting, or a past timer would swallow the delay.
+    walk.nextSwingTick =
+      Math.max(walk.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
+    player.inventory[slot] = EMPTY_SLOT;
+    const health = Math.min(player.health + heals, player.maxHealth);
+    this.events.push({
+      type: "eaten",
+      player: id,
+      healed: health - player.health,
+    });
+    player.health = health;
   }
 
   /** One tick, in the order of spec §6. */
@@ -267,6 +301,8 @@ export class Simulation {
       }
     }
     this.queuedActions.clear();
+    for (const [id, slot] of this.queuedEats) this.eat(id, slot);
+    this.queuedEats.clear();
     this.loggedOut.push(...this.queuedLogouts);
     this.queuedLogouts.clear();
   }
