@@ -4,5 +4,11 @@
     "lib": ["ES2022", "DOM"],
     "types": ["node", "vite/client"]
   },
-  "include": ["client/src", "client/vite.config.ts", "server/src", "shared/src"]
+  "include": [
+    "client/src",
+    "client/vite.config.ts",
+    "server/src",
+    "server/drizzle.config.ts",
+    "shared/src"
+  ]
 }

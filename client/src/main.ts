@@ -1,13 +1,8 @@
 import { Client } from "@colyseus/sdk";
-import {
-  parseRegion,
-  REGION_GRID,
-  respawnTile,
-  WORLD_ROOM,
-} from "@runic/shared";
-import type { WorldRoom } from "../../server/src/WorldRoom.ts";
+import { parseRegion, REGION_GRID, respawnTile } from "@runic/shared";
 import { loadCharacters } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { joinWorld } from "./login.ts";
 import { showPlayers } from "./players.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
@@ -22,7 +17,7 @@ const [newFigure] = await Promise.all([
 document.getElementById("loading")!.remove();
 
 const ticks = document.getElementById("ticks")!;
-const room = await new Client(location.origin).join<WorldRoom>(WORLD_ROOM);
+const room = await joinWorld(new Client(location.origin));
 showPlayers(room, newFigure);
 walkOnClick(room, tiles);
 
