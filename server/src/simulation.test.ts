@@ -164,6 +164,14 @@ test.each([
   },
 );
 
+test("max health is the Hitpoints level, whatever the health left", () => {
+  sim.addPlayer("b", { ...SAVED, hitpointsXp: 7200, health: 3 });
+  const player = sim.state.players.get("b")!;
+  expect(player.maxHealth).toBe(13);
+  expect(player.health).toBe(3);
+  expect(sim.state.players.get("a")!.maxHealth).toBe(10);
+});
+
 test("a save has the tile the player walked to", () => {
   sim.queueWalk("a", { x: 2, y: 1 });
   runTicks(1);

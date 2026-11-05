@@ -1,12 +1,15 @@
 import { CloseCode, Room, type Client } from "@colyseus/core";
 import {
+  CHAT,
   LOGOUT_INTENT,
+  MAX_CHAT_LENGTH,
   parseRegion,
   REGION_GRID,
   SAVE_INTERVAL_TICKS,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
   WALK_INTENT,
+  type ChatLine,
   type Tile,
 } from "@runic/shared";
 import { accountForToken } from "./accounts.ts";
@@ -23,6 +26,17 @@ export class WorldRoom extends Room {
     [WALK_INTENT]: (client: Client, to: Tile) =>
       this.sim.queueWalk(client.sessionId, to),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
+    // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
+    [CHAT]: (client: Client, line: string) => {
+      const text = typeof line === "string" ? line.trim() : "";
+      if (!text || text.length > MAX_CHAT_LENGTH) return;
+      const { username } = client.auth;
+      this.broadcast(CHAT, {
+        id: client.sessionId,
+        username,
+        text,
+      } satisfies ChatLine);
+    },
   };
 
   // Static, so a refused token fails at matchmaking, before any seat is reserved.
@@ -58,7 +72,11 @@ export class WorldRoom extends Room {
       this.saveAndRemove(old);
       old.leave(TAKEN_OVER_CLOSE_CODE);
     }
-    this.sim.addPlayer(client.sessionId, readSave(client.auth.id));
+    this.sim.addPlayer(
+      client.sessionId,
+      readSave(client.auth.id),
+      client.auth.username,
+    );
   }
 
   // A clean shutdown closes every client through here too, before the database closes.

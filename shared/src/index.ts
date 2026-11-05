@@ -5,6 +5,12 @@ export const WORLD_ROOM = "world";
 export const WALK_INTENT = "walk";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
+/** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
+export const CHAT = "chat";
+export const MAX_CHAT_LENGTH = 120;
+/** How long a chat line stays over the speaker's head. */
+export const CHAT_OVERHEAD_MS = 3000;
+export type ChatLine = { id: string; username: string; text: string };
 
 /** Closes the old connection when the same account logs in again. */
 export const TAKEN_OVER_CLOSE_CODE = 4011;
@@ -35,3 +41,4 @@ export const HERB_REGROW_TICKS = 100;
 export const SAVE_INTERVAL_TICKS = 100;
 
 export * from "./region.ts";
+export * from "./skills.ts";
