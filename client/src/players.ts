@@ -36,9 +36,15 @@ export function showPlayers(
     for (const [id, overhead] of overheads) {
       overhead.place(figures.get(id)!.model.position);
     }
-    requestAnimationFrame(frame);
+    nextFrame = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  let nextFrame = requestAnimationFrame(frame);
+
+  room.onLeave(() => {
+    cancelAnimationFrame(nextFrame);
+    for (const figure of figures.values()) scene.remove(figure.model);
+    for (const overhead of overheads.values()) overhead.remove();
+  });
 
   return (id: string, text: string) => overheads.get(id)?.say(text);
 }
