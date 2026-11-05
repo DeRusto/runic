@@ -43,6 +43,23 @@ function atContact(
 
 /** Plays each tick's events on the figures. */
 export function showFights(room: WorldConnection) {
+  // A reconnect brings the state, just after onReconnect, but not the events missed, so a death
+  // or return may be owed.
+  room.onReconnect(() =>
+    room.onStateChange.once(() => {
+      room.state.players.forEach((player, id) => {
+        const figure = playerFigures.get(id);
+        if (!player.dead && figure?.downed) figure.respawn();
+      });
+      room.state.spiders.forEach((spider, id) => {
+        const figure = spiderFigures.get(id)!;
+        const dead = spider.state === "dead";
+        if (dead && !figure.downed) figure.dieAndSink("Spider_Death");
+        else if (!dead && figure.downed) figure.reappear();
+      });
+    }),
+  );
+
   room.onMessage(EVENTS, (events: WorldEvent[]) => {
     for (const event of events) {
       if (event.type === "playerSwing") {

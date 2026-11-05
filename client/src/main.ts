@@ -46,6 +46,8 @@ function enterWorld(room: WorldConnection) {
 
   logout.hidden = false;
   logout.onclick = () => room.send(LOGOUT_INTENT);
+  // The next patch replaces this; if the SDK can't get back in, onLeave rejoins.
+  room.onDrop(() => (ticks.textContent = "Reconnecting…"));
   // The server decides whether a log out goes through, so the token stays until it does.
   room.onLeave(async (code) => {
     logout.hidden = true;

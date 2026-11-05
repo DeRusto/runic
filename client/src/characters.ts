@@ -128,6 +128,11 @@ export class Figure {
     return this.shot !== undefined;
   }
 
+  /** On a death clip, from `once` with `held` until `respawn` or `reappear`. */
+  get downed() {
+    return this.held;
+  }
+
   /** Walking, including a step the patch has brought but no frame has shown yet. */
   get moving() {
     const { tile, to } = this;

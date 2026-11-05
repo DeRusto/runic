@@ -114,6 +114,7 @@ export class Simulation {
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
+      dropped?: boolean;
     }
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
@@ -234,6 +235,25 @@ export class Simulation {
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
     this.queuedLogouts.delete(id);
+  }
+
+  /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
+  dropPlayer(id: string) {
+    const walk = this.walks.get(id)!;
+    walk.path = [];
+    walk.spider = walk.bush = undefined;
+    walk.dropped = true;
+    this.queuedActions.delete(id);
+    this.queuedEats.delete(id);
+    this.queuedLogouts.delete(id);
+  }
+
+  reconnectPlayer(id: string) {
+    this.walks.get(id)!.dropped = false;
+  }
+
+  lockRunning(id: string) {
+    return this.state.tick < (this.walks.get(id)?.lockEndTick ?? 0);
   }
 
   queueLogout(id: string) {
@@ -529,8 +549,10 @@ export class Simulation {
     if (player.health === 0) this.die(spider.target, player);
   }
 
-  private lock(id: string) {
-    this.walks.get(id)!.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
+  /** Not refreshed while dropped, or a Spider's swings would hold them here until killed (Q3). */
+  lock(id: string) {
+    const walk = this.walks.get(id)!;
+    if (!walk.dropped) walk.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
   }
 
   private die(id: string, player: InstanceType<typeof Player>) {
