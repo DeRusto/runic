@@ -6,6 +6,7 @@ import {
   respawnTile,
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
+import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
@@ -26,11 +27,11 @@ document.getElementById("loading")!.remove();
 
 const ticks = document.getElementById("ticks")!;
 const room = await joinWorld(new Client(location.origin));
-showPlayers(room, newFigure);
+const sayOverhead = showPlayers(room, newFigure);
 walkOnClick(room, tiles, showSpiders(room, newSpider));
+showBottomBar(room, sayOverhead);
 
 const logout = document.getElementById("logout")!;
-logout.hidden = false;
 logout.onclick = () => room.send(LOGOUT_INTENT);
 // The server decides whether a log out goes through, so the token stays until it does.
 room.onLeave((code) => {

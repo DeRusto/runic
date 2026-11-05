@@ -7,6 +7,12 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
+/** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
+export const CHAT = "chat";
+export const MAX_CHAT_LENGTH = 120;
+/** How long a chat line stays over the speaker's head. */
+export const CHAT_OVERHEAD_MS = 3000;
+export type ChatLine = { id: string; username: string; text: string };
 
 /** Closes the old connection when the same account logs in again. */
 export const TAKEN_OVER_CLOSE_CODE = 4011;
@@ -41,3 +47,4 @@ export const SPIDER_WANDER_CHANCE = 0.1;
 export const SPIDER_WANDER_TILES = 5;
 
 export * from "./region.ts";
+export * from "./skills.ts";

@@ -2,6 +2,7 @@ import { ArraySchema, schema, t } from "@colyseus/schema";
 import {
   EMPTY_SLOT,
   INVENTORY_SLOTS,
+  levelFor,
   respawnTile,
   SPIDER_HEALTH,
   SPIDER_WANDER_CHANCE,
@@ -18,6 +19,7 @@ import type { PlayerSave } from "./saves.ts";
 
 export const Player = schema(
   {
+    username: t.string(),
     x: t.uint8(),
     y: t.uint8(),
     combatXp: t.uint32(),
@@ -25,6 +27,7 @@ export const Player = schema(
     foragingXp: t.uint32(),
     hitpointsXp: t.uint32(),
     health: t.uint8(),
+    maxHealth: t.uint8(),
     inventory: t.array("string"),
   },
   "Player",
@@ -79,9 +82,12 @@ export class Simulation {
   }
 
   /** `saved` is the account's last save; without one, this is a new account. */
-  addPlayer(id: string, saved?: PlayerSave) {
+  addPlayer(id: string, saved?: PlayerSave, username = "") {
     const { inventory, ...fields } = this.loginSave(saved);
-    const player = Object.assign(new Player(), fields);
+    const player = Object.assign(new Player(), fields, {
+      username,
+      maxHealth: levelFor(fields.hitpointsXp),
+    });
     player.inventory = new ArraySchema(...inventory);
     this.state.players.set(id, player);
     this.walks.set(id, { path: [], nextStepTick: 0 });
