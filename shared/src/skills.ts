@@ -1,0 +1,23 @@
+export const MAX_LEVEL = 99;
+
+/** Total experience needed for a level (spec §5). */
+export const xpForLevel = (level: number) => 50 * (level - 1) ** 2;
+
+/** Experience stops here. */
+export const MAX_XP = xpForLevel(MAX_LEVEL);
+
+/** Awards experience, up to where it stops. */
+export const addXp = (xp: number, gained: number) =>
+  Math.min(xp + gained, MAX_XP);
+
+/** Only experience is stored; level is always worked out from it. */
+export const levelFor = (xp: number) =>
+  Math.min(Math.floor(Math.sqrt(xp / 50)) + 1, MAX_LEVEL);
+
+/** How far through the current level, from 0 to 1; 1 at the top level. */
+export function levelProgress(xp: number) {
+  const level = levelFor(xp);
+  if (level === MAX_LEVEL) return 1;
+  const start = xpForLevel(level);
+  return (xp - start) / (xpForLevel(level + 1) - start);
+}
