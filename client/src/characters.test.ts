@@ -218,6 +218,8 @@ describe("fight clips", () => {
       "Spider_Idle",
       "Spider_Walk",
       "Spider_Death",
+      "Death_A",
+      "Spawn_Ground",
     ].map((name) => [name, new THREE.AnimationClip(name, 1, [])]),
   );
   const weight = (figure: Figure, name: string) =>
@@ -333,6 +335,27 @@ describe("fight clips", () => {
       expect(figure.model.scale.x).toBe(0.5);
       expect(weight(figure, "Spider_Idle")).toBe(1);
     });
+  });
+
+  test("a player's death holds, then the respawn jumps to the new tile and plays through to idle", () => {
+    const tile = { x: 2, y: 3 };
+    const figure = fighter(tile);
+    figure.once("Death_A", 1, true);
+    figure.update(1500);
+    figure.update(2500); // The 1 s clip is over; it holds, without sinking.
+    expect(weight(figure, "Death_A")).toBe(1);
+    expect(figure.model.visible).toBe(true);
+
+    Object.assign(tile, { x: 7, y: 8 });
+    figure.update(2600); // A frame can land between the patch and the event.
+    figure.respawn();
+    figure.update(2700);
+    expect(figure.model.position.x).toBe(7);
+    expect(figure.model.position.z).toBe(8);
+    expect(weight(figure, "Spawn_Ground")).toBeGreaterThan(0);
+    figure.update(3800); // The 1 s clip is over.
+    figure.update(4000);
+    expect(weight(figure, "Idle_A")).toBe(1);
   });
 
   test("a nudge shoves it away from the attacker, and fades", () => {
