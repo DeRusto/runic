@@ -2,16 +2,20 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { Client } from "@colyseus/sdk";
 import { matchMaker } from "@colyseus/core";
 import {
+  EVENTS,
   parseRegion,
   REGION_GRID,
   respawnTile,
+  TARGET_INTENT,
   TICK_MS,
   WALK_INTENT,
   WORLD_ROOM,
+  type WorldEvent,
 } from "@runic/shared";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
+import type { WorldRoom } from "./WorldRoom.ts";
 
 // per-process so parallel worktrees don't collide
 const PORT = 25000 + (process.pid % 5000);
@@ -64,6 +68,46 @@ test("a walk intent moves the player on the server, and others see it", async ()
     expect(watcher.state.players.has(walker.sessionId)).toBe(false),
   );
   await watcher.leave();
+});
+
+test("a tick's events arrive once, right after its patch", async () => {
+  const fighter = new Client(`http://localhost:${PORT}`);
+  fighter.auth.token = await testToken(PORT, "Fighter");
+  const room = await fighter.join(WORLD_ROOM);
+  const [{ roomId }] = await matchMaker.query({ name: WORLD_ROOM });
+  const { sim } = matchMaker.getLocalRoomById(roomId!) as WorldRoom;
+  const spider = sim.state.spiders.get("0")!;
+  // Standing on the Spider counts as next to it, and it's quickest for a real server.
+  Object.assign(sim.state.players.get(room.sessionId)!, {
+    x: spider.x,
+    y: spider.y,
+  });
+
+  const received: { tick: number; events: WorldEvent[] }[] = [];
+  let patchTick = 0;
+  room.onStateChange((state: { tick: number }) => (patchTick = state.tick));
+  room.onMessage(EVENTS, (events: WorldEvent[]) =>
+    received.push({ tick: patchTick, events }),
+  );
+  room.send(TARGET_INTENT, "0");
+
+  await vi.waitFor(() => expect(received.length).toBeGreaterThanOrEqual(2), {
+    timeout: TICK_MS * 12,
+    interval: 50,
+  });
+  await room.leave();
+
+  const swings = received.filter(({ events }) =>
+    events[0]?.type.includes("Swing"),
+  );
+  expect(swings[0]!.events[0]).toMatchObject({
+    type: "playerSwing",
+    player: room.sessionId,
+    spider: "0",
+  });
+  // A swing's tick is the one the patch before it brought, 4 ticks between the two swings.
+  expect(swings[1]!.tick - swings[0]!.tick).toBe(4);
+  expect(new Set(received.map(({ tick }) => tick)).size).toBe(received.length);
 });
 
 test("the world room exists at start and survives everyone leaving", async () => {

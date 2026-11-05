@@ -9,6 +9,7 @@ import {
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { showFights } from "./fights.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers } from "./players.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
@@ -30,6 +31,7 @@ const room = await joinWorld(new Client(location.origin));
 const sayOverhead = showPlayers(room, newFigure);
 walkOnClick(room, tiles, showSpiders(room, newSpider));
 showBottomBar(room, sayOverhead);
+showFights(room);
 
 const logout = document.getElementById("logout")!;
 logout.onclick = () => room.send(LOGOUT_INTENT);

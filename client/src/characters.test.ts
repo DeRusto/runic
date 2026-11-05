@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test, vi } from "vitest";
 import { characterFor, Figure, fitSpider, SPIDER_GAIT } from "./characters.ts";
 
 const CLIPS = new Map(
@@ -132,6 +132,166 @@ describe("a Spider's Figure", () => {
     figure.update(1000);
     figure.update(1200);
     expect(clipState(figure, "Spider_Idle").weight).toBe(1);
+  });
+});
+
+describe("fight clips", () => {
+  const FIGHT_CLIPS = new Map(
+    [
+      "Idle_A",
+      "Running_A",
+      "Melee_Unarmed_Idle",
+      "Melee_Unarmed_Attack_Punch_A",
+      "Spider_Idle",
+      "Spider_Walk",
+      "Spider_Death",
+    ].map((name) => [name, new THREE.AnimationClip(name, 1, [])]),
+  );
+  const weight = (figure: Figure, name: string) =>
+    figure.mixer.clipAction(FIGHT_CLIPS.get(name)!).getEffectiveWeight();
+  const PUNCH = "Melee_Unarmed_Attack_Punch_A";
+
+  const fighter = (tile = { x: 0, y: 0 }) => {
+    const figure = new Figure(tile, new THREE.Object3D(), FIGHT_CLIPS);
+    figure.update(1000);
+    return figure;
+  };
+
+  test("stands in the fight stance while it has a target, and idles after", () => {
+    const figure = fighter();
+    figure.fightTile = { x: 1, y: 0 };
+    figure.update(1000);
+    figure.update(1200);
+    expect(weight(figure, "Melee_Unarmed_Idle")).toBe(1);
+    figure.fightTile = undefined;
+    figure.update(1200);
+    figure.update(1400);
+    expect(weight(figure, "Idle_A")).toBe(1);
+  });
+
+  test("faces its target between moves", () => {
+    const figure = fighter();
+    figure.fightTile = { x: 1, y: 0 };
+    for (let now = 1000; now <= 1600; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(Math.PI / 2);
+  });
+
+  test("a one-shot plays once, then fades back to what it should be doing", () => {
+    const figure = fighter();
+    figure.once(PUNCH);
+    expect(figure.playingOnce).toBe(true);
+    figure.update(1200);
+    figure.update(1400);
+    expect(weight(figure, PUNCH)).toBe(1);
+    figure.update(2000); // The 1 s clip is over.
+    expect(figure.playingOnce).toBe(false);
+    figure.update(2200);
+    expect(weight(figure, "Idle_A")).toBe(1);
+  });
+
+  test("a stance change waits for the one-shot to end", () => {
+    const figure = fighter();
+    figure.once(PUNCH);
+    figure.fightTile = { x: 1, y: 0 };
+    figure.update(1200);
+    figure.update(1400);
+    expect(weight(figure, PUNCH)).toBe(1);
+    figure.update(2100);
+    figure.update(2300);
+    expect(weight(figure, "Melee_Unarmed_Idle")).toBe(1);
+  });
+
+  test("arriving and swinging at the same moment keeps the swing", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = fighter(tile);
+    figure.once(PUNCH);
+    tile.x = 1;
+    figure.update(1016);
+    expect(figure.playingOnce).toBe(true);
+  });
+
+  test("walking off later cuts the swing short", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = fighter(tile);
+    figure.once(PUNCH);
+    figure.update(1300);
+    tile.x = 1;
+    figure.update(1316);
+    expect(figure.playingOnce).toBe(false);
+    figure.update(1500);
+    expect(weight(figure, "Running_A")).toBe(1);
+  });
+
+  describe("a Spider's death", () => {
+    const dying = (tile = { x: 2, y: 3 }) => {
+      const model = new THREE.Object3D();
+      model.scale.setScalar(0.5);
+      const figure = new Figure(tile, model, FIGHT_CLIPS, SPIDER_GAIT);
+      figure.update(1000);
+      figure.dieAndSink("Spider_Death");
+      return figure;
+    };
+
+    test("holds the clip, then sinks, then disappears", () => {
+      const figure = dying();
+      figure.update(1500);
+      expect(figure.model.position.y).toBe(0);
+      figure.update(2000); // The 1 s clip is over, and it starts to sink.
+      expect(figure.model.position.y).toBeCloseTo(-0.25);
+      expect(figure.model.visible).toBe(true);
+      expect(weight(figure, "Spider_Death")).toBe(1);
+      figure.update(4100);
+      expect(figure.model.visible).toBe(false);
+    });
+
+    test("it comes back on its tile, not sliding, and scales up to full size", () => {
+      const tile = { x: 2, y: 3 };
+      const figure = dying(tile);
+      figure.update(2000);
+      figure.update(5000);
+      Object.assign(tile, { x: 7, y: 8 });
+      figure.reappear();
+      expect(figure.model.visible).toBe(true);
+      figure.update(5016);
+      expect(figure.model.position.x).toBe(7);
+      expect(figure.model.position.y).toBe(0);
+      expect(figure.model.scale.x).toBeLessThan(0.1);
+      figure.update(5600);
+      expect(figure.model.scale.x).toBe(0.5);
+      expect(weight(figure, "Spider_Idle")).toBe(1);
+    });
+  });
+
+  test("a nudge shoves it away from the attacker, and fades", () => {
+    const figure = new Figure(
+      { x: 2, y: 0 },
+      new THREE.Object3D(),
+      FIGHT_CLIPS,
+      SPIDER_GAIT,
+    );
+    figure.update(1000);
+    figure.nudgeFrom({ x: 1, y: 0 });
+    figure.update(1010);
+    expect(figure.model.position.x).toBeGreaterThan(2.1);
+    figure.update(1500);
+    figure.update(2000);
+    expect(figure.model.position.x).toBe(2);
+  });
+
+  test("a flash turns its materials red, then back", () => {
+    vi.useFakeTimers();
+    const material = new THREE.MeshStandardMaterial();
+    const figure = new Figure(
+      { x: 0, y: 0 },
+      new THREE.Mesh(new THREE.BoxGeometry(), material),
+      FIGHT_CLIPS,
+      SPIDER_GAIT,
+    );
+    figure.flash();
+    expect(material.emissive.r).toBeGreaterThan(0.3);
+    vi.advanceTimersByTime(200);
+    expect(material.emissive.r).toBe(0);
+    vi.useRealTimers();
   });
 });
 
