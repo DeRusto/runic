@@ -1,8 +1,14 @@
 import { ArraySchema, schema, t } from "@colyseus/schema";
 import {
+  BUSHES,
+  bushId,
+  bushRefusal,
   EMPTY_SLOT,
   INVENTORY_SLOTS,
   levelFor,
+  MAX_XP,
+  pickChance,
+  pickIntervalTicks,
   respawnTile,
   SPIDER_HEALTH,
   SPIDER_WANDER_CHANCE,
@@ -11,10 +17,12 @@ import {
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
   WALK_TICKS_PER_TILE,
+  type BushKind,
+  type GameEvent,
   type Tile,
   type TileKind,
 } from "@runic/shared";
-import { findPath, legalSteps } from "./pathfinding.ts";
+import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
 export const Player = schema(
@@ -44,11 +52,14 @@ export const Spider = schema(
   "Spider",
 );
 
+export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
+
 export const WorldState = schema(
   {
     tick: t.uint32().default(0),
     players: t.map(Player),
     spiders: t.map(Spider),
+    bushes: t.map(Bush),
   },
   "WorldState",
 );
@@ -57,12 +68,28 @@ export const WorldState = schema(
 export class Simulation {
   state = new WorldState();
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
-  private queuedActions = new Map<string, { to: Tile } | { spider: string }>();
+  private queuedActions = new Map<
+    string,
+    { to: Tile } | { spider: string } | { bush: string }
+  >();
   private walks = new Map<
     string,
-    { path: Tile[]; nextStepTick: number; spider?: string }
+    {
+      path: Tile[];
+      nextStepTick: number;
+      spider?: string;
+      bush?: string;
+      /** Outlives the action, so clicking again can't beat the attempt interval. */
+      nextPickTick: number;
+    }
   >();
   private spiderHomes = new Map<string, Tile & { nextStepTick: number }>();
+  private bushSites = new Map<
+    string,
+    Tile & { kind: BushKind; regrowTick?: number }
+  >();
+  /** This tick's events, for the room to broadcast after the patch. */
+  readonly events: GameEvent[] = [];
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -73,6 +100,14 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
+        const { prop } = kind;
+        if (prop === "berryBush" || prop === "herbBush") {
+          this.bushSites.set(bushId({ x, y }), { x, y, kind: prop });
+          this.state.bushes.set(
+            bushId({ x, y }),
+            Object.assign(new Bush(), { picksLeft: BUSHES[prop].picks }),
+          );
+        }
         if (kind !== TILE_KINDS.S) return;
         const id = String(this.spiderHomes.size);
         this.spiderHomes.set(id, { x, y, nextStepTick: 0 });
@@ -90,7 +125,7 @@ export class Simulation {
     });
     player.inventory = new ArraySchema(...inventory);
     this.state.players.set(id, player);
-    this.walks.set(id, { path: [], nextStepTick: 0 });
+    this.walks.set(id, { path: [], nextStepTick: 0, nextPickTick: 0 });
   }
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
@@ -153,19 +188,41 @@ export class Simulation {
     this.queuedActions.set(id, { spider });
   }
 
+  /** `bush` comes straight off the network, so anything but a bush's id is ignored, as is a click the rules refuse. */
+  queueForage(id: string, bush: string) {
+    const player = this.state.players.get(id);
+    const site = this.bushSites.get(bush);
+    if (!player || !site) return;
+    const { picksLeft } = this.state.bushes.get(bush)!;
+    if (bushRefusal(site.kind, picksLeft, player)) return;
+    this.queuedActions.set(id, { bush });
+  }
+
   /** One tick, in the order of spec §6. */
   tick() {
     this.state.tick++;
     this.applyIntents();
     this.advancePlayers();
+    this.advancePicks();
     this.advanceSpiders();
+    this.advanceBushes();
   }
 
   private applyIntents() {
     for (const [id, action] of this.queuedActions) {
       const walk = this.walks.get(id)!;
+      walk.bush = undefined;
       if ("spider" in action) {
         walk.spider = action.spider;
+      } else if ("bush" in action) {
+        walk.spider = undefined;
+        const path = pathNextTo(
+          this.tiles,
+          this.state.players.get(id)!,
+          this.bushSites.get(action.bush)!,
+        );
+        walk.path = path ?? [];
+        if (path) walk.bush = action.bush;
       } else {
         walk.spider = undefined;
         walk.path = findPath(
@@ -194,6 +251,40 @@ export class Simulation {
       if (!walk.path.length) continue;
       Object.assign(player, walk.path.shift());
       walk.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+    }
+  }
+
+  /** After the steps, so the first attempt lands on the tick of arrival (D5). */
+  private advancePicks() {
+    for (const [id, walk] of this.walks) {
+      if (walk.bush === undefined || walk.path.length) continue;
+      const player = this.state.players.get(id)!;
+      const site = this.bushSites.get(walk.bush)!;
+      const bush = this.state.bushes.get(walk.bush)!;
+      if (bushRefusal(site.kind, bush.picksLeft, player)) {
+        walk.bush = undefined;
+        continue;
+      }
+      if (this.state.tick < walk.nextPickTick) continue;
+      const level = levelFor(player.foragingXp);
+      walk.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      const success = this.random() < pickChance(site.kind, level);
+      this.events.push({ type: "pick", id, success });
+      if (!success) continue;
+      const { xp, food, regrowTicks } = BUSHES[site.kind];
+      player.foragingXp = Math.min(player.foragingXp + xp, MAX_XP);
+      player.inventory[player.inventory.indexOf(EMPTY_SLOT)] = food;
+      if (--bush.picksLeft === 0)
+        site.regrowTick = this.state.tick + regrowTicks;
+      walk.bush = undefined;
+    }
+  }
+
+  private advanceBushes() {
+    for (const [id, site] of this.bushSites) {
+      if (this.state.tick !== site.regrowTick) continue;
+      this.state.bushes.get(id)!.picksLeft = BUSHES[site.kind].picks;
+      site.regrowTick = undefined;
     }
   }
 

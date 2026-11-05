@@ -5,6 +5,11 @@ export const WORLD_ROOM = "world";
 export const WALK_INTENT = "walk";
 /** The target intent's message type; its payload is the clicked Spider's id in state. */
 export const TARGET_INTENT = "target";
+/** The forage intent's message type; its payload is the clicked bush's id in state. */
+export const FORAGE_INTENT = "forage";
+/** One broadcast per tick, right after the patch, when there is anything to report; its payload is `GameEvent[]`. */
+export const EVENTS = "events";
+export type GameEvent = { type: "pick"; id: string; success: boolean };
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
@@ -38,13 +43,12 @@ export const SPIDER_RESPAWN_TICKS = 100;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 export const REGEN_INTERVAL_TICKS = 20;
-export const BERRY_REGROW_TICKS = 50;
-export const HERB_REGROW_TICKS = 100;
 export const SAVE_INTERVAL_TICKS = 100;
 
 export const SPIDER_HEALTH = 8;
 export const SPIDER_WANDER_CHANCE = 0.1;
 export const SPIDER_WANDER_TILES = 5;
 
+export * from "./foraging.ts";
 export * from "./region.ts";
 export * from "./skills.ts";

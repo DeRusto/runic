@@ -1,10 +1,21 @@
 import { Callbacks, type Room } from "@colyseus/sdk";
+import {
+  EVENTS,
+  levelFor,
+  pickIntervalTicks,
+  TICK_MS,
+  type GameEvent,
+} from "@runic/shared";
 import type { WorldRoom } from "../../server/src/WorldRoom.ts";
+import { revealPick } from "./bottomBar.ts";
 import type { Figure, loadCharacters } from "./characters.ts";
 import { Overhead } from "./overhead.ts";
 import { camera, focusOn, scene } from "./scene.ts";
 
 export type WorldConnection = Room<WorldRoom, WorldRoom["state"]>;
+
+/** How far through `PickUp` the result of a pick shows (spec §7). */
+const PICK_RESULT_AT = 0.4;
 
 /** Draws everyone at the tiles the server says. The camera follows our own. Returns how to show a line over someone's head. */
 export function showPlayers(
@@ -26,6 +37,22 @@ export function showPlayers(
     figures.delete(id);
     overheads.get(id)!.remove();
     overheads.delete(id);
+  });
+
+  room.onMessage(EVENTS, (events: GameEvent[]) => {
+    for (const event of events) {
+      if (event.type !== "pick") continue;
+      const { id, success } = event;
+      const figure = figures.get(id);
+      const player = room.state.players.get(id);
+      if (!figure || !player) continue;
+      const interval = pickIntervalTicks(levelFor(player.foragingXp));
+      const clipMs = figure.playOnce("PickUp", interval * TICK_MS);
+      setTimeout(() => {
+        overheads.get(id)?.say(success ? "Picked!" : "No luck");
+        if (id === room.sessionId) revealPick();
+      }, PICK_RESULT_AT * clipMs);
+    }
   });
 
   const frame = (now: number) => {

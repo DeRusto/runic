@@ -1,4 +1,9 @@
-import { tileHash, type GroundKind, type TileKind } from "@runic/shared";
+import {
+  bushId,
+  tileHash,
+  type GroundKind,
+  type TileKind,
+} from "@runic/shared";
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -11,6 +16,9 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
 };
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
+const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
+// A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
+const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 
 const white = new THREE.Color(0xffffff);
 
@@ -81,7 +89,7 @@ function propVariants(): Record<
   };
 }
 
-/** Everything that doesn't change during play: a slab per tile, and the props on them. */
+/** A slab per tile and the props on them, all fixed but for bushes: returns how to show one run out or not. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const bush = await new GLTFLoader().loadAsync("/models/Bush_1_A_Color1.gltf");
   const bushMesh = bush.scene.children[0] as THREE.Mesh;
@@ -110,6 +118,10 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     placements.get(geometry)!.push({ matrix, color });
   };
 
+  /** Each bush's index in the bushes' InstancedMesh. */
+  const bushSlots = new Map<string, number>();
+  let bushes!: THREE.InstancedMesh;
+
   const variants = propVariants();
   const matrix = new THREE.Matrix4();
   const color = new THREE.Color();
@@ -137,6 +149,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       const { prop } = tile;
       if (prop === "berryBush" || prop === "herbBush") {
         const scale = new THREE.Vector3().setScalar(bushScale);
+        bushSlots.set(bushId({ x, y }), bushSlots.size);
         place(
           bushMesh.geometry,
           new THREE.Matrix4().compose(at, rotation, scale),
@@ -172,5 +185,18 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     });
     mesh.castShadow = true;
     scene.add(mesh);
+    if (geometry === bushMesh.geometry) bushes = mesh;
   }
+
+  return (id: string, runOut: boolean) => {
+    const slot = bushSlots.get(id)!;
+    const { matrix, color } = placements.get(bushMesh.geometry)![slot]!;
+    bushes.setMatrixAt(
+      slot,
+      runOut ? matrix.clone().scale(RUN_OUT_SCALE) : matrix,
+    );
+    bushes.setColorAt(slot, runOut ? RUN_OUT_TINT : color);
+    bushes.instanceMatrix.needsUpdate = true;
+    bushes.instanceColor!.needsUpdate = true;
+  };
 }

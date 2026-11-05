@@ -45,6 +45,8 @@ export class Figure {
   private lastFrame = 0;
   private running = false;
   private current?: THREE.AnimationAction;
+  private oneShot = false;
+  private queuedOnce?: { name: string; speed: number };
 
   constructor(
     private tile: Tile,
@@ -56,14 +58,33 @@ export class Figure {
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.mixer = new THREE.AnimationMixer(model);
+    this.mixer.addEventListener("finished", ({ action }) => {
+      if (action !== this.current) return;
+      this.oneShot = false;
+      if (this.running) this.play(this.gait.move, this.gait.moveSpeed);
+      else this.play(this.gait.idle);
+    });
     this.play(gait.idle);
   }
 
   play(name: string, speed = 1) {
     const next = this.mixer.clipAction(this.clips.get(name)!);
     next.reset().setEffectiveTimeScale(speed).play();
-    if (this.current) next.crossFadeFrom(this.current, CROSSFADE_S);
+    if (this.current && this.current !== next)
+      next.crossFadeFrom(this.current, CROSSFADE_S);
     this.current = next;
+  }
+
+  /**
+   * Plays a clip once, sped up if it wouldn't fit in `withinMs`, then returns to the gait.
+   * Returns how long it will take. A new step cuts it short.
+   */
+  playOnce(name: string, withinMs: number) {
+    const ms = this.clips.get(name)!.duration * 1000;
+    const speed = Math.max(1, ms / withinMs);
+    // Started from update: the patch of the step it arrived on may not have been seen yet, and mustn't cut it.
+    this.queuedOnce = { name, speed };
+    return ms / speed;
   }
 
   /** Call once a frame, with the frame's timestamp in ms. */
@@ -76,6 +97,10 @@ export class Figure {
       to.set(tile.x, to.y, tile.y);
       this.slideStart = now;
       this.yaw = Math.atan2(dx, dz);
+      if (this.oneShot) {
+        this.oneShot = false;
+        this.running = false;
+      }
     }
     model.position.lerpVectors(
       from,
@@ -87,7 +112,14 @@ export class Figure {
     if (running !== this.running) {
       this.running = running;
       if (running) this.play(this.gait.move, this.gait.moveSpeed);
-      else this.play(this.gait.idle);
+      else if (!this.oneShot) this.play(this.gait.idle);
+    }
+
+    if (this.queuedOnce) {
+      this.play(this.queuedOnce.name, this.queuedOnce.speed);
+      this.current!.setLoop(THREE.LoopOnce, 1).clampWhenFinished = true;
+      this.oneShot = true;
+      this.queuedOnce = undefined;
     }
 
     const dt = (now - this.lastFrame) / 1000;

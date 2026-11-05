@@ -28,6 +28,15 @@ export function printChatLine(line: string) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
+let holdingPick = false;
+let showHeld = () => {};
+
+/** A pick's food and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
+export function revealPick() {
+  holdingPick = false;
+  showHeld();
+}
+
 /** Chat, inventory, skills and health, all read from our own player on each patch. */
 export function showBottomBar(
   room: WorldConnection,
@@ -65,16 +74,23 @@ export function showBottomBar(
   const bar = document.getElementById("bar")!;
   bar.hidden = false;
 
+  let foragingXp: number | undefined;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
-    slots.forEach((slot, i) => (slot.textContent = me.inventory[i] ?? ""));
-    for (const skill of skills) {
-      const xp = me[skill.field];
-      skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
-      skill.bar.value = levelProgress(xp);
-      skill.bar.title = `${xp} XP`;
-    }
+    if (foragingXp !== undefined && me.foragingXp > foragingXp)
+      holdingPick = true;
+    foragingXp = me.foragingXp;
+    showHeld = () => {
+      slots.forEach((slot, i) => (slot.textContent = me.inventory[i] ?? ""));
+      for (const skill of skills) {
+        const xp = me[skill.field];
+        skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
+        skill.bar.value = levelProgress(xp);
+        skill.bar.title = `${xp} XP`;
+      }
+    };
+    if (!holdingPick) showHeld();
   });
 }

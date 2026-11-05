@@ -4,12 +4,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { describe, expect, it } from "vitest";
 import { characterFor, Figure, fitSpider, SPIDER_GAIT } from "./characters.ts";
 
+const PICK_UP_S = 1.296;
 const CLIPS = new Map(
   ["Idle_A", "Running_A", "Spider_Idle", "Spider_Walk"].map((name) => [
     name,
     new THREE.AnimationClip(name, 1, []),
   ]),
 );
+CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
 
 function figureAt(tile: { x: number; y: number }) {
   return new Figure(tile, new THREE.Object3D(), CLIPS);
@@ -114,6 +116,63 @@ describe("Figure", () => {
     Object.assign(tile, to);
     for (let now = 0; now <= 600; now += 16) figure.update(now);
     expect(figure.model.rotation.y).toBeCloseTo(yaw);
+  });
+});
+
+describe("Figure.playOnce", () => {
+  const started = (tile = { x: 0, y: 0 }, withinMs = 2400) => {
+    const figure = figureAt(tile);
+    figure.update(0);
+    const ms = figure.playOnce("PickUp", withinMs);
+    figure.update(0);
+    return { figure, ms };
+  };
+
+  it("plays at its own speed when it fits, and says how long it takes", () => {
+    const { figure, ms } = started();
+    expect(clipState(figure, "PickUp").speed).toBe(1);
+    expect(ms).toBeCloseTo(PICK_UP_S * 1000);
+  });
+
+  it("speeds up to fit a shorter time: 1.08x at 4 ticks", () => {
+    const { figure, ms } = started(undefined, 1200);
+    expect(clipState(figure, "PickUp").speed).toBeCloseTo(1.08);
+    expect(ms).toBeCloseTo(1200);
+  });
+
+  it("returns to Idle_A when it finishes, once", () => {
+    const { figure } = started();
+    figure.update(500);
+    expect(clipState(figure, "PickUp").running).toBe(true);
+    figure.update(1400);
+    figure.update(1600);
+    expect(clipState(figure, "Idle_A").weight).toBe(1);
+    expect(clipState(figure, "PickUp").running).toBe(false);
+  });
+
+  it("isn't overridden by the slide of the step it arrived on ending", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    tile.x = 1;
+    figure.playOnce("PickUp", 2400);
+    figure.update(0);
+    expect(clipState(figure, "PickUp").running).toBe(true);
+    figure.update(100);
+    figure.update(700);
+    expect(clipState(figure, "PickUp").weight).toBe(1);
+    expect(clipState(figure, "Idle_A").weight).toBe(0);
+  });
+
+  it("is cut short by a new step", () => {
+    const tile = { x: 0, y: 0 };
+    const { figure } = started(tile);
+    figure.update(500);
+    tile.x = 1;
+    figure.update(600);
+    figure.update(800);
+    expect(clipState(figure, "Running_A").weight).toBe(1);
+    expect(clipState(figure, "PickUp").running).toBe(false);
   });
 });
 
