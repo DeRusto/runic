@@ -253,6 +253,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 - `shared` holds intent and message types, constants, tile math (distance, 8-way neighbours), and the region grid, parser and kind table. Pathfinding stays on the server. Schema classes stay on the server, and the client imports them with `import type`.
 - `npm run dev` starts both through `concurrently`. The server listens on 2567, and Vite proxies to it so the client always talks to its own origin. The proxy must cover the websocket path, Colyseus's matchmaking HTTP routes and `/api` **[D16]**.
 - Checks: Vitest for `shared` and `server`, Prettier for formatting, no ESLint. Node 22 LTS, pinned with `engines` and `.nvmrc`.
+- GitHub Actions runs the checks and starts the Docker image on every pull request and push to `main`. Pushing a `v*` tag also publishes the image to GHCR and creates a GitHub Release. Neither deploys; Deploy stays manual.
 - `ae/` at the root (not a workspace) is created only if Phaser AE gets used **[Q1]**.
 
 ## 9. Hosting
