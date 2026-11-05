@@ -45,6 +45,7 @@ export const SAVE_INTERVAL_TICKS = 100;
 export const SPIDER_HEALTH = 8;
 export const SPIDER_WANDER_CHANCE = 0.1;
 export const SPIDER_WANDER_TILES = 5;
+export const LEASH_TILES = 4;
 
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
 export const PLAYER_HIT_CHANCE = 0.4;

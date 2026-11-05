@@ -11,6 +11,7 @@ import {
   PLAYER_HIT_CHANCE,
   PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
   respawnTile,
+  LEASH_TILES,
   SPIDER_FIRST_SWING_DELAY_TICKS,
   SPIDER_HEALTH,
   SPIDER_HIT_CHANCE,
@@ -31,6 +32,10 @@ import {
 } from "@runic/shared";
 import { findPath, legalSteps } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
+
+/** Distance in 8-way tiles. */
+const tilesApart = (a: Tile, b: Tile) =>
+  Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 export const Player = schema(
   {
@@ -86,7 +91,12 @@ export class Simulation {
   >();
   private spiderHomes = new Map<
     string,
-    Tile & { nextStepTick: number; nextSwingTick: number; returnTick: number }
+    Tile & {
+      nextStepTick: number;
+      nextSwingTick: number;
+      returnTick: number;
+      fightStart: Tile;
+    }
   >();
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
@@ -108,6 +118,7 @@ export class Simulation {
           nextStepTick: 0,
           nextSwingTick: 0,
           returnTick: 0,
+          fightStart: { x, y },
         });
         this.state.spiders.set(id, Object.assign(new Spider(), { x, y }));
       }),
@@ -293,6 +304,7 @@ export class Simulation {
     const home = this.spiderHomes.get(spiderId)!;
     if (spider.state !== "fighting") {
       spider.state = "fighting";
+      home.fightStart = { x: spider.x, y: spider.y };
       // Its timer outlives a fight, like the player's (spec D2).
       home.nextSwingTick = Math.max(
         home.nextSwingTick,
@@ -314,18 +326,27 @@ export class Simulation {
     }
   }
 
+  /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
+  private stepSpider(
+    spider: InstanceType<typeof Spider>,
+    home: { nextStepTick: number },
+    to: Tile,
+    stopNextTo: boolean,
+  ) {
+    if (this.state.tick < home.nextStepTick) return;
+    const path = findPath(this.tiles, spider, to);
+    if (stopNextTo) path.pop();
+    if (!path.length) return;
+    Object.assign(spider, path[0]);
+    home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+  }
+
   private spiderSwing(
     id: string,
     spider: InstanceType<typeof Spider>,
+    player: InstanceType<typeof Player>,
     home: { nextSwingTick: number },
   ) {
-    const player = this.state.players.get(spider.target);
-    if (!player) {
-      // shortcut: a Spider with no target just idles where it stands, until the leash (#27) walks it home.
-      spider.state = "idle";
-      spider.target = "";
-      return;
-    }
     if (this.state.tick < home.nextSwingTick || !this.nextTo(spider, player)) {
       return;
     }
@@ -374,7 +395,25 @@ export class Simulation {
     for (const [id, home] of this.spiderHomes) {
       const spider = this.state.spiders.get(id)!;
       if (spider.state === "fighting") {
-        this.spiderSwing(id, spider, home);
+        const target = this.state.players.get(spider.target);
+        if (
+          target &&
+          target.health > 0 &&
+          tilesApart(target, home.fightStart) <= LEASH_TILES
+        ) {
+          this.stepSpider(spider, home, target, true);
+          this.spiderSwing(id, spider, target, home);
+          continue;
+        }
+        spider.state = "going home";
+        spider.target = "";
+      }
+      if (spider.state === "going home") {
+        this.stepSpider(spider, home, home, false);
+        if (tilesApart(spider, home) === 0) {
+          spider.health = SPIDER_HEALTH;
+          spider.state = "idle";
+        }
         continue;
       }
       if (spider.state !== "idle" || this.state.tick < home.nextStepTick) {
@@ -382,9 +421,7 @@ export class Simulation {
       }
       if (this.random() >= SPIDER_WANDER_CHANCE) continue;
       const steps = legalSteps(this.tiles, spider).filter(
-        ({ x, y }) =>
-          Math.max(Math.abs(x - home.x), Math.abs(y - home.y)) <=
-          SPIDER_WANDER_TILES,
+        (step) => tilesApart(step, home) <= SPIDER_WANDER_TILES,
       );
       Object.assign(spider, steps[Math.floor(this.random() * steps.length)]);
       home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
