@@ -39,7 +39,6 @@ export function showFights(room: WorldConnection) {
         const attacker = playerFigures.get(event.player);
         const spider = spiderFigures.get(event.spider)!;
         attacker?.once("Melee_Unarmed_Attack_Punch_A");
-        // Where it stood when the blow was decided; it won't move far before contact.
         const from = room.state.players.get(event.player);
         atContact(
           spiderOverheads.get(event.spider),
@@ -62,10 +61,8 @@ export function showFights(room: WorldConnection) {
           },
         );
       } else if (event.type === "spiderDied") {
-        setTimeout(
-          () => spiderFigures.get(event.spider)!.dieAndSink("Spider_Death"),
-          PLAYER_CONTACT_MS,
-        );
+        const spider = spiderFigures.get(event.spider)!;
+        setTimeout(() => spider.dieAndSink("Spider_Death"), PLAYER_CONTACT_MS);
       } else if (event.type === "spiderReturned") {
         spiderFigures.get(event.spider)!.reappear();
       }

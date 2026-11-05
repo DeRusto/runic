@@ -36,7 +36,7 @@ export function walkOnClick(
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
   };
 
-  renderer.domElement.addEventListener("click", (event) => {
+  const onClick = (event: MouseEvent) => {
     pointer.set(
       (event.clientX / innerWidth) * 2 - 1,
       -(event.clientY / innerHeight) * 2 + 1,
@@ -55,5 +55,12 @@ export function walkOnClick(
 
     showMarker(x, y);
     room.send(WALK_INTENT, { x, y });
+  };
+  renderer.domElement.addEventListener("click", onClick);
+
+  room.onLeave(() => {
+    renderer.domElement.removeEventListener("click", onClick);
+    clearTimeout(hideMarker);
+    scene.remove(marker);
   });
 }

@@ -48,9 +48,18 @@ export function showSpiders(
       overhead.showHealth(spider.health, SPIDER_HEALTH);
       overhead.place(figure.model.position);
     }
-    requestAnimationFrame(frame);
+    nextFrame = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  let nextFrame = requestAnimationFrame(frame);
+
+  room.onLeave(() => {
+    cancelAnimationFrame(nextFrame);
+    for (const { figure, hitBox } of figures)
+      scene.remove(figure.model, hitBox);
+    for (const overhead of spiderOverheads.values()) overhead.remove();
+    spiderFigures.clear();
+    spiderOverheads.clear();
+  });
 
   return (raycaster: THREE.Raycaster) => {
     const live = [...hitBoxes.keys()].filter(

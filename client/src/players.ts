@@ -44,9 +44,17 @@ export function showPlayers(
       if (player) overhead.showHealth(player.health, player.maxHealth);
       overhead.place(figures.get(id)!.model.position);
     }
-    requestAnimationFrame(frame);
+    nextFrame = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  let nextFrame = requestAnimationFrame(frame);
+
+  room.onLeave(() => {
+    cancelAnimationFrame(nextFrame);
+    for (const figure of figures.values()) scene.remove(figure.model);
+    for (const overhead of overheads.values()) overhead.remove();
+    figures.clear();
+    overheads.clear();
+  });
 
   return (id: string, text: string) => overheads.get(id)?.say(text);
 }
