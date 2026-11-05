@@ -3,6 +3,8 @@ export const WORLD_ROOM = "world";
 
 /** The walk intent's message type; its payload is the clicked Tile. */
 export const WALK_INTENT = "walk";
+/** The target intent's message type; its payload is the clicked Spider's id in state. */
+export const TARGET_INTENT = "target";
 
 export const TICK_MS = 300;
 /** How often the server checks whether a tick is due; ticks land within this of on time. */
@@ -21,5 +23,9 @@ export const REGEN_INTERVAL_TICKS = 20;
 export const BERRY_REGROW_TICKS = 50;
 export const HERB_REGROW_TICKS = 100;
 export const SAVE_INTERVAL_TICKS = 100;
+
+export const SPIDER_HEALTH = 8;
+export const SPIDER_WANDER_CHANCE = 0.1;
+export const SPIDER_WANDER_TILES = 5;
 
 export * from "./region.ts";

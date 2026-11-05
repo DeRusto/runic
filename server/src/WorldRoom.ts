@@ -2,6 +2,7 @@ import { Room, type Client } from "@colyseus/core";
 import {
   parseRegion,
   REGION_GRID,
+  TARGET_INTENT,
   TICK_DRIVER_MS,
   WALK_INTENT,
   type Tile,
@@ -18,6 +19,8 @@ export class WorldRoom extends Room {
   messages = {
     [WALK_INTENT]: (client: Client, to: Tile) =>
       this.sim.queueWalk(client.sessionId, to),
+    [TARGET_INTENT]: (client: Client, spider: string) =>
+      this.sim.queueTarget(client.sessionId, spider),
   };
 
   // Static, so a refused token fails at matchmaking, before any seat is reserved.

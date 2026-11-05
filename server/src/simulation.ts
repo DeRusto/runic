@@ -1,16 +1,35 @@
 import { schema, t } from "@colyseus/schema";
 import {
   respawnTile,
+  SPIDER_HEALTH,
+  SPIDER_WANDER_CHANCE,
+  SPIDER_WANDER_TILES,
+  TILE_KINDS,
   WALK_TICKS_PER_TILE,
   type Tile,
   type TileKind,
 } from "@runic/shared";
-import { findPath } from "./pathfinding.ts";
+import { findPath, legalSteps } from "./pathfinding.ts";
 
 export const Player = schema({ x: t.uint8(), y: t.uint8() }, "Player");
 
+export const Spider = schema(
+  {
+    x: t.uint8(),
+    y: t.uint8(),
+    health: t.uint8().default(SPIDER_HEALTH),
+    target: t.string().default(""),
+    state: t.string().default("idle"),
+  },
+  "Spider",
+);
+
 export const WorldState = schema(
-  { tick: t.uint32().default(0), players: t.map(Player) },
+  {
+    tick: t.uint32().default(0),
+    players: t.map(Player),
+    spiders: t.map(Spider),
+  },
   "WorldState",
 );
 
@@ -18,13 +37,26 @@ export const WorldState = schema(
 export class Simulation {
   state = new WorldState();
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
-  private queuedWalks = new Map<string, Tile>();
-  private walks = new Map<string, { path: Tile[]; nextStepTick: number }>();
+  private queuedActions = new Map<string, { to: Tile } | { spider: string }>();
+  private walks = new Map<
+    string,
+    { path: Tile[]; nextStepTick: number; spider?: string }
+  >();
+  private spiderHomes = new Map<string, Tile & { nextStepTick: number }>();
 
   constructor(
     private tiles: TileKind[][],
     readonly random: () => number,
-  ) {}
+  ) {
+    tiles.forEach((row, y) =>
+      row.forEach((kind, x) => {
+        if (kind !== TILE_KINDS.S) return;
+        const id = String(this.spiderHomes.size);
+        this.spiderHomes.set(id, { x, y, nextStepTick: 0 });
+        this.state.spiders.set(id, Object.assign(new Spider(), { x, y }));
+      }),
+    );
+  }
 
   addPlayer(id: string) {
     this.state.players.set(
@@ -37,7 +69,7 @@ export class Simulation {
   removePlayer(id: string) {
     this.state.players.delete(id);
     this.walks.delete(id);
-    this.queuedWalks.delete(id);
+    this.queuedActions.delete(id);
   }
 
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
@@ -45,7 +77,13 @@ export class Simulation {
     if (!this.state.players.has(id)) return;
     if (!Number.isInteger(to?.x) || !Number.isInteger(to?.y)) return;
     if (!this.tiles[to.y]?.[to.x]) return;
-    this.queuedWalks.set(id, { x: to.x, y: to.y });
+    this.queuedActions.set(id, { to: { x: to.x, y: to.y } });
+  }
+
+  /** `spider` comes straight off the network, so anything but a Spider's id is ignored. */
+  queueTarget(id: string, spider: string) {
+    if (!this.state.players.has(id) || !this.state.spiders.has(spider)) return;
+    this.queuedActions.set(id, { spider });
   }
 
   /** One tick, in the order of spec §6. */
@@ -53,25 +91,57 @@ export class Simulation {
     this.state.tick++;
     this.applyIntents();
     this.advancePlayers();
+    this.advanceSpiders();
   }
 
   private applyIntents() {
-    for (const [id, to] of this.queuedWalks) {
-      this.walks.get(id)!.path = findPath(
-        this.tiles,
-        this.state.players.get(id)!,
-        to,
-      );
+    for (const [id, action] of this.queuedActions) {
+      const walk = this.walks.get(id)!;
+      if ("spider" in action) {
+        walk.spider = action.spider;
+      } else {
+        walk.spider = undefined;
+        walk.path = findPath(
+          this.tiles,
+          this.state.players.get(id)!,
+          action.to,
+        );
+      }
     }
-    this.queuedWalks.clear();
+    this.queuedActions.clear();
   }
 
   private advancePlayers() {
     for (const [id, walk] of this.walks) {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
-      if (!walk.path.length || this.state.tick < walk.nextStepTick) continue;
-      Object.assign(this.state.players.get(id)!, walk.path.shift());
+      if (this.state.tick < walk.nextStepTick) continue;
+      const player = this.state.players.get(id)!;
+      if (walk.spider !== undefined) {
+        // Re-pathed every step since it can move. A path's last step lands on its tile, so
+        // stopping short of that is exactly "next to" (spec D1).
+        const spider = this.state.spiders.get(walk.spider)!;
+        walk.path = findPath(this.tiles, player, spider).slice(0, -1);
+      }
+      if (!walk.path.length) continue;
+      Object.assign(player, walk.path.shift());
       walk.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+    }
+  }
+
+  private advanceSpiders() {
+    for (const [id, home] of this.spiderHomes) {
+      const spider = this.state.spiders.get(id)!;
+      if (spider.state !== "idle" || this.state.tick < home.nextStepTick) {
+        continue;
+      }
+      if (this.random() >= SPIDER_WANDER_CHANCE) continue;
+      const steps = legalSteps(this.tiles, spider).filter(
+        ({ x, y }) =>
+          Math.max(Math.abs(x - home.x), Math.abs(y - home.y)) <=
+          SPIDER_WANDER_TILES,
+      );
+      Object.assign(spider, steps[Math.floor(this.random() * steps.length)]);
+      home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
   }
 }
