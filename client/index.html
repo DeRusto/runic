@@ -72,6 +72,9 @@
       .pop.miss {
         color: #5aa9ff;
       }
+      .pop.heal {
+        color: #5fe36a;
+      }
       @keyframes pop {
         from {
           transform: translate(-50%, 0);
@@ -118,9 +121,12 @@
         grid-auto-rows: 36px;
         gap: 2px;
       }
-      #slots > div {
+      #slots > button {
         overflow: hidden;
+        padding: 0;
+        border: 0;
         background: #151b25;
+        color: inherit;
         font-size: 10px;
       }
       #stats {

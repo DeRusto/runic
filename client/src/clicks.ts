@@ -1,21 +1,26 @@
 import {
+  bushRefusal,
+  FORAGE_INTENT,
   TARGET_INTENT,
   TICK_MS,
   WALK_INTENT,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
+import { printChatLine } from "./bottomBar.ts";
+import type { showBushes } from "./bushes.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showSpiders } from "./spiders.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live Spider under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live Spider or bush under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
   spiderUnder: ReturnType<typeof showSpiders>,
+  bushUnder: ReturnType<typeof showBushes>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
   const raycaster = new THREE.Raycaster();
@@ -46,6 +51,18 @@ export function walkOnClick(
     if (spider) {
       showMarker(spider.tile.x, spider.tile.y);
       room.send(TARGET_INTENT, spider.id);
+      return;
+    }
+    const bush = bushUnder(raycaster);
+    const me = room.state.players.get(room.sessionId);
+    if (bush && me) {
+      const refusal = bushRefusal(bush.kind, bush.picksLeft(), me);
+      if (refusal) {
+        printChatLine(refusal);
+      } else {
+        showMarker(bush.x, bush.y);
+        room.send(FORAGE_INTENT, bush.id);
+      }
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;

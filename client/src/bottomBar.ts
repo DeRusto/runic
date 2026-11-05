@@ -1,5 +1,7 @@
 import {
   CHAT,
+  EAT_INTENT,
+  EMPTY_SLOT,
   INVENTORY_SLOTS,
   levelFor,
   levelProgress,
@@ -28,6 +30,15 @@ export function printChatLine(line: string) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
+let holdingPick = false;
+let showHeld = () => {};
+
+/** A pick's food and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
+export function revealPick() {
+  holdingPick = false;
+  showHeld();
+}
+
 /** Chat, inventory, skills and health, all read from our own player on each patch. */
 export function showBottomBar(
   room: WorldConnection,
@@ -46,8 +57,11 @@ export function showBottomBar(
     input.value = "";
   };
 
-  const slots = Array.from({ length: INVENTORY_SLOTS }, () => {
-    return document.createElement("div");
+  const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.onclick = () => room.send(EAT_INTENT, i);
+    return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
 
@@ -66,16 +80,29 @@ export function showBottomBar(
   const bar = document.getElementById("bar")!;
   bar.hidden = false;
 
+  // A room left mid-hold never reveals, and a rejoin comes back through here.
+  holdingPick = false;
+  let food: number | undefined;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
-    slots.forEach((slot, i) => (slot.textContent = me.inventory[i] ?? ""));
-    for (const skill of skills) {
-      const xp = me[skill.field];
-      skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
-      skill.bar.value = levelProgress(xp);
-      skill.bar.title = `${xp} XP`;
-    }
+    // Food, not XP: XP stops rising at the cap. Only a pick adds food.
+    const foodNow = me.inventory.filter((item) => item !== EMPTY_SLOT).length;
+    if (food !== undefined && foodNow > food) holdingPick = true;
+    food = foodNow;
+    showHeld = () => {
+      slots.forEach((slot, i) => {
+        slot.textContent = me.inventory[i] ?? "";
+        slot.disabled = !slot.textContent;
+      });
+      for (const skill of skills) {
+        const xp = me[skill.field];
+        skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
+        skill.bar.value = levelProgress(xp);
+        skill.bar.title = `${xp} XP`;
+      }
+    };
+    if (!holdingPick) showHeld();
   });
 }

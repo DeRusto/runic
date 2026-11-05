@@ -116,8 +116,22 @@ export class Figure {
     this.held = held;
   }
 
+  /** `once`, sped up if the clip wouldn't fit in `withinMs`. Returns how long it will take. */
+  onceWithin(name: string, withinMs: number) {
+    const ms = this.clips.get(name)!.duration * 1000;
+    const speed = Math.max(1, ms / withinMs);
+    this.once(name, speed);
+    return ms / speed;
+  }
+
   get playingOnce() {
     return this.shot !== undefined;
+  }
+
+  /** Walking, including a step the patch has brought but no frame has shown yet. */
+  get moving() {
+    const { tile, to } = this;
+    return this.running || tile.x !== to.x || tile.y !== to.z;
   }
 
   private endShot() {
