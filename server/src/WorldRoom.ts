@@ -1,6 +1,6 @@
 import { Room } from "@colyseus/core";
 import { schema, t } from "@colyseus/schema";
-import { TICK_DRIVER_MS } from "@runic/shared";
+import { parseRegion, REGION_GRID, TICK_DRIVER_MS } from "@runic/shared";
 import { accountForToken } from "./accounts.ts";
 import { tickStepper } from "./tickStepper.ts";
 
@@ -9,6 +9,7 @@ export const WorldState = schema({ tick: t.uint32().default(0) }, "WorldState");
 export class WorldRoom extends Room {
   autoDispose = false;
   state = new WorldState();
+  region = parseRegion(REGION_GRID);
 
   // Static, so a refused token fails at matchmaking, before any seat is reserved.
   static async onAuth(token: string) {

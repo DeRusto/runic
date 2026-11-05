@@ -18,3 +18,5 @@ export const REGEN_INTERVAL_TICKS = 20;
 export const BERRY_REGROW_TICKS = 50;
 export const HERB_REGROW_TICKS = 100;
 export const SAVE_INTERVAL_TICKS = 100;
+
+export * from "./region.ts";
