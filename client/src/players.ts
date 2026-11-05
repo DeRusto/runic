@@ -6,13 +6,15 @@ import { camera, focusOn, scene } from "./scene.ts";
 
 export type WorldConnection = Room<WorldRoom, WorldRoom["state"]>;
 
+const figures = new Map<string, Figure>();
+const overheads = new Map<string, Overhead>();
+export { figures as playerFigures, overheads as playerOverheads };
+
 /** Draws everyone at the tiles the server says. The camera follows our own. Returns how to show a line over someone's head. */
 export function showPlayers(
   room: WorldConnection,
   newFigure: Awaited<ReturnType<typeof loadCharacters>>,
 ) {
-  const figures = new Map<string, Figure>();
-  const overheads = new Map<string, Overhead>();
   const callbacks = Callbacks.get(room);
 
   callbacks.onAdd("players", (player, id) => {
@@ -29,11 +31,17 @@ export function showPlayers(
   });
 
   const frame = (now: number) => {
-    for (const figure of figures.values()) figure.update(now);
+    for (const [id, figure] of figures) {
+      const target = room.state.players.get(id)?.target;
+      figure.fightTile = target ? room.state.spiders.get(target) : undefined;
+      figure.update(now);
+    }
     const own = figures.get(room.sessionId)?.model.position;
     if (own) focusOn(own.x, own.z);
     camera.updateMatrixWorld();
     for (const [id, overhead] of overheads) {
+      const player = room.state.players.get(id);
+      if (player) overhead.showHealth(player.health, player.maxHealth);
       overhead.place(figures.get(id)!.model.position);
     }
     nextFrame = requestAnimationFrame(frame);
@@ -44,6 +52,8 @@ export function showPlayers(
     cancelAnimationFrame(nextFrame);
     for (const figure of figures.values()) scene.remove(figure.model);
     for (const overhead of overheads.values()) overhead.remove();
+    figures.clear();
+    overheads.clear();
   });
 
   return (id: string, text: string) => overheads.get(id)?.say(text);

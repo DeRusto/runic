@@ -9,14 +9,37 @@ const point = new THREE.Vector3();
 export class Overhead {
   private element = document.createElement("div");
   private said = document.createElement("div");
+  private bar = document.createElement("div");
+  private fill = document.createElement("i");
   private clearSaid?: ReturnType<typeof setTimeout>;
+  /** Blows the server has decided but the clips haven't reached yet, so the bar doesn't show them. */
+  pendingDamage = 0;
 
   constructor(username: string) {
     const name = document.createElement("div");
     name.textContent = username;
     this.said.className = "said";
-    this.element.append(this.said, name);
+    this.bar.className = "bar";
+    this.bar.hidden = true;
+    this.bar.append(this.fill);
+    this.element.append(this.said, this.bar, name);
     document.getElementById("overheads")!.append(this.element);
+  }
+
+  /** Call once a frame. The bar only shows below full health, and not once at 0. */
+  showHealth(health: number, max: number) {
+    const shown = health + this.pendingDamage;
+    this.bar.hidden = shown >= max || shown <= 0;
+    this.fill.style.width = `${(shown / max) * 100}%`;
+  }
+
+  /** A number that floats up from here and fades; its look comes from `kind`'s CSS class. */
+  pop(text: string, kind: string) {
+    const number = document.createElement("div");
+    number.className = `pop ${kind}`;
+    number.textContent = text;
+    number.onanimationend = () => number.remove();
+    this.element.append(number);
   }
 
   /** Other players' words, so only ever textContent, never HTML. */

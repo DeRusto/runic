@@ -10,11 +10,26 @@ const SLIDE_MS = WALK_TICKS_PER_TILE * TICK_MS;
 // A little past the slide, so a slightly late patch for the next step doesn't flicker to Idle_A mid-walk.
 const RUN_HOLD_MS = SLIDE_MS + 60;
 
-const PLAYER_GAIT = { idle: "Idle_A", move: "Running_A", moveSpeed: 2 };
+// A step starting this long after a one-shot means walking away from it, not arriving with it.
+const SAME_MOMENT_MS = 100;
+const FLASH_MS = 140;
+const NUDGE = 0.18;
+const NUDGE_DECAY = 9;
+const SINK_SPEED = 0.5;
+const SINK_DEPTH = 1;
+const GROW_SPEED = 2;
+
+const PLAYER_GAIT = {
+  idle: "Idle_A",
+  move: "Running_A",
+  moveSpeed: 2,
+  fight: "Melee_Unarmed_Idle",
+};
 export const SPIDER_GAIT = {
   idle: "Spider_Idle",
   move: "Spider_Walk",
   moveSpeed: 2.9,
+  fight: "Spider_Idle",
 };
 const SPIDER_WIDTH = 1.1;
 
@@ -45,6 +60,18 @@ export class Figure {
   private lastFrame = 0;
   private running = false;
   private current?: THREE.AnimationAction;
+  private base: string;
+  private shot?: THREE.AnimationAction;
+  private shotFrame = 0;
+  private held = false;
+  private sinks = false;
+  private sinking = false;
+  private sunk = 0;
+  private growth = 1;
+  private fullScale: number;
+  private kick = new THREE.Vector3();
+  /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
+  fightTile?: Tile;
 
   constructor(
     private tile: Tile,
@@ -55,20 +82,97 @@ export class Figure {
     model.position.set(tile.x, model.position.y, tile.y);
     this.from = model.position.clone();
     this.to = model.position.clone();
+    this.fullScale = model.scale.x;
     this.mixer = new THREE.AnimationMixer(model);
+    this.base = gait.idle;
     this.play(gait.idle);
+    this.mixer.addEventListener("finished", ({ action }) => {
+      if (action !== this.shot) return;
+      if (this.held) this.sinking = this.sinks;
+      else this.endShot();
+    });
   }
 
-  play(name: string, speed = 1) {
+  play(
+    name: string,
+    speed = 1,
+    loop: THREE.AnimationActionLoopStyles = THREE.LoopRepeat,
+  ) {
     const next = this.mixer.clipAction(this.clips.get(name)!);
-    next.reset().setEffectiveTimeScale(speed).play();
-    if (this.current) next.crossFadeFrom(this.current, CROSSFADE_S);
+    next.reset().setEffectiveTimeScale(speed).setLoop(loop, Infinity).play();
+    // Clamped, so a finished one-shot holds its last pose while it fades out.
+    next.clampWhenFinished = loop === THREE.LoopOnce;
+    if (this.current && this.current !== next) {
+      next.crossFadeFrom(this.current, CROSSFADE_S);
+    }
     this.current = next;
+  }
+
+  /** Plays a clip once over the gait's clips, then goes back to them, or stays on it with `held`. */
+  once(name: string, speed = 1, held = false) {
+    this.play(name, speed, THREE.LoopOnce);
+    this.shot = this.current;
+    this.shotFrame = this.lastFrame;
+    this.held = held;
+  }
+
+  get playingOnce() {
+    return this.shot !== undefined;
+  }
+
+  private endShot() {
+    this.shot = undefined;
+    this.playBase();
+  }
+
+  private playBase() {
+    this.play(
+      this.base,
+      this.base === this.gait.move ? this.gait.moveSpeed : 1,
+    );
+  }
+
+  /** Holds a death clip, then sinks out of sight. */
+  dieAndSink(clip: string) {
+    this.once(clip, 1, true);
+    this.sinks = true;
+  }
+
+  /** Back from the dead on its tile, wherever it died, scaling up. */
+  reappear() {
+    const { to, tile } = this;
+    to.set(tile.x, to.y, tile.y);
+    this.from.copy(to);
+    this.slideStart = -Infinity;
+    this.shot = undefined;
+    this.held = this.sinks = this.sinking = false;
+    this.sunk = 0;
+    this.growth = 0;
+    this.model.visible = true;
+    this.playBase();
+  }
+
+  /** A red flash. The materials must be this figure's own. */
+  flash() {
+    const paint = (hex: number) =>
+      this.model.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.material.emissive?.setHex(hex);
+      });
+    paint(0xb30d0d);
+    setTimeout(() => paint(0), FLASH_MS);
+  }
+
+  /** A small shove away from whoever hit it, gone in a moment. */
+  nudgeFrom({ x, y }: Tile) {
+    this.kick
+      .set(this.tile.x - x, 0, this.tile.y - y)
+      .normalize()
+      .multiplyScalar(NUDGE);
   }
 
   /** Call once a frame, with the frame's timestamp in ms. */
   update(now: number) {
-    const { tile, model, from, to } = this;
+    const { tile, model, from, to, fightTile } = this;
     const dx = tile.x - to.x;
     const dz = tile.y - to.z;
     if (dx || dz) {
@@ -76,6 +180,12 @@ export class Figure {
       to.set(tile.x, to.y, tile.y);
       this.slideStart = now;
       this.yaw = Math.atan2(dx, dz);
+    } else if (
+      fightTile &&
+      now - this.slideStart >= SLIDE_MS &&
+      (fightTile.x !== tile.x || fightTile.y !== tile.y)
+    ) {
+      this.yaw = Math.atan2(fightTile.x - tile.x, fightTile.y - tile.y);
     }
     model.position.lerpVectors(
       from,
@@ -84,11 +194,21 @@ export class Figure {
     );
 
     const running = now - this.slideStart < RUN_HOLD_MS;
-    if (running !== this.running) {
-      this.running = running;
-      if (running) this.play(this.gait.move, this.gait.moveSpeed);
-      else this.play(this.gait.idle);
-    }
+    const walkingOff =
+      running &&
+      !this.running &&
+      !this.held &&
+      now - this.shotFrame > SAME_MOMENT_MS;
+    this.running = running;
+    const base = running
+      ? this.gait.move
+      : fightTile
+        ? this.gait.fight
+        : this.gait.idle;
+    const baseChanged = base !== this.base;
+    this.base = base;
+    if (this.shot && walkingOff) this.endShot();
+    else if (baseChanged && !this.shot) this.playBase();
 
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
@@ -97,6 +217,18 @@ export class Figure {
     const turn = this.yaw - model.rotation.y;
     model.rotation.y +=
       Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * TURN_RATE);
+
+    this.kick.multiplyScalar(Math.max(0, 1 - dt * NUDGE_DECAY));
+    model.position.add(this.kick);
+    if (this.sinking) {
+      this.sunk += dt * SINK_SPEED;
+      model.position.y -= this.sunk;
+      if (this.sunk > SINK_DEPTH) model.visible = false;
+    }
+    if (this.growth < 1) {
+      this.growth = Math.min(1, this.growth + dt * GROW_SPEED);
+      model.scale.setScalar(this.fullScale * this.growth);
+    }
   }
 }
 
@@ -140,6 +272,12 @@ export async function loadSpiders() {
   );
   fitSpider(scene);
   const clips = new Map(animations.map((c) => [c.name, c]));
-  return (tile: Tile) =>
-    new Figure(tile, cloneSkinned(scene), clips, SPIDER_GAIT);
+  return (tile: Tile) => {
+    const model = cloneSkinned(scene);
+    // Its own materials, so a hit's red flash shows on this Spider alone.
+    model.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.material = o.material.clone();
+    });
+    return new Figure(tile, model, clips, SPIDER_GAIT);
+  };
 }

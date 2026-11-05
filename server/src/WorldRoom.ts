@@ -1,6 +1,7 @@
 import { CloseCode, Room, type Client } from "@colyseus/core";
 import {
   CHAT,
+  EVENTS,
   LOGOUT_INTENT,
   MAX_CHAT_LENGTH,
   parseRegion,
@@ -59,6 +60,8 @@ export class WorldRoom extends Room {
         if (this.sim.state.tick % SAVE_INTERVAL_TICKS === 0)
           this.saveEveryone();
         this.broadcastPatch();
+        const events = this.sim.events.splice(0);
+        if (events.length) this.broadcast(EVENTS, events);
       }),
       TICK_DRIVER_MS,
     );

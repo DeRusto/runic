@@ -9,6 +9,7 @@ import {
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { showFights } from "./fights.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { rejoin, servedVersion } from "./reconnect.ts";
@@ -35,6 +36,7 @@ function enterWorld(room: WorldConnection) {
   const sayOverhead = showPlayers(room, newFigure);
   walkOnClick(room, tiles, showSpiders(room, newSpider));
   showBottomBar(room, sayOverhead);
+  showFights(room);
 
   logout.hidden = false;
   logout.onclick = () => room.send(LOGOUT_INTENT);
