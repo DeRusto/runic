@@ -2,19 +2,24 @@ import { Client } from "@colyseus/sdk";
 import {
   parseRegion,
   REGION_GRID,
-  TILE_KINDS,
+  respawnTile,
   WORLD_ROOM,
 } from "@runic/shared";
+import type { WorldRoom } from "../../server/src/WorldRoom.ts";
+import { walkOnClick } from "./clicks.ts";
+import { showPlayers } from "./players.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
 
 const tiles = parseRegion(REGION_GRID);
-const respawnY = tiles.findIndex((row) => row.includes(TILE_KINDS.R));
-focusOn(tiles[respawnY]!.indexOf(TILE_KINDS.R), respawnY);
+const respawn = respawnTile(tiles);
+focusOn(respawn.x, respawn.y);
 await addRegionMeshes(scene, tiles);
 
 const ticks = document.getElementById("ticks")!;
-const room = await new Client(location.origin).join(WORLD_ROOM);
+const room = await new Client(location.origin).join<WorldRoom>(WORLD_ROOM);
+showPlayers(room);
+walkOnClick(room, tiles);
 
 let last = performance.now();
 room.onStateChange((state: { tick: number }) => {

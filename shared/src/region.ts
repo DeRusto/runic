@@ -1,6 +1,7 @@
 export type GroundKind = "grass" | "thicket" | "path";
 export type PropKind = "tree" | "rock" | "tuft" | "berryBush" | "herbBush";
 export type TileKind = { ground: GroundKind; prop?: PropKind; blocks: boolean };
+export type Tile = { x: number; y: number };
 
 /** What each character of the text grid means (spec §3). Look a tile up here to ask what it is. */
 export const TILE_KINDS = {
@@ -29,6 +30,11 @@ export function parseRegion(grid: string): TileKind[][] {
         return kind;
       }),
     );
+}
+
+export function respawnTile(tiles: TileKind[][]): Tile {
+  const y = tiles.findIndex((row) => row.includes(TILE_KINDS.R));
+  return { x: tiles[y]!.indexOf(TILE_KINDS.R), y };
 }
 
 /** A stable 32-bit hash of a tile, for its colour, model variant and rotation. */

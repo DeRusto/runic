@@ -1,21 +1,30 @@
-import { Room } from "@colyseus/core";
-import { schema, t } from "@colyseus/schema";
-import { parseRegion, REGION_GRID, TICK_DRIVER_MS } from "@runic/shared";
+import { Room, type Client } from "@colyseus/core";
+import {
+  parseRegion,
+  REGION_GRID,
+  TICK_DRIVER_MS,
+  WALK_INTENT,
+  type Tile,
+} from "@runic/shared";
+import { Simulation } from "./simulation.ts";
 import { tickStepper } from "./tickStepper.ts";
-
-export const WorldState = schema({ tick: t.uint32().default(0) }, "WorldState");
 
 export class WorldRoom extends Room {
   autoDispose = false;
-  state = new WorldState();
-  region = parseRegion(REGION_GRID);
+  sim = new Simulation(parseRegion(REGION_GRID), Math.random);
+  state = this.sim.state;
+
+  messages = {
+    [WALK_INTENT]: (client: Client, to: Tile) =>
+      this.sim.queueWalk(client.sessionId, to),
+  };
 
   onCreate() {
     // Not setFixedTimestep(step, 1000/300): its 300 ms timer drifts against its own
     // accumulator and runs two ticks back to back every ~30 ticks (see #17).
     this.setTimestep(
       tickStepper(() => {
-        this.state.tick++;
+        this.sim.tick();
         this.broadcastPatch();
       }),
       TICK_DRIVER_MS,
@@ -23,5 +32,13 @@ export class WorldRoom extends Room {
     // After the timestep, never as a class field: with no step set yet, null starts
     // a 16 ms clock.tick() loop that eats the step's deltaTime and starves it.
     this.patchRate = null;
+  }
+
+  onJoin(client: Client) {
+    this.sim.addPlayer(client.sessionId);
+  }
+
+  onLeave(client: Client) {
+    this.sim.removePlayer(client.sessionId);
   }
 }
