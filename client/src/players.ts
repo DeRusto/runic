@@ -1,6 +1,10 @@
 import { Callbacks, type Room } from "@colyseus/sdk";
 import type { WorldRoom } from "../../server/src/WorldRoom.ts";
-import type { Figure, loadCharacters } from "./characters.ts";
+import {
+  addSeeThroughOutline,
+  type Figure,
+  type loadCharacters,
+} from "./characters.ts";
 import { Overhead } from "./overhead.ts";
 import { camera, focusOn, scene } from "./scene.ts";
 
@@ -19,6 +23,7 @@ export function showPlayers(
 
   callbacks.onAdd("players", (player, id) => {
     const figure = newFigure(player, player.username);
+    addSeeThroughOutline(figure.model);
     scene.add(figure.model);
     if (player.dead) figure.alreadyDown("Death_A");
     figures.set(id, figure);

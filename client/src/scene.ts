@@ -7,7 +7,10 @@ const SUN_OFFSET = new THREE.Vector3(-6, 12, 4);
 // Wide enough to cover the view at the furthest zoom on a 16:9 screen.
 const SHADOW_REACH = 24;
 
-export const renderer = new THREE.WebGLRenderer({ antialias: true });
+export const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  stencil: true, // addSeeThroughOutline tells a character's own pixels by it
+});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.body.prepend(renderer.domElement);

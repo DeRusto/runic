@@ -281,6 +281,60 @@ function fit(model: THREE.Object3D, scaleFor: (size: THREE.Vector3) => number) {
   model.position.y = -box.min.y * scale;
 }
 
+const VISIBLE_BODY = 1;
+
+// Only where something is in front (GreaterDepth), brightest at the model's edges, each pixel once.
+const seeThroughMaterial = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  depthFunc: THREE.GreaterDepth,
+  stencilWrite: true,
+  stencilRef: VISIBLE_BODY,
+  stencilFunc: THREE.NotEqualStencilFunc,
+  stencilZPass: THREE.ReplaceStencilOp,
+  vertexShader: /* glsl */ `
+    #include <common>
+    #include <skinning_pars_vertex>
+    varying vec3 viewNormal;
+    void main() {
+      #include <beginnormal_vertex>
+      #include <skinbase_vertex>
+      #include <skinnormal_vertex>
+      viewNormal = normalize(normalMatrix * objectNormal);
+      #include <begin_vertex>
+      #include <skinning_vertex>
+      #include <project_vertex>
+    }`,
+  fragmentShader: /* glsl */ `
+    varying vec3 viewNormal;
+    void main() {
+      // The camera is orthographic, so it looks down view space's z everywhere.
+      float edge = 1.0 - abs(normalize(viewNormal).z);
+      gl_FragColor = vec4(vec3(1.0), 0.08 + 0.6 * edge * edge);
+    }`,
+});
+
+/** Shows a soft outline of the model wherever something hides it, by a second draw of each of its meshes. */
+export function addSeeThroughOutline(model: THREE.Object3D) {
+  const meshes: THREE.Mesh[] = [];
+  model.traverse((o) => {
+    if (o instanceof THREE.Mesh) meshes.push(o);
+  });
+  for (const mesh of meshes) {
+    Object.assign(mesh.material, {
+      stencilWrite: true,
+      stencilRef: VISIBLE_BODY,
+      stencilZPass: THREE.ReplaceStencilOp,
+    });
+    // After the scenery, or it marks pixels a tree then paints over.
+    mesh.renderOrder = 1;
+    const outline = mesh.clone(false);
+    outline.material = seeThroughMaterial;
+    outline.castShadow = false;
+    mesh.parent!.add(outline);
+  }
+}
+
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
   const loader = new GLTFLoader();

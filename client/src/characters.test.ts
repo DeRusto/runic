@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { describe, expect, it, test, vi } from "vitest";
-import { characterFor, Figure, fitSpider, SPIDER_GAIT } from "./characters.ts";
+import {
+  addSeeThroughOutline,
+  characterFor,
+  Figure,
+  fitSpider,
+  SPIDER_GAIT,
+} from "./characters.ts";
 
 const PICK_UP_S = 1.296;
 const CLIPS = new Map(
@@ -28,6 +34,34 @@ function clipState(figure: Figure, name: string) {
     speed: action.getEffectiveTimeScale(),
   };
 }
+
+test("a see-through outline redraws each mesh beside it, skeleton included, with no second shadow", () => {
+  const bone = new THREE.Bone();
+  const skeleton = new THREE.Skeleton([bone]);
+  const body = new THREE.SkinnedMesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshStandardMaterial(),
+  );
+  body.castShadow = true;
+  body.bind(skeleton);
+  const sword = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshStandardMaterial(),
+  );
+  const model = new THREE.Group().add(body, bone);
+  bone.add(sword);
+
+  addSeeThroughOutline(model);
+
+  const outline = model.children.find(
+    (o) => o !== body && o instanceof THREE.SkinnedMesh,
+  ) as THREE.SkinnedMesh;
+  expect(outline.skeleton).toBe(skeleton);
+  expect(outline.castShadow).toBe(false);
+  expect(bone.children).toHaveLength(2);
+  expect(body.material.stencilWrite).toBe(true);
+  expect(outline.material).not.toBe(body.material);
+});
 
 describe("a player already dead when first seen", () => {
   const deathClip = (figure: Figure) =>
