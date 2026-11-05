@@ -139,7 +139,7 @@
         min-width: 0;
       }
       #skills {
-        grid-row: span 2;
+        grid-row: span 3;
         display: grid;
         align-content: start;
         gap: 2px;
@@ -151,6 +151,21 @@
       }
       #skills progress {
         width: 100%;
+      }
+      #turn {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 4px;
+        text-align: center;
+      }
+      #turn button {
+        width: 100%;
+        padding: 0;
+        font-size: 16px;
+      }
+      #turn kbd {
+        font: inherit;
+        opacity: 0.7;
       }
       #logout {
         align-self: end;
@@ -181,6 +196,26 @@
       <div id="player-panel">
         <div id="skills"></div>
         <div id="health"></div>
+        <div id="turn">
+          <button
+            id="turn-left"
+            type="button"
+            aria-label="Turn view left"
+            aria-keyshortcuts="Q"
+          >
+            ⟲
+          </button>
+          <button
+            id="turn-right"
+            type="button"
+            aria-label="Turn view right"
+            aria-keyshortcuts="E"
+          >
+            ⟳
+          </button>
+          <kbd>Q</kbd>
+          <kbd>E</kbd>
+        </div>
         <button id="logout" type="button">Log out</button>
       </div>
     </section>

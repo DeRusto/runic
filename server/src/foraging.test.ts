@@ -180,7 +180,7 @@ test("a click on a run-out bush is ignored", () => {
   expect(attemptTicks(1)).toEqual([]);
 });
 
-test("a bush regrows in full 50 ticks after running out", () => {
+test("a bush regrows in full 84 ticks after running out", () => {
   addAt("b", xpForLevel(99));
   sim.queueForage("b", BERRY);
   for (let i = 0; i < 4; i++) {
@@ -189,13 +189,13 @@ test("a bush regrows in full 50 ticks after running out", () => {
   }
   runTicks(1);
   expect(picksLeft(BERRY)).toBe(0);
-  runTicks(49);
+  runTicks(83);
   expect(picksLeft(BERRY)).toBe(0);
   runTicks(1);
   expect(picksLeft(BERRY)).toBe(5);
 });
 
-test("a herb bush gives 3 picks and regrows in 100 ticks", () => {
+test("a herb bush gives 3 picks and regrows in 150 ticks", () => {
   addAt("b", xpForLevel(99), 5, 2);
   sim.queueForage("b", HERB);
   for (let i = 0; i < 2; i++) {
@@ -204,7 +204,7 @@ test("a herb bush gives 3 picks and regrows in 100 ticks", () => {
   }
   runTicks(1);
   expect(picksLeft(HERB)).toBe(0);
-  runTicks(99);
+  runTicks(149);
   expect(picksLeft(HERB)).toBe(0);
   runTicks(1);
   expect(picksLeft(HERB)).toBe(3);

@@ -736,12 +736,12 @@ describe("a dead Spider", () => {
     expect(spider(s)).toMatchObject({ x: 3, y: 2 });
   });
 
-  test("returns 100 ticks later at its home with full health", () => {
+  test("returns 150 ticks later at its home with full health", () => {
     const s = killed();
     Object.assign(spider(s), { x: 3, y: 2 });
-    expect(run(s, 99)).toEqual([]);
+    expect(run(s, 149)).toEqual([]);
     expect(run(s, 1)).toEqual([
-      { type: "spiderReturned", spider: "0", tick: 101 },
+      { type: "spiderReturned", spider: "0", tick: 151 },
     ]);
     expect(spider(s)).toMatchObject({
       x: 2,
@@ -767,9 +767,9 @@ describe("a dead Spider", () => {
 
   test("can be fought again once it's back", () => {
     const s = killed();
-    run(s, 100);
+    run(s, 150);
     s.queueTarget("a", "0");
-    expect(swingTicks(run(s, 1), "playerSwing")).toEqual([102]);
+    expect(swingTicks(run(s, 1), "playerSwing")).toEqual([152]);
   });
 });
 

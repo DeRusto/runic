@@ -4,8 +4,8 @@ import { levelFor } from "./skills.ts";
 
 /** Spec §5. Picks and regrowth are per bush; `level` is the Foraging level needed. */
 export const BUSHES = {
-  berryBush: { level: 1, picks: 5, regrowTicks: 50, xp: 10, food: "berry" },
-  herbBush: { level: 10, picks: 3, regrowTicks: 100, xp: 25, food: "herb" },
+  berryBush: { level: 1, picks: 5, regrowTicks: 84, xp: 10, food: "berry" },
+  herbBush: { level: 10, picks: 3, regrowTicks: 150, xp: 25, food: "herb" },
 } as const;
 export type BushKind = keyof typeof BUSHES;
 /** Health an item heals when eaten; anything else isn't food. */

@@ -73,7 +73,7 @@ Out of scope: more than one server process; quests, trading, banking, economy; m
 - Several players can hit one Spider. Each gets Combat experience for their own damage. The Spider targets whoever swung at it most recently, and keeps its own swing rhythm when the target changes.
 - **Leash:** when the target is more than 4 tiles from the fight's start tile, or dead, or gone, the Spider gives up **[D3]**. It walks home at a tile per 2 ticks and returns to full health on arrival. It can be attacked on the way, which starts a new fight **[D3]**.
 - Fighting ends for a player when the target dies or they click something else. Nothing retargets by itself.
-- A dead Spider disappears and returns 100 ticks later at its home with full health. It drops nothing.
+- A dead Spider disappears and returns 150 ticks later at its home with full health. It drops nothing.
 
 ### Wandering
 
@@ -142,13 +142,13 @@ An idle Spider has a 1-in-10 chance each tick to step to an adjacent walkable ti
 |---|---|---|
 | Foraging needed | 1 | 10 |
 | Picks before running out | 5 | 3 |
-| Regrows in full, after running out | 50 ticks | 100 ticks |
+| Regrows in full, after running out | 84 ticks | 150 ticks |
 | Heals | 2 | 5 |
 
 - Success chance: 50% + 2% per level above the bush's requirement, capped at 100%.
 - Attempt interval by Foraging level: 8 ticks; 7 at 15; 6 at 30; 5 at 45; 4 at 60.
 
-**Everything else:** 8 Spiders, 12 berry bushes, 6 herb bushes; walking 2 ticks per tile; leash 4 tiles; wander within 5 tiles of home; Spider respawn 100 ticks; player dead 5 ticks; combat lock 34 ticks; regeneration every 20 ticks; save every 100 ticks.
+**Everything else:** 8 Spiders, 12 berry bushes, 6 herb bushes; walking 2 ticks per tile; leash 4 tiles; wander within 5 tiles of home; Spider respawn 150 ticks; player dead 5 ticks; combat lock 34 ticks; regeneration every 20 ticks; save every 100 ticks.
 
 All of these live in `shared/` as named constants, apart from the counts (region test only).
 
@@ -204,7 +204,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 **Stack:** three.js, bundled by Vite, with `@colyseus/sdk`. UI is HTML over the canvas (ADR 0003).
 
 **Camera and look**
-- Orthographic, looking down the (1,1,1) diagonal. It follows the player, never rotates, and the wheel zooms from 0.6× to 2.5×. About 12 tiles show top to bottom at default zoom.
+- Orthographic, starting down the (1,1,1) diagonal. It follows the player and the wheel zooms from 0.6× to 2.5×. Q and E or the bottom bar's buttons turn it 90° in about 0.3 s, so it only ever rests at 4 angles, and each load starts at the first. About 12 tiles show top to bottom at default zoom.
 - Low-poly and flat-shaded, with a hemisphere light plus a sun that casts shadows.
 - Ground is one slab per tile, drawn with instancing along with the props.
 - A player is about 1.15 units tall. A Spider is about 1.1 units wide.
@@ -214,7 +214,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 **Screens** **[D14]**
 - Login and register form: username, password, plus the invite code when registering. The token is kept in `localStorage`, so returning friends skip the form until it expires.
 - A plain "Loading…" until models are ready.
-- In game, a full-width bottom bar: chat on the left, the 30 slots (10×3) in the middle, skill bars with level and progress on the right, plus a health readout and a logout button.
+- In game, a full-width bottom bar: chat on the left, the 30 slots (10×3) in the middle, skill bars with level and progress on the right, plus a health readout, view-turning buttons with their Q and E keys listed below them, and a logout button.
 - Over each player: username, health bar when below full health **[D14]**, chat text. Over each Spider: health bar when below full health.
 
 **Clips**
@@ -276,7 +276,7 @@ Each build ticket has its own tests. The slice as a whole is done when, on `runi
 2. Two friends in different places see each other walk and chat.
 3. A click on an unreachable tile walks to the nearest reachable one. Clicking the top of a bush or a Spider's back targets it.
 4. A player picks berries to 30 slots and is then refused. They eat to free a slot.
-5. A player kills a Spider, seeing every clip, number and health bar in §7, and it returns 30 s later.
+5. A player kills a Spider, seeing every clip, number and health bar in §7, and it returns 45 s later.
 6. Walking away ends the fight at the leash, and the Spider walks home and recovers.
 7. A player dies, holds for 1.5 s, respawns in the village with everything kept, and can't log out during a combat lock.
 8. Herb bushes refuse a player below Foraging 10 and accept one at 10.
@@ -322,6 +322,8 @@ Each is a thin working slice that builds on those above it. They are now GitHub 
 | Database file next to the server | Persistent volume | [#15](https://github.com/DeRusto/runic/issues/15) |
 | "Its part of the field" | Within 5 tiles of home | [#14](https://github.com/DeRusto/runic/issues/14) |
 | Regeneration of 1% of max health | 5% | Review (§13) |
+| Spider returns in 100 ticks; bushes regrow in 50 and 100 | 150; 84 and 150, so a cleared area means a short wait | First playtest |
+| Camera never turns | Turns between 4 angles | First playtest; ADR 0003 |
 
 ## 13. Rulings from review
 
