@@ -3,24 +3,37 @@ import {
   BUSHES,
   bushId,
   bushRefusal,
+  COMBAT_LEVELS_PER_DAMAGE,
+  DEFENSE_XP_PER_DAMAGE_TAKEN,
+  DEFENSE_XP_PER_SPIDER_SWING,
   EMPTY_SLOT,
   INVENTORY_SLOTS,
   levelFor,
   MAX_XP,
   pickChance,
   pickIntervalTicks,
+  PLAYER_BASE_DAMAGE,
+  PLAYER_HIT_CHANCE,
+  PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
   respawnTile,
+  SPIDER_FIRST_SWING_DELAY_TICKS,
   SPIDER_HEALTH,
+  SPIDER_HIT_CHANCE,
+  SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL,
+  SPIDER_MAX_DAMAGE,
+  SPIDER_RESPAWN_TICKS,
   SPIDER_WANDER_CHANCE,
   SPIDER_WANDER_TILES,
+  SWING_INTERVAL_TICKS,
   TILE_KINDS,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
   WALK_TICKS_PER_TILE,
   type BushKind,
-  type GameEvent,
+  XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
+  type WorldEvent,
 } from "@runic/shared";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
@@ -37,6 +50,8 @@ export const Player = schema(
     health: t.uint8(),
     maxHealth: t.uint8(),
     inventory: t.array("string"),
+    /** The id of the Spider this player is after, or "". */
+    target: t.string().default(""),
   },
   "Player",
 );
@@ -77,22 +92,26 @@ export class Simulation {
     {
       path: Tile[];
       nextStepTick: number;
+      nextSwingTick: number;
       spider?: string;
       bush?: string;
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
     }
   >();
-  private spiderHomes = new Map<string, Tile & { nextStepTick: number }>();
+  private spiderHomes = new Map<
+    string,
+    Tile & { nextStepTick: number; nextSwingTick: number; returnTick: number }
+  >();
   private bushSites = new Map<
     string,
     Tile & { kind: BushKind; regrowTick?: number }
   >();
-  /** This tick's events, for the room to broadcast after the patch. */
-  readonly events: GameEvent[] = [];
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
+  /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
+  readonly events: WorldEvent[] = [];
 
   constructor(
     private tiles: TileKind[][],
@@ -110,7 +129,13 @@ export class Simulation {
         }
         if (kind !== TILE_KINDS.S) return;
         const id = String(this.spiderHomes.size);
-        this.spiderHomes.set(id, { x, y, nextStepTick: 0 });
+        this.spiderHomes.set(id, {
+          x,
+          y,
+          nextStepTick: 0,
+          nextSwingTick: 0,
+          returnTick: 0,
+        });
         this.state.spiders.set(id, Object.assign(new Spider(), { x, y }));
       }),
     );
@@ -125,7 +150,12 @@ export class Simulation {
     });
     player.inventory = new ArraySchema(...inventory);
     this.state.players.set(id, player);
-    this.walks.set(id, { path: [], nextStepTick: 0, nextPickTick: 0 });
+    this.walks.set(id, {
+      path: [],
+      nextStepTick: 0,
+      nextSwingTick: 0,
+      nextPickTick: 0,
+    });
   }
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
@@ -182,9 +212,11 @@ export class Simulation {
     this.queuedActions.set(id, { to: { x: to.x, y: to.y } });
   }
 
-  /** `spider` comes straight off the network, so anything but a Spider's id is ignored. */
+  /** `spider` comes straight off the network, so anything but a live Spider's id is ignored. */
   queueTarget(id: string, spider: string) {
-    if (!this.state.players.has(id) || !this.state.spiders.has(spider)) return;
+    if (!this.state.players.has(id)) return;
+    const target = this.state.spiders.get(spider);
+    if (!target || target.state === "dead") return;
     this.queuedActions.set(id, { spider });
   }
 
@@ -204,8 +236,10 @@ export class Simulation {
     this.applyIntents();
     this.advancePlayers();
     this.advancePicks();
+    this.advancePlayerSwings();
     this.advanceSpiders();
     this.advanceBushes();
+    this.advanceSpiderReturns();
   }
 
   private applyIntents() {
@@ -269,7 +303,7 @@ export class Simulation {
       const level = levelFor(player.foragingXp);
       walk.nextPickTick = this.state.tick + pickIntervalTicks(level);
       const success = this.random() < pickChance(site.kind, level);
-      this.events.push({ type: "pick", id, success });
+      this.events.push({ type: "pick", player: id, success });
       if (!success) continue;
       const { xp, food, regrowTicks } = BUSHES[site.kind];
       player.foragingXp = Math.min(player.foragingXp + xp, MAX_XP);
@@ -288,9 +322,149 @@ export class Simulation {
     }
   }
 
+  /** After the moves, so the first swing lands on the tick the player arrives. */
+  private advancePlayerSwings() {
+    for (const [id, walk] of this.walks) {
+      if (walk.spider === undefined) continue;
+      const player = this.state.players.get(id)!;
+      const spider = this.state.spiders.get(walk.spider)!;
+      if (this.state.tick < walk.nextSwingTick) continue;
+      if (!this.nextTo(player, spider)) continue;
+      walk.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
+      this.playerSwing(id, player, walk.spider, spider);
+    }
+    for (const [id, walk] of this.walks) {
+      this.state.players.get(id)!.target = walk.spider ?? "";
+    }
+  }
+
+  /** Next to is one legal step away or on the same tile (spec D1). */
+  private nextTo(a: Tile, b: Tile) {
+    return (
+      (a.x === b.x && a.y === b.y) ||
+      legalSteps(this.tiles, a).some(({ x, y }) => x === b.x && y === b.y)
+    );
+  }
+
+  /** The damage of one swing, 0 for a miss. */
+  private rollDamage(hitChance: number, maxDamage: number) {
+    return this.random() < hitChance
+      ? 1 + Math.floor(this.random() * maxDamage)
+      : 0;
+  }
+
+  private playerSwing(
+    id: string,
+    player: InstanceType<typeof Player>,
+    spiderId: string,
+    spider: InstanceType<typeof Spider>,
+  ) {
+    const combat = levelFor(player.combatXp);
+    const damage = Math.min(
+      this.rollDamage(
+        PLAYER_HIT_CHANCE + PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1),
+        PLAYER_BASE_DAMAGE + Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
+      ),
+      spider.health, // No XP for overkill.
+    );
+    const xp = damage * XP_PER_DAMAGE_DEALT;
+    player.combatXp = Math.min(player.combatXp + xp, MAX_XP);
+    player.hitpointsXp = Math.min(player.hitpointsXp + xp, MAX_XP);
+    player.maxHealth = levelFor(player.hitpointsXp);
+    this.events.push({
+      type: "playerSwing",
+      player: id,
+      spider: spiderId,
+      damage,
+    });
+
+    const home = this.spiderHomes.get(spiderId)!;
+    if (spider.state !== "fighting") {
+      spider.state = "fighting";
+      // Its timer outlives a fight, like the player's (spec D2).
+      home.nextSwingTick = Math.max(
+        home.nextSwingTick,
+        this.state.tick + SPIDER_FIRST_SWING_DELAY_TICKS,
+      );
+    }
+    spider.target = id;
+    spider.health -= damage;
+    if (spider.health > 0) return;
+
+    spider.state = "dead";
+    spider.target = "";
+    home.returnTick = this.state.tick + SPIDER_RESPAWN_TICKS;
+    this.events.push({ type: "spiderDied", spider: spiderId });
+    for (const walk of this.walks.values()) {
+      if (walk.spider !== spiderId) continue;
+      walk.spider = undefined;
+      walk.path = [];
+    }
+  }
+
+  private spiderSwing(
+    id: string,
+    spider: InstanceType<typeof Spider>,
+    home: { nextSwingTick: number },
+  ) {
+    const player = this.state.players.get(spider.target);
+    if (!player) {
+      // shortcut: a Spider with no target just idles where it stands, until the leash (#27) walks it home.
+      spider.state = "idle";
+      spider.target = "";
+      return;
+    }
+    if (this.state.tick < home.nextSwingTick || !this.nextTo(spider, player)) {
+      return;
+    }
+    home.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
+    const defense = levelFor(player.defenseXp);
+    // shortcut: a hit can't take the last health point, so nobody stands or saves at 0, until player death (#29) lets it.
+    const damage = Math.min(
+      this.rollDamage(
+        SPIDER_HIT_CHANCE + SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL * (defense - 1),
+        SPIDER_MAX_DAMAGE,
+      ),
+      player.health - 1,
+    );
+    player.health -= damage;
+    player.defenseXp = Math.min(
+      player.defenseXp +
+        DEFENSE_XP_PER_SPIDER_SWING +
+        damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
+      MAX_XP,
+    );
+    this.events.push({
+      type: "spiderSwing",
+      spider: id,
+      player: spider.target,
+      damage,
+    });
+  }
+
+  private advanceSpiderReturns() {
+    for (const [id, home] of this.spiderHomes) {
+      const spider = this.state.spiders.get(id)!;
+      if (spider.state !== "dead" || this.state.tick < home.returnTick) {
+        continue;
+      }
+      Object.assign(spider, {
+        x: home.x,
+        y: home.y,
+        health: SPIDER_HEALTH,
+        state: "idle",
+      });
+      this.events.push({ type: "spiderReturned", spider: id });
+    }
+  }
+
   private advanceSpiders() {
     for (const [id, home] of this.spiderHomes) {
       const spider = this.state.spiders.get(id)!;
+      if (spider.state === "fighting") {
+        this.spiderSwing(id, spider, home);
+        continue;
+      }
       if (spider.state !== "idle" || this.state.tick < home.nextStepTick) {
         continue;
       }

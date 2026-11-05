@@ -7,9 +7,6 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The forage intent's message type; its payload is the clicked bush's id in state. */
 export const FORAGE_INTENT = "forage";
-/** One broadcast per tick, right after the patch, when there is anything to report; its payload is `GameEvent[]`. */
-export const EVENTS = "events";
-export type GameEvent = { type: "pick"; id: string; success: boolean };
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
@@ -48,6 +45,28 @@ export const SAVE_INTERVAL_TICKS = 100;
 export const SPIDER_HEALTH = 8;
 export const SPIDER_WANDER_CHANCE = 0.1;
 export const SPIDER_WANDER_TILES = 5;
+
+// Fighting (spec §5). Hit chances are 0..1, per level above 1.
+export const PLAYER_HIT_CHANCE = 0.4;
+export const PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL = 0.005;
+export const PLAYER_BASE_DAMAGE = 2;
+export const COMBAT_LEVELS_PER_DAMAGE = 20;
+export const SPIDER_HIT_CHANCE = 0.35;
+export const SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL = -0.002;
+export const SPIDER_MAX_DAMAGE = 2;
+export const XP_PER_DAMAGE_DEALT = 6;
+export const DEFENSE_XP_PER_SPIDER_SWING = 6;
+export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
+
+/** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
+export const EVENTS = "events";
+/** A `damage` of 0 is a miss. */
+export type WorldEvent =
+  | { type: "playerSwing"; player: string; spider: string; damage: number }
+  | { type: "spiderSwing"; spider: string; player: string; damage: number }
+  | { type: "spiderDied"; spider: string }
+  | { type: "spiderReturned"; spider: string }
+  | { type: "pick"; player: string; success: boolean };
 
 export * from "./foraging.ts";
 export * from "./region.ts";

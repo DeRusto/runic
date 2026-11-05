@@ -43,6 +43,44 @@
         color: #ffeb3b;
         font-weight: 600;
       }
+      .bar {
+        width: 44px;
+        height: 5px;
+        margin: 1px auto;
+        background: #400;
+        outline: 1px solid #000;
+      }
+      .bar[hidden] {
+        display: none;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: #4caf50;
+      }
+      .pop {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        font: 700 16px system-ui;
+        white-space: nowrap;
+        animation: pop 0.9s ease-out forwards;
+      }
+      .pop.damage {
+        color: #ff5a4a;
+      }
+      .pop.miss {
+        color: #5aa9ff;
+      }
+      @keyframes pop {
+        from {
+          transform: translate(-50%, 0);
+        }
+        to {
+          transform: translate(-50%, -32px);
+          opacity: 0;
+        }
+      }
       #bar {
         position: fixed;
         inset: auto 0 0;
