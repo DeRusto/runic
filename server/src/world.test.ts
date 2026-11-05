@@ -45,7 +45,9 @@ test("a joining client receives one patch per tick, every 300 ms", async () => {
 
 test("a walk intent moves the player on the server, and others see it", async () => {
   const walker = await client.join(WORLD_ROOM);
-  const watcher = await client.join(WORLD_ROOM);
+  const other = new Client(`http://localhost:${PORT}`);
+  other.auth.token = await testToken(PORT, "Watcher");
+  const watcher = await other.join(WORLD_ROOM);
   const { x, y } = respawnTile(parseRegion(REGION_GRID));
 
   walker.send(WALK_INTENT, { x: x + 2, y });
