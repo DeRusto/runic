@@ -1,8 +1,8 @@
 import { Client } from "@colyseus/sdk";
-import { WORLD_ROOM } from "@runic/shared";
+import { joinWorld } from "./login.ts";
 
 const ticks = document.getElementById("ticks")!;
-const room = await new Client(location.origin).join(WORLD_ROOM);
+const room = await joinWorld(new Client(location.origin));
 
 let last = performance.now();
 room.onStateChange((state: { tick: number }) => {
