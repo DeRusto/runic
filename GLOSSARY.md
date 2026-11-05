@@ -26,6 +26,10 @@ _Avoid_: Wilderness, combat zone
 A spot in a thicket that can be foraged; it runs out after use and grows back over time. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Foraging level.
 _Avoid_: Node, resource, plant
 
+**Prop**:
+A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
+_Avoid_: Decoration, doodad, object
+
 **Enemy**:
 A creature in a field that players fight to train Combat.
 _Avoid_: Mob, monster, NPC
