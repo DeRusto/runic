@@ -600,6 +600,64 @@ describe("combat lock", () => {
   });
 });
 
+describe("a dropped player", () => {
+  /** One swing in, so the lock runs until tick 35, then the connection drops. */
+  function dropped(...spiderRolls: number[]) {
+    const s = fight(NEXT_TO, MISS, ...spiderRolls);
+    s.addPlayer("a", SAVE);
+    s.queueTarget("a", "0");
+    run(s, 1);
+    s.dropPlayer("a");
+    return s;
+  }
+
+  test("stops their action", () => {
+    const s = dropped();
+    const events = run(s, 10);
+    expect(swingTicks(events, "playerSwing")).toEqual([]);
+    expect(player(s).target).toBe("");
+  });
+
+  test("forgets what they asked for just before the drop", () => {
+    const s = fight();
+    s.addPlayer("a", SAVE);
+    s.queueTarget("a", "0");
+    s.dropPlayer("a");
+    expect(swingTicks(run(s, 10), "playerSwing")).toEqual([]);
+  });
+
+  test("can still be hit", () => {
+    const s = dropped(0, 0);
+    expect(swingTicks(run(s, 10), "spiderSwing").length).toBeGreaterThan(0);
+    expect(player(s).health).toBe(9);
+  });
+
+  test("has a lock that counts down and isn't refreshed by the Spider's swings", () => {
+    const s = dropped();
+    const events = run(s, 33);
+    expect(swingTicks(events, "spiderSwing").at(-1)).toBeGreaterThan(20);
+    expect(s.lockRunning("a")).toBe(true);
+    run(s, 1);
+    expect(s.lockRunning("a")).toBe(false);
+  });
+
+  test("swings refresh the lock again once they're back", () => {
+    const s = dropped();
+    run(s, 30);
+    s.reconnectPlayer("a");
+    run(s, 34);
+    expect(s.lockRunning("a")).toBe(true);
+  });
+
+  test("loses the lock at respawn, like anyone", () => {
+    const s = dropped(0, 0);
+    player(s).health = 1;
+    const events = run(s, 15);
+    expect(swingTicks(events, "playerRespawned").length).toBe(1);
+    expect(s.lockRunning("a")).toBe(false);
+  });
+});
+
 describe("several players", () => {
   test("each earns from their own damage; the Spider targets the latest swinger and keeps its rhythm", () => {
     const s = fight(NEXT_TO, 0, 0); // a hits on tick 1; everything after misses.

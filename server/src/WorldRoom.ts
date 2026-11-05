@@ -1,4 +1,10 @@
-import { CloseCode, Room, type Client } from "@colyseus/core";
+import {
+  ClientState,
+  CloseCode,
+  Room,
+  type Client,
+  type Deferred,
+} from "@colyseus/core";
 import {
   CHAT,
   EAT_INTENT,
@@ -12,6 +18,7 @@ import {
   SAVE_INTERVAL_TICKS,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
+  TICK_MS,
   WALK_INTENT,
   type ChatLine,
   type Tile,
@@ -25,6 +32,11 @@ export class WorldRoom extends Room {
   autoDispose = false;
   sim = new Simulation(parseRegion(REGION_GRID), Math.random);
   state = this.sim.state;
+  /** Players whose connection is gone but whose lock still holds them here. */
+  private dropped = new Map<
+    string,
+    { client: Client; seat: Deferred<Client> }
+  >();
 
   messages = {
     [WALK_INTENT]: (client: Client, to: Tile) =>
@@ -63,6 +75,9 @@ export class WorldRoom extends Room {
         for (const id of this.sim.loggedOut.splice(0)) {
           this.clients.getById(id)?.leave(CloseCode.CONSENTED);
         }
+        for (const [id, { seat }] of this.dropped) {
+          if (!this.sim.lockRunning(id)) seat.reject();
+        }
         if (this.sim.state.tick % SAVE_INTERVAL_TICKS === 0)
           this.saveEveryone();
         this.broadcastPatch();
@@ -76,11 +91,17 @@ export class WorldRoom extends Room {
     this.patchRate = null;
   }
 
-  onJoin(client: Client) {
-    const old = this.clients.find(
-      (other) => other !== client && other.auth.id === client.auth.id,
-    );
-    if (old) {
+  async onJoin(client: Client) {
+    // A login still waiting below has no player yet, and this newer one replaces it.
+    for (const other of this.sameAccount(client)) {
+      if (!this.sim.state.players.has(other.sessionId))
+        other.leave(TAKEN_OVER_CLOSE_CODE);
+    }
+    while (this.sameAccount(client).some((other) => this.held(other))) {
+      await new Promise((tick) => this.clock.setTimeout(tick, TICK_MS));
+      if (client.state === ClientState.LEAVING) return;
+    }
+    for (const old of this.sameAccount(client)) {
       this.saveAndRemove(old);
       old.leave(TAKEN_OVER_CLOSE_CODE);
     }
@@ -91,9 +112,49 @@ export class WorldRoom extends Room {
     );
   }
 
-  // A clean shutdown closes every client through here too, before the database closes.
+  /**
+   * With no seat held, core goes straight on to onLeave. A shutdown comes through here
+   * too: it can't hold a seat, and its onLeave saves everyone before the database closes.
+   */
+  onDrop(client: Client, code: number) {
+    const id = client.sessionId;
+    if (code === CloseCode.SERVER_SHUTDOWN || !this.sim.lockRunning(id)) return;
+    this.sim.dropPlayer(id);
+    this.dropped.set(id, {
+      client,
+      seat: this.allowReconnection(client, "manual"),
+    });
+  }
+
+  onReconnect(client: Client) {
+    this.dropped.delete(client.sessionId);
+    this.sim.reconnectPlayer(client.sessionId);
+  }
+
   onLeave(client: Client) {
+    this.dropped.delete(client.sessionId);
     this.saveAndRemove(client);
+  }
+
+  private online() {
+    return [
+      ...this.clients,
+      ...[...this.dropped.values()].map(({ client }) => client),
+    ];
+  }
+
+  private sameAccount(client: Client) {
+    return this.online().filter(
+      (other) => other !== client && other.auth.id === client.auth.id,
+    );
+  }
+
+  /** Dropped and not yet gone counts, or onLeave's save could come after the new login's read. */
+  private held(client: Client) {
+    return (
+      this.dropped.has(client.sessionId) ||
+      this.sim.lockRunning(client.sessionId)
+    );
   }
 
   /** Does nothing for a client who was already taken over. */
@@ -103,7 +164,7 @@ export class WorldRoom extends Room {
   }
 
   private saveEveryone() {
-    this.clients.forEach((client) => this.save(client));
+    this.online().forEach((client) => this.save(client));
   }
 
   private save(client: Client) {
