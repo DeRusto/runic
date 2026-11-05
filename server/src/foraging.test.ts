@@ -250,6 +250,36 @@ test("re-clicking can't attempt faster than the interval", () => {
   expect(ticks).toEqual([1, 9]);
 });
 
+test("joining again can't attempt faster than the interval", () => {
+  addAt("b", 0);
+  const save = sim.saveOf("b")!;
+  sim.removePlayer("b");
+  sim.addPlayer("first", save, "Ann");
+  roll = FAIL;
+  sim.queueForage("first", BERRY);
+  expect(attemptTicks(1)).toEqual([1]);
+
+  sim.removePlayer("first");
+  sim.addPlayer("second", save, "Ann");
+  sim.queueForage("second", BERRY);
+  expect(attemptTicks(8)).toEqual([9]);
+});
+
+test("someone else joining waits for no one's interval", () => {
+  addAt("b", 0);
+  const save = sim.saveOf("b")!;
+  sim.removePlayer("b");
+  sim.addPlayer("first", save, "Ann");
+  roll = FAIL;
+  sim.queueForage("first", BERRY);
+  attemptTicks(1);
+
+  sim.removePlayer("first");
+  sim.addPlayer("second", save, "Ben");
+  sim.queueForage("second", BERRY);
+  expect(attemptTicks(1)).toEqual([2]);
+});
+
 test("a bush with no reachable tile next to it isn't attempted", () => {
   const walled = parseRegion(
     ["TTTTTTT", "TR.TbTT", "T..TTTT", "TTTTTTT"].join("\n"),

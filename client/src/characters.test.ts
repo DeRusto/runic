@@ -63,6 +63,17 @@ test("a see-through outline redraws each mesh beside it, skeleton included, with
   expect(outline.material).not.toBe(body.material);
 });
 
+test("a Spider dead when first seen is hidden, counts as down, and can come back", () => {
+  const figure = figureAt({ x: 1, y: 1 });
+  figure.alreadyGone("Death_A");
+  expect(figure.model.visible).toBe(false);
+  expect(figure.downed).toBe(true);
+
+  figure.reappear();
+  expect(figure.model.visible).toBe(true);
+  expect(figure.downed).toBe(false);
+});
+
 describe("a player already dead when first seen", () => {
   const deathClip = (figure: Figure) =>
     figure.mixer.clipAction(CLIPS.get("Death_A")!);

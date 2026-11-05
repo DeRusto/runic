@@ -120,6 +120,11 @@ export class Simulation {
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
   private queuedEats = new Map<string, number>();
+  /** By username, so joining again can't beat the attempt or eat interval. */
+  private timersOfLeavers = new Map<
+    string,
+    { nextPickTick: number; nextEatTick: number }
+  >();
   /** Each Spider's home tile, plus the timers clients don't need. */
   private unsyncedSpiders = new Map<
     string,
@@ -186,7 +191,9 @@ export class Simulation {
       nextEatTick: 0,
       lockEndTick: 0,
       respawnTick: 0,
+      ...this.timersOfLeavers.get(username),
     });
+    this.timersOfLeavers.delete(username);
   }
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
@@ -232,6 +239,12 @@ export class Simulation {
   }
 
   removePlayer(id: string) {
+    const username = this.state.players.get(id)?.username;
+    const unsynced = this.unsyncedPlayers.get(id);
+    if (username && unsynced) {
+      const { nextPickTick, nextEatTick } = unsynced;
+      this.timersOfLeavers.set(username, { nextPickTick, nextEatTick });
+    }
     this.state.players.delete(id);
     this.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);

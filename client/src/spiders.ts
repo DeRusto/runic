@@ -28,8 +28,7 @@ export function showSpiders(
     const hitBox = newHitBox();
     figures.push({ id, figure, hitBox });
     hitBoxes.set(hitBox, { id, tile: spider });
-    // Dead when we joined, so its death is over and only its return is still to come.
-    figure.model.visible = spider.state !== "dead";
+    if (spider.state === "dead") figure.alreadyGone("Spider_Death");
     spiderFigures.set(id, figure);
     spiderOverheads.set(id, new Overhead(""));
   });

@@ -114,6 +114,12 @@ export class Figure {
     this.current!.time = this.clips.get(clip)!.duration;
   }
 
+  /** Dead and sunk since before we saw it, so only its return is still to come. */
+  alreadyGone(clip: string) {
+    this.alreadyDown(clip);
+    this.model.visible = false;
+  }
+
   /** Plays a clip once over the gait's clips, then goes back to them, or stays on it with `held`. */
   once(name: string, speed = 1, held = false) {
     this.play(name, speed, THREE.LoopOnce);

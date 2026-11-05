@@ -82,6 +82,8 @@ export function showBottomBar(
 
   // A room left mid-hold never reveals, and a rejoin comes back through here.
   holdingPick = false;
+  // The pick events a drop lost never come, so what a reconnect's state brings shows at once.
+  room.onReconnect(() => room.onStateChange.once(revealPick));
   let food: number | undefined;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
