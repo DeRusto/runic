@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { cameraTurner, quartersForKey } from "./cameraTurn.ts";
 
 // A tile's diamond is sqrt(2/3) tall on screen down the (1,1,1) diagonal, so this frames 12 of them.
 const VIEW_HEIGHT = 12 * Math.sqrt(2 / 3);
@@ -6,6 +7,10 @@ const CAMERA_OFFSET = new THREE.Vector3(20, 20, 20);
 const SUN_OFFSET = new THREE.Vector3(-6, 12, 4);
 // Wide enough to cover the view at the furthest zoom on a 16:9 screen.
 const SHADOW_REACH = 24;
+const TURN_MS = matchMedia("(prefers-reduced-motion: reduce)").matches
+  ? 0
+  : 300;
+const UP = new THREE.Vector3(0, 1, 0);
 
 export const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -59,10 +64,21 @@ renderer.domElement.addEventListener(
   { passive: false },
 );
 
-/** Centres the view and the sun's shadows on a world point. The camera only ever slides, never turns. */
+const view = cameraTurner(TURN_MS, () => performance.now());
+addEventListener("keydown", (event) => {
+  const quarters = quartersForKey(event);
+  if (quarters) view.turn(quarters);
+});
+document.getElementById("turn-left")!.onclick = () => view.turn(-1);
+document.getElementById("turn-right")!.onclick = () => view.turn(1);
+
+/** Centres the view and the sun's shadows on a world point, at the view's current angle. The sun stays put, so shadows don't swing with the view. */
 export function focusOn(x: number, z: number) {
   const point = new THREE.Vector3(x, 0, z);
-  camera.position.copy(point).add(CAMERA_OFFSET);
+  camera.position
+    .copy(CAMERA_OFFSET)
+    .applyAxisAngle(UP, view.angle())
+    .add(point);
   camera.lookAt(point);
   sun.position.copy(point).add(SUN_OFFSET);
   sun.target.position.copy(point);
