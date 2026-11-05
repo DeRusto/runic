@@ -88,25 +88,183 @@ describe("swing timing", () => {
     events.push(...run(s, 8));
     expect(swingTicks(events, "spiderSwing")).toEqual([5, 13]);
   });
+});
 
-  test("a Spider doesn't swing at a target who isn't next to it", () => {
-    const s = fight();
-    s.addPlayer("a");
-    s.queueTarget("a", "0");
-    run(s, 1);
-    Object.assign(player(s), { x: 5, y: 2 });
-    s.queueWalk("a", { x: 5, y: 2 });
-    expect(swingTicks(run(s, 20), "spiderSwing")).toEqual([]);
+// The respawn tile is (1,1), with the Spider's home next to it at (2,1).
+const CORRIDOR = ["TTTTTTTTTTTTTTTT", "TRS............T", "TTTTTTTTTTTTTTTT"];
+
+/** One player, who has just swung (and missed) at the Spider on tick 1. */
+function fought(rows = CORRIDOR) {
+  const s = fight(rows);
+  s.addPlayer("a");
+  s.queueTarget("a", "0");
+  run(s, 1);
+  return s;
+}
+
+describe("the chase", () => {
+  test("a fighting Spider follows its target at a tile per 2 ticks and stops next to them", () => {
+    const s = fought();
+    Object.assign(player(s), { x: 6 }); // Inside the leash: 4 tiles from the start tile.
+    s.queueWalk("a", { x: 6, y: 1 });
+    const xs = [];
+    for (let i = 0; i < 8; i++) {
+      run(s, 1);
+      xs.push(spider(s).x);
+    }
+    expect(xs).toEqual([3, 3, 4, 4, 5, 5, 5, 5]);
+    expect(spider(s).state).toBe("fighting");
   });
 
-  test("a Spider whose target is gone stops fighting", () => {
-    const s = fight();
-    s.addPlayer("a");
+  test("a Spider doesn't swing until it has caught up, then swings on arriving", () => {
+    const s = fought(); // Its first swing is due on tick 5.
+    Object.assign(player(s), { x: 6 });
+    s.queueWalk("a", { x: 6, y: 1 });
+    const events = run(s, 4); // To tick 5, one step short.
+    expect(spider(s).x).toBe(4);
+    expect(swingTicks(events, "spiderSwing")).toEqual([]);
+    expect(swingTicks(run(s, 1), "spiderSwing")).toEqual([6]);
+    expect(spider(s).x).toBe(5);
+  });
+
+  test("a Spider walks around what blocks it, and follows the corner rule", () => {
+    const s = fought(["TTTTTTT", "TRS.T.T", "T...T.T", "T.....T", "TTTTTTT"]);
+    Object.assign(player(s), { x: 5, y: 1 });
+    s.queueWalk("a", { x: 5, y: 1 });
+    run(s, 20);
+    expect(spider(s)).toMatchObject({ x: 5, y: 2, state: "fighting" });
+  });
+});
+
+describe("the leash", () => {
+  /** Stands the player on a tile, no longer following the Spider. */
+  const standAt = (s: Simulation, x: number) => {
+    Object.assign(player(s), { x });
+    s.queueWalk("a", { x, y: 1 });
+  };
+
+  test("a miss starts a fight, and the start tile is the Spider's tile at that moment", () => {
+    const s = fight(CORRIDOR);
+    s.addPlayer("a", { ...SAVE, x: 4 });
+    Object.assign(spider(s), { x: 5 }); // Three tiles from its home at (2,1).
     s.queueTarget("a", "0");
     run(s, 1);
+    expect(spider(s)).toMatchObject({ state: "fighting", target: "a" });
+    standAt(s, 9); // 4 from (5,1), and 7 from home.
+    run(s, 1);
+    expect(spider(s).state).toBe("fighting");
+    standAt(s, 10); // 5 from (5,1).
+    run(s, 1);
+    expect(spider(s)).toMatchObject({ state: "going home", target: "" });
+  });
+
+  test("distance is in 8-way tiles", () => {
+    const rows = ["TTTTTTTT", "TRS....T", "T......T", "T......T", "T......T", "TTTTTTTT"]; // prettier-ignore
+    const s = fought(rows);
+    Object.assign(player(s), { x: 6, y: 4 }); // 4 across and 3 down from (2,1): 4 tiles.
+    s.queueWalk("a", { x: 6, y: 4 });
+    run(s, 1);
+    expect(spider(s).state).toBe("fighting");
+  });
+
+  test("more swings in one fight don't move the start tile", () => {
+    const s = fought();
+    standAt(s, 5);
+    run(s, 5);
+    expect(spider(s).x).toBe(4); // Chased two tiles from (2,1).
+    s.queueTarget("a", "0");
+    run(s, 8); // The player's next swing, at the Spider where it now stands.
+    expect(spider(s).state).toBe("fighting");
+    standAt(s, 7); // 5 from (2,1), 3 from the Spider.
+    run(s, 1);
+    expect(spider(s).state).toBe("going home");
+  });
+
+  test("a new target keeps the start tile", () => {
+    const s = fought();
+    s.addPlayer("b");
+    s.queueTarget("b", "0");
+    run(s, 1);
+    expect(spider(s).target).toBe("b");
+    Object.assign(player(s, "b"), { x: 7 });
+    s.queueWalk("b", { x: 7, y: 1 });
+    run(s, 1);
+    expect(spider(s).target).toBe("");
+  });
+
+  test("a Spider gives up when its target is gone", () => {
+    const s = fought();
+    spider(s).x = 5; // Away from home, so it doesn't arrive at once.
     s.removePlayer("a");
     run(s, 1);
-    expect(spider(s)).toMatchObject({ state: "idle", target: "" });
+    expect(spider(s)).toMatchObject({ state: "going home", target: "" });
+  });
+
+  test("a Spider gives up when its target is dead", () => {
+    const s = fought();
+    spider(s).x = 5;
+    player(s).health = 0;
+    run(s, 1);
+    expect(spider(s)).toMatchObject({ state: "going home", target: "" });
+  });
+
+  test("it walks home at a tile per 2 ticks, recovers on arrival, and takes no swings", () => {
+    const s = fought();
+    spider(s).health = 3;
+    standAt(s, 5);
+    run(s, 5);
+    expect(spider(s).x).toBe(4);
+    standAt(s, 12);
+    const xs = [];
+    const events = [];
+    for (let i = 0; i < 4; i++) {
+      events.push(...run(s, 1));
+      xs.push({ x: spider(s).x, health: spider(s).health, state: spider(s).state }); // prettier-ignore
+    }
+    expect(xs).toEqual([
+      { x: 3, health: 3, state: "going home" },
+      { x: 3, health: 3, state: "going home" },
+      { x: 2, health: 8, state: "idle" },
+      { x: 2, health: 8, state: "idle" },
+    ]);
+    expect(swingTicks(events, "spiderSwing")).toEqual([]);
+  });
+
+  test("a Spider giving up on its home tile recovers there and then", () => {
+    const s = fought();
+    spider(s).health = 3;
+    s.removePlayer("a");
+    run(s, 1);
+    expect(spider(s)).toMatchObject({ x: 2, health: 8, state: "idle" });
+  });
+
+  test("a swing on the way home starts a new fight from where it stands, with its health as it was", () => {
+    const s = fought();
+    spider(s).health = 3;
+    standAt(s, 5);
+    run(s, 5); // Chased to (4,1).
+    s.addPlayer("b", { ...SAVE, x: 5 });
+    s.removePlayer("a");
+    run(s, 1); // Gives up, and steps to (3,1).
+    expect(spider(s)).toMatchObject({ x: 3, state: "going home" });
+    Object.assign(player(s, "b"), { x: 4 });
+    s.queueTarget("b", "0");
+    const events = run(s, 1);
+    expect(swingTicks(events, "playerSwing")).toHaveLength(1);
+    expect(spider(s)).toMatchObject({
+      x: 3,
+      health: 3,
+      state: "fighting",
+      target: "b",
+    });
+    Object.assign(player(s, "b"), { x: 7 }); // 4 from (3,1), 5 from the first start tile.
+    s.queueWalk("b", { x: 7, y: 1 });
+    run(s, 1);
+    expect(spider(s).state).toBe("fighting");
+    Object.assign(player(s, "b"), { x: 8 });
+    s.queueWalk("b", { x: 8, y: 1 });
+    run(s, 1);
+    expect(spider(s).state).toBe("going home");
   });
 });
 
