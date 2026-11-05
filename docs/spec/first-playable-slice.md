@@ -96,7 +96,7 @@ An idle Spider has a 1-in-10 chance each tick to step to an adjacent walkable ti
 ### Health and death
 
 - Max health equals the Hitpoints level. A level-up raises the maximum, not current health **[D7]**.
-- Regeneration is 1% of max health, rounded up, every 20 ticks while no combat lock runs **[Q2]**.
+- Regeneration is 5% of max health, rounded up, every 20 ticks while no combat lock runs **[Q2]**.
 - At 0 health the action ends at once and the Spider gives up. The player stays dead on their tile for 5 ticks, then respawns on the respawn tile at full health.
 
 ### Combat lock
@@ -320,13 +320,14 @@ Each is a thin working slice that builds on those above it. No tickets exist yet
 | A click ray hits only the ground | Bushes and Spiders first | [#14](https://github.com/DeRusto/runic/issues/14) |
 | Database file next to the server | Persistent volume | [#15](https://github.com/DeRusto/runic/issues/15) |
 | "Its part of the field" | Within 5 tiles of home | [#14](https://github.com/DeRusto/runic/issues/14) |
+| Regeneration of 1% of max health | 5% | Review (§13) |
 
 **Stale text, not yet fixed:** ADR 0003 still offers `FBXLoader` for the Spider, and [#12](https://github.com/DeRusto/runic/issues/12) has since settled on a converted GLB.
 
 ## 13. Rulings from review
 
 - **Q1. Sound.** The map says to use Phaser AE for sound, but no ticket asks for any sound in the slice. *Ruling: no sound, and no `ae/` folder until it's needed.*
-- **Q2. Regeneration.** "1% of max health, rounded up" comes to 1 at every level up to 99, so in the slice it's 1 health per 20 ticks, and a level-99 player takes about 10 minutes to refill. *Ruling: keep the percentage, because gear can eventually raise max health past 99, and the rule should scale when it does.*
+- **Q2. Regeneration.** [#11](https://github.com/DeRusto/runic/issues/11)'s "1% of max health, rounded up" comes to 1 at every level up to 99, so the percentage did nothing and a level-99 player took about 10 minutes to refill. *Ruling: 5% of max health, rounded up, every 20 ticks, kept as a percentage because gear can eventually raise max health past 99.* That's 1 health at Hitpoints 10 to 20 and 5 at 99, so an empty bar refills in 1 to 2 minutes at any level.
 - **Q3. Combat lock.** No ticket said what starts the lock, and [#12](https://github.com/DeRusto/runic/issues/12) left open when it clears during death. [#6](https://github.com/DeRusto/runic/issues/6) keeps a dropped character until the lock runs out, while [#11](https://github.com/DeRusto/runic/issues/11) caps that at 34 ticks; if the Spider's swings refreshed the lock, the cap would break and the character would stay until killed. *Ruling: any swing by or at a connected player sets it; it clears at respawn; a dropped player's lock doesn't refresh.*
 - **Q4. Eating speed.** No limit was decided, so a fast clicker could eat many items per tick and out-heal any fight. The eat clip was fitted to 4 ticks. *Ruling: at most once per 4 ticks.*
 - **Q5. Who looks like what.** No ticket said which character a player is. *Ruling: Knight or Barbarian (the two proven in the mock), from a hash of the username, with no choosing and nothing stored.*
