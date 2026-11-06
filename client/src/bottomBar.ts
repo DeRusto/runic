@@ -7,18 +7,14 @@ import {
   levelFor,
   levelProgress,
   MAX_CHAT_LENGTH,
+  SKILLS,
   type ChatLine,
 } from "@runic/shared";
+import { showCharacterSheet } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 
 const MAX_CHAT_LINES = 200;
-const SKILLS = [
-  ["Combat", "combatXp"],
-  ["Defense", "defenseXp"],
-  ["Foraging", "foragingXp"],
-  ["Hitpoints", "hitpointsXp"],
-] as const;
 
 const chatLines = document.getElementById("chat-lines")!;
 
@@ -102,7 +98,10 @@ export function showBottomBar(
   menu.hidden = true;
   menu.oncontextmenu = (event) => event.preventDefault();
   menu.onkeydown = (event) => {
-    if (event.key === "Escape") menu.hidden = true;
+    if (event.key !== "Escape") return;
+    menu.hidden = true;
+    // Or the same Esc would shut the character sheet too.
+    event.stopPropagation();
   };
   document.onpointerdown = (event) => {
     if (!menu.contains(event.target as Node)) menu.hidden = true;
@@ -115,9 +114,13 @@ export function showBottomBar(
     row.append(text, bar);
     return { name, field, text, bar, row };
   });
+  const noPins = document.createElement("p");
+  noPins.textContent = "Pin skills from the sheet";
+  // One row per skill in the sheet's order, so the column follows it whatever order they were pinned in.
   document
     .getElementById("skills")!
-    .replaceChildren(...skills.map((skill) => skill.row));
+    .replaceChildren(...skills.map((skill) => skill.row), noPins);
+  const sheet = showCharacterSheet(room);
 
   const health = document.getElementById("health")!;
   const bar = document.getElementById("bar")!;
@@ -132,6 +135,11 @@ export function showBottomBar(
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
+    // Pins aren't a pick's result, so they never wait for its clip.
+    for (const { name, row } of skills)
+      row.hidden = !me.pinnedSkills.includes(name);
+    noPins.hidden = me.pinnedSkills.length > 0;
+    sheet.drawPins(me);
     showHeld = () => {
       slots.forEach((slot, i) => {
         const item = me.inventory[i] ?? "";
@@ -148,6 +156,7 @@ export function showBottomBar(
         skill.bar.value = levelProgress(xp);
         skill.bar.title = `${xp} XP`;
       }
+      sheet.drawSkills(me);
     };
     // A tick's pick event comes right after its patch, so draw on the next frame, when it has had the chance to hold.
     cancelAnimationFrame(frame);

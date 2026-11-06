@@ -14,6 +14,7 @@ import {
   LOGOUT_INTENT,
   MAX_CHAT_LENGTH,
   parseRegion,
+  PIN_INTENT,
   REGION_GRID,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
@@ -50,6 +51,10 @@ export class WorldRoom extends Room {
       this.sim.queueEat(client.sessionId, slot),
     [DISCARD_INTENT]: (client: Client, slot: number) =>
       this.sim.queueDiscard(client.sessionId, slot),
+    [PIN_INTENT]: (
+      client: Client,
+      intent: { skill: string; pinned: boolean },
+    ) => this.sim.pinSkill(client.sessionId, intent),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {

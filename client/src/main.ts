@@ -61,6 +61,8 @@ function enterWorld(room: WorldConnection) {
     logout.hidden = true;
     // Its controls would send to the room just left. A rejoin's showBottomBar brings it back.
     document.getElementById("bar")!.hidden = true;
+    document.getElementById("sheet")!.hidden = true;
+    document.onkeydown = null;
     if (code === CloseCode.CONSENTED) {
       forgetToken();
       location.reload();

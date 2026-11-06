@@ -16,6 +16,7 @@ import {
   HEALING_POOL_INTERVAL_TICKS,
   INVENTORY_SLOTS,
   levelFor,
+  MAX_PINNED_SKILLS,
   pickChance,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
@@ -25,7 +26,9 @@ import {
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
+  SKILLS,
   slotFor,
+  STARTING_PINNED_SKILLS,
   LEASH_TILES,
   tilesApart,
   SWING_INTERVAL_TICKS,
@@ -54,6 +57,11 @@ export const Player = schema(
     defenseXp: t.uint32(),
     foragingXp: t.uint32(),
     hitpointsXp: t.uint32(),
+    miningXp: t.uint32().default(0),
+    smithingXp: t.uint32().default(0),
+    blockingXp: t.uint32().default(0),
+    /** In any order; the sheet's order decides how they show. */
+    pinnedSkills: t.array("string"),
     health: t.uint8(),
     maxHealth: t.uint8(),
     inventory: t.array("string"),
@@ -190,12 +198,14 @@ export class Simulation {
     const {
       inventory,
       inventoryCounts = [],
+      pinnedSkills = STARTING_PINNED_SKILLS,
       ...fields
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
       username,
       maxHealth: levelFor(fields.hitpointsXp),
     });
+    player.pinnedSkills = new ArraySchema(...pinnedSkills);
     player.inventory = new ArraySchema(...inventory);
     // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
     player.inventoryCounts = new ArraySchema(
@@ -239,8 +249,18 @@ export class Simulation {
   saveOf(id: string): PlayerSave | undefined {
     const player = this.state.players.get(id);
     if (!player) return undefined;
-    const { x, y, combatXp, defenseXp, foragingXp, hitpointsXp, health } =
-      player;
+    const {
+      x,
+      y,
+      combatXp,
+      defenseXp,
+      foragingXp,
+      hitpointsXp,
+      miningXp,
+      smithingXp,
+      blockingXp,
+      health,
+    } = player;
     return {
       x,
       y,
@@ -248,7 +268,11 @@ export class Simulation {
       defenseXp,
       foragingXp,
       hitpointsXp,
+      miningXp,
+      smithingXp,
+      blockingXp,
       health,
+      pinnedSkills: [...player.pinnedSkills],
       inventory: [...player.inventory],
       inventoryCounts: [...player.inventoryCounts],
       // Or a save during death could bring someone back with 0 health (D13).
@@ -349,6 +373,17 @@ export class Simulation {
     if (!this.alive(id)) return;
     if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
     this.queuedDiscards.set(id, slot);
+  }
+
+  /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
+  pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
+    const pins = this.state.players.get(id)?.pinnedSkills;
+    const { skill, pinned } = intent ?? {};
+    if (!pins || !SKILLS.some(([name]) => name === skill)) return;
+    const at = pins.indexOf(skill);
+    if (pinned === false && at >= 0) pins.splice(at, 1);
+    if (pinned === true && at < 0 && pins.length < MAX_PINNED_SKILLS)
+      pins.push(skill);
   }
 
   private discard(id: string, slot: number) {
