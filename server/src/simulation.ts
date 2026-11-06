@@ -528,6 +528,16 @@ export class Simulation {
     if (this.queuedDiscards.get(id) === slot) this.queuedDiscards.delete(id);
   }
 
+  /** Adds one `item` to the slot `slotFor` chose. */
+  private addToSlot(
+    player: InstanceType<typeof Player>,
+    slot: number,
+    item: string,
+  ) {
+    player.inventory[slot] = item;
+    player.inventoryCounts[slot]!++;
+  }
+
   private discard(id: string, slot: number) {
     const player = this.state.players.get(id)!;
     if (!player.inventory[slot]) return;
@@ -670,8 +680,7 @@ export class Simulation {
       const { xp, food, regrowTicks } = BUSHES[site.kind];
       player.foragingXp = addXp(player.foragingXp, xp);
       const slot = slotFor(food, player);
-      player.inventory[slot] = food;
-      player.inventoryCounts[slot]!++;
+      this.addToSlot(player, slot, food);
       if (--bush.picksLeft === 0)
         site.regrowTick = this.state.tick + regrowTicks;
       unsynced.bush = undefined;
@@ -698,8 +707,7 @@ export class Simulation {
       const { xp, ore, regrowTicks } = VEINS[site.tier];
       player.miningXp = addXp(player.miningXp, xp);
       const slot = slotFor(ore, player);
-      player.inventory[slot] = ore;
-      player.inventoryCounts[slot]!++;
+      this.addToSlot(player, slot, ore);
       if (--vein.oreLeft === 0) site.regrowTick = this.state.tick + regrowTicks;
       unsynced.vein = undefined;
     }
@@ -898,10 +906,7 @@ export class Simulation {
       if (this.random() >= emberboneChance) continue;
       const player = this.state.players.get(id)!;
       const slot = slotFor("emberbone", player);
-      if (slot >= 0) {
-        player.inventory[slot] = "emberbone";
-        player.inventoryCounts[slot]!++;
-      }
+      if (slot >= 0) this.addToSlot(player, slot, "emberbone");
       const line =
         slot >= 0
           ? "You find an Emberbone."
