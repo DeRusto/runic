@@ -439,13 +439,13 @@ describe("a player's synced action", () => {
 
   test("foraging from the click on, through the walk there, until the pick", () => {
     const unlucky = start();
-    unlucky.queueForage("a", "6,1");
+    unlucky.queueGather("a", "foraging", "6,1");
     for (let i = 0; i < 8; i++) {
       unlucky.tick();
       expect(action(unlucky)).toBe("foraging");
     }
     const lucky = start(0);
-    lucky.queueForage("a", "6,1");
+    lucky.queueGather("a", "foraging", "6,1");
     for (let i = 0; i < 8; i++) lucky.tick();
     expect(action(lucky)).toBe("");
   });

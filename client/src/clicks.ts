@@ -1,11 +1,9 @@
 import {
-  bushRefusal,
-  FORAGE_INTENT,
-  MINE_INTENT,
+  GATHERING,
+  gatherRefusal,
   stationRefusal,
   TARGET_INTENT,
   TICK_MS,
-  veinRefusal,
   VISIT_INTENT,
   WALK_INTENT,
   type TileKind,
@@ -13,13 +11,12 @@ import {
 import * as THREE from "three";
 import type { addBlacksmith } from "./blacksmith.ts";
 import { printChatLine } from "./bottomBar.ts";
-import type { showBushes } from "./bushes.ts";
+import type { showGatheringSites } from "./gatheringSites.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import type { addStations } from "./stations.ts";
-import type { showVeins } from "./veins.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
@@ -28,8 +25,7 @@ export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
   enemyUnder: ReturnType<typeof showEnemies>,
-  bushUnder: ReturnType<typeof showBushes>,
-  veinUnder: ReturnType<typeof showVeins>,
+  siteUnder: ReturnType<typeof showGatheringSites>,
   stationUnder: ReturnType<typeof addStations>,
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
@@ -65,26 +61,15 @@ export function walkOnClick(
       room.send(TARGET_INTENT, enemy.id);
       return;
     }
-    const bush = bushUnder(raycaster);
+    const site = siteUnder(raycaster);
     const me = room.state.players.get(room.sessionId);
-    if (bush && me) {
-      const refusal = bushRefusal(bush.kind, bush.picksLeft(), me);
+    if (site && me) {
+      const refusal = gatherRefusal(site.skill, site.kind, site.left(), me);
       if (refusal) {
         printChatLine(refusal);
       } else {
-        showMarker(bush.x, bush.y);
-        room.send(FORAGE_INTENT, bush.id);
-      }
-      return;
-    }
-    const vein = veinUnder(raycaster);
-    if (vein && me) {
-      const refusal = veinRefusal(vein.tier, vein.oreLeft(), me);
-      if (refusal) {
-        printChatLine(refusal);
-      } else {
-        showMarker(vein.x, vein.y);
-        room.send(MINE_INTENT, vein.id);
+        showMarker(site.x, site.y);
+        room.send(GATHERING[site.skill].intent, site.id);
       }
       return;
     }

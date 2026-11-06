@@ -1,4 +1,4 @@
-import { bushId, MAX_XP, parseRegion, type WorldEvent } from "@runic/shared";
+import { siteId, MAX_XP, parseRegion, type WorldEvent } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 import type { PlayerSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
@@ -466,7 +466,7 @@ describe("dying", () => {
     s.addPlayer("a", { ...SAVE, x: 3, health: 1 });
     s.queueTarget("a", "0");
     run(s, 5);
-    s.queueForage("a", bushId({ x: 4, y: 1 }));
+    s.queueGather("a", "foraging", siteId({ x: 4, y: 1 }));
     expect(run(s, 4)).toEqual([]);
   });
 
@@ -767,7 +767,7 @@ describe("fighting back", () => {
     // The bush at (3,1), and the Spider next to the player at the tile they stop on.
     const s = fight(["TTTTTTT", "TRSb..T", "T.....T", "TTTTTTT"]);
     s.addPlayer("a");
-    s.queueForage("a", bushId({ x: 3, y: 1 }));
+    s.queueGather("a", "foraging", siteId({ x: 3, y: 1 }));
     setOn(s, "a");
     const events = run(s, 7);
     expect(swingTicks(events, "enemySwing")).toEqual([1]);

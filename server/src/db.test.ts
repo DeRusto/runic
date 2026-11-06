@@ -171,7 +171,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     const database = await migratedFromOldRow();
     const sim = new Simulation(TILES, () => 0);
     sim.addPlayer("a", readSave(7), "Old");
-    sim.queueForage("a", "5,1");
+    sim.queueGather("a", "foraging", "5,1");
     sim.tick();
     writeSave(7, sim.saveOf("a")!);
     sim.removePlayer("a");

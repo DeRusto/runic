@@ -1,7 +1,6 @@
 import {
-  bushId,
+  siteId,
   tileHash,
-  veinId,
   type BushKind,
   type GroundKind,
   type PropKind,
@@ -158,7 +157,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           new THREE.Matrix4().compose(at, rotation, scale),
           new THREE.Color(BUSH_TINT[bush]),
         );
-        runOutSlots.set(bushId({ x, y }), {
+        runOutSlots.set(siteId({ x, y }), {
           geometry,
           slot,
           tint: RUN_OUT_TINT,
@@ -175,7 +174,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           vein ? VEIN_TINT[vein] : white,
         );
         if (vein)
-          runOutSlots.set(veinId({ x, y }), {
+          runOutSlots.set(siteId({ x, y }), {
             geometry,
             slot,
             tint: VEIN_RUN_OUT_TINT,

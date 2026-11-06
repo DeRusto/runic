@@ -1,5 +1,5 @@
 import {
-  bushRefusal,
+  gatherRefusal,
   INVENTORY_SLOTS,
   MAX_XP,
   parseRegion,
@@ -57,13 +57,13 @@ const runTicks = (count: number) => {
 
 /** Picks once with a click, however long the wait for the next attempt is. */
 const pick = (bush: string, id = "a") => {
-  sim.queueForage(id, bush);
+  sim.queueGather(id, "foraging", bush);
   runTicks(8);
 };
 
 test("clicking a bush walks next to it and attempts on the tick of arrival", () => {
   roll = FAIL;
-  sim.queueForage("a", BERRY);
+  sim.queueGather("a", "foraging", BERRY);
   expect(attemptTicks(ARRIVAL_TICK)).toEqual([ARRIVAL_TICK]);
   expect(player().x).toBe(4);
 });
@@ -71,13 +71,13 @@ test("clicking a bush walks next to it and attempts on the tick of arrival", () 
 test("a diagonal next to the bush counts, so there is no step before the attempt", () => {
   addAt("b", 0, 4, 2);
   roll = FAIL;
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   expect(attemptTicks(1)).toEqual([1]);
   expect(player("b")).toMatchObject({ x: 4, y: 2 });
 });
 
 test("a success gives the XP and the food, uses a pick and ends the action", () => {
-  sim.queueForage("a", BERRY);
+  sim.queueGather("a", "foraging", BERRY);
   expect(attemptTicks(40)).toEqual([ARRIVAL_TICK]);
   expect(player().foragingXp).toBe(10);
   expect(player().inventory[0]).toBe("berry");
@@ -89,14 +89,14 @@ test("a pick goes in the first empty slot", () => {
   save.inventory[0] = "herb";
   save.x = 4;
   sim.addPlayer("b", save);
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   runTicks(1);
   expect([...player("b").inventory].slice(0, 3)).toEqual(["herb", "berry", ""]);
 });
 
 test("a failure gives nothing, keeps the bush, and tries again every 8 ticks", () => {
   roll = FAIL;
-  sim.queueForage("a", BERRY);
+  sim.queueGather("a", "foraging", BERRY);
   expect(attemptTicks(ARRIVAL_TICK + 16)).toEqual([
     ARRIVAL_TICK,
     ARRIVAL_TICK + 8,
@@ -110,7 +110,7 @@ test("a failure gives nothing, keeps the bush, and tries again every 8 ticks", (
 test("the attempt interval follows the Foraging level", () => {
   addAt("b", xpForLevel(15));
   roll = FAIL;
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   expect(attemptTicks(15)).toEqual([1, 8, 15]);
 });
 
@@ -118,7 +118,7 @@ test("at Foraging 60 a new click can attempt every 4 ticks", () => {
   addAt("b", xpForLevel(60));
   const ticks: number[] = [];
   for (let i = 0; i < 5; i++) {
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
     ticks.push(...attemptTicks(1));
   }
   expect(ticks).toEqual([1, 5]);
@@ -127,31 +127,31 @@ test("at Foraging 60 a new click can attempt every 4 ticks", () => {
 test("the roll is against 50% at the bush's own level", () => {
   addAt("b", 0);
   roll = 0.5;
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   runTicks(1);
   expect(player("b").foragingXp).toBe(0);
 
   addAt("c", 0);
   roll = 0.49;
-  sim.queueForage("c", BERRY);
+  sim.queueGather("c", "foraging", BERRY);
   runTicks(1);
   expect(player("c").foragingXp).toBe(10);
 });
 
 test("XP stops at the cap", () => {
   addAt("b", MAX_XP - 5);
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   runTicks(1);
   expect(player("b").foragingXp).toBe(MAX_XP);
 });
 
 test("a herb bush needs Foraging 10, gives 25 XP and a herb", () => {
   addAt("low", xpForLevel(10) - 1, 5, 2);
-  sim.queueForage("low", HERB);
+  sim.queueGather("low", "foraging", HERB);
   expect(attemptTicks(20)).toEqual([]);
 
   addAt("b", xpForLevel(10), 5, 2);
-  sim.queueForage("b", HERB);
+  sim.queueGather("b", "foraging", HERB);
   runTicks(1);
   expect(player("b").foragingXp).toBe(xpForLevel(10) + 25);
   expect(player("b").inventory[0]).toBe("herb");
@@ -159,7 +159,7 @@ test("a herb bush needs Foraging 10, gives 25 XP and a herb", () => {
 
 test("a refused click doesn't replace the current walk", () => {
   sim.queueWalk("a", { x: 3, y: 1 });
-  sim.queueForage("a", HERB);
+  sim.queueGather("a", "foraging", HERB);
   runTicks(1);
   expect(player()).toMatchObject({ x: 2, y: 1 });
 });
@@ -184,7 +184,7 @@ describe("stacks", () => {
 
   test("food tops up the first stack of it with room", () => {
     addHolding("b", ["herb", 3], ["berry", 20], ["berry", 4]);
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
     runTicks(1);
     expect(items("b")).toEqual(["herb", "berry", "berry"]);
     expect(counts("b")).toEqual([3, 20, 5]);
@@ -192,7 +192,7 @@ describe("stacks", () => {
 
   test("a stack fills to 20, and the next one takes the first empty slot", () => {
     addHolding("b", ["berry", 19], ["herb", 1]);
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
     runTicks(1);
     expect(counts("b")).toEqual([20, 1, 0]);
     pick(BERRY, "b");
@@ -202,7 +202,7 @@ describe("stacks", () => {
 
   test("each food stacks separately", () => {
     addHolding("b", ["berry", 2]);
-    sim.queueForage("b", HERB);
+    sim.queueGather("b", "foraging", HERB);
     runTicks(1);
     expect(items("b")).toEqual(["berry", "herb", ""]);
     expect(counts("b")).toEqual([2, 1, 0]);
@@ -214,13 +214,13 @@ describe("stacks", () => {
       () => ["berry", 20] as [string, number],
     );
     addHolding("full", ...stacks);
-    sim.queueForage("full", BERRY);
-    sim.queueForage("full", HERB);
+    sim.queueGather("full", "foraging", BERRY);
+    sim.queueGather("full", "foraging", HERB);
     expect(attemptTicks(10)).toEqual([]);
 
     stacks[INVENTORY_SLOTS - 1] = ["berry", 19];
     addHolding("room", ...stacks);
-    sim.queueForage("room", BERRY);
+    sim.queueGather("room", "foraging", BERRY);
     runTicks(1);
     expect(player("room").inventoryCounts[INVENTORY_SLOTS - 1]).toBe(20);
   });
@@ -229,13 +229,13 @@ describe("stacks", () => {
     const save = sim.saveOf("a")!;
     save.inventory = Array<string>(INVENTORY_SLOTS).fill("berry");
     sim.addPlayer("b", { ...save, inventoryCounts: [], x: 4 });
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
     runTicks(1);
     expect(player("b").inventoryCounts[0]).toBe(2);
   });
 
   test("filling up on the way stops the forager before any attempt", () => {
-    sim.queueForage("a", BERRY);
+    sim.queueGather("a", "foraging", BERRY);
     runTicks(1);
     for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
       player().inventory[slot] = "berry";
@@ -250,16 +250,20 @@ test("a click with a full inventory prints the refusal the client shows", () => 
   const inventory = Array<string>(INVENTORY_SLOTS).fill("berry");
   const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(20);
   expect(
-    bushRefusal("berryBush", 5, {
+    gatherRefusal("foraging", "berryBush", 5, {
+      tools: [],
       foragingXp: 0,
+      miningXp: 0,
       inventory,
       inventoryCounts,
     }),
   ).toBe("Your inventory is full.");
   inventoryCounts[9] = 19;
   expect(
-    bushRefusal("berryBush", 5, {
+    gatherRefusal("foraging", "berryBush", 5, {
+      tools: [],
       foragingXp: 0,
+      miningXp: 0,
       inventory,
       inventoryCounts,
     }),
@@ -270,16 +274,16 @@ test("a click on a run-out bush is ignored", () => {
   addAt("b", xpForLevel(99));
   for (let i = 0; i < 5; i++) pick(BERRY, "b");
   expect(picksLeft(BERRY)).toBe(0);
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   expect(attemptTicks(1)).toEqual([]);
 });
 
 test("a bush regrows in full 84 ticks after running out", () => {
   addAt("b", xpForLevel(99));
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   for (let i = 0; i < 4; i++) {
     runTicks(4);
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
   }
   runTicks(1);
   expect(picksLeft(BERRY)).toBe(0);
@@ -291,10 +295,10 @@ test("a bush regrows in full 84 ticks after running out", () => {
 
 test("a herb bush gives 3 picks and regrows in 150 ticks", () => {
   addAt("b", xpForLevel(99), 5, 2);
-  sim.queueForage("b", HERB);
+  sim.queueGather("b", "foraging", HERB);
   for (let i = 0; i < 2; i++) {
     runTicks(4);
-    sim.queueForage("b", HERB);
+    sim.queueGather("b", "foraging", HERB);
   }
   runTicks(1);
   expect(picksLeft(HERB)).toBe(0);
@@ -306,7 +310,7 @@ test("a herb bush gives 3 picks and regrows in 150 ticks", () => {
 
 test("a partly picked bush doesn't regrow", () => {
   addAt("b", 0);
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   runTicks(500);
   expect(picksLeft(BERRY)).toBe(4);
 });
@@ -317,7 +321,7 @@ test("picks are shared, and someone trying stops when the bush runs out", () => 
   for (let i = 0; i < 4; i++) pick(BERRY, "b");
   // A roll that only level 99 passes.
   roll = 0.9;
-  sim.queueForage("c", BERRY);
+  sim.queueGather("c", "foraging", BERRY);
   runTicks(1);
   expect(picksLeft(BERRY)).toBe(1);
   pick(BERRY, "b");
@@ -328,7 +332,7 @@ test("picks are shared, and someone trying stops when the bush runs out", () => 
 
 test("a newer click ends the trying", () => {
   roll = FAIL;
-  sim.queueForage("a", BERRY);
+  sim.queueGather("a", "foraging", BERRY);
   runTicks(ARRIVAL_TICK);
   sim.queueWalk("a", { x: 4, y: 2 });
   expect(attemptTicks(20)).toEqual([]);
@@ -339,7 +343,7 @@ test("re-clicking can't attempt faster than the interval", () => {
   roll = FAIL;
   const ticks: number[] = [];
   for (let i = 0; i < 9; i++) {
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
     ticks.push(...attemptTicks(1));
   }
   expect(ticks).toEqual([1, 9]);
@@ -348,10 +352,10 @@ test("re-clicking can't attempt faster than the interval", () => {
 test("clicking another bush can't attempt faster than the interval", () => {
   addAt("b", xpForLevel(10), 5, 2);
   roll = FAIL;
-  sim.queueForage("b", BERRY);
+  sim.queueGather("b", "foraging", BERRY);
   expect(attemptTicks(1)).toEqual([1]);
 
-  sim.queueForage("b", HERB);
+  sim.queueGather("b", "foraging", HERB);
   const interval = pickIntervalTicks(10);
   expect(attemptTicks(interval)).toEqual([1 + interval]);
 });
@@ -362,12 +366,12 @@ test("joining again can't attempt faster than the interval", () => {
   sim.removePlayer("b");
   sim.addPlayer("first", save, "Ann");
   roll = FAIL;
-  sim.queueForage("first", BERRY);
+  sim.queueGather("first", "foraging", BERRY);
   expect(attemptTicks(1)).toEqual([1]);
 
   sim.removePlayer("first");
   sim.addPlayer("second", save, "Ann");
-  sim.queueForage("second", BERRY);
+  sim.queueGather("second", "foraging", BERRY);
   expect(attemptTicks(8)).toEqual([9]);
 });
 
@@ -377,12 +381,12 @@ test("someone else joining waits for no one's interval", () => {
   sim.removePlayer("b");
   sim.addPlayer("first", save, "Ann");
   roll = FAIL;
-  sim.queueForage("first", BERRY);
+  sim.queueGather("first", "foraging", BERRY);
   attemptTicks(1);
 
   sim.removePlayer("first");
   sim.addPlayer("second", save, "Ben");
-  sim.queueForage("second", BERRY);
+  sim.queueGather("second", "foraging", BERRY);
   expect(attemptTicks(1)).toEqual([2]);
 });
 
@@ -392,14 +396,14 @@ test("a bush with no reachable tile next to it isn't attempted", () => {
   );
   sim = new Simulation(walled, () => SUCCEED);
   sim.addPlayer("a");
-  sim.queueForage("a", "4,1");
+  sim.queueGather("a", "foraging", "4,1");
   expect(attemptTicks(20)).toEqual([]);
 });
 
 test.each([["constructor"], ["1,1"], [5], [null], [{}]])(
   "a bad bush id of %j is ignored",
   (bush) => {
-    sim.queueForage("a", bush as string);
+    sim.queueGather("a", "foraging", bush as string);
     runTicks(3);
     expect(player()).toMatchObject({ x: 1, y: 1 });
   },
@@ -408,7 +412,7 @@ test.each([["constructor"], ["1,1"], [5], [null], [{}]])(
 describe("logging out", () => {
   test("food and Foraging experience survive", () => {
     addAt("b", 0);
-    sim.queueForage("b", BERRY);
+    sim.queueGather("b", "foraging", BERRY);
     runTicks(1);
     const save = sim.saveOf("b")!;
     const later = new Simulation(TILES, () => SUCCEED);
