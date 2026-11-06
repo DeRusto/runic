@@ -12,8 +12,15 @@ File:    sword-rpg-game-icon-set/PNG/without background/21.png, scaled to 144x14
 Terms:   https://craftpix.net/file-licenses/ (the licence link the pack ships in
          its license.txt)
 
-Craftpix's terms allow use of the file in projects but bar direct redistribution,
-and they don't mention public repositories. The owner of this project has ruled
+In summary, section 1 of Craftpix's terms ("Premium and paid products") allows
+using, copying and modifying the art in any number of free and commercial
+projects, and selling and distributing games made with it, with no royalty. It
+does not allow distributing the source files, reselling them or slightly modified
+versions, or redistributing the art so another end user can get at it through an
+app. The licence is non-exclusive, non-transferable and can't be sublicensed. This
+is a summary: Craftpix's page is what counts.
+
+The terms don't mention public repositories. The owner of this project has ruled
 that committing this one file here is fine, for use in Runic. That ruling is not
 a licence to anyone else: this file is not CC0, and if you want it for your own
 project, get it from Craftpix under their terms.
