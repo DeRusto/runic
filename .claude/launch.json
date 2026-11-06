@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sheet-prototype",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "client"],
+      "port": 5173
+    }
+  ]
+}

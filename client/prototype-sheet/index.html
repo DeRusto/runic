@@ -1,0 +1,600 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway: the character sheet and bottom bar. Never merged. Three layouts, switchable via ?variant=, on the real scene with stubbed items. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Character sheet prototype</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #1b2330;
+      }
+      canvas {
+        display: block;
+      }
+      button {
+        font: inherit;
+      }
+
+      /* The real bar, as client/index.html has it. */
+      #bar {
+        position: fixed;
+        inset: auto 0 0;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 8px;
+        height: 132px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: #232c3a;
+        color: #eee;
+        font: 12px system-ui;
+      }
+      #chat {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      #chat-lines {
+        flex: 1;
+        overflow-y: auto;
+        overflow-wrap: anywhere;
+      }
+      #chat-input {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      #slots {
+        display: grid;
+        grid-template-columns: repeat(10, 36px);
+        grid-auto-rows: 36px;
+        gap: 2px;
+      }
+      #right {
+        min-width: 0;
+        min-height: 0;
+      }
+      progress {
+        width: 100%;
+        height: 8px;
+      }
+      kbd {
+        font: inherit;
+        opacity: 0.7;
+      }
+
+      /* Slots, everywhere. */
+      .slot {
+        position: relative;
+        padding: 0;
+        border: 0;
+        background: #151b25;
+        color: inherit;
+      }
+      .slot svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .slot.locked svg {
+        opacity: 0.4;
+      }
+      .slot:hover:not(:disabled) {
+        outline: 1px solid #ffd27a;
+      }
+      .slot .ghost {
+        opacity: 0.18;
+      }
+      .count {
+        position: absolute;
+        font: 700 11px system-ui;
+        color: #fff;
+        text-shadow:
+          0 0 2px #000,
+          0 0 2px #000,
+          0 0 2px #000;
+      }
+      .v-A .count,
+      .v-D .count {
+        right: 2px;
+        bottom: 0;
+      }
+      .v-B .count {
+        left: 2px;
+        top: 0;
+        color: #ffe9a8;
+      }
+      .v-C .count {
+        right: -1px;
+        top: -1px;
+        min-width: 13px;
+        padding: 0 2px;
+        box-sizing: border-box;
+        border-radius: 7px;
+        background: #c8452f;
+        font-size: 10px;
+        line-height: 13px;
+        text-shadow: none;
+      }
+
+      #menu {
+        position: fixed;
+        z-index: 20;
+        min-width: 110px;
+        padding: 3px;
+        background: #10151d;
+        outline: 1px solid #5a6b82;
+        color: #eee;
+        font: 12px system-ui;
+      }
+      #menu[hidden] {
+        display: none;
+      }
+      #menu header {
+        padding: 2px 6px;
+        color: #ffd27a;
+      }
+      #menu button {
+        display: block;
+        width: 100%;
+        padding: 3px 6px;
+        border: 0;
+        background: none;
+        color: inherit;
+        text-align: left;
+      }
+      #menu button:hover {
+        background: #2c3a4e;
+      }
+
+      .turn {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 4px;
+        text-align: center;
+      }
+      .turn button {
+        width: 100%;
+        padding: 0;
+        font-size: 16px;
+      }
+      .worn {
+        display: inline-flex;
+        gap: 1px;
+        vertical-align: middle;
+      }
+      .worn svg {
+        width: 16px;
+        height: 16px;
+      }
+      .sheet-button {
+        white-space: nowrap;
+      }
+      .sheet-button[aria-pressed="true"] {
+        outline: 2px solid #ffd27a;
+      }
+
+      /* A: bar keeps its shape, floating window above its right end. */
+      .a-right {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 8px;
+        height: 100%;
+      }
+      .a-skills {
+        grid-row: span 4;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-content: start;
+        gap: 4px 8px;
+      }
+      .a-skills label {
+        display: block;
+      }
+      #sheet.a {
+        position: fixed;
+        right: 8px;
+        bottom: 140px;
+        width: 232px;
+        max-height: calc(100vh - 160px);
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 8px;
+        border: 16px solid transparent;
+        border-image: url(assets/panel_brown.png) 20 fill stretch;
+        color: #4a3018;
+        font: 12px system-ui;
+      }
+      #sheet.a h2 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      #sheet.a .close {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 0;
+        background: url(assets/button_brown_close.png) center / 100% 100%;
+      }
+      .a-gear {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      .a-gear .slot {
+        display: block;
+        width: 64px;
+        height: 64px;
+        margin-top: 2px;
+        background: #6d4a28;
+        outline: 2px solid #a26a35;
+      }
+      .a-tools {
+        display: grid;
+        grid-template-columns: repeat(4, 44px);
+        grid-auto-rows: 44px;
+        gap: 4px;
+        margin-top: 2px;
+      }
+      .a-tools .slot {
+        background: #6d4a28;
+      }
+
+      /* D: A's window with tabs, all skills on the sheet, and pins choosing what the bar shows. */
+      #sheet[hidden] {
+        display: none !important;
+      }
+      #sheet.a.d {
+        width: 340px;
+        height: 400px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .d-body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        /* The bar's space is always kept, so content never shifts and pins never touch it. */
+        scrollbar-gutter: stable;
+        scrollbar-width: thin;
+        padding-right: 10px;
+      }
+      .d-body .a-tools {
+        grid-template-columns: repeat(auto-fill, 44px);
+      }
+      .d-tabs {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 8px;
+        border-bottom: 2px solid #a26a35;
+      }
+      .d-tabs button {
+        flex: 1;
+        padding: 3px;
+        border: 0;
+        background: #c9a06a;
+        color: #4a3018;
+      }
+      .d-tabs button[aria-selected="true"] {
+        background: #a26a35;
+        color: #fff4dc;
+        font-weight: 600;
+      }
+      .d-gear {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      .d-gear .slot {
+        display: block;
+        width: 64px;
+        height: 64px;
+        margin: 2px auto;
+        background: #6d4a28;
+        outline: 2px solid #a26a35;
+      }
+      .d-gear b {
+        display: block;
+        font-weight: 600;
+      }
+      .d-gear small {
+        display: block;
+        opacity: 0.8;
+      }
+      .d-skill {
+        display: grid;
+        grid-template-columns: 1fr 22px;
+        gap: 0 4px;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .d-skill progress {
+        grid-column: 1;
+      }
+      .d-pin {
+        grid-row: 1 / span 2;
+        grid-column: 2;
+        width: 22px;
+        height: 22px;
+        padding: 2px;
+        border: 0;
+        border-radius: 3px;
+        background: none;
+        color: #a58a68;
+      }
+      .d-pin svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        fill: currentColor;
+      }
+      .d-pin:hover:not(:disabled) {
+        background: #e8d3ae;
+      }
+      .d-pin[aria-pressed="true"] {
+        color: #a8341f;
+      }
+      .d-pin:disabled {
+        opacity: 0.35;
+      }
+      .d-note {
+        margin: 0 0 6px;
+        opacity: 0.8;
+      }
+      .d-empty {
+        opacity: 0.7;
+      }
+
+      /* B: nothing floats, the bar's right end has tabs. */
+      .b-right {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        height: 100%;
+      }
+      .b-main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      .b-tabs {
+        display: flex;
+        gap: 2px;
+      }
+      .b-tabs button {
+        flex: 1;
+        padding: 2px;
+        border: 0;
+        background: #151b25;
+        color: #aab;
+      }
+      .b-tabs button[aria-selected="true"] {
+        background: #3a4a5e;
+        color: #fff;
+      }
+      .b-body {
+        flex: 1;
+        min-height: 0;
+        padding: 4px;
+        background: #3a4a5e;
+      }
+      .b-skills {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 8px;
+      }
+      .b-sheet {
+        display: flex;
+        gap: 8px;
+        height: 100%;
+      }
+      .b-gear {
+        display: flex;
+        gap: 4px;
+        align-items: start;
+        text-align: center;
+        font-size: 10px;
+      }
+      .b-gear .slot {
+        display: block;
+        width: 48px;
+        height: 48px;
+      }
+      .b-toolbelt {
+        flex: 1;
+        min-width: 0;
+        font-size: 10px;
+      }
+      .b-tools {
+        display: flex;
+        gap: 2px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .b-tools .slot {
+        flex: none;
+        width: 36px;
+        height: 36px;
+      }
+      .b-side {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 4px;
+        width: 92px;
+      }
+
+      /* C: a tall sheet down the right edge holds everything about the player. */
+      .c-right {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 8px;
+        height: 100%;
+      }
+      .c-levels {
+        grid-row: span 4;
+        display: grid;
+        grid-template-columns: repeat(3, auto);
+        justify-content: start;
+        align-content: start;
+        gap: 4px 12px;
+      }
+      #sheet.c {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        bottom: 140px;
+        width: 272px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        box-sizing: border-box;
+        padding: 4px;
+        border: 14px solid transparent;
+        border-image: url(assets/panel_grey_bolts.png) 18 fill stretch;
+        color: #16202c;
+        font: 12px system-ui;
+      }
+      #sheet.c h2 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0;
+        font-size: 14px;
+      }
+      #sheet.c h3 {
+        margin: 0 0 2px;
+        font-size: 12px;
+      }
+      #sheet.c .close {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 0;
+        background: url(assets/button_grey_close.png) center / 100% 100%;
+      }
+      .c-row {
+        display: grid;
+        grid-template-columns: 40px 1fr;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+      .c-row .slot {
+        width: 40px;
+        height: 40px;
+      }
+      .c-row small {
+        display: block;
+        opacity: 0.75;
+      }
+      .c-skill {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+      .c-tools {
+        flex: 1;
+        min-height: 60px;
+        overflow-y: auto;
+      }
+      .c-tools .c-row {
+        grid-template-columns: 28px 1fr;
+      }
+      .c-tools .slot {
+        width: 28px;
+        height: 28px;
+      }
+
+      /* Not part of the design. */
+      #dev {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        z-index: 30;
+        width: 290px;
+        padding: 8px;
+        background: #000c;
+        color: #cde;
+        font: 11px ui-monospace, monospace;
+      }
+      #dev pre {
+        max-height: 34vh;
+        margin: 6px 0 0;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      #dev button {
+        margin: 0 4px 4px 0;
+        font-size: 11px;
+      }
+      #switcher {
+        position: fixed;
+        left: 50%;
+        bottom: 142px;
+        z-index: 30;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        transform: translateX(-50%);
+        padding: 4px 10px;
+        border-radius: 99px;
+        background: #fff;
+        color: #000;
+        font: 600 13px system-ui;
+        box-shadow: 0 2px 10px #000a;
+        white-space: nowrap;
+      }
+      #switcher button {
+        border: 0;
+        background: none;
+        cursor: pointer;
+        font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sheet" hidden></div>
+    <section id="bar">
+      <div id="chat">
+        <div id="chat-lines" role="log" aria-label="Chat"></div>
+        <form id="chat-form">
+          <input id="chat-input" aria-label="Say" autocomplete="off" />
+        </form>
+      </div>
+      <div id="slots" aria-label="Inventory"></div>
+      <div id="right"></div>
+    </section>
+    <div id="menu" hidden></div>
+    <div id="dev">
+      <button id="add-tool">+ tool</button>
+      <button id="add-skill">+ skill</button>
+      <button id="fill">Fill inventory</button>
+      <button id="reset">Reset</button>
+      <pre id="state"></pre>
+    </div>
+    <div id="switcher">
+      <button id="prev" aria-label="Previous variant">←</button>
+      <span id="variant-name"></span>
+      <button id="next" aria-label="Next variant">→</button>
+    </div>
+    <!-- scene.ts wires these at import; each variant shows its own and forwards to them. -->
+    <div hidden>
+      <button id="turn-left"></button>
+      <button id="turn-right"></button>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
