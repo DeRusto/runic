@@ -7,6 +7,8 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The forage intent's message type; its payload is the clicked bush's id in state. */
 export const FORAGE_INTENT = "forage";
+/** The visit intent's message type, for clicking the Blacksmith; it has no payload. */
+export const VISIT_INTENT = "visit";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
 /** The discard intent's message type; its payload is the inventory slot's index. */
@@ -74,7 +76,9 @@ export type WorldEvent =
   | { type: "playerRespawned"; player: string }
   | { type: "enemyReturned"; enemy: string }
   | { type: "pick"; player: string; success: boolean }
-  | { type: "eaten"; player: string };
+  | { type: "eaten"; player: string }
+  /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
+  | { type: "told"; player: string; line: string };
 
 export * from "./enemies.ts";
 export * from "./foraging.ts";

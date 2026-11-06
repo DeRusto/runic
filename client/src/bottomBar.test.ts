@@ -93,6 +93,7 @@ const stateHolding = (...stacks: [string, number][]) => ({
         smithingXp: 0,
         blockingXp: 0,
         pinnedSkills: TODAY,
+        tools: [],
         inventory: [
           ...stacks.map(([item]) => item),
           ...Array<string>(INVENTORY_SLOTS - stacks.length).fill(EMPTY_SLOT),

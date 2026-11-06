@@ -338,6 +338,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     health: 10,
     inventory: EMPTY_INVENTORY,
     inventoryCounts: EMPTY_COUNTS,
+    tools: [],
   });
 });
 
@@ -355,6 +356,7 @@ const SAVED = {
   health: 7,
   inventory: ["berry", ...EMPTY_INVENTORY.slice(1)],
   inventoryCounts: [7, ...EMPTY_COUNTS.slice(1)],
+  tools: ["pickaxe"],
 };
 
 test("a returning player comes back exactly as saved", () => {

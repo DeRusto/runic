@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { CloseCode, matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
+  EVENTS,
   LOGOUT_INTENT,
   parseRegion,
   PIN_INTENT,
@@ -12,6 +13,7 @@ import {
   SAVE_INTERVAL_TICKS,
   TAKEN_OVER_CLOSE_CODE,
   TICK_MS,
+  VISIT_INTENT,
   WALK_INTENT,
   WORLD_ROOM,
 } from "@runic/shared";
@@ -151,6 +153,45 @@ test("pins survive logging out, follow the player to another device, and new ski
   device.auth.token = client.auth.token!;
   const back = await joined(device);
   expect([...synced(back).pinnedSkills]).toEqual([...pinned, "Blocking"]);
+});
+
+test("the Blacksmith's tools reach the client with a told line, and survive logging out", async () => {
+  const tiles = parseRegion(REGION_GRID);
+  const y = tiles.findIndex((row) => row.some((tile) => tile.blacksmith));
+  const x = tiles[y]!.findIndex((tile) => tile.blacksmith);
+  const client = await clientFor("Toolman");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  // Already beside the Blacksmith, so the test doesn't wait out the walk.
+  Object.assign(world.sim.state.players.get(room.sessionId)!, { x: x - 1, y });
+  const lines: unknown[] = [];
+  room.onMessage(EVENTS, (events: { type: string }[]) =>
+    lines.push(...events.filter(({ type }) => type === "told")),
+  );
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  const BOTH = ["pickaxe", "hammer"];
+
+  room.send(VISIT_INTENT);
+  await vi.waitFor(() => expect([...synced(room).tools]).toEqual(BOTH), {
+    timeout: TICK_MS * 4,
+    interval: 20,
+  });
+  await vi.waitFor(() =>
+    expect(lines).toEqual([
+      {
+        type: "told",
+        player: room.sessionId,
+        line: "The Blacksmith gives you a pickaxe and a hammer.",
+      },
+    ]),
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect([...synced(back).tools]).toEqual(BOTH);
 });
 
 test("stack counts survive logging out, and clients see them change", async () => {

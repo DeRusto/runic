@@ -25,6 +25,9 @@ export const ITEMS = {
 } as const;
 export type ItemId = keyof typeof ITEMS;
 
+/** Every tool the Blacksmith gives. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). */
+export const TOOLS = ["pickaxe", "hammer"];
+
 /** The slot a new `item` goes in: the first stack of it with room, then the first empty slot. -1 means full (spec §4). */
 export function slotFor(
   item: ItemId,
