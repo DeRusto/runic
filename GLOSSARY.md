@@ -170,6 +170,10 @@ _Avoid_: Equipment slot
 The panel a player opens to see their gear slots.
 _Avoid_: Equipment screen, paper doll
 
+**Smithing panel**:
+The panel a player opens by clicking a furnace or anvil, to choose what to make there.
+_Avoid_: Crafting menu, recipe list
+
 **Tier**:
 One of the three metals, from lowest to highest: Copper, Iron and Emberite. A tier's ore, bars and gear all share its level gate.
 _Avoid_: Grade, rank
