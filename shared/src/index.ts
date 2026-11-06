@@ -69,6 +69,7 @@ export const COMBAT_LEVELS_PER_DAMAGE = 20;
 export const XP_PER_DAMAGE_DEALT = 6;
 export const DEFENSE_XP_PER_ENEMY_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
+export const BLOCKING_XP_PER_BLOCK = 40;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
@@ -76,10 +77,16 @@ export type PlayerAction =
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
-/** A `damage` of 0 is a miss. */
+/** A `damage` of 0 is a miss, unless `blocked` says a shield stopped it. */
 export type WorldEvent =
   | { type: "playerSwing"; player: string; enemy: string; damage: number }
-  | { type: "enemySwing"; enemy: string; player: string; damage: number }
+  | {
+      type: "enemySwing";
+      enemy: string;
+      player: string;
+      damage: number;
+      blocked: boolean;
+    }
   | { type: "enemyDied"; enemy: string }
   | { type: "playerDied"; player: string }
   | { type: "playerRespawned"; player: string }

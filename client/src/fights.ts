@@ -6,7 +6,7 @@ import {
   type WorldEvent,
 } from "@runic/shared";
 import { holdPick, printChatLine, revealPick } from "./bottomBar.ts";
-import { ENEMY_CLIPS, swingFor } from "./characters.ts";
+import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -93,6 +93,14 @@ export function showFights(room: WorldConnection) {
         );
         enemyFigures.get(event.enemy)!.once(clip);
         killingContactMs = contactMs;
+        if (event.blocked) {
+          setTimeout(() => {
+            playerOverheads.get(event.player)?.pop("Blocked", "blocked");
+            const victim = playerFigures.get(event.player);
+            if (victim && !victim.playingOnce) victim.once(BLOCK_CLIP);
+          }, contactMs);
+          continue;
+        }
         atContact(
           playerOverheads.get(event.player),
           event.damage,

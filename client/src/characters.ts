@@ -75,8 +75,11 @@ const UNARMED_SWING = {
   clip: "Melee_Unarmed_Attack_Punch_A",
   contactMs: 550,
 };
-const SWING_CLIPS = new Set(
-  [...ARMED_SWINGS, UNARMED_SWING].map(({ clip }) => clip),
+/** A blocked hit (spec §7). */
+export const BLOCK_CLIP = "Melee_Block_Hit";
+/** The clips that bring out what's worn, even with no fight going on. */
+const GEAR_CLIPS = new Set(
+  [...ARMED_SWINGS, UNARMED_SWING].map(({ clip }) => clip).concat(BLOCK_CLIP),
 );
 
 /** FNV-1a, mixed, as its low bits just follow the input's. */
@@ -365,7 +368,7 @@ export class Figure {
       !this.held &&
       !this.pickaxe?.visible &&
       !this.hammer?.visible &&
-      (SWING_CLIPS.has(clip!) || (!!fightTile && !running));
+      (GEAR_CLIPS.has(clip!) || (!!fightTile && !running));
     for (const [item, held] of this.gear)
       held.visible = inFight && (item === this.weapon || item === this.shield);
 

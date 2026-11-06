@@ -117,6 +117,14 @@ describe("the Gear tab", () => {
     expect(el("gear-shield-name").textContent).toBe("Empty");
   });
 
+  test("a worn shield shows its name and what it does", () => {
+    wearing("", "emberiteShield");
+    expect(el("gear-shield-name").textContent).toBe("Emberite shield");
+    expect(el("gear-shield-does").textContent).toBe(
+      "Starts at a 30% chance to block a hit",
+    );
+  });
+
   test("taking it off empties the slot again", () => {
     wearing("ironSword");
     wearing("");

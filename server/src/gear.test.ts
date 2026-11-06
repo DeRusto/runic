@@ -1,6 +1,7 @@
 import {
   EMPTY_SLOT,
   INVENTORY_SLOTS,
+  MAX_XP,
   parseRegion,
   type GearSlot,
 } from "@runic/shared";
@@ -245,6 +246,110 @@ describe("damage on a hit is (1 + bonus)..(2 + floor(Combat / 20) + bonus)", () 
     sim.tick();
     expect(swings()).toEqual([1]);
     expect(me().combatXp).toBe(6);
+  });
+});
+
+describe("shields", () => {
+  test("equip, swap and take off as swords do, freeing and filling slots", () => {
+    start({ held: ["copperShield", "ironShield"], defenseXp: LEVEL_10_XP });
+    sim.equip("a", 0);
+    expect(me().shield).toBe("copperShield");
+    expect(me().inventory[0]).toBe(EMPTY_SLOT);
+    sim.equip("a", 1);
+    expect(me().shield).toBe("ironShield");
+    expect(me().inventory[1]).toBe("copperShield");
+    sim.takeOff("a", "shield");
+    expect(me().shield).toBe("");
+    expect(me().inventory[0]).toBe("ironShield");
+    expect(told()).toEqual([]);
+  });
+
+  test("above the Defense level is refused, at any Blocking level", () => {
+    start({
+      held: ["ironShield"],
+      defenseXp: LEVEL_10_XP - 1,
+      blockingXp: LEVEL_20_XP,
+    });
+    sim.equip("a", 0);
+    expect(me().shield).toBe("");
+    expect(told()).toEqual(["You need Defense 10 to equip this."]);
+  });
+
+  test("a level 1 Blocking player can wear the top tier", () => {
+    start({ held: ["emberiteShield"], defenseXp: LEVEL_20_XP });
+    sim.equip("a", 0);
+    expect(me().shield).toBe("emberiteShield");
+  });
+});
+
+describe("blocking", () => {
+  const HIT = 0;
+  // The player's own swing on tick 1 misses, and the Spider's first swing comes on tick 5.
+  const spiderSwing = (fields: Start, ...swingRolls: number[]) => {
+    start({ health: 10, ...fields });
+    rolls = [MISS, ...swingRolls];
+    sim.queueTarget("a", "0");
+    ticks(5);
+    return sim.events.find((event) => event.type === "enemySwing")!;
+  };
+  // Hit, damage 1, then the block roll.
+  const blockRolled = (roll: number, fields: Start) =>
+    spiderSwing(fields, HIT, 0, roll);
+
+  test("a block does no damage, gives 40 Blocking, and Defense still gets its 6", () => {
+    const swing = blockRolled(0, { shield: "copperShield" });
+    expect(swing).toMatchObject({ damage: 0, blocked: true });
+    expect(me().health).toBe(10);
+    expect(me().blockingXp).toBe(40);
+    expect(me().defenseXp).toBe(6);
+  });
+
+  test("a hit that isn't blocked lands as usual and trains no Blocking", () => {
+    const swing = blockRolled(0.1, { shield: "copperShield" });
+    expect(swing).toMatchObject({ damage: 1, blocked: false });
+    expect(me().health).toBe(9);
+    expect(me().blockingXp).toBe(0);
+    expect(me().defenseXp).toBe(10);
+  });
+
+  test("a miss stays a miss, with no block roll or Blocking experience", () => {
+    const swing = spiderSwing({ shield: "copperShield" }, MISS, 0);
+    expect(swing).toMatchObject({ damage: 0, blocked: false });
+    expect(rolls).toEqual([0]);
+    expect(me().blockingXp).toBe(0);
+    expect(me().defenseXp).toBe(6);
+  });
+
+  test("with no shield there is no block roll", () => {
+    const swing = spiderSwing({}, HIT, 0, 0);
+    expect(swing).toMatchObject({ damage: 1, blocked: false });
+    expect(rolls).toEqual([0]);
+  });
+
+  // Level 2 adds 0.2 points, and level 99 adds 98 * 0.2 = 19.6.
+  test.each([
+    ["copperShield", 0, 0.0999, 0.1],
+    ["ironShield", 0, 0.1999, 0.2],
+    ["emberiteShield", 0, 0.2999, 0.3],
+    ["copperShield", 50, 0.1019, 0.1021],
+    ["emberiteShield", MAX_XP, 0.4959, 0.4961],
+  ])("%s at %i Blocking experience", (shield, blockingXp, blocks, lands) => {
+    const fields = { shield, blockingXp };
+    expect(blockRolled(blocks, fields)).toMatchObject({ blocked: true });
+    expect(blockRolled(lands, fields)).toMatchObject({ blocked: false });
+  });
+
+  test("a killing blow can be blocked", () => {
+    const swing = blockRolled(0, { shield: "copperShield", health: 1 });
+    expect(swing).toMatchObject({ damage: 0, blocked: true });
+    expect(me().dead).toBe(false);
+  });
+
+  test("Blocking experience is saved and loaded", () => {
+    blockRolled(0, { shield: "copperShield" });
+    expect(sim.saveOf("a")).toMatchObject({ blockingXp: 40 });
+    start({ blockingXp: 40 });
+    expect(me().blockingXp).toBe(40);
   });
 });
 

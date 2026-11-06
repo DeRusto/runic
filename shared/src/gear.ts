@@ -17,6 +17,8 @@ type Gear = {
   /** What the Gear tab says it does. */
   does: string;
   hitBonus?: number;
+  /** The base chance, 0..1, of blocking a hit that would have landed. */
+  blockChance?: number;
 };
 
 const sword = (level: number, hitBonus: number): Gear => ({
@@ -26,11 +28,24 @@ const sword = (level: number, hitBonus: number): Gear => ({
   hitBonus,
 });
 
+const shield = (level: number, blockPercent: number): Gear => ({
+  slot: "shield",
+  level,
+  does: `Starts at a ${blockPercent}% chance to block a hit`,
+  blockChance: blockPercent / 100,
+});
+
+/** Added to a shield's chance per Blocking level above 1 (spec §5). */
+export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
+
 /** Spec §5, by item id. Anything in here can be equipped. */
 export const GEAR = new Map<string, Gear>([
   ["copperSword", sword(1, 1)],
   ["ironSword", sword(10, 2)],
   ["emberiteSword", sword(20, 3)],
+  ["copperShield", shield(1, 10)],
+  ["ironShield", shield(10, 20)],
+  ["emberiteShield", shield(20, 30)],
 ]);
 
 /** Why this gear can't be equipped, or undefined if it can or isn't gear. The bar greys it, and the server tells the player. */
