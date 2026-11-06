@@ -165,8 +165,8 @@ export class Simulation {
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextAttemptTick: number;
       nextEatTick: number;
-      /** Health eaten but not yet given. Not saved, so leaving loses it (spec §6). */
-      healingPool: number;
+      /** What each healing tick still to come gives, in eating order. Not saved, so leaving loses it (spec §6). */
+      healingPool: number[];
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
@@ -278,7 +278,7 @@ export class Simulation {
       nextSwingTick: 0,
       nextAttemptTick: 0,
       nextEatTick: 0,
-      healingPool: 0,
+      healingPool: [],
       lockEndTick: 0,
       respawnTick: 0,
       ...this.timersOfLeavers.get(username),
@@ -546,8 +546,8 @@ export class Simulation {
   private eat(id: string, slot: number) {
     const player = this.state.players.get(id)!;
     const unsynced = this.unsyncedPlayers.get(id)!;
-    const heals = FOOD_HEALS.get(player.inventory[slot]);
-    if (heals === undefined || this.state.tick < unsynced.nextEatTick) return;
+    const food = FOOD_HEALS.get(player.inventory[slot]);
+    if (food === undefined || this.state.tick < unsynced.nextEatTick) return;
     unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
     // From now if no swing is waiting, or a past timer would swallow the delay.
     unsynced.nextSwingTick =
@@ -555,7 +555,11 @@ export class Simulation {
     if (--player.inventoryCounts[slot]! === 0)
       player.inventory[slot] = EMPTY_SLOT;
     // Not at full health, or a swing later this tick could save it from being lost.
-    if (player.health < player.maxHealth) unsynced.healingPool += heals;
+    if (player.health < player.maxHealth) {
+      unsynced.healingPool.push(
+        ...Array<number>(food.ticks).fill(food.perTick),
+      );
+    }
     this.events.push({ type: "eaten", player: id });
   }
 
@@ -992,7 +996,7 @@ export class Simulation {
     player.dead = true;
     this.clearAction(id);
     const unsynced = this.unsyncedPlayers.get(id)!;
-    unsynced.healingPool = 0;
+    unsynced.healingPool.length = 0;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
@@ -1015,11 +1019,16 @@ export class Simulation {
         );
         player.health = Math.min(player.health + heals, player.maxHealth);
       }
-      if (poolGives && unsynced.healingPool > 0) {
-        unsynced.healingPool--;
-        player.health = Math.min(player.health + 1, player.maxHealth);
+      if (poolGives && unsynced.healingPool.length > 0) {
+        const amount = Math.min(
+          unsynced.healingPool.shift()!,
+          player.maxHealth - player.health,
+        );
+        player.health += amount;
+        if (amount > 0)
+          this.events.push({ type: "healed", player: id, amount });
       }
-      if (player.health === player.maxHealth) unsynced.healingPool = 0;
+      if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
     }
   }
 
