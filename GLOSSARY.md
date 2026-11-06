@@ -22,6 +22,14 @@ _Avoid_: Forest, woods
 The part of a region where enemies roam.
 _Avoid_: Wilderness, combat zone
 
+**Boneyard**:
+The field where Skeletons roam.
+_Avoid_: Graveyard, dungeon
+
+**Smithy**:
+The part of the village where the furnace, anvil and Blacksmith stand.
+_Avoid_: Forge, workshop
+
 **Bush**:
 A spot in a thicket that can be foraged; it runs out after use and grows back over time. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Foraging level.
 _Avoid_: Node, resource, plant
