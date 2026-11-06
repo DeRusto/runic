@@ -38,6 +38,7 @@ export const TICK_DRIVER_MS = 20;
 export const WALK_TICKS_PER_TILE = 2;
 export const SWING_INTERVAL_TICKS = 8;
 export const EAT_SWING_DELAY_TICKS = 4;
+export const FIGHT_BACK_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
