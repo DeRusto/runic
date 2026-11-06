@@ -1,4 +1,4 @@
-import { EMPTY_SLOT } from "./index.ts";
+import { slotFor } from "./items.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -30,13 +30,14 @@ export function bushRefusal(
   picksLeft: number,
   player: {
     foragingXp: number;
-    inventory: { includes(item: string): boolean };
+    inventory: Iterable<string>;
+    inventoryCounts: Iterable<number>;
   },
 ) {
   if (picksLeft === 0) return "This bush has run out.";
   const { level } = BUSHES[kind];
   if (levelFor(player.foragingXp) < level)
     return `You need Foraging ${level} to pick this.`;
-  if (!player.inventory.includes(EMPTY_SLOT)) return "Your inventory is full.";
+  if (slotFor(BUSHES[kind].food, player) < 0) return "Your inventory is full.";
   return undefined;
 }

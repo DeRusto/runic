@@ -111,6 +111,7 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   const player = world.sim.state.players.get(room.sessionId)!;
   player.foragingXp = 300;
   player.inventory[0] = "berry";
+  player.inventoryCounts[0] = 13;
 
   await server.gracefullyShutdown(false);
   server = await startServer(PORT);
@@ -120,4 +121,28 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   const saved = (back.state as any).players.get(back.sessionId);
   expect(saved.foragingXp).toBe(300);
   expect(saved.inventory[0]).toBe("berry");
+  expect(saved.inventoryCounts[0]).toBe(13);
+  expect(saved.inventoryCounts[1]).toBe(0);
+});
+
+test("stack counts survive logging out, and clients see them change", async () => {
+  const client = await clientFor("Stacker");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  const player = world.sim.state.players.get(room.sessionId)!;
+  player.inventory[2] = "herb";
+  player.inventoryCounts[2] = 5;
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  await vi.waitFor(() => expect(synced(room).inventoryCounts[2]).toBe(5), {
+    timeout: TICK_MS * 3,
+    interval: 20,
+  });
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back).inventory[2]).toBe("herb");
+  expect(synced(back).inventoryCounts[2]).toBe(5);
 });

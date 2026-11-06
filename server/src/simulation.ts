@@ -23,6 +23,7 @@ import {
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
+  slotFor,
   LEASH_TILES,
   tilesApart,
   SWING_INTERVAL_TICKS,
@@ -54,6 +55,8 @@ export const Player = schema(
     health: t.uint8(),
     maxHealth: t.uint8(),
     inventory: t.array("string"),
+    /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
+    inventoryCounts: t.array("uint8"),
     /** The id of the enemy this player is after, or "". */
     target: t.string().default(""),
     action: t.string<PlayerAction>().default(""),
@@ -114,6 +117,8 @@ export class Simulation {
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
   private queuedEats = new Map<string, number>();
+  /** Apart from the action too, which discarding doesn't replace (spec §4). */
+  private queuedDiscards = new Map<string, number>();
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
@@ -178,12 +183,22 @@ export class Simulation {
 
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
-    const { inventory, ...fields } = this.loginSave(saved);
+    const {
+      inventory,
+      inventoryCounts = [],
+      ...fields
+    } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
       username,
       maxHealth: levelFor(fields.hitpointsXp),
     });
     player.inventory = new ArraySchema(...inventory);
+    // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
+    player.inventoryCounts = new ArraySchema(
+      ...inventory.map((item, slot) =>
+        item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
+      ),
+    );
     this.state.players.set(id, player);
     this.unsyncedPlayers.set(id, {
       path: [],
@@ -230,6 +245,7 @@ export class Simulation {
       hitpointsXp,
       health,
       inventory: [...player.inventory],
+      inventoryCounts: [...player.inventoryCounts],
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.respawned(player)),
     };
@@ -251,6 +267,7 @@ export class Simulation {
     this.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
+    this.queuedDiscards.delete(id);
     this.queuedLogouts.delete(id);
   }
 
@@ -260,6 +277,7 @@ export class Simulation {
     this.unsyncedPlayers.get(id)!.dropped = true;
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
+    this.queuedDiscards.delete(id);
     this.queuedLogouts.delete(id);
   }
 
@@ -321,6 +339,20 @@ export class Simulation {
     this.queuedEats.set(id, slot);
   }
 
+  /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
+  queueDiscard(id: string, slot: number) {
+    if (!this.alive(id)) return;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    this.queuedDiscards.set(id, slot);
+  }
+
+  private discard(id: string, slot: number) {
+    const player = this.state.players.get(id)!;
+    if (!player.inventory[slot]) return;
+    player.inventory[slot] = EMPTY_SLOT;
+    player.inventoryCounts[slot] = 0;
+  }
+
   private eat(id: string, slot: number) {
     const player = this.state.players.get(id)!;
     const unsynced = this.unsyncedPlayers.get(id)!;
@@ -330,7 +362,8 @@ export class Simulation {
     // From now if no swing is waiting, or a past timer would swallow the delay.
     unsynced.nextSwingTick =
       Math.max(unsynced.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
-    player.inventory[slot] = EMPTY_SLOT;
+    if (--player.inventoryCounts[slot]! === 0)
+      player.inventory[slot] = EMPTY_SLOT;
     const health = Math.min(player.health + heals, player.maxHealth);
     this.events.push({
       type: "eaten",
@@ -380,6 +413,8 @@ export class Simulation {
     this.queuedActions.clear();
     for (const [id, slot] of this.queuedEats) this.eat(id, slot);
     this.queuedEats.clear();
+    for (const [id, slot] of this.queuedDiscards) this.discard(id, slot);
+    this.queuedDiscards.clear();
     for (const id of this.queuedLogouts) {
       if (this.state.tick >= this.unsyncedPlayers.get(id)!.lockEndTick) {
         this.loggedOut.push(id);
@@ -424,7 +459,9 @@ export class Simulation {
       if (!success) continue;
       const { xp, food, regrowTicks } = BUSHES[site.kind];
       player.foragingXp = addXp(player.foragingXp, xp);
-      player.inventory[player.inventory.indexOf(EMPTY_SLOT)] = food;
+      const slot = slotFor(food, player);
+      player.inventory[slot] = food;
+      player.inventoryCounts[slot]!++;
       if (--bush.picksLeft === 0)
         site.regrowTick = this.state.tick + regrowTicks;
       unsynced.bush = undefined;
