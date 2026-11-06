@@ -112,7 +112,6 @@ export function showFights(room: WorldConnection) {
           if (event.player === room.sessionId) revealPick();
         }, PICK_RESULT_AT * clipMs);
       } else if (event.type === "eaten") {
-        playerOverheads.get(event.player)?.pop(`+${event.healed}`, "heal");
         const figure = playerFigures.get(event.player);
         if (figure && !figure.moving) figure.once("Use_Item", EAT_CLIP_SPEED);
       }
