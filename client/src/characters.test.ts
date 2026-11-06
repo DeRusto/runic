@@ -903,7 +903,7 @@ describe("the Skeleton", () => {
     expect(joints).toEqual(jointsOf("Knight"));
   });
 
-  it("holds its blade in a stance, walking and swinging, as its name isn't worn gear", () => {
+  it("holds its blade in a stance, walking and swinging, as it isn't worn gear", () => {
     const blade = new THREE.Object3D();
     blade.name = "Skeleton_Blade";
     const tile = { x: 1, y: 1 };
@@ -912,7 +912,7 @@ describe("the Skeleton", () => {
       new THREE.Object3D().add(blade),
       STANCE_CLIPS,
     );
-    figure.weapon = blade.name;
+    figure.alwaysArmed = true;
     figure.update(1000);
     expect(blade.visible).toBe(true);
     figure.fightTile = { x: 2, y: 1 };

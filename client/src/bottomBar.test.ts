@@ -52,7 +52,8 @@ vi.stubGlobal("cancelAnimationFrame", () => (frames = []));
 /** The next paint. The server sends a tick's events right after its patch, so both come before it. */
 const nextFrame = () => frames.splice(0).forEach((draw) => draw());
 // After the stub, since the module looks up the chat box as it loads.
-const { holdPick, revealPick, showBottomBar } = await import("./bottomBar.ts");
+const { holdResult, revealResult, showBottomBar } =
+  await import("./bottomBar.ts");
 
 function signal<Args extends unknown[]>() {
   let handlers: ((...args: Args) => void)[] = [];
@@ -141,10 +142,10 @@ beforeEach(() => {
 describe("holding a pick's result", () => {
   test("a pick's food stays hidden until its clip reveals it", () => {
     room.onStateChange.invoke(stateWith("berry"));
-    holdPick();
+    holdResult();
     nextFrame();
     expect(shownFood()).toBe("");
-    revealPick();
+    revealResult();
     expect(shownFood()).toBe("berry");
   });
 
@@ -152,10 +153,10 @@ describe("holding a pick's result", () => {
     room.onStateChange.invoke(stateHolding(["berry", 3]));
     nextFrame();
     room.onStateChange.invoke(stateHolding(["berry", 4]));
-    holdPick();
+    holdResult();
     nextFrame();
     expect(slot().dataset.count).toBe("3");
-    revealPick();
+    revealResult();
     expect(slot().dataset.count).toBe("4");
   });
 
@@ -166,13 +167,13 @@ describe("holding a pick's result", () => {
   });
 
   test("patches during the hold don't show until the reveal", () => {
-    holdPick();
+    holdResult();
     room.onStateChange.invoke(stateWith("berry"));
     nextFrame();
     room.onStateChange.invoke(stateWith("berry"));
     nextFrame();
     expect(shownFood()).toBe("");
-    revealPick();
+    revealResult();
     expect(shownFood()).toBe("berry");
   });
 
@@ -187,7 +188,7 @@ describe("holding a pick's result", () => {
 
   test("a reconnect shows a pick already held when the connection dropped", () => {
     room.onStateChange.invoke(stateWith("berry"));
-    holdPick();
+    holdResult();
     room.onReconnect.invoke();
     room.onStateChange.invoke(stateWith("berry"));
     expect(shownFood()).toBe("berry");
@@ -238,10 +239,10 @@ describe("the skills column", () => {
   });
 
   test("a pin shows at once, even while a pick's result is held", () => {
-    holdPick();
+    holdResult();
     room.onStateChange.invoke(statePinning("Blocking"));
     expect(shown()).toEqual(["Blocking 1"]);
-    revealPick();
+    revealResult();
   });
 });
 

@@ -5,7 +5,7 @@ import {
   TICK_MS,
   type WorldEvent,
 } from "@runic/shared";
-import { holdPick, printChatLine, revealPick } from "./bottomBar.ts";
+import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
 import {
   playerFigures,
@@ -17,7 +17,11 @@ import type { Overhead } from "./overhead.ts";
 import { stationTile } from "./stations.ts";
 
 /** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
-const PICK_RESULT_AT = 0.4;
+const ATTEMPT_RESULT_AT = 0.4;
+const ATTEMPTS = {
+  pick: { xp: "foragingXp", clip: "PickUp", success: "Picked!" },
+  mine: { xp: "miningXp", clip: "Pickaxing", success: "Mined!" },
+} as const;
 const EAT_CLIP_SPEED = 1.33;
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
@@ -37,6 +41,18 @@ function atContact(
 /** Plays each tick's events on the figures. */
 export function showFights(room: WorldConnection) {
   const clipsOf = (id: string) => ENEMY_CLIPS[room.state.enemies.get(id)!.kind];
+  /** When each player's latest swing connects, by Date.now(). */
+  const ownContactAt = new Map<string, number>();
+  /** Waits for the player's own swing to connect, as playing now would cut it off before its blow lands. */
+  const showBlockClip = (id: string) => {
+    const wait = (ownContactAt.get(id) ?? 0) - Date.now();
+    if (wait > 0) {
+      setTimeout(() => showBlockClip(id), wait);
+      return;
+    }
+    const victim = playerFigures.get(id);
+    if (victim && !victim.downed) victim.once(BLOCK_CLIP);
+  };
 
   // A reconnect brings the state, just after onReconnect, but not the events missed, so a death
   // or return may be owed.
@@ -74,6 +90,7 @@ export function showFights(room: WorldConnection) {
           room.state.tick,
         );
         attacker?.once(clip);
+        ownContactAt.set(event.player, Date.now() + contactMs);
         killingContactMs = contactMs;
         atContact(
           enemyOverheads.get(event.enemy),
@@ -96,8 +113,7 @@ export function showFights(room: WorldConnection) {
         if (event.blocked) {
           setTimeout(() => {
             playerOverheads.get(event.player)?.pop("Blocked", "blocked");
-            const victim = playerFigures.get(event.player);
-            if (victim && !victim.playingOnce) victim.once(BLOCK_CLIP);
+            showBlockClip(event.player);
           }, contactMs);
           continue;
         }
@@ -124,27 +140,19 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "enemyReturned") {
         enemyFigures.get(event.enemy)![clipsOf(event.enemy).returns]();
       } else if (event.type === "pick" || event.type === "mine") {
-        const mining = event.type === "mine";
+        const { xp, clip, success } = ATTEMPTS[event.type];
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
         if (!figure || !player) continue;
-        if (event.success && event.player === room.sessionId) holdPick();
-        const interval = pickIntervalTicks(
-          levelFor(mining ? player.miningXp : player.foragingXp),
-        );
-        const clipMs = figure.onceWithin(
-          mining ? "Pickaxing" : "PickUp",
-          interval * TICK_MS,
-        );
+        if (event.success && event.player === room.sessionId) holdResult();
+        const interval = pickIntervalTicks(levelFor(player[xp]));
+        const clipMs = figure.onceWithin(clip, interval * TICK_MS);
         setTimeout(() => {
           playerOverheads
             .get(event.player)
-            ?.pop(
-              event.success ? (mining ? "Mined!" : "Picked!") : "No luck",
-              "pick",
-            );
-          if (event.player === room.sessionId) revealPick();
-        }, PICK_RESULT_AT * clipMs);
+            ?.pop(event.success ? success : "No luck", "pick");
+          if (event.player === room.sessionId) revealResult();
+        }, ATTEMPT_RESULT_AT * clipMs);
       } else if (event.type === "make") {
         const figure = playerFigures.get(event.player);
         if (!figure) continue;

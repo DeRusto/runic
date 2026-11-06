@@ -65,6 +65,9 @@ import {
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
+const isInventorySlot = (slot: number) =>
+  Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
+
 export const Player = schema(
   {
     username: t.string(),
@@ -123,6 +126,15 @@ export const WorldState = schema(
   "WorldState",
 );
 
+/** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
+type UnsyncedAction =
+  | { kind: "fighting"; enemy: string }
+  | { kind: "foraging"; bush: string }
+  | { kind: "mining"; vein: string }
+  | { kind: "visiting" }
+  /** `doneTick` stays unset until arrival starts the first wait. */
+  | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
+
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
   state = new WorldState();
@@ -143,14 +155,9 @@ export class Simulation {
       path: Tile[];
       nextStepTick: number;
       nextSwingTick: number;
-      enemy?: string;
-      bush?: string;
-      vein?: string;
-      visiting?: boolean;
-      /** `doneTick` stays unset until arrival starts the first wait. */
-      making?: { item: RecipeItem; all: boolean; doneTick?: number };
+      action?: UnsyncedAction;
       /** Outlives the action, so clicking again can't beat the attempt interval. */
-      nextPickTick: number;
+      nextAttemptTick: number;
       nextEatTick: number;
       /** Health eaten but not yet given. Not saved, so leaving loses it (spec §6). */
       healingPool: number;
@@ -167,12 +174,13 @@ export class Simulation {
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
-    { nextPickTick: number; nextEatTick: number }
+    { nextAttemptTick: number; nextEatTick: number }
   >();
-  /** Each enemy's home tile, plus the timers clients don't need. */
+  /** What an enemy needs that clients don't: its home tile, timers and who has damaged it. */
   private unsyncedEnemies = new Map<
     string,
-    Tile & {
+    {
+      home: Tile;
       nextStepTick: number;
       nextSwingTick: number;
       returnTick: number;
@@ -223,8 +231,7 @@ export class Simulation {
         if (!enemy) return;
         const id = String(this.unsyncedEnemies.size);
         this.unsyncedEnemies.set(id, {
-          x,
-          y,
+          home: { x, y },
           nextStepTick: 0,
           nextSwingTick: 0,
           returnTick: 0,
@@ -271,7 +278,7 @@ export class Simulation {
       path: [],
       nextStepTick: 0,
       nextSwingTick: 0,
-      nextPickTick: 0,
+      nextAttemptTick: 0,
       nextEatTick: 0,
       healingPool: 0,
       lockEndTick: 0,
@@ -347,8 +354,8 @@ export class Simulation {
     const username = this.state.players.get(id)?.username;
     const unsynced = this.unsyncedPlayers.get(id);
     if (username && unsynced) {
-      const { nextPickTick, nextEatTick } = unsynced;
-      this.timersOfLeavers.set(username, { nextPickTick, nextEatTick });
+      const { nextAttemptTick, nextEatTick } = unsynced;
+      this.timersOfLeavers.set(username, { nextAttemptTick, nextEatTick });
     }
     this.state.players.delete(id);
     this.unsyncedPlayers.delete(id);
@@ -357,7 +364,8 @@ export class Simulation {
     this.queuedDiscards.delete(id);
     this.queuedLogouts.delete(id);
     // A leaver has no inventory to fill (spec D8).
-    for (const home of this.unsyncedEnemies.values()) home.damagers.delete(id);
+    for (const enemy of this.unsyncedEnemies.values())
+      enemy.damagers.delete(id);
   }
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
@@ -373,9 +381,7 @@ export class Simulation {
   private clearAction(id: string) {
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.path = [];
-    unsynced.enemy = unsynced.bush = unsynced.vein = undefined;
-    unsynced.making = undefined;
-    unsynced.visiting = false;
+    unsynced.action = undefined;
     Object.assign(this.state.players.get(id)!, { target: "", action: "" });
   }
 
@@ -434,8 +440,8 @@ export class Simulation {
   }
 
   /**
-   * Comes straight off the network, so anything but a recipe's item is ignored, as is an
-   * anvil pick with no hammer. Level and materials wait for arrival (spec §4).
+   * Comes straight off the network, so anything but a recipe's item is ignored, as is choosing
+   * an anvil recipe with no hammer. Level and materials wait for arrival (spec §4).
    */
   queueMake(id: string, intent: { item: string; all: boolean }) {
     const player = this.state.players.get(id);
@@ -457,14 +463,14 @@ export class Simulation {
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
     if (!this.alive(id)) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    if (!isInventorySlot(slot)) return;
     this.queuedEats.set(id, slot);
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueDiscard(id: string, slot: number) {
     if (!this.alive(id)) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    if (!isInventorySlot(slot)) return;
     this.queuedDiscards.set(id, slot);
   }
 
@@ -486,7 +492,7 @@ export class Simulation {
    */
   equip(id: string, slot: number) {
     if (!this.alive(id)) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    if (!isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
     const gear = GEAR.get(item);
@@ -523,6 +529,16 @@ export class Simulation {
     player.inventory[slot] = item;
     player.inventoryCounts[slot] = item ? 1 : 0;
     if (this.queuedDiscards.get(id) === slot) this.queuedDiscards.delete(id);
+  }
+
+  /** Adds one `item` to the slot `slotFor` chose. */
+  private addToSlot(
+    player: InstanceType<typeof Player>,
+    slot: number,
+    item: string,
+  ) {
+    player.inventory[slot] = item;
+    player.inventoryCounts[slot]!++;
   }
 
   private discard(id: string, slot: number) {
@@ -566,55 +582,38 @@ export class Simulation {
   }
 
   private applyIntents() {
-    for (const [id, action] of this.queuedActions) {
+    for (const [id, intent] of this.queuedActions) {
       const unsynced = this.unsyncedPlayers.get(id)!;
-      unsynced.bush = unsynced.vein = unsynced.making = undefined;
-      unsynced.visiting = false;
-      if ("enemy" in action) {
-        unsynced.enemy = action.enemy;
-      } else if ("make" in action) {
-        unsynced.enemy = undefined;
-        const path = pathNextTo(
-          this.tiles,
-          this.state.players.get(id)!,
-          this.stations[RECIPES[action.make].station]!,
-        );
+      const player = this.state.players.get(id)!;
+      // With no way there, the old action still ends, and nothing replaces it.
+      const goNextTo = (tile: Tile, action: UnsyncedAction) => {
+        const path = pathNextTo(this.tiles, player, tile);
         unsynced.path = path ?? [];
-        if (path) unsynced.making = { item: action.make, all: action.all };
-      } else if ("blacksmith" in action) {
-        unsynced.enemy = undefined;
-        const path = pathNextTo(
-          this.tiles,
-          this.state.players.get(id)!,
-          action.blacksmith,
-        );
-        unsynced.path = path ?? [];
-        unsynced.visiting = path !== undefined;
-      } else if ("bush" in action) {
-        unsynced.enemy = undefined;
-        const path = pathNextTo(
-          this.tiles,
-          this.state.players.get(id)!,
-          this.bushSites.get(action.bush)!,
-        );
-        unsynced.path = path ?? [];
-        if (path) unsynced.bush = action.bush;
-      } else if ("vein" in action) {
-        unsynced.enemy = undefined;
-        const path = pathNextTo(
-          this.tiles,
-          this.state.players.get(id)!,
-          this.veinSites.get(action.vein)!,
-        );
-        unsynced.path = path ?? [];
-        if (path) unsynced.vein = action.vein;
+        unsynced.action = path && action;
+      };
+      if ("enemy" in intent) {
+        unsynced.action = { kind: "fighting", enemy: intent.enemy };
+      } else if ("make" in intent) {
+        goNextTo(this.stations[RECIPES[intent.make].station]!, {
+          kind: "smithing",
+          item: intent.make,
+          all: intent.all,
+        });
+      } else if ("blacksmith" in intent) {
+        goNextTo(intent.blacksmith, { kind: "visiting" });
+      } else if ("bush" in intent) {
+        goNextTo(this.bushSites.get(intent.bush)!, {
+          kind: "foraging",
+          bush: intent.bush,
+        });
+      } else if ("vein" in intent) {
+        goNextTo(this.veinSites.get(intent.vein)!, {
+          kind: "mining",
+          vein: intent.vein,
+        });
       } else {
-        unsynced.enemy = undefined;
-        unsynced.path = findPath(
-          this.tiles,
-          this.state.players.get(id)!,
-          action.to,
-        );
+        unsynced.action = undefined;
+        unsynced.path = findPath(this.tiles, player, intent.to);
       }
     }
     this.queuedActions.clear();
@@ -635,10 +634,10 @@ export class Simulation {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
       if (this.state.tick < unsynced.nextStepTick) continue;
       const player = this.state.players.get(id)!;
-      if (unsynced.enemy !== undefined) {
+      if (unsynced.action?.kind === "fighting") {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
         // stopping short of that is exactly "next to" (spec D1).
-        const enemy = this.state.enemies.get(unsynced.enemy)!;
+        const enemy = this.state.enemies.get(unsynced.action.enemy)!;
         unsynced.path = findPath(this.tiles, player, enemy).slice(0, -1);
       }
       if (!unsynced.path.length) continue;
@@ -650,74 +649,74 @@ export class Simulation {
   /** After the steps, so the first attempt lands on the tick of arrival (D5). */
   private advancePicks() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      if (unsynced.bush === undefined || unsynced.path.length) continue;
+      const { action } = unsynced;
+      if (action?.kind !== "foraging" || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
-      const site = this.bushSites.get(unsynced.bush)!;
-      const bush = this.state.bushes.get(unsynced.bush)!;
+      const site = this.bushSites.get(action.bush)!;
+      const bush = this.state.bushes.get(action.bush)!;
       if (bushRefusal(site.kind, bush.picksLeft, player)) {
-        unsynced.bush = undefined;
+        unsynced.action = undefined;
         continue;
       }
-      if (this.state.tick < unsynced.nextPickTick) continue;
+      if (this.state.tick < unsynced.nextAttemptTick) continue;
       const level = levelFor(player.foragingXp);
-      unsynced.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
       const success = this.random() < pickChance(site.kind, level);
       this.events.push({ type: "pick", player: id, success });
       if (!success) continue;
       const { xp, food, regrowTicks } = BUSHES[site.kind];
       player.foragingXp = addXp(player.foragingXp, xp);
       const slot = slotFor(food, player);
-      player.inventory[slot] = food;
-      player.inventoryCounts[slot]!++;
+      this.addToSlot(player, slot, food);
       if (--bush.picksLeft === 0)
         site.regrowTick = this.state.tick + regrowTicks;
-      unsynced.bush = undefined;
+      unsynced.action = undefined;
     }
   }
 
   /** As picks, and on the same timer, so swapping between them can't beat it. */
   private advanceMining() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      if (unsynced.vein === undefined || unsynced.path.length) continue;
+      const { action } = unsynced;
+      if (action?.kind !== "mining" || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
-      const site = this.veinSites.get(unsynced.vein)!;
-      const vein = this.state.veins.get(unsynced.vein)!;
+      const site = this.veinSites.get(action.vein)!;
+      const vein = this.state.veins.get(action.vein)!;
       if (veinRefusal(site.tier, vein.oreLeft, player)) {
-        unsynced.vein = undefined;
+        unsynced.action = undefined;
         continue;
       }
-      if (this.state.tick < unsynced.nextPickTick) continue;
+      if (this.state.tick < unsynced.nextAttemptTick) continue;
       const level = levelFor(player.miningXp);
-      unsynced.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
       const success = this.random() < mineChance(site.tier, level);
       this.events.push({ type: "mine", player: id, success });
       if (!success) continue;
       const { xp, ore, regrowTicks } = VEINS[site.tier];
       player.miningXp = addXp(player.miningXp, xp);
       const slot = slotFor(ore, player);
-      player.inventory[slot] = ore;
-      player.inventoryCounts[slot]!++;
+      this.addToSlot(player, slot, ore);
       if (--vein.oreLeft === 0) site.regrowTick = this.state.tick + regrowTicks;
-      unsynced.vein = undefined;
+      unsynced.action = undefined;
     }
   }
 
   /** After the steps, so the first wait starts on the tick of arrival. */
   private advanceMaking() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { making } = unsynced;
-      if (!making || unsynced.path.length) continue;
+      const { action: making } = unsynced;
+      if (making?.kind !== "smithing" || unsynced.path.length) continue;
       if (making.doneTick !== undefined) {
         if (this.state.tick < making.doneTick) continue;
         if (!this.finishItem(id, making.item) || !making.all) {
-          unsynced.making = undefined;
+          unsynced.action = undefined;
           continue;
         }
       }
       const player = this.state.players.get(id)!;
       const refusal = makeRefusal(making.item, player);
       if (refusal) {
-        unsynced.making = undefined;
+        unsynced.action = undefined;
         this.events.push({ type: "told", player: id, line: refusal });
         continue;
       }
@@ -765,8 +764,10 @@ export class Simulation {
   /** After the steps, so the tools come on the tick of arrival. */
   private advanceVisits() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      if (!unsynced.visiting || unsynced.path.length) continue;
-      unsynced.visiting = false;
+      if (unsynced.action?.kind !== "visiting" || unsynced.path.length) {
+        continue;
+      }
+      unsynced.action = undefined;
       const player = this.state.players.get(id)!;
       const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
       player.tools.push(...lacking);
@@ -796,29 +797,24 @@ export class Simulation {
   /** After the moves, so the first swing lands on the tick the player arrives. */
   private advancePlayerSwings() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      if (unsynced.enemy === undefined) continue;
+      const { action } = unsynced;
+      if (action?.kind !== "fighting") continue;
       const player = this.state.players.get(id)!;
-      const enemy = this.state.enemies.get(unsynced.enemy)!;
+      const enemy = this.state.enemies.get(action.enemy)!;
       if (this.state.tick < unsynced.nextSwingTick) continue;
       if (!this.nextTo(player, enemy)) continue;
       unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
-      this.playerSwing(id, player, unsynced.enemy, enemy);
+      this.playerSwing(id, player, action.enemy, enemy);
     }
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, { action, path }] of this.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
-      player.target = unsynced.enemy ?? "";
+      player.target = action?.kind === "fighting" ? action.enemy : "";
       player.action =
-        unsynced.enemy !== undefined
-          ? "fighting"
-          : unsynced.bush !== undefined
-            ? "foraging"
-            : unsynced.vein !== undefined
-              ? "mining"
-              : unsynced.making
-                ? "smithing"
-                : unsynced.path.length
-                  ? "walking"
-                  : "";
+        action && action.kind !== "visiting"
+          ? action.kind
+          : path.length
+            ? "walking"
+            : "";
     }
   }
 
@@ -865,25 +861,27 @@ export class Simulation {
       damage,
     });
 
-    const home = this.unsyncedEnemies.get(enemyId)!;
+    const unsyncedEnemy = this.unsyncedEnemies.get(enemyId)!;
     const { noticeTiles } = ENEMIES[enemy.kind];
     // One that attacks first ignores players on its way home, though they can attack it (spec §4).
     if (enemy.state !== "going home" || noticeTiles === undefined) {
-      if (enemy.state !== "fighting") this.startFight(enemy, home);
+      if (enemy.state !== "fighting") this.startFight(enemy, unsyncedEnemy);
       enemy.target = id;
     }
-    if (damage) home.damagers.add(id);
+    if (damage) unsyncedEnemy.damagers.add(id);
     enemy.health -= damage;
     if (enemy.health > 0) return;
 
     enemy.state = "dead";
     enemy.target = "";
-    home.returnTick = this.state.tick + ENEMIES[enemy.kind].returnTicks;
+    unsyncedEnemy.returnTick =
+      this.state.tick + ENEMIES[enemy.kind].returnTicks;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    this.rollEmberbones(enemy.kind, home.damagers);
+    this.rollEmberbones(enemy.kind, unsyncedEnemy.damagers);
     for (const unsynced of this.unsyncedPlayers.values()) {
-      if (unsynced.enemy !== enemyId) continue;
-      unsynced.enemy = undefined;
+      const { action } = unsynced;
+      if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
+      unsynced.action = undefined;
       unsynced.path = [];
     }
   }
@@ -895,10 +893,7 @@ export class Simulation {
       if (this.random() >= emberboneChance) continue;
       const player = this.state.players.get(id)!;
       const slot = slotFor("emberbone", player);
-      if (slot >= 0) {
-        player.inventory[slot] = "emberbone";
-        player.inventoryCounts[slot]!++;
-      }
+      if (slot >= 0) this.addToSlot(player, slot, "emberbone");
       const line =
         slot >= 0
           ? "You find an Emberbone."
@@ -910,13 +905,13 @@ export class Simulation {
 
   private startFight(
     enemy: InstanceType<typeof Enemy>,
-    home: { fightStart: Tile; nextSwingTick: number },
+    unsynced: { fightStart: Tile; nextSwingTick: number },
   ) {
     enemy.state = "fighting";
-    home.fightStart = { x: enemy.x, y: enemy.y };
+    unsynced.fightStart = { x: enemy.x, y: enemy.y };
     // Its timer outlives a fight, like the player's (spec D2).
-    home.nextSwingTick = Math.max(
-      home.nextSwingTick,
+    unsynced.nextSwingTick = Math.max(
+      unsynced.nextSwingTick,
       this.state.tick + ENEMIES[enemy.kind].firstSwingDelayTicks,
     );
   }
@@ -947,25 +942,28 @@ export class Simulation {
   /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
   private stepEnemy(
     enemy: InstanceType<typeof Enemy>,
-    home: { nextStepTick: number },
+    unsynced: { nextStepTick: number },
     to: Tile,
     stopNextTo: boolean,
   ) {
-    if (this.state.tick < home.nextStepTick) return;
+    if (this.state.tick < unsynced.nextStepTick) return;
     const path = findPath(this.tiles, enemy, to);
     if (stopNextTo) path.pop();
     if (!path.length) return;
     Object.assign(enemy, path[0]);
-    home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+    unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
   }
 
   private enemySwing(
     id: string,
     enemy: InstanceType<typeof Enemy>,
     player: InstanceType<typeof Player>,
-    home: { nextSwingTick: number },
+    unsynced: { nextSwingTick: number },
   ) {
-    if (this.state.tick < home.nextSwingTick || !this.nextTo(enemy, player)) {
+    if (
+      this.state.tick < unsynced.nextSwingTick ||
+      !this.nextTo(enemy, player)
+    ) {
       return;
     }
     const {
@@ -974,7 +972,7 @@ export class Simulation {
       maxDamage,
       swingIntervalTicks,
     } = ENEMIES[enemy.kind];
-    home.nextSwingTick = this.state.tick + swingIntervalTicks;
+    unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
     const defense = levelFor(player.defenseXp);
     const rolled = Math.min(
@@ -1021,7 +1019,7 @@ export class Simulation {
   ) {
     const unsynced = this.unsyncedPlayers.get(id)!;
     if (unsynced.dropped) return;
-    unsynced.enemy = enemyId;
+    unsynced.action = { kind: "fighting", enemy: enemyId };
     unsynced.nextSwingTick = Math.max(
       unsynced.nextSwingTick,
       this.state.tick + FIGHT_BACK_DELAY_TICKS,
@@ -1073,14 +1071,13 @@ export class Simulation {
   }
 
   private advanceEnemyReturns() {
-    for (const [id, home] of this.unsyncedEnemies) {
+    for (const [id, unsynced] of this.unsyncedEnemies) {
       const enemy = this.state.enemies.get(id)!;
-      if (enemy.state !== "dead" || this.state.tick < home.returnTick) {
+      if (enemy.state !== "dead" || this.state.tick < unsynced.returnTick) {
         continue;
       }
       Object.assign(enemy, {
-        x: home.x,
-        y: home.y,
+        ...unsynced.home,
         health: ENEMIES[enemy.kind].health,
         state: "idle",
       });
@@ -1089,13 +1086,13 @@ export class Simulation {
   }
 
   private advanceEnemies() {
-    for (const [id, home] of this.unsyncedEnemies) {
+    for (const [id, unsynced] of this.unsyncedEnemies) {
       const enemy = this.state.enemies.get(id)!;
       const { noticeTiles } = ENEMIES[enemy.kind];
       if (enemy.state === "idle" && noticeTiles !== undefined) {
         const noticed = this.noticedBy(enemy, noticeTiles);
         if (noticed !== undefined) {
-          this.startFight(enemy, home);
+          this.startFight(enemy, unsynced);
           enemy.target = noticed;
         }
       }
@@ -1104,34 +1101,35 @@ export class Simulation {
         if (
           target &&
           target.health > 0 &&
-          tilesApart(target, home.fightStart) <= ENEMIES[enemy.kind].leashTiles
+          tilesApart(target, unsynced.fightStart) <=
+            ENEMIES[enemy.kind].leashTiles
         ) {
-          this.stepEnemy(enemy, home, target, true);
-          this.enemySwing(id, enemy, target, home);
+          this.stepEnemy(enemy, unsynced, target, true);
+          this.enemySwing(id, enemy, target, unsynced);
           if (target.health > 0) continue;
         }
         enemy.state = "going home";
         enemy.target = "";
       }
       if (enemy.state === "going home") {
-        this.stepEnemy(enemy, home, home, false);
-        if (tilesApart(enemy, home) === 0) {
+        this.stepEnemy(enemy, unsynced, unsynced.home, false);
+        if (tilesApart(enemy, unsynced.home) === 0) {
           enemy.health = ENEMIES[enemy.kind].health;
           enemy.state = "idle";
-          home.damagers.clear();
+          unsynced.damagers.clear();
         }
         continue;
       }
-      if (enemy.state !== "idle" || this.state.tick < home.nextStepTick) {
+      if (enemy.state !== "idle" || this.state.tick < unsynced.nextStepTick) {
         continue;
       }
       const { wanderChance, wanderTiles } = ENEMIES[enemy.kind];
       if (this.random() >= wanderChance) continue;
       const steps = legalSteps(this.tiles, enemy).filter(
-        (step) => tilesApart(step, home) <= wanderTiles,
+        (step) => tilesApart(step, unsynced.home) <= wanderTiles,
       );
       Object.assign(enemy, steps[Math.floor(this.random() * steps.length)]);
-      home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+      unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
   }
 }

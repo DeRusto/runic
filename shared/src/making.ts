@@ -1,4 +1,4 @@
-import type { ItemId } from "./items.ts";
+import type { HasInventory, ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -83,10 +83,7 @@ export const costsOf = (item: RecipeItem) =>
   Object.entries(RECIPES[item].costs) as [ItemId, number][];
 
 /** How many of `item` a player holds, across all their stacks. */
-export function countOf(
-  item: string,
-  player: { inventory: Iterable<string>; inventoryCounts: Iterable<number> },
-) {
+export function countOf(item: string, player: HasInventory) {
   const counts = [...player.inventoryCounts];
   return [...player.inventory].reduce(
     (total, held, slot) => total + (held === item ? counts[slot]! : 0),
@@ -97,11 +94,7 @@ export function countOf(
 /** Why this item can't be made right now, or undefined if it can. The panel's rows and the server's checks both read this. */
 export function makeRefusal(
   item: RecipeItem,
-  player: {
-    smithingXp: number;
-    inventory: Iterable<string>;
-    inventoryCounts: Iterable<number>;
-  },
+  player: HasInventory & { smithingXp: number },
 ) {
   const { level } = RECIPES[item];
   if (levelFor(player.smithingXp) < level) return `Needs Smithing ${level}`;

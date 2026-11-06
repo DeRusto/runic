@@ -226,7 +226,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 |---|---|---|
 | `playerSwing`, `enemySwing` | As today, plus `blocked` on `enemySwing` | `damage: 0` alone still means a miss |
 | `mine` | player, success | As `pick` |
-| `make` | player, station | One at the start of each item's wait |
+| `make` | player, station, ticks | One at the start of each item's wait; `ticks` is N, so viewers can fit the clip to it |
 | `enemyDied`, `enemyReturned` | enemy | Renamed from the Spider events |
 | `told` | player, line | Tools given, Emberbone won or lost, making stopped |
 
@@ -327,7 +327,7 @@ All new files are committed under `client/`, with a licence copy beside them. Th
 | Pickaxe, hammer, anvil | KayKit RPG Tools Bits 1.0 | CC0 |
 | Skeleton and blade | KayKit Skeletons 1.1 | CC0 |
 | `Rig_Medium_Tools.glb` (1.4 MB) | KayKit Character Animations 1.1 | CC0 |
-| Furnace | Kenney Hexagon Kit `building-smelter`, a stand-in **[D17]** | CC0 |
+| Furnace | KayKit Medieval Hexagon Pack `building_blacksmith_red`, a stand-in; it replaced Kenney Hexagon Kit `building-smelter`, as §15's fallback **[D17]** | CC0 |
 | Blacksmith | KayKit Adventurers `Ranger` (473 KB), hammer in hand, `Idle_A`, a nameplate reading "Blacksmith" **[D18]** | CC0 |
 | Veins | Our committed rock models tinted by tier, shrunk and greyed when run out as bushes are **[D19]** | CC0 |
 | Sheet and panel art | Kenney UI Pack - Adventure | CC0 |
@@ -441,7 +441,7 @@ These filled small gaps and were accepted in review.
 | D14 | `Pickaxing` is the mining clip | It matches the `Hammering` and `Working_A` already chosen from the same pack, by name; nobody has watched it |
 | D15 | Swing clips come from a hash of id and tick | No new data, and everyone sees the same clip |
 | D16 | Skeletons use the players' clips | They share the rig |
-| D17 | `building-smelter` as the furnace | The nearest thing in the packs; see §15 |
+| D17 | `building_blacksmith_red` as the furnace, replacing `building-smelter` | `building-smelter` didn't read as a furnace at a tile's scale, so this is §15's first fallback |
 | D18 | `Ranger` as the Blacksmith | A model no player has, so they read apart; the owner can swap it |
 | D19 | Veins are tinted rock models | No new art, and the tier colours already exist |
 | D20 | `grapes` and `Plant_1` as the food icons | The research's first picks; the owner will revisit the icons |

@@ -1,5 +1,5 @@
-import { bushId } from "./foraging.ts";
-import { slotFor } from "./items.ts";
+import { attemptChance, bushId } from "./foraging.ts";
+import { slotFor, type HasInventory } from "./items.ts";
 import type { Tier } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -20,18 +20,13 @@ export const VEINS = {
 export const veinId = bushId;
 
 export const mineChance = (tier: Tier, level: number) =>
-  Math.min(0.5 + 0.02 * (level - VEINS[tier].level), 1);
+  attemptChance(VEINS[tier].level, level);
 
 /** Why a click on this vein is refused, or undefined if it isn't. The client shows it, and the server ignores the click. */
 export function veinRefusal(
   tier: Tier,
   oreLeft: number,
-  player: {
-    tools: Iterable<string>;
-    miningXp: number;
-    inventory: Iterable<string>;
-    inventoryCounts: Iterable<number>;
-  },
+  player: HasInventory & { tools: Iterable<string>; miningXp: number },
 ) {
   if (![...player.tools].includes("pickaxe"))
     return "You need a pickaxe. The Blacksmith will give you one.";

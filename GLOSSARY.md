@@ -46,6 +46,10 @@ _Avoid_: Smelter, forge
 A fixed spot where a player turns bars into gear.
 _Avoid_: Forge, workbench
 
+**Station**:
+A furnace or an anvil: a fixed spot where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
+_Avoid_: Workstation, crafting table
+
 **Blacksmith**:
 A fixed character who gives players the tools they don't have yet, for free. Not an enemy, and the only such character.
 _Avoid_: NPC, shopkeeper, vendor
@@ -59,7 +63,7 @@ A creature in a field that players fight to train Combat.
 _Avoid_: Mob, monster, NPC
 
 **Spider**:
-The one enemy type in the first playable slice: a large spider that fights back only when attacked.
+The weaker enemy: a large spider that fights back only when attacked, unlike a Skeleton.
 _Avoid_: Thornback (its old name)
 
 **Skeleton**:

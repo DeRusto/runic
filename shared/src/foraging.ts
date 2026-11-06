@@ -1,4 +1,4 @@
-import { slotFor } from "./items.ts";
+import { slotFor, type HasInventory } from "./items.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -17,8 +17,12 @@ export const FOOD_HEALS = new Map([
 /** A bush's key in state: its tile, since its kind and place come from the grid. */
 export const bushId = ({ x, y }: Tile) => `${x},${y}`;
 
+/** 50% at the level needed, plus 2 points per level above it, up to 100%. Mining shares it (spec §4). */
+export const attemptChance = (levelNeeded: number, level: number) =>
+  Math.min(0.5 + 0.02 * (level - levelNeeded), 1);
+
 export const pickChance = (kind: BushKind, level: number) =>
-  Math.min(0.5 + 0.02 * (level - BUSHES[kind].level), 1);
+  attemptChance(BUSHES[kind].level, level);
 
 /** 8 ticks, one fewer per 15 levels, down to 4 at level 60. */
 export const pickIntervalTicks = (level: number) =>
@@ -28,11 +32,7 @@ export const pickIntervalTicks = (level: number) =>
 export function bushRefusal(
   kind: BushKind,
   picksLeft: number,
-  player: {
-    foragingXp: number;
-    inventory: Iterable<string>;
-    inventoryCounts: Iterable<number>;
-  },
+  player: HasInventory & { foragingXp: number },
 ) {
   if (picksLeft === 0) return "This bush has run out.";
   const { level } = BUSHES[kind];
