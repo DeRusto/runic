@@ -116,6 +116,10 @@ _Avoid_: Gathering, herbalism
 The skill trained by taking ore from veins.
 _Avoid_: Gathering, quarrying
 
+**Gathering skill**:
+A skill trained by taking items from a **site**, a spot that runs out and grows back: Foraging from bushes, Mining from veins. It names the family, and is no other name for either skill.
+_Avoid_: Resource skill, harvesting
+
 **Smithing**:
 The skill trained by turning ore into bars and bars into gear.
 _Avoid_: Crafting, forging

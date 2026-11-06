@@ -1,5 +1,7 @@
 import {
   EVENTS,
+  GATHERING,
+  GATHERING_SKILLS,
   levelFor,
   pickIntervalTicks,
   TICK_MS,
@@ -16,12 +18,8 @@ import { enemyFigures, enemyOverheads } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
 import { stationTile } from "./stations.ts";
 
-/** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
+/** How far through a gathering clip the result shows (spec §7). */
 const ATTEMPT_RESULT_AT = 0.4;
-const ATTEMPTS = {
-  pick: { xp: "foragingXp", clip: "PickUp", success: "Picked!" },
-  mine: { xp: "miningXp", clip: "Pickaxing", success: "Mined!" },
-} as const;
 const EAT_CLIP_SPEED = 1.33;
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
@@ -139,13 +137,18 @@ export function showFights(room: WorldConnection) {
         playerFigures.get(event.player)?.respawn();
       } else if (event.type === "enemyReturned") {
         enemyFigures.get(event.enemy)![clipsOf(event.enemy).returns]();
-      } else if (event.type === "pick" || event.type === "mine") {
-        const { xp, clip, success } = ATTEMPTS[event.type];
+      } else if ("success" in event) {
+        const { xpField, clip, success } =
+          GATHERING[
+            GATHERING_SKILLS.find(
+              (skill) => GATHERING[skill].verb === event.type,
+            )!
+          ];
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
         if (!figure || !player) continue;
         if (event.success && event.player === room.sessionId) holdResult();
-        const interval = pickIntervalTicks(levelFor(player[xp]));
+        const interval = pickIntervalTicks(levelFor(player[xpField]));
         const clipMs = figure.onceWithin(clip, interval * TICK_MS);
         setTimeout(() => {
           playerOverheads

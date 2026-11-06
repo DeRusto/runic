@@ -1,9 +1,7 @@
 import { ArraySchema, schema, t } from "@colyseus/schema";
 import {
-  BUSHES,
-  bushId,
-  bushRefusal,
   addXp,
+  attemptChance,
   BLOCK_CHANCE_PER_BLOCKING_LEVEL,
   BLOCKING_XP_PER_BLOCK,
   COMBAT_LEVELS_PER_DAMAGE,
@@ -16,6 +14,10 @@ import {
   EMPTY_SLOT,
   FIGHT_BACK_DELAY_TICKS,
   FOOD_HEALS,
+  gatheringSource,
+  gatherRefusal,
+  GATHERING,
+  GATHERING_SKILLS,
   GEAR,
   GEAR_SLOTS,
   gearRefusal,
@@ -24,8 +26,6 @@ import {
   levelFor,
   makeRefusal,
   MAX_PINNED_SKILLS,
-  mineChance,
-  pickChance,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
   PLAYER_DEAD_TICKS,
@@ -35,6 +35,7 @@ import {
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
+  siteId,
   SKILLS,
   slotFor,
   STARTING_PINNED_SKILLS,
@@ -45,18 +46,15 @@ import {
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
   TOOLS,
-  VEINS,
-  veinId,
-  veinRefusal,
   WALK_TICKS_PER_TILE,
-  type BushKind,
+  type GatheringLeftField,
+  type GatheringSkill,
   type PlayerAction,
   type EnemyKind,
   type EnemyState,
   type GearSlot,
   type RecipeItem,
   type StationKind,
-  type Tier,
   XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
@@ -115,6 +113,8 @@ export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
 
 export const Vein = schema({ oreLeft: t.uint8() }, "Vein");
 
+const SITE_SCHEMAS = { bushes: Bush, veins: Vein };
+
 export const WorldState = schema(
   {
     tick: t.uint32().default(0),
@@ -126,11 +126,18 @@ export const WorldState = schema(
   "WorldState",
 );
 
+/** A bush or vein: where it is and what it is, its synced entry and when it grows back. */
+type GatheringSite = Tile & {
+  skill: GatheringSkill;
+  kind: string;
+  synced: Partial<Record<GatheringLeftField, number>>;
+  regrowTick?: number;
+};
+
 /** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
 type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
-  | { kind: "foraging"; bush: string }
-  | { kind: "mining"; vein: string }
+  | { kind: GatheringSkill; site: string }
   | { kind: "visiting" }
   /** `doneTick` stays unset until arrival starts the first wait. */
   | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
@@ -143,8 +150,7 @@ export class Simulation {
     string,
     | { to: Tile }
     | { enemy: string }
-    | { bush: string }
-    | { vein: string }
+    | { gather: GatheringSkill; site: string }
     | { blacksmith: Tile }
     | { make: RecipeItem; all: boolean }
   >();
@@ -189,14 +195,8 @@ export class Simulation {
       damagers: Set<string>;
     }
   >();
-  private bushSites = new Map<
-    string,
-    Tile & { kind: BushKind; regrowTick?: number }
-  >();
-  private veinSites = new Map<
-    string,
-    Tile & { tier: Tier; regrowTick?: number }
-  >();
+  /** Bushes and veins, by the tile that keys them. */
+  private sites = new Map<string, GatheringSite>();
   private blacksmith?: Tile;
   private stations: Partial<Record<StationKind, Tile>> = {};
   private queuedLogouts = new Set<string>();
@@ -211,22 +211,20 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { bush, vein, enemy, blacksmith, station } = kind;
+        const { enemy, blacksmith, station } = kind;
         if (blacksmith) this.blacksmith = { x, y };
         if (station) this.stations[station] = { x, y };
-        if (bush) {
-          this.bushSites.set(bushId({ x, y }), { x, y, kind: bush });
-          this.state.bushes.set(
-            bushId({ x, y }),
-            Object.assign(new Bush(), { picksLeft: BUSHES[bush].picks }),
-          );
-        }
-        if (vein) {
-          this.veinSites.set(veinId({ x, y }), { x, y, tier: vein });
-          this.state.veins.set(
-            veinId({ x, y }),
-            Object.assign(new Vein(), { oreLeft: VEINS[vein].ores }),
-          );
+        for (const skill of GATHERING_SKILLS) {
+          const { site, stateField, leftField } = GATHERING[skill];
+          const siteKind = kind[site];
+          if (!siteKind) continue;
+          const id = siteId({ x, y });
+          const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
+            [leftField]: gatheringSource(skill, siteKind).holds,
+          });
+          // The row keeps the schema and its map together, which the types can't follow.
+          this.state[stateField].set(id, synced as never);
+          this.sites.set(id, { x, y, skill, kind: siteKind, synced });
         }
         if (!enemy) return;
         const id = String(this.unsyncedEnemies.size);
@@ -419,24 +417,21 @@ export class Simulation {
     this.queuedActions.set(id, { enemy });
   }
 
-  /** `bush` comes straight off the network, so anything but a bush's id is ignored, as is a click the rules refuse. */
-  queueForage(id: string, bush: string) {
+  /** `site` comes straight off the network, so anything but the id of this skill's site is ignored, as is a click the rules refuse. */
+  queueGather(id: string, skill: GatheringSkill, site: string) {
     const player = this.state.players.get(id);
-    const site = this.bushSites.get(bush);
-    if (!player || !site || player.dead) return;
-    const { picksLeft } = this.state.bushes.get(bush)!;
-    if (bushRefusal(site.kind, picksLeft, player)) return;
-    this.queuedActions.set(id, { bush });
+    const found = this.sites.get(site);
+    if (!player || found?.skill !== skill || player.dead) return;
+    if (this.siteRefusal(found, player)) return;
+    this.queuedActions.set(id, { gather: skill, site });
   }
 
-  /** `vein` comes straight off the network, so anything but a vein's id is ignored, as is a click the rules refuse. */
-  queueMine(id: string, vein: string) {
-    const player = this.state.players.get(id);
-    const site = this.veinSites.get(vein);
-    if (!player || !site || player.dead) return;
-    const { oreLeft } = this.state.veins.get(vein)!;
-    if (veinRefusal(site.tier, oreLeft, player)) return;
-    this.queuedActions.set(id, { vein });
+  private siteRefusal(
+    { skill, kind, synced }: GatheringSite,
+    player: InstanceType<typeof Player>,
+  ) {
+    const left = synced[GATHERING[skill].leftField]!;
+    return gatherRefusal(skill, kind, left, player);
   }
 
   /**
@@ -569,15 +564,13 @@ export class Simulation {
     this.state.tick++;
     this.applyIntents();
     this.advancePlayers();
-    this.advancePicks();
-    this.advanceMining();
+    for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
     this.advanceMaking();
     this.advanceVisits();
     this.advancePlayerSwings();
     this.advanceEnemies();
     this.advancePlayerTimers();
-    this.advanceBushes();
-    this.advanceVeins();
+    this.advanceSites();
     this.advanceEnemyReturns();
   }
 
@@ -601,15 +594,10 @@ export class Simulation {
         });
       } else if ("blacksmith" in intent) {
         goNextTo(intent.blacksmith, { kind: "visiting" });
-      } else if ("bush" in intent) {
-        goNextTo(this.bushSites.get(intent.bush)!, {
-          kind: "foraging",
-          bush: intent.bush,
-        });
-      } else if ("vein" in intent) {
-        goNextTo(this.veinSites.get(intent.vein)!, {
-          kind: "mining",
-          vein: intent.vein,
+      } else if ("gather" in intent) {
+        goNextTo(this.sites.get(intent.site)!, {
+          kind: intent.gather,
+          site: intent.site,
         });
       } else {
         unsynced.action = undefined;
@@ -646,57 +634,29 @@ export class Simulation {
     }
   }
 
-  /** After the steps, so the first attempt lands on the tick of arrival (D5). */
-  private advancePicks() {
+  /** After the steps, so the first attempt lands on the tick of arrival (D5). Every skill shares one timer, so swapping between them can't beat it. */
+  private advanceGathering(skill: GatheringSkill) {
+    const { xpField, verb, leftField } = GATHERING[skill];
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action } = unsynced;
-      if (action?.kind !== "foraging" || unsynced.path.length) continue;
+      if (action?.kind !== skill || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
-      const site = this.bushSites.get(action.bush)!;
-      const bush = this.state.bushes.get(action.bush)!;
-      if (bushRefusal(site.kind, bush.picksLeft, player)) {
+      const site = this.sites.get(action.site)!;
+      if (this.siteRefusal(site, player)) {
         unsynced.action = undefined;
         continue;
       }
       if (this.state.tick < unsynced.nextAttemptTick) continue;
-      const level = levelFor(player.foragingXp);
+      const level = levelFor(player[xpField]);
       unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
-      const success = this.random() < pickChance(site.kind, level);
-      this.events.push({ type: "pick", player: id, success });
+      const source = gatheringSource(skill, site.kind);
+      const success = this.random() < attemptChance(source.level, level);
+      this.events.push({ type: verb, player: id, success });
       if (!success) continue;
-      const { xp, food, regrowTicks } = BUSHES[site.kind];
-      player.foragingXp = addXp(player.foragingXp, xp);
-      const slot = slotFor(food, player);
-      this.addToSlot(player, slot, food);
-      if (--bush.picksLeft === 0)
-        site.regrowTick = this.state.tick + regrowTicks;
-      unsynced.action = undefined;
-    }
-  }
-
-  /** As picks, and on the same timer, so swapping between them can't beat it. */
-  private advanceMining() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "mining" || unsynced.path.length) continue;
-      const player = this.state.players.get(id)!;
-      const site = this.veinSites.get(action.vein)!;
-      const vein = this.state.veins.get(action.vein)!;
-      if (veinRefusal(site.tier, vein.oreLeft, player)) {
-        unsynced.action = undefined;
-        continue;
-      }
-      if (this.state.tick < unsynced.nextAttemptTick) continue;
-      const level = levelFor(player.miningXp);
-      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
-      const success = this.random() < mineChance(site.tier, level);
-      this.events.push({ type: "mine", player: id, success });
-      if (!success) continue;
-      const { xp, ore, regrowTicks } = VEINS[site.tier];
-      player.miningXp = addXp(player.miningXp, xp);
-      const slot = slotFor(ore, player);
-      this.addToSlot(player, slot, ore);
-      if (--vein.oreLeft === 0) site.regrowTick = this.state.tick + regrowTicks;
+      player[xpField] = addXp(player[xpField], source.xp);
+      this.addToSlot(player, slotFor(source.item, player), source.item);
+      if (--site.synced[leftField]! === 0)
+        site.regrowTick = this.state.tick + source.regrowTicks;
       unsynced.action = undefined;
     }
   }
@@ -778,18 +738,11 @@ export class Simulation {
     }
   }
 
-  private advanceBushes() {
-    for (const [id, site] of this.bushSites) {
+  private advanceSites() {
+    for (const site of this.sites.values()) {
       if (this.state.tick !== site.regrowTick) continue;
-      this.state.bushes.get(id)!.picksLeft = BUSHES[site.kind].picks;
-      site.regrowTick = undefined;
-    }
-  }
-
-  private advanceVeins() {
-    for (const [id, site] of this.veinSites) {
-      if (this.state.tick !== site.regrowTick) continue;
-      this.state.veins.get(id)!.oreLeft = VEINS[site.tier].ores;
+      const { leftField } = GATHERING[site.skill];
+      site.synced[leftField] = gatheringSource(site.skill, site.kind).holds;
       site.regrowTick = undefined;
     }
   }

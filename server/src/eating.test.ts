@@ -215,7 +215,7 @@ describe("discarding", () => {
     sim.removePlayer("a");
     sim.addPlayer("a", saved);
     sim.queueDiscard("a", 0);
-    sim.queueForage("a", "2,1");
+    sim.queueGather("a", "foraging", "2,1");
     sim.tick();
     expect(player(sim).inventory[0]).toBe("berry");
     expect(player(sim).inventoryCounts[0]).toBe(1);

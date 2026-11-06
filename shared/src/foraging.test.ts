@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { pickChance, pickIntervalTicks } from "./foraging.ts";
+import { BUSHES } from "./foraging.ts";
+import {
+  attemptChance,
+  gatherRefusal,
+  pickIntervalTicks,
+} from "./gathering.ts";
 
-describe("pickChance", () => {
+describe("attemptChance on bushes", () => {
   it.each([
     ["berryBush", 1, 0.5],
     ["berryBush", 2, 0.52],
@@ -11,8 +16,37 @@ describe("pickChance", () => {
     ["herbBush", 11, 0.52],
     ["herbBush", 35, 1],
   ] as const)("%s at level %i is %f", (kind, level, chance) => {
-    expect(pickChance(kind, level)).toBeCloseTo(chance);
-    expect(pickChance(kind, level)).toBeLessThanOrEqual(1);
+    expect(attemptChance(BUSHES[kind].level, level)).toBeCloseTo(chance);
+    expect(attemptChance(BUSHES[kind].level, level)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("gatherRefusal's order", () => {
+  const novice = {
+    tools: [],
+    foragingXp: 0,
+    miningXp: 0,
+    inventory: [""],
+    inventoryCounts: [0],
+  };
+
+  it("names a run-out bush before a level the player lacks", () => {
+    expect(gatherRefusal("foraging", "herbBush", 3, novice)).toBe(
+      "You need Foraging 10 to pick this.",
+    );
+    expect(gatherRefusal("foraging", "herbBush", 0, novice)).toBe(
+      "This bush has run out.",
+    );
+  });
+
+  it("names a missing tool, then a level, before a run-out vein", () => {
+    expect(gatherRefusal("mining", "iron", 0, novice)).toBe(
+      "You need a pickaxe. The Blacksmith will give you one.",
+    );
+    const miner = { ...novice, tools: ["pickaxe"] };
+    expect(gatherRefusal("mining", "iron", 0, miner)).toBe(
+      "You need Mining 10 to mine this.",
+    );
   });
 });
 

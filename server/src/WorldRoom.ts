@@ -52,9 +52,9 @@ export class WorldRoom extends Room {
     [TARGET_INTENT]: (client: Client, enemy: string) =>
       this.sim.queueTarget(client.sessionId, enemy),
     [FORAGE_INTENT]: (client: Client, bush: string) =>
-      this.sim.queueForage(client.sessionId, bush),
+      this.sim.queueGather(client.sessionId, "foraging", bush),
     [MINE_INTENT]: (client: Client, vein: string) =>
-      this.sim.queueMine(client.sessionId, vein),
+      this.sim.queueGather(client.sessionId, "mining", vein),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
     [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),

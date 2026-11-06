@@ -8,11 +8,11 @@ import {
 } from "@runic/shared";
 import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
-import { showBushes } from "./bushes.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
+import { showGatheringSites } from "./gatheringSites.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
@@ -20,7 +20,6 @@ import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 import { addStations } from "./stations.ts";
-import { showVeins } from "./veins.ts";
 
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
@@ -52,8 +51,7 @@ function enterWorld(room: WorldConnection) {
     room,
     tiles,
     showEnemies(room, { spider: newSpider, skeleton: newSkeleton }),
-    showBushes(room, tiles, setRunOut),
-    showVeins(room, tiles, setRunOut),
+    showGatheringSites(room, tiles, setRunOut),
     stationUnder,
     showSmithingPanel(room),
     blacksmithUnder,

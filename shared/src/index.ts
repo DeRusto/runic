@@ -1,3 +1,4 @@
+import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
 import type { StationKind } from "./region.ts";
 
 export const SERVER_PORT = 2567;
@@ -7,10 +8,6 @@ export const WORLD_ROOM = "world";
 export const WALK_INTENT = "walk";
 /** The target intent's message type; its payload is the clicked enemy's id in state. */
 export const TARGET_INTENT = "target";
-/** The forage intent's message type; its payload is the clicked bush's id in state. */
-export const FORAGE_INTENT = "forage";
-/** The mine intent's message type; its payload is the clicked vein's id in state. */
-export const MINE_INTENT = "mine";
 /** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
 export const MAKE_INTENT = "make";
 /** The visit intent's message type, for clicking the Blacksmith; it has no payload. */
@@ -73,7 +70,7 @@ export const BLOCKING_XP_PER_BLOCK = 40;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
-  "" | "walking" | "foraging" | "mining" | "smithing" | "fighting";
+  "" | "walking" | GatheringSkill | "smithing" | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
@@ -91,8 +88,7 @@ export type WorldEvent =
   | { type: "playerDied"; player: string }
   | { type: "playerRespawned"; player: string }
   | { type: "enemyReturned"; enemy: string }
-  | { type: "pick"; player: string; success: boolean }
-  | { type: "mine"; player: string; success: boolean }
+  | { type: GatheringVerb; player: string; success: boolean }
   /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }
   | { type: "eaten"; player: string }
@@ -101,6 +97,7 @@ export type WorldEvent =
 
 export * from "./enemies.ts";
 export * from "./foraging.ts";
+export * from "./gathering.ts";
 export * from "./gear.ts";
 export * from "./items.ts";
 export * from "./making.ts";

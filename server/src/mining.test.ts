@@ -68,7 +68,7 @@ const attempts = (count: number) => {
 const attemptTicks = (count: number) => attempts(count).map(({ tick }) => tick);
 
 const mine = (vein: string, id = "a") => {
-  sim.queueMine(id, vein);
+  sim.queueGather(id, "mining", vein);
   attempts(8);
 };
 
@@ -79,7 +79,7 @@ test("a vein starts full, by its tier", () => {
 
 test("clicking a vein walks next to it and attempts on the tick of arrival", () => {
   roll = FAIL;
-  sim.queueMine("a", COPPER);
+  sim.queueGather("a", "mining", COPPER);
   expect(attempts(ARRIVAL_TICK)).toEqual([
     {
       tick: ARRIVAL_TICK,
@@ -91,7 +91,7 @@ test("clicking a vein walks next to it and attempts on the tick of arrival", () 
 
 test("a player on their way or trying counts as mining", () => {
   roll = FAIL;
-  sim.queueMine("a", COPPER);
+  sim.queueGather("a", "mining", COPPER);
   attempts(1);
   expect(player().action).toBe("mining");
   attempts(ARRIVAL_TICK);
@@ -99,7 +99,7 @@ test("a player on their way or trying counts as mining", () => {
 });
 
 test("a success gives one ore and its experience, uses the vein and ends the action", () => {
-  sim.queueMine("a", COPPER);
+  sim.queueGather("a", "mining", COPPER);
   expect(attemptTicks(40)).toEqual([ARRIVAL_TICK]);
   expect(player().miningXp).toBe(10);
   expect(player().inventory[0]).toBe("copperOre");
@@ -119,7 +119,7 @@ test("ore tops up its stack", () => {
 
 test("a failure gives nothing, keeps the vein, and tries again every 8 ticks", () => {
   roll = FAIL;
-  sim.queueMine("a", COPPER);
+  sim.queueGather("a", "mining", COPPER);
   expect(attemptTicks(ARRIVAL_TICK + 16)).toEqual([
     ARRIVAL_TICK,
     ARRIVAL_TICK + 8,
@@ -133,18 +133,18 @@ test("a failure gives nothing, keeps the vein, and tries again every 8 ticks", (
 test("the attempt interval follows the Mining level, not Foraging", () => {
   addAt("b", xpForLevel(15));
   roll = FAIL;
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   expect(attemptTicks(15)).toEqual([1, 8, 15]);
 });
 
 test("the chance follows the Mining level above the tier's gate", () => {
   addAt("b", xpForLevel(10), 6, 2);
   roll = 0.51;
-  sim.queueMine("b", IRON);
+  sim.queueGather("b", "mining", IRON);
   attempts(1);
   expect(player("b").inventory[0]).toBe(""); // 50% at the gate.
   addAt("c", xpForLevel(11), 6, 2);
-  sim.queueMine("c", IRON);
+  sim.queueGather("c", "mining", IRON);
   attempts(1);
   expect(player("c").inventory[0]).toBe("ironOre"); // 52% one level up.
   expect(player("c").miningXp).toBe(xpForLevel(11) + 30);
@@ -155,7 +155,7 @@ test("clicking again can't beat the attempt interval", () => {
   roll = FAIL;
   const ticks: number[] = [];
   for (let i = 0; i < 16; i++) {
-    sim.queueMine("b", COPPER);
+    sim.queueGather("b", "mining", COPPER);
     ticks.push(...attemptTicks(1));
   }
   expect(ticks).toEqual([1, 9]);
@@ -167,10 +167,10 @@ test("foraging and mining share the timer, so swapping can't beat it", () => {
     () => FAIL,
   );
   addAt("b", 0, 2, 1);
-  sim.queueForage("b", "1,1");
+  sim.queueGather("b", "foraging", "1,1");
   sim.tick();
   sim.events.length = 0;
-  sim.queueMine("b", "3,1");
+  sim.queueGather("b", "mining", "3,1");
   expect(attemptTicks(7)).toEqual([]);
   expect(attemptTicks(1)).toEqual([9]);
 });
@@ -178,12 +178,12 @@ test("foraging and mining share the timer, so swapping can't beat it", () => {
 test("leaving and coming back can't beat the attempt interval", () => {
   addAt("c", 0);
   roll = FAIL;
-  sim.queueMine("c", COPPER);
+  sim.queueGather("c", "mining", COPPER);
   attempts(1);
   const save = sim.saveOf("c")!;
   sim.removePlayer("c");
   sim.addPlayer("back", save, "c");
-  sim.queueMine("back", COPPER);
+  sim.queueGather("back", "mining", COPPER);
   expect(attemptTicks(7)).toEqual([]);
   expect(attemptTicks(1)).toEqual([9]);
 });
@@ -191,7 +191,7 @@ test("leaving and coming back can't beat the attempt interval", () => {
 test("clicking something else stops the trying", () => {
   roll = FAIL;
   addAt("b", 0);
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   attempts(1);
   sim.queueWalk("b", { x: 3, y: 2 });
   expect(attemptTicks(20)).toEqual([]);
@@ -204,8 +204,8 @@ test("a run-out vein stops whoever is still trying, and a shared last ore goes t
   mine(COPPER, "b");
   mine(COPPER, "b");
   expect(oreLeft(COPPER)).toBe(1);
-  sim.queueMine("b", COPPER);
-  sim.queueMine("c", COPPER);
+  sim.queueGather("b", "mining", COPPER);
+  sim.queueGather("c", "mining", COPPER);
   expect(attempts(10)).toHaveLength(1);
   expect(oreLeft(COPPER)).toBe(0);
   expect(player("b").action).toBe("");
@@ -217,8 +217,8 @@ test("a player on the way makes no attempt if someone else takes the last ore", 
   addAt("b", 0);
   mine(COPPER, "b");
   mine(COPPER, "b");
-  sim.queueMine("a", COPPER);
-  sim.queueMine("b", COPPER);
+  sim.queueGather("a", "mining", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   expect(attempts(20)).toHaveLength(1);
   expect(player().inventory[0]).toBe("");
   expect(player().action).toBe("");
@@ -230,7 +230,7 @@ test("a click on a run-out vein is ignored", () => {
   mine(COPPER, "b");
   mine(COPPER, "b");
   expect(oreLeft(COPPER)).toBe(0);
-  sim.queueMine("a", COPPER);
+  sim.queueGather("a", "mining", COPPER);
   attempts(1);
   expect(player()).toMatchObject({ x: 1, y: 1, action: "" });
 });
@@ -252,7 +252,7 @@ test("a vein grows back fully only after it runs out, at its tier's time", () =>
 test("a full inventory stops the trying", () => {
   addAt("b", 0);
   roll = FAIL;
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   attempts(1);
   for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
     player("b").inventory[slot] = "herb";
@@ -265,14 +265,14 @@ test("a full inventory stops the trying", () => {
 
 test("a click with no pickaxe is ignored", () => {
   addAt("b", 0, 4, 1, []);
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   expect(attemptTicks(20)).toEqual([]);
   expect(player("b").action).toBe("");
 });
 
 test("a click below the tier's Mining level is ignored", () => {
   addAt("b", xpForLevel(9), 6, 2);
-  sim.queueMine("b", IRON);
+  sim.queueGather("b", "mining", IRON);
   expect(attemptTicks(20)).toEqual([]);
   expect(player("b").action).toBe("");
 });
@@ -283,11 +283,11 @@ test("a click with no room for that ore is ignored, but a stack with room is roo
     player("b").inventory[slot] = "herb";
     player("b").inventoryCounts[slot] = 20;
   }
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   expect(attemptTicks(20)).toEqual([]);
   player("b").inventory[29] = "copperOre";
   player("b").inventoryCounts[29] = 19;
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   expect(attemptTicks(1)).toEqual([expect.any(Number)]);
   expect(player("b").inventoryCounts[29]).toBe(20);
 });
@@ -295,7 +295,7 @@ test("a click with no room for that ore is ignored, but a stack with room is roo
 test.each([["nowhere"], ["1,1"], [undefined], [{}]])(
   "a click on %j isn't a vein, and is ignored",
   (vein) => {
-    sim.queueMine("a", vein as string);
+    sim.queueGather("a", "mining", vein as string);
     expect(attemptTicks(5)).toEqual([]);
     expect(player()).toMatchObject({ x: 1, y: 1 });
   },
@@ -303,9 +303,9 @@ test.each([["nowhere"], ["1,1"], [undefined], [{}]])(
 
 test("a dead player's click, or one from nobody, is ignored", () => {
   player().dead = true;
-  sim.queueMine("a", COPPER);
+  sim.queueGather("a", "mining", COPPER);
   expect(attemptTicks(1)).toEqual([]);
-  expect(() => sim.queueMine("nobody", COPPER)).not.toThrow();
+  expect(() => sim.queueGather("nobody", "mining", COPPER)).not.toThrow();
 });
 
 test("an enemy's swing doesn't turn a miner to fight", () => {
@@ -317,7 +317,7 @@ test("an enemy's swing doesn't turn a miner to fight", () => {
   // Starts the Spider's fight, then turns straight to the vein.
   sim.queueTarget("b", "0");
   sim.tick();
-  sim.queueMine("b", "2,1");
+  sim.queueGather("b", "mining", "2,1");
   for (let i = 0; i < 20; i++) sim.tick();
   const swings = sim.events.filter(({ type }) => type === "enemySwing");
   expect(swings.length).toBeGreaterThan(0);
@@ -327,7 +327,7 @@ test("an enemy's swing doesn't turn a miner to fight", () => {
 test("a lost connection stops the trying", () => {
   addAt("b", 0);
   roll = FAIL;
-  sim.queueMine("b", COPPER);
+  sim.queueGather("b", "mining", COPPER);
   attempts(1);
   sim.dropPlayer("b");
   expect(attemptTicks(20)).toEqual([]);
