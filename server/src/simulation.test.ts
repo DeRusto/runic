@@ -129,25 +129,30 @@ describe("Spiders", () => {
     new Simulation(parseRegion(rows.join("\n")), random);
 
   const spiderTile = (s: Simulation, id = "0") => {
-    const { x, y } = s.state.spiders.get(id)!;
+    const { x, y } = s.state.enemies.get(id)!;
     return { x, y };
   };
 
   test("one starts at each home, with full health, idle and no target", () => {
     const s = spiderSim(["TTTTTT", "TRS..T", "T...ST", "TTTTTT"]);
-    expect(s.state.spiders.size).toBe(2);
+    expect(s.state.enemies.size).toBe(2);
     expect(spiderTile(s, "0")).toEqual({ x: 2, y: 1 });
     expect(spiderTile(s, "1")).toEqual({ x: 4, y: 2 });
-    expect(s.state.spiders.get("0")).toMatchObject({
+    expect(s.state.enemies.get("0")).toMatchObject({
       health: 8,
       target: "",
       state: "idle",
     });
   });
 
+  test("each carries its kind", () => {
+    const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"]);
+    expect(s.state.enemies.get("0")!.kind).toBe("spider");
+  });
+
   test("the real region has a Spider on every home", () => {
     const s = new Simulation(parseRegion(REGION_GRID), NEVER_WANDER);
-    expect(s.state.spiders.size).toBe(8);
+    expect(s.state.enemies.size).toBe(8);
   });
 
   test.each([
@@ -207,7 +212,7 @@ describe("Spiders", () => {
 
   test("a Spider that isn't idle doesn't wander", () => {
     const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"], () => 0);
-    s.state.spiders.get("0")!.state = "fighting";
+    s.state.enemies.get("0")!.state = "fighting";
     s.tick();
     expect(spiderTile(s)).toEqual({ x: 2, y: 1 });
   });
@@ -229,10 +234,10 @@ describe("Spiders", () => {
       s.addPlayer("a");
       s.queueTarget("a", "0");
       for (let i = 0; i < 30; i++) s.tick();
-      Object.assign(s.state.spiders.get("0")!, { x: 2, y: 1 });
+      Object.assign(s.state.enemies.get("0")!, { x: 2, y: 1 });
       for (let i = 0; i < 30; i++) s.tick();
       const { x, y } = s.state.players.get("a")!;
-      const spider = s.state.spiders.get("0")!; // It chases back, so they meet between.
+      const spider = s.state.enemies.get("0")!; // It chases back, so they meet between.
       expect(x).toBeLessThan(6);
       expect(Math.max(Math.abs(x - spider.x), Math.abs(y - spider.y))).toBe(1);
     });

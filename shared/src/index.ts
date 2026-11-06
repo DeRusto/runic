@@ -3,7 +3,7 @@ export const WORLD_ROOM = "world";
 
 /** The walk intent's message type; its payload is the clicked Tile. */
 export const WALK_INTENT = "walk";
-/** The target intent's message type; its payload is the clicked Spider's id in state. */
+/** The target intent's message type; its payload is the clicked enemy's id in state. */
 export const TARGET_INTENT = "target";
 /** The forage intent's message type; its payload is the clicked bush's id in state. */
 export const FORAGE_INTENT = "forage";
@@ -37,19 +37,14 @@ export const TICK_DRIVER_MS = 20;
 // Everything below counts whole ticks (spec §4, §5).
 export const WALK_TICKS_PER_TILE = 2;
 export const SWING_INTERVAL_TICKS = 8;
-export const SPIDER_FIRST_SWING_DELAY_TICKS = 4;
 export const EAT_SWING_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
-export const SPIDER_RETURN_TICKS = 150;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 export const REGEN_INTERVAL_TICKS = 20;
 export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const SAVE_INTERVAL_TICKS = 100;
 
-export const SPIDER_HEALTH = 8;
-export const SPIDER_WANDER_CHANCE = 0.1;
-export const SPIDER_WANDER_TILES = 5;
 export const LEASH_TILES = 4;
 
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
@@ -57,14 +52,10 @@ export const PLAYER_HIT_CHANCE = 0.4;
 export const PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL = 0.005;
 export const PLAYER_BASE_DAMAGE = 2;
 export const COMBAT_LEVELS_PER_DAMAGE = 20;
-export const SPIDER_HIT_CHANCE = 0.35;
-export const SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL = -0.002;
-export const SPIDER_MAX_DAMAGE = 2;
 export const XP_PER_DAMAGE_DEALT = 6;
-export const DEFENSE_XP_PER_SPIDER_SWING = 6;
+export const DEFENSE_XP_PER_ENEMY_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
 
-export type SpiderState = "idle" | "fighting" | "going home" | "dead";
 /** What a player is doing; "" for nothing. */
 export type PlayerAction = "" | "walking" | "foraging" | "fighting";
 
@@ -72,15 +63,16 @@ export type PlayerAction = "" | "walking" | "foraging" | "fighting";
 export const EVENTS = "events";
 /** A `damage` of 0 is a miss. */
 export type WorldEvent =
-  | { type: "playerSwing"; player: string; spider: string; damage: number }
-  | { type: "spiderSwing"; spider: string; player: string; damage: number }
-  | { type: "spiderDied"; spider: string }
+  | { type: "playerSwing"; player: string; enemy: string; damage: number }
+  | { type: "enemySwing"; enemy: string; player: string; damage: number }
+  | { type: "enemyDied"; enemy: string }
   | { type: "playerDied"; player: string }
   | { type: "playerRespawned"; player: string }
-  | { type: "spiderReturned"; spider: string }
+  | { type: "enemyReturned"; enemy: string }
   | { type: "pick"; player: string; success: boolean }
   | { type: "eaten"; player: string; healed: number };
 
+export * from "./enemies.ts";
 export * from "./foraging.ts";
 export * from "./items.ts";
 export * from "./region.ts";

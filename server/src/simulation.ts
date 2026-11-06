@@ -7,7 +7,7 @@ import {
   COMBAT_LEVELS_PER_DAMAGE,
   COMBAT_LOCK_TICKS,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
-  DEFENSE_XP_PER_SPIDER_SWING,
+  DEFENSE_XP_PER_ENEMY_SWING,
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
@@ -26,22 +26,15 @@ import {
   slotFor,
   LEASH_TILES,
   tilesApart,
-  SPIDER_FIRST_SWING_DELAY_TICKS,
-  SPIDER_HEALTH,
-  SPIDER_HIT_CHANCE,
-  SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL,
-  SPIDER_MAX_DAMAGE,
-  SPIDER_RETURN_TICKS,
-  SPIDER_WANDER_CHANCE,
-  SPIDER_WANDER_TILES,
   SWING_INTERVAL_TICKS,
-  TILE_KINDS,
+  ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
   WALK_TICKS_PER_TILE,
   type BushKind,
   type PlayerAction,
-  type SpiderState,
+  type EnemyKind,
+  type EnemyState,
   XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
@@ -64,7 +57,7 @@ export const Player = schema(
     inventory: t.array("string"),
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint8"),
-    /** The id of the Spider this player is after, or "". */
+    /** The id of the enemy this player is after, or "". */
     target: t.string().default(""),
     action: t.string<PlayerAction>().default(""),
     dead: t.boolean().default(false),
@@ -72,15 +65,16 @@ export const Player = schema(
   "Player",
 );
 
-export const Spider = schema(
+export const Enemy = schema(
   {
     x: t.uint8(),
     y: t.uint8(),
-    health: t.uint8().default(SPIDER_HEALTH),
+    kind: t.string<EnemyKind>(),
+    health: t.uint8(),
     target: t.string().default(""),
-    state: t.string<SpiderState>().default("idle"),
+    state: t.string<EnemyState>().default("idle"),
   },
-  "Spider",
+  "Enemy",
 );
 
 export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
@@ -89,7 +83,7 @@ export const WorldState = schema(
   {
     tick: t.uint32().default(0),
     players: t.map(Player),
-    spiders: t.map(Spider),
+    enemies: t.map(Enemy),
     bushes: t.map(Bush),
   },
   "WorldState",
@@ -101,7 +95,7 @@ export class Simulation {
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
   private queuedActions = new Map<
     string,
-    { to: Tile } | { spider: string } | { bush: string }
+    { to: Tile } | { enemy: string } | { bush: string }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -110,7 +104,7 @@ export class Simulation {
       path: Tile[];
       nextStepTick: number;
       nextSwingTick: number;
-      spider?: string;
+      enemy?: string;
       bush?: string;
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
@@ -130,8 +124,8 @@ export class Simulation {
     string,
     { nextPickTick: number; nextEatTick: number }
   >();
-  /** Each Spider's home tile, plus the timers clients don't need. */
-  private unsyncedSpiders = new Map<
+  /** Each enemy's home tile, plus the timers clients don't need. */
+  private unsyncedEnemies = new Map<
     string,
     Tile & {
       nextStepTick: number;
@@ -156,7 +150,7 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { bush } = kind;
+        const { bush, enemy } = kind;
         if (bush) {
           this.bushSites.set(bushId({ x, y }), { x, y, kind: bush });
           this.state.bushes.set(
@@ -164,9 +158,9 @@ export class Simulation {
             Object.assign(new Bush(), { picksLeft: BUSHES[bush].picks }),
           );
         }
-        if (kind !== TILE_KINDS.S) return;
-        const id = String(this.unsyncedSpiders.size);
-        this.unsyncedSpiders.set(id, {
+        if (!enemy) return;
+        const id = String(this.unsyncedEnemies.size);
+        this.unsyncedEnemies.set(id, {
           x,
           y,
           nextStepTick: 0,
@@ -174,7 +168,15 @@ export class Simulation {
           returnTick: 0,
           fightStart: { x, y },
         });
-        this.state.spiders.set(id, Object.assign(new Spider(), { x, y }));
+        this.state.enemies.set(
+          id,
+          Object.assign(new Enemy(), {
+            x,
+            y,
+            kind: enemy,
+            health: ENEMIES[enemy].health,
+          }),
+        );
       }),
     );
   }
@@ -282,7 +284,7 @@ export class Simulation {
   private clearAction(id: string) {
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.path = [];
-    unsynced.spider = unsynced.bush = undefined;
+    unsynced.enemy = unsynced.bush = undefined;
     Object.assign(this.state.players.get(id)!, { target: "", action: "" });
   }
 
@@ -312,12 +314,12 @@ export class Simulation {
     this.queuedActions.set(id, { to: { x: to.x, y: to.y } });
   }
 
-  /** `spider` comes straight off the network, so anything but a live Spider's id is ignored. */
-  queueTarget(id: string, spider: string) {
+  /** `enemy` comes straight off the network, so anything but a live enemy's id is ignored. */
+  queueTarget(id: string, enemy: string) {
     if (!this.alive(id)) return;
-    const target = this.state.spiders.get(spider);
+    const target = this.state.enemies.get(enemy);
     if (!target || target.state === "dead") return;
-    this.queuedActions.set(id, { spider });
+    this.queuedActions.set(id, { enemy });
   }
 
   /** `bush` comes straight off the network, so anything but a bush's id is ignored, as is a click the rules refuse. */
@@ -378,20 +380,20 @@ export class Simulation {
     this.advancePlayers();
     this.advancePicks();
     this.advancePlayerSwings();
-    this.advanceSpiders();
+    this.advanceEnemies();
     this.advancePlayerTimers();
     this.advanceBushes();
-    this.advanceSpiderReturns();
+    this.advanceEnemyReturns();
   }
 
   private applyIntents() {
     for (const [id, action] of this.queuedActions) {
       const unsynced = this.unsyncedPlayers.get(id)!;
       unsynced.bush = undefined;
-      if ("spider" in action) {
-        unsynced.spider = action.spider;
+      if ("enemy" in action) {
+        unsynced.enemy = action.enemy;
       } else if ("bush" in action) {
-        unsynced.spider = undefined;
+        unsynced.enemy = undefined;
         const path = pathNextTo(
           this.tiles,
           this.state.players.get(id)!,
@@ -400,7 +402,7 @@ export class Simulation {
         unsynced.path = path ?? [];
         if (path) unsynced.bush = action.bush;
       } else {
-        unsynced.spider = undefined;
+        unsynced.enemy = undefined;
         unsynced.path = findPath(
           this.tiles,
           this.state.players.get(id)!,
@@ -426,11 +428,11 @@ export class Simulation {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
       if (this.state.tick < unsynced.nextStepTick) continue;
       const player = this.state.players.get(id)!;
-      if (unsynced.spider !== undefined) {
+      if (unsynced.enemy !== undefined) {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
         // stopping short of that is exactly "next to" (spec D1).
-        const spider = this.state.spiders.get(unsynced.spider)!;
-        unsynced.path = findPath(this.tiles, player, spider).slice(0, -1);
+        const enemy = this.state.enemies.get(unsynced.enemy)!;
+        unsynced.path = findPath(this.tiles, player, enemy).slice(0, -1);
       }
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
@@ -477,19 +479,19 @@ export class Simulation {
   /** After the moves, so the first swing lands on the tick the player arrives. */
   private advancePlayerSwings() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      if (unsynced.spider === undefined) continue;
+      if (unsynced.enemy === undefined) continue;
       const player = this.state.players.get(id)!;
-      const spider = this.state.spiders.get(unsynced.spider)!;
+      const enemy = this.state.enemies.get(unsynced.enemy)!;
       if (this.state.tick < unsynced.nextSwingTick) continue;
-      if (!this.nextTo(player, spider)) continue;
+      if (!this.nextTo(player, enemy)) continue;
       unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
-      this.playerSwing(id, player, unsynced.spider, spider);
+      this.playerSwing(id, player, unsynced.enemy, enemy);
     }
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
-      player.target = unsynced.spider ?? "";
+      player.target = unsynced.enemy ?? "";
       player.action =
-        unsynced.spider !== undefined
+        unsynced.enemy !== undefined
           ? "fighting"
           : unsynced.bush !== undefined
             ? "foraging"
@@ -517,8 +519,8 @@ export class Simulation {
   private playerSwing(
     id: string,
     player: InstanceType<typeof Player>,
-    spiderId: string,
-    spider: InstanceType<typeof Spider>,
+    enemyId: string,
+    enemy: InstanceType<typeof Enemy>,
   ) {
     this.lock(id);
     const combat = levelFor(player.combatXp);
@@ -527,7 +529,7 @@ export class Simulation {
         PLAYER_HIT_CHANCE + PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1),
         PLAYER_BASE_DAMAGE + Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
       ),
-      spider.health, // No XP for overkill.
+      enemy.health, // No XP for overkill.
     );
     const xp = damage * XP_PER_DAMAGE_DEALT;
     player.combatXp = addXp(player.combatXp, xp);
@@ -536,84 +538,86 @@ export class Simulation {
     this.events.push({
       type: "playerSwing",
       player: id,
-      spider: spiderId,
+      enemy: enemyId,
       damage,
     });
 
-    const home = this.unsyncedSpiders.get(spiderId)!;
-    if (spider.state !== "fighting") {
-      spider.state = "fighting";
-      home.fightStart = { x: spider.x, y: spider.y };
+    const home = this.unsyncedEnemies.get(enemyId)!;
+    if (enemy.state !== "fighting") {
+      enemy.state = "fighting";
+      home.fightStart = { x: enemy.x, y: enemy.y };
       // Its timer outlives a fight, like the player's (spec D2).
       home.nextSwingTick = Math.max(
         home.nextSwingTick,
-        this.state.tick + SPIDER_FIRST_SWING_DELAY_TICKS,
+        this.state.tick + ENEMIES[enemy.kind].firstSwingDelayTicks,
       );
     }
-    spider.target = id;
-    spider.health -= damage;
-    if (spider.health > 0) return;
+    enemy.target = id;
+    enemy.health -= damage;
+    if (enemy.health > 0) return;
 
-    spider.state = "dead";
-    spider.target = "";
-    home.returnTick = this.state.tick + SPIDER_RETURN_TICKS;
-    this.events.push({ type: "spiderDied", spider: spiderId });
+    enemy.state = "dead";
+    enemy.target = "";
+    home.returnTick = this.state.tick + ENEMIES[enemy.kind].returnTicks;
+    this.events.push({ type: "enemyDied", enemy: enemyId });
     for (const unsynced of this.unsyncedPlayers.values()) {
-      if (unsynced.spider !== spiderId) continue;
-      unsynced.spider = undefined;
+      if (unsynced.enemy !== enemyId) continue;
+      unsynced.enemy = undefined;
       unsynced.path = [];
     }
   }
 
   /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
-  private stepSpider(
-    spider: InstanceType<typeof Spider>,
+  private stepEnemy(
+    enemy: InstanceType<typeof Enemy>,
     home: { nextStepTick: number },
     to: Tile,
     stopNextTo: boolean,
   ) {
     if (this.state.tick < home.nextStepTick) return;
-    const path = findPath(this.tiles, spider, to);
+    const path = findPath(this.tiles, enemy, to);
     if (stopNextTo) path.pop();
     if (!path.length) return;
-    Object.assign(spider, path[0]);
+    Object.assign(enemy, path[0]);
     home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
   }
 
-  private spiderSwing(
+  private enemySwing(
     id: string,
-    spider: InstanceType<typeof Spider>,
+    enemy: InstanceType<typeof Enemy>,
     player: InstanceType<typeof Player>,
     home: { nextSwingTick: number },
   ) {
-    if (this.state.tick < home.nextSwingTick || !this.nextTo(spider, player)) {
+    if (this.state.tick < home.nextSwingTick || !this.nextTo(enemy, player)) {
       return;
     }
     home.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
-    this.lock(spider.target);
+    this.lock(enemy.target);
+    const { hitChance, hitChancePerDefenseLevel, maxDamage } =
+      ENEMIES[enemy.kind];
     const defense = levelFor(player.defenseXp);
     const damage = Math.min(
       this.rollDamage(
-        SPIDER_HIT_CHANCE + SPIDER_HIT_CHANCE_PER_DEFENSE_LEVEL * (defense - 1),
-        SPIDER_MAX_DAMAGE,
+        hitChance + hitChancePerDefenseLevel * (defense - 1),
+        maxDamage,
       ),
       player.health,
     );
     player.health -= damage;
     player.defenseXp = addXp(
       player.defenseXp,
-      DEFENSE_XP_PER_SPIDER_SWING + damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
+      DEFENSE_XP_PER_ENEMY_SWING + damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
     );
     this.events.push({
-      type: "spiderSwing",
-      spider: id,
-      player: spider.target,
+      type: "enemySwing",
+      enemy: id,
+      player: enemy.target,
       damage,
     });
-    if (player.health === 0) this.die(spider.target, player);
+    if (player.health === 0) this.die(enemy.target, player);
   }
 
-  /** Not refreshed while dropped, or a Spider's swings would hold them here until killed (Q3). */
+  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
   lock(id: string) {
     const unsynced = this.unsyncedPlayers.get(id)!;
     if (!unsynced.dropped)
@@ -646,55 +650,56 @@ export class Simulation {
     }
   }
 
-  private advanceSpiderReturns() {
-    for (const [id, home] of this.unsyncedSpiders) {
-      const spider = this.state.spiders.get(id)!;
-      if (spider.state !== "dead" || this.state.tick < home.returnTick) {
+  private advanceEnemyReturns() {
+    for (const [id, home] of this.unsyncedEnemies) {
+      const enemy = this.state.enemies.get(id)!;
+      if (enemy.state !== "dead" || this.state.tick < home.returnTick) {
         continue;
       }
-      Object.assign(spider, {
+      Object.assign(enemy, {
         x: home.x,
         y: home.y,
-        health: SPIDER_HEALTH,
+        health: ENEMIES[enemy.kind].health,
         state: "idle",
       });
-      this.events.push({ type: "spiderReturned", spider: id });
+      this.events.push({ type: "enemyReturned", enemy: id });
     }
   }
 
-  private advanceSpiders() {
-    for (const [id, home] of this.unsyncedSpiders) {
-      const spider = this.state.spiders.get(id)!;
-      if (spider.state === "fighting") {
-        const target = this.state.players.get(spider.target);
+  private advanceEnemies() {
+    for (const [id, home] of this.unsyncedEnemies) {
+      const enemy = this.state.enemies.get(id)!;
+      if (enemy.state === "fighting") {
+        const target = this.state.players.get(enemy.target);
         if (
           target &&
           target.health > 0 &&
           tilesApart(target, home.fightStart) <= LEASH_TILES
         ) {
-          this.stepSpider(spider, home, target, true);
-          this.spiderSwing(id, spider, target, home);
+          this.stepEnemy(enemy, home, target, true);
+          this.enemySwing(id, enemy, target, home);
           if (target.health > 0) continue;
         }
-        spider.state = "going home";
-        spider.target = "";
+        enemy.state = "going home";
+        enemy.target = "";
       }
-      if (spider.state === "going home") {
-        this.stepSpider(spider, home, home, false);
-        if (tilesApart(spider, home) === 0) {
-          spider.health = SPIDER_HEALTH;
-          spider.state = "idle";
+      if (enemy.state === "going home") {
+        this.stepEnemy(enemy, home, home, false);
+        if (tilesApart(enemy, home) === 0) {
+          enemy.health = ENEMIES[enemy.kind].health;
+          enemy.state = "idle";
         }
         continue;
       }
-      if (spider.state !== "idle" || this.state.tick < home.nextStepTick) {
+      if (enemy.state !== "idle" || this.state.tick < home.nextStepTick) {
         continue;
       }
-      if (this.random() >= SPIDER_WANDER_CHANCE) continue;
-      const steps = legalSteps(this.tiles, spider).filter(
-        (step) => tilesApart(step, home) <= SPIDER_WANDER_TILES,
+      const { wanderChance, wanderTiles } = ENEMIES[enemy.kind];
+      if (this.random() >= wanderChance) continue;
+      const steps = legalSteps(this.tiles, enemy).filter(
+        (step) => tilesApart(step, home) <= wanderTiles,
       );
-      Object.assign(spider, steps[Math.floor(this.random() * steps.length)]);
+      Object.assign(enemy, steps[Math.floor(this.random() * steps.length)]);
       home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
   }

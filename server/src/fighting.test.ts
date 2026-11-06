@@ -29,7 +29,7 @@ const SAVE: PlayerSave = {
   inventory: [],
 };
 
-const spider = (s: Simulation) => s.state.spiders.get("0")!;
+const spider = (s: Simulation) => s.state.enemies.get("0")!;
 const player = (s: Simulation, id = "a") => s.state.players.get(id)!;
 
 /** Ticks the simulation, and returns each event with the tick it came on. */
@@ -55,7 +55,7 @@ describe("swing timing", () => {
     const events = run(s, 21);
     expect(player(s).x).toBe(2);
     expect(swingTicks(events, "playerSwing")).toEqual([1, 9, 17]);
-    expect(swingTicks(events, "spiderSwing")).toEqual([5, 13, 21]);
+    expect(swingTicks(events, "enemySwing")).toEqual([5, 13, 21]);
   });
 
   test("a player already next to it swings on the tick the click applies", () => {
@@ -86,7 +86,7 @@ describe("swing timing", () => {
     spider(s).state = "idle";
     s.queueTarget("b", "0"); // Tick 6 starts a new fight, whose first swing would be on 10.
     events.push(...run(s, 8));
-    expect(swingTicks(events, "spiderSwing")).toEqual([5, 13]);
+    expect(swingTicks(events, "enemySwing")).toEqual([5, 13]);
   });
 });
 
@@ -122,8 +122,8 @@ describe("a fighting Spider following its target", () => {
     s.queueWalk("a", { x: 6, y: 1 });
     const events = run(s, 4); // To tick 5, one step short.
     expect(spider(s).x).toBe(4);
-    expect(swingTicks(events, "spiderSwing")).toEqual([]);
-    expect(swingTicks(run(s, 1), "spiderSwing")).toEqual([6]);
+    expect(swingTicks(events, "enemySwing")).toEqual([]);
+    expect(swingTicks(run(s, 1), "enemySwing")).toEqual([6]);
     expect(spider(s).x).toBe(5);
   });
 
@@ -227,7 +227,7 @@ describe("the leash", () => {
       { x: 2, health: 8, state: "idle" },
       { x: 2, health: 8, state: "idle" },
     ]);
-    expect(swingTicks(events, "spiderSwing")).toEqual([]);
+    expect(swingTicks(events, "enemySwing")).toEqual([]);
   });
 
   test("a Spider giving up on its home tile recovers there and then", () => {
@@ -404,7 +404,7 @@ describe("dying", () => {
       defenseXp: 10,
     });
     expect(events.slice(-2)).toMatchObject([
-      { type: "spiderSwing", damage: 1 },
+      { type: "enemySwing", damage: 1 },
       { type: "playerDied", player: "a" },
     ]);
     // Already on its home tile, so giving up is over at once.
@@ -628,14 +628,14 @@ describe("a dropped player", () => {
 
   test("can still be hit", () => {
     const s = dropped(0, 0);
-    expect(swingTicks(run(s, 10), "spiderSwing").length).toBeGreaterThan(0);
+    expect(swingTicks(run(s, 10), "enemySwing").length).toBeGreaterThan(0);
     expect(player(s).health).toBe(9);
   });
 
   test("has a lock that counts down and isn't refreshed by the Spider's swings", () => {
     const s = dropped();
     const events = run(s, 33);
-    expect(swingTicks(events, "spiderSwing").at(-1)).toBeGreaterThan(20);
+    expect(swingTicks(events, "enemySwing").at(-1)).toBeGreaterThan(20);
     expect(s.lockRunning("a")).toBe(true);
     run(s, 1);
     expect(s.lockRunning("a")).toBe(false);
@@ -676,11 +676,11 @@ describe("several players", () => {
 
     expect(player(s, "a").combatXp).toBe(6);
     expect(player(s, "b").combatXp).toBe(0);
-    expect(swingTicks(events, "spiderSwing")).toEqual([5, 13]);
-    expect(events.filter((e) => e.type === "spiderSwing")[0]).toMatchObject({
+    expect(swingTicks(events, "enemySwing")).toEqual([5, 13]);
+    expect(events.filter((e) => e.type === "enemySwing")[0]).toMatchObject({
       player: "b",
     });
-    expect(events.filter((e) => e.type === "spiderSwing")[1]).toMatchObject({
+    expect(events.filter((e) => e.type === "enemySwing")[1]).toMatchObject({
       player: "b",
     });
   });
@@ -712,9 +712,9 @@ describe("the end of a fight", () => {
     expect(player(s, "a").target).toBe("");
     expect(player(s, "b").target).toBe("");
     expect(player(s, "b").x).toBe(7); // Its one step, on the same tick as the blow.
-    expect(s.state.spiders.get("1")!.state).toBe("idle");
+    expect(s.state.enemies.get("1")!.state).toBe("idle");
     expect(swingTicks(events, "playerSwing")).toEqual([1]);
-    expect(swingTicks(events, "spiderDied")).toEqual([1]);
+    expect(swingTicks(events, "enemyDied")).toEqual([1]);
   });
 });
 
@@ -741,7 +741,7 @@ describe("a dead Spider", () => {
     Object.assign(spider(s), { x: 3, y: 2 });
     expect(run(s, 149)).toEqual([]);
     expect(run(s, 1)).toEqual([
-      { type: "spiderReturned", spider: "0", tick: 151 },
+      { type: "enemyReturned", enemy: "0", tick: 151 },
     ]);
     expect(spider(s)).toMatchObject({
       x: 2,
@@ -778,7 +778,7 @@ test("a swing's event says who, at whom, and the damage; a miss is 0", () => {
   s.addPlayer("a");
   s.queueTarget("a", "0");
   expect(run(s, 5)).toEqual([
-    { type: "playerSwing", player: "a", spider: "0", damage: 2, tick: 1 },
-    { type: "spiderSwing", spider: "0", player: "a", damage: 0, tick: 5 },
+    { type: "playerSwing", player: "a", enemy: "0", damage: 2, tick: 1 },
+    { type: "enemySwing", enemy: "0", player: "a", damage: 0, tick: 5 },
   ]);
 });
