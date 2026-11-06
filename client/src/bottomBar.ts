@@ -9,6 +9,7 @@ import {
   MAX_CHAT_LENGTH,
   type ChatLine,
 } from "@runic/shared";
+import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 
 const MAX_CHAT_LINES = 200;
@@ -68,7 +69,7 @@ export function showBottomBar(
     slot.onclick = () => room.send(EAT_INTENT, i);
     slot.oncontextmenu = (event) => {
       event.preventDefault();
-      const item = slot.textContent;
+      const item = slot.dataset.item;
       if (!item) return;
       menu.replaceChildren(
         ...(FOOD_HEALS.has(item)
@@ -133,8 +134,11 @@ export function showBottomBar(
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
     showHeld = () => {
       slots.forEach((slot, i) => {
-        slot.textContent = me.inventory[i] ?? "";
-        slot.disabled = !slot.textContent;
+        const item = me.inventory[i] ?? "";
+        slot.dataset.item = item;
+        slot.title = item && itemName(item);
+        slot.style.backgroundImage = item && `url("${iconUrl(item)}")`;
+        slot.disabled = !item;
         const count = me.inventoryCounts[i] ?? 0;
         slot.dataset.count = count > 1 ? String(count) : "";
       });

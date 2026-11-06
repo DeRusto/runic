@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Render item icons</title>
+    <style>
+      body {
+        background: #232c3a;
+        color: #eee;
+        font: 12px system-ui;
+      }
+      #icons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      figure {
+        margin: 0;
+        text-align: center;
+      }
+      img {
+        display: block;
+        background: #151b25;
+      }
+      img + img {
+        margin: 2px auto 0;
+        width: 32px;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="save" type="button" disabled>
+      Save to client/public/icons
+    </button>
+    <span id="status">Rendering…</span>
+    <div id="icons"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

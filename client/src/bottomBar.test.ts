@@ -95,7 +95,7 @@ const fakeRoom = () => ({
   onStateChange: signal<[ReturnType<typeof stateWith>]>(),
 });
 const slot = (i = 0) => slotsBox.children[i]!;
-const shownFood = () => slot().textContent;
+const shownFood = () => slot().dataset.item;
 const rightClick = (i = 0) =>
   slot(i).oncontextmenu!({
     preventDefault() {},
@@ -165,6 +165,25 @@ describe("holding a pick's result", () => {
     room.onReconnect.invoke();
     room.onStateChange.invoke(stateWith("berry"));
     expect(shownFood()).toBe("berry");
+  });
+});
+
+describe("a filled slot", () => {
+  test("shows its item's icon, with its name as a tooltip and no text", () => {
+    room.onStateChange.invoke(stateHolding(["copperOre", 2]));
+    nextFrame();
+    expect(slot().style.backgroundImage).toBe('url("/icons/copperOre.png")');
+    expect((slot() as unknown as { title: string }).title).toBe("Copper ore");
+    expect(slot().textContent).toBe("");
+  });
+
+  test("loses both when it empties", () => {
+    room.onStateChange.invoke(stateHolding(["copperOre", 2]));
+    nextFrame();
+    room.onStateChange.invoke(stateHolding());
+    nextFrame();
+    expect(slot().style.backgroundImage).toBe("");
+    expect((slot() as unknown as { title: string }).title).toBe("");
   });
 });
 
