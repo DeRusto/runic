@@ -1,27 +1,40 @@
 import { EVENTS, TICK_MS, xpForLevel, type WorldEvent } from "@runic/shared";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { swingFor } from "./characters.ts";
 import { showFights } from "./fights.ts";
 import type { WorldConnection } from "./players.ts";
 
-const { figure, overhead, printChatLine, holdPick, revealPick } = vi.hoisted(
-  () => ({
-    figure: {
-      moving: false,
-      once: vi.fn(),
-      onceWithin: vi.fn(() => 2400),
-      work: undefined as unknown,
-    },
-    overhead: { pop: vi.fn() },
-    printChatLine: vi.fn(),
-    holdPick: vi.fn(),
-    revealPick: vi.fn(),
-  }),
-);
+const {
+  figure,
+  overhead,
+  printChatLine,
+  holdPick,
+  revealPick,
+  enemyFigures,
+  enemyOverheads,
+} = vi.hoisted(() => ({
+  figure: {
+    moving: false,
+    once: vi.fn(),
+    onceWithin: vi.fn(() => 2400),
+    work: undefined as unknown,
+  },
+  overhead: { pop: vi.fn() },
+  printChatLine: vi.fn(),
+  holdPick: vi.fn(),
+  revealPick: vi.fn(),
+  enemyFigures: new Map<string, unknown>(),
+  enemyOverheads: new Map<string, unknown>(),
+}));
 vi.mock("./players.ts", () => ({
   playerFigures: new Map([["a", figure]]),
   playerOverheads: new Map([["a", overhead]]),
 }));
-vi.mock("./enemies.ts", () => ({}));
+vi.mock("./enemies.ts", () => ({
+  ENEMY_CLIPS: { spider: { attack: "Spider_Attack", death: "Spider_Death" } },
+  enemyFigures,
+  enemyOverheads,
+}));
 vi.mock("./bottomBar.ts", () => ({ printChatLine, holdPick, revealPick }));
 vi.mock("./stations.ts", () => ({
   stationTile: (kind: string) =>
@@ -88,6 +101,69 @@ test("eating plays Use_Item and shows no number", () => {
   handler(eaten);
   expect(figure.once).toHaveBeenCalledWith("Use_Item", expect.any(Number));
   expect(overhead.pop).not.toHaveBeenCalled();
+});
+
+describe("the playerSwing event", () => {
+  const enemy = { flash: vi.fn(), nudgeFrom: vi.fn(), dieAndSink: vi.fn() };
+  const send = (events: WorldEvent[], weapon: string, tick = 408) => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      state: {
+        tick,
+        players: new Map([["a", { weapon, x: 1, y: 1 }]]),
+        enemies: new Map([["0", { kind: "spider" }]]),
+      },
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1](events);
+  };
+  const swing = (damage: number): WorldEvent => ({
+    type: "playerSwing",
+    player: "a",
+    enemy: "0",
+    damage,
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    enemyFigures.set("0", enemy);
+    enemyOverheads.set("0", { holdBlow: vi.fn(), showBlow: vi.fn() });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  test("with a sword, plays the clip every viewer picks and lands at its contact", () => {
+    const { clip, contactMs } = swingFor("copperSword", "a", 408);
+    send([swing(2)], "copperSword");
+    expect(figure.once).toHaveBeenLastCalledWith(clip);
+    vi.advanceTimersByTime(contactMs - 1);
+    expect(enemy.flash).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(enemy.flash).toHaveBeenCalledOnce();
+  });
+
+  test("with no sword, punches and lands at 550 ms", () => {
+    send([swing(2)], "");
+    expect(figure.once).toHaveBeenLastCalledWith(
+      "Melee_Unarmed_Attack_Punch_A",
+    );
+    vi.advanceTimersByTime(549);
+    expect(enemy.flash).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(enemy.flash).toHaveBeenCalledOnce();
+  });
+
+  test("the enemy falls at the killing swing's contact, not a punch's", () => {
+    const tick = [...Array(100).keys()].find(
+      (t) => swingFor("copperSword", "a", t).contactMs === 380,
+    )!;
+    send([swing(2), { type: "enemyDied", enemy: "0" }], "copperSword", tick);
+    vi.advanceTimersByTime(379);
+    expect(enemy.dieAndSink).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(enemy.dieAndSink).toHaveBeenCalledOnce();
+  });
 });
 
 describe("the mine event", () => {

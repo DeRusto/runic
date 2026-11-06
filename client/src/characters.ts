@@ -44,14 +44,58 @@ const PICKAXE = "pickaxe";
 // Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
 const HAMMER = "hammer in hand";
 
+const COPPER = { tint: 0xf0935a };
+const IRON = { tint: 0xd5dde4 };
+const EMBERITE = { tint: 0x7a2a22, glow: 0xff4a10 };
+const GLOW_INTENSITY = 0.15;
+type GearLook = { tint: number; glow?: number };
+/** Each tier's model and colour in hand, by item id (spec §7). */
+const GEAR_LOOKS: Record<string, GearLook & { file: string; hand: string }> = {
+  copperSword: { file: "sword_A", hand: "handslotr", ...COPPER },
+  ironSword: { file: "sword_B", hand: "handslotr", ...IRON },
+  emberiteSword: { file: "sword_C", hand: "handslotr", ...EMBERITE },
+  copperShield: { file: "shield_A", hand: "handslotl", ...COPPER },
+  ironShield: { file: "shield_B", hand: "handslotl", ...IRON },
+  emberiteShield: { file: "shield_C", hand: "handslotl", ...EMBERITE },
+};
+
+/** Between swings, holding anything. Holding nothing is the gait's own fight stance. */
+const ARMED_STANCE = "Melee_Blocking";
+const ARMED_SWINGS = [
+  { clip: "Melee_1H_Attack_Chop", contactMs: 580 },
+  { clip: "Melee_1H_Attack_Slice_Diagonal", contactMs: 420 },
+  { clip: "Melee_1H_Attack_Stab", contactMs: 380 },
+];
+const UNARMED_SWING = {
+  clip: "Melee_Unarmed_Attack_Punch_A",
+  contactMs: 550,
+};
+const SWING_CLIPS = new Set(
+  [...ARMED_SWINGS, UNARMED_SWING].map(({ clip }) => clip),
+);
+
+/** FNV-1a, mixed, as its low bits just follow the input's. */
+function hashOf(text: string) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+  }
+  return (hash ^ (hash >>> 15)) >>> 0;
+}
+
 /** Which character a player is follows from their name alone, so nothing about it is stored. */
 export function characterFor(name: string) {
-  let hash = 0x811c9dc5; // FNV-1a
-  for (let i = 0; i < name.length; i++) {
-    hash = Math.imul(hash ^ name.charCodeAt(i), 0x01000193);
-  }
-  // FNV's low bit just follows the input's, so mix before reading it.
-  return CHARACTERS[(hash ^ (hash >>> 15)) & 1];
+  return CHARACTERS[hashOf(name) & 1];
+}
+
+/** The swing for a tick. It comes from the id and tick alone, so every viewer picks the same one. */
+export function armedSwing(id: string, tick: number) {
+  return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
+}
+
+/** A swing follows the weapon, so a shield with no sword punches (spec §7). */
+export function swingFor(weapon: string, id: string, tick: number) {
+  return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }
 
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
@@ -83,6 +127,10 @@ export class Figure {
   /** The station it's working at. It faces the tile between moves, and `hammer` stays in hand between items. */
   work?: { tile: Tile; hammer: boolean };
   private hammer?: THREE.Object3D;
+  /** The item ids worn, "" for none. They show in hand in a fight, and set the stance. */
+  weapon = "";
+  shield = "";
+  private gear: [item: string, model: THREE.Object3D][] = [];
 
   constructor(
     private tile: Tile,
@@ -96,6 +144,10 @@ export class Figure {
     this.fullScale = model.scale.x;
     this.pickaxe = model.getObjectByName(PICKAXE);
     this.hammer = model.getObjectByName(HAMMER);
+    for (const item of Object.keys(GEAR_LOOKS)) {
+      const held = model.getObjectByName(item);
+      if (held) this.gear.push([item, held]);
+    }
     this.mixer = new THREE.AnimationMixer(model);
     this.base = gait.idle;
     this.play(gait.idle);
@@ -260,7 +312,9 @@ export class Figure {
     const base = running
       ? this.gait.move
       : fightTile
-        ? this.gait.fight
+        ? this.weapon || this.shield
+          ? ARMED_STANCE
+          : this.gait.fight
         : this.gait.idle;
     const baseChanged = base !== this.base;
     this.base = base;
@@ -274,6 +328,14 @@ export class Figure {
     if (this.hammer)
       this.hammer.visible =
         clip === "Hammering" || (!!this.work?.hammer && !running);
+    // Off the swing too, since the killing blow ends the fight while its clip still plays.
+    const inFight =
+      !this.held &&
+      !this.pickaxe?.visible &&
+      !this.hammer?.visible &&
+      (SWING_CLIPS.has(clip!) || (!!fightTile && !running));
+    for (const [item, held] of this.gear)
+      held.visible = inFight && (item === this.weapon || item === this.shield);
 
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
@@ -375,14 +437,52 @@ const loadClips = () =>
       new Map(packs.flatMap((pack) => pack.animations).map((c) => [c.name, c])),
   ));
 
+/** A tint multiplies, so the pack's dark blue blades would stay dark: it goes over a grey copy of the atlas. */
+function greyVersion(map: THREE.Texture) {
+  const image = map.image as ImageBitmap;
+  const canvas = document.createElement("canvas");
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext("2d")!;
+  // shortcut: a browser without canvas filters (Safari) tints the unchanged atlas, so go per pixel if anyone plays there.
+  context.filter = "grayscale(1) brightness(1.5)";
+  context.drawImage(image, 0, 0);
+  const grey = new THREE.CanvasTexture(canvas);
+  grey.flipY = map.flipY;
+  grey.colorSpace = map.colorSpace;
+  return grey;
+}
+
+export function paintGear(
+  model: THREE.Object3D,
+  { tint, glow }: GearLook,
+  grey: THREE.Texture,
+) {
+  model.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    o.material.map = grey;
+    o.material.color.setHex(tint);
+    if (glow !== undefined) {
+      o.material.emissive.setHex(glow);
+      o.material.emissiveIntensity = GLOW_INTENSITY;
+    }
+  });
+}
+
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
-  const [knight, barbarian, pickaxe, hammer, clips] = await Promise.all([
+  const gearLooks = Object.entries(GEAR_LOOKS);
+  const [knight, barbarian, pickaxe, hammer, clips, gear] = await Promise.all([
     load("Knight"),
     load("Barbarian"),
     new GLTFLoader().loadAsync("/models/pickaxe.gltf"),
     new GLTFLoader().loadAsync("/models/hammer.gltf"),
     loadClips(),
+    Promise.all(
+      gearLooks.map(([, { file }]) =>
+        new GLTFLoader().loadAsync(`/models/${file}.gltf`),
+      ),
+    ),
   ]);
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
@@ -398,6 +498,22 @@ export async function loadCharacters() {
       m.getObjectByName("handslotr")!.add(tool.scene.clone()),
     );
   }
+  // The same: each clone carries every tier, sharing its materials, and shows what's worn only in a fight.
+  let grey: THREE.Texture | undefined;
+  gearLooks.forEach(([item, look], i) => {
+    const { scene: held } = gear[i]!;
+    held.name = item;
+    held.visible = false;
+    held.traverse((o) => {
+      o.castShadow = o instanceof THREE.Mesh;
+      // All six share one atlas.
+      if (o instanceof THREE.Mesh) grey ??= greyVersion(o.material.map);
+    });
+    paintGear(held, look, grey!);
+    Object.values(models).forEach((m) =>
+      m.getObjectByName(look.hand)!.add(held.clone()),
+    );
+  });
   return (tile: Tile, name: string) =>
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
 }

@@ -6,6 +6,7 @@ import {
   type WorldEvent,
 } from "@runic/shared";
 import { holdPick, printChatLine, revealPick } from "./bottomBar.ts";
+import { swingFor } from "./characters.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -15,8 +16,7 @@ import { ENEMY_CLIPS, enemyFigures, enemyOverheads } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
 import { stationTile } from "./stations.ts";
 
-// The moment each swing clip connects (spec §7). The server decided on the tick.
-const PLAYER_CONTACT_MS = 550;
+// The moment the clip connects (spec §7). The server decided on the tick.
 const ENEMY_CONTACT_MS = 450;
 /** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
 const PICK_RESULT_AT = 0.4;
@@ -60,16 +60,25 @@ export function showFights(room: WorldConnection) {
   );
 
   room.onMessage(EVENTS, (events: WorldEvent[]) => {
+    // A death follows its killing swing in the same batch, and falls when that swing connects.
+    let killingContactMs = 0;
     for (const event of events) {
       if (event.type === "playerSwing") {
         const attacker = playerFigures.get(event.player);
         const enemy = enemyFigures.get(event.enemy)!;
-        attacker?.once("Melee_Unarmed_Attack_Punch_A");
         const from = room.state.players.get(event.player);
+        // The patch came just before this message, so state.tick is this swing's tick for every viewer.
+        const { clip, contactMs } = swingFor(
+          from?.weapon ?? "",
+          event.player,
+          room.state.tick,
+        );
+        attacker?.once(clip);
+        killingContactMs = contactMs;
         atContact(
           enemyOverheads.get(event.enemy),
           event.damage,
-          PLAYER_CONTACT_MS,
+          contactMs,
           () => {
             enemy.flash();
             if (from) enemy.nudgeFrom(from);
@@ -89,7 +98,7 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "enemyDied") {
         const enemy = enemyFigures.get(event.enemy)!;
         const { death } = clipsOf(event.enemy);
-        setTimeout(() => enemy.dieAndSink(death), PLAYER_CONTACT_MS);
+        setTimeout(() => enemy.dieAndSink(death), killingContactMs);
       } else if (event.type === "playerDied") {
         setTimeout(
           () => playerFigures.get(event.player)?.once("Death_A", 1, true),
