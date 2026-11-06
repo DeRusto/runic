@@ -8,7 +8,9 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
 
 const element = () => ({
-  append() {},
+  append(...children: any[]) {
+    this.children.push(...children);
+  },
   replaceChildren(...children: any[]) {
     this.children = children;
   },
@@ -28,9 +30,16 @@ const element = () => ({
 });
 const slotsBox = element();
 const menu = element();
+const skillsBox = element();
 const fakeDocument = {
   getElementById: (id: string) =>
-    id === "slots" ? slotsBox : id === "slot-menu" ? menu : element(),
+    id === "slots"
+      ? slotsBox
+      : id === "slot-menu"
+        ? menu
+        : id === "skills"
+          ? skillsBox
+          : element(),
   createElement: element,
   onpointerdown: undefined as undefined | ((event: unknown) => void),
 };
@@ -59,6 +68,15 @@ function signal<Args extends unknown[]>() {
   });
 }
 
+const TODAY = [
+  "Combat",
+  "Defense",
+  "Foraging",
+  "Hitpoints",
+  "Mining",
+  "Smithing",
+];
+
 /** Our player, holding these [item, count] stacks from slot 0. */
 const stateHolding = (...stacks: [string, number][]) => ({
   players: new Map([
@@ -71,6 +89,10 @@ const stateHolding = (...stacks: [string, number][]) => ({
         defenseXp: 0,
         foragingXp: 0,
         hitpointsXp: 0,
+        miningXp: 0,
+        smithingXp: 0,
+        blockingXp: 0,
+        pinnedSkills: TODAY,
         inventory: [
           ...stacks.map(([item]) => item),
           ...Array<string>(INVENTORY_SLOTS - stacks.length).fill(EMPTY_SLOT),
@@ -165,6 +187,38 @@ describe("holding a pick's result", () => {
     room.onReconnect.invoke();
     room.onStateChange.invoke(stateWith("berry"));
     expect(shownFood()).toBe("berry");
+  });
+});
+
+describe("the skills column", () => {
+  const statePinning = (...pinnedSkills: string[]) => {
+    const state = stateWith();
+    Object.assign(state.players.get("me")!, { pinnedSkills });
+    return state;
+  };
+  /** Each row's first child is its "Name level" text. */
+  const shown = () =>
+    skillsBox.children
+      .filter((child) => !child.hidden)
+      .map((child) => child.children[0]?.textContent ?? child.textContent);
+
+  test("shows pinned skills in the sheet's order, not the order of pinning", () => {
+    room.onStateChange.invoke(statePinning("Smithing", "Blocking", "Combat"));
+    nextFrame();
+    expect(shown()).toEqual(["Combat 1", "Smithing 1", "Blocking 1"]);
+  });
+
+  test("asks for pins when there are none", () => {
+    room.onStateChange.invoke(statePinning());
+    nextFrame();
+    expect(shown()).toEqual(["Pin skills from the sheet"]);
+  });
+
+  test("a pin shows at once, even while a pick's result is held", () => {
+    holdPick();
+    room.onStateChange.invoke(statePinning("Blocking"));
+    expect(shown()).toEqual(["Blocking 1"]);
+    revealPick();
   });
 });
 

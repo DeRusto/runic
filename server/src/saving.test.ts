@@ -6,6 +6,7 @@ import { Client, type Room } from "@colyseus/sdk";
 import {
   LOGOUT_INTENT,
   parseRegion,
+  PIN_INTENT,
   REGION_GRID,
   respawnTile,
   SAVE_INTERVAL_TICKS,
@@ -123,6 +124,33 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   expect(saved.inventory[0]).toBe("berry");
   expect(saved.inventoryCounts[0]).toBe(13);
   expect(saved.inventoryCounts[1]).toBe(0);
+});
+
+test("pins survive logging out, follow the player to another device, and new skills sync", async () => {
+  const client = await clientFor("Pinner");
+  const room = await joined(client);
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  expect(synced(room).miningXp).toBe(0);
+  expect(synced(room).smithingXp).toBe(0);
+  expect(synced(room).blockingXp).toBe(0);
+  room.send(PIN_INTENT, { skill: "Combat", pinned: false });
+  room.send(PIN_INTENT, { skill: "Blocking", pinned: true });
+  const pinned = ["Defense", "Foraging", "Hitpoints", "Mining", "Smithing"];
+  await vi.waitFor(
+    () =>
+      expect([...synced(room).pinnedSkills]).toEqual([...pinned, "Blocking"]),
+    { timeout: TICK_MS * 3, interval: 20 },
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  // A fresh client, as another device would be, with only the account in common.
+  const device = new Client(`http://localhost:${PORT}`);
+  device.auth.token = client.auth.token!;
+  const back = await joined(device);
+  expect([...synced(back).pinnedSkills]).toEqual([...pinned, "Blocking"]);
 });
 
 test("stack counts survive logging out, and clients see them change", async () => {

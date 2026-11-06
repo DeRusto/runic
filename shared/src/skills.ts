@@ -1,5 +1,29 @@
 export const MAX_LEVEL = 99;
 
+/** Every skill and its synced experience field, in the character sheet's order. */
+export const SKILLS = [
+  ["Combat", "combatXp"],
+  ["Defense", "defenseXp"],
+  ["Foraging", "foragingXp"],
+  ["Hitpoints", "hitpointsXp"],
+  ["Mining", "miningXp"],
+  ["Smithing", "smithingXp"],
+  ["Blocking", "blockingXp"],
+] as const;
+
+/** What the bottom bar's skills column fits: two across, three down. */
+export const MAX_PINNED_SKILLS = 6;
+
+/** Any later skill starts unpinned. Matches the `pinned_skills` column's default. */
+export const STARTING_PINNED_SKILLS = [
+  "Combat",
+  "Defense",
+  "Foraging",
+  "Hitpoints",
+  "Mining",
+  "Smithing",
+];
+
 /** Total experience needed for a level (spec §5). */
 export const xpForLevel = (level: number) => 50 * (level - 1) ** 2;
 

@@ -11,6 +11,8 @@ export const FORAGE_INTENT = "forage";
 export const EAT_INTENT = "eat";
 /** The discard intent's message type; its payload is the inventory slot's index. */
 export const DISCARD_INTENT = "discard";
+/** The pin intent's message type; its payload is `{ skill, pinned }`, with `pinned` false to unpin. */
+export const PIN_INTENT = "pin";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
