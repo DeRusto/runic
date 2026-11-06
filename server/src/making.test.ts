@@ -99,12 +99,43 @@ test("materials leave and the item and experience arrive together at the end of 
   run(6);
   expect(items()).toEqual([["copperOre", 2]]);
   expect(player().smithingXp).toBe(0);
+  expect(player().miningXp).toBe(0);
   run(1);
   expect(items()).toEqual([
     ["copperOre", 1],
     ["copperBar", 1],
   ]);
   expect(player().smithingXp).toBe(4);
+  expect(player().miningXp).toBe(4);
+});
+
+test("an Emberite bar gives its 24 experience in both Smithing and Mining", () => {
+  add([["emberiteOre", 1]], { smithingXp: xpForLevel(20) });
+  sim.queueMake("a", { item: "emberiteBar", all: false });
+  run(7);
+  expect(player().smithingXp).toBe(xpForLevel(20) + 24);
+  expect(player().miningXp).toBe(24);
+});
+
+test("a sword or shield gives only Smithing experience", () => {
+  add([["copperBar", 7]]);
+  sim.queueMake("a", { item: "copperSword", all: false });
+  run(13);
+  expect(player().smithingXp).toBe(18);
+  sim.queueMake("a", { item: "copperShield", all: false });
+  run(17);
+  expect(player().smithingXp).toBe(42);
+  expect(player().miningXp).toBe(0);
+});
+
+test("Mining levels don't open smelting's Smithing gate", () => {
+  add([["ironOre", 1]]);
+  player().miningXp = xpForLevel(50);
+  sim.queueMake("a", { item: "ironBar", all: false });
+  run(7);
+  expect(items()).toEqual([["ironOre", 1]]);
+  expect(player().miningXp).toBe(xpForLevel(50));
+  expect(lines()).toEqual(["Needs Smithing 10"]);
 });
 
 test("Make 1 ends after one item, with no line", () => {
