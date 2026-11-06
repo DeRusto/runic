@@ -41,8 +41,8 @@ export class WorldRoom extends Room {
   messages = {
     [WALK_INTENT]: (client: Client, to: Tile) =>
       this.sim.queueWalk(client.sessionId, to),
-    [TARGET_INTENT]: (client: Client, spider: string) =>
-      this.sim.queueTarget(client.sessionId, spider),
+    [TARGET_INTENT]: (client: Client, enemy: string) =>
+      this.sim.queueTarget(client.sessionId, enemy),
     [FORAGE_INTENT]: (client: Client, bush: string) =>
       this.sim.queueForage(client.sessionId, bush),
     [EAT_INTENT]: (client: Client, slot: number) =>

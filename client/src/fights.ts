@@ -11,12 +11,12 @@ import {
   playerOverheads,
   type WorldConnection,
 } from "./players.ts";
-import { spiderFigures, spiderOverheads } from "./spiders.ts";
+import { ENEMY_CLIPS, enemyFigures, enemyOverheads } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
 
 // The moment each swing clip connects (spec §7). The server decided on the tick.
 const PLAYER_CONTACT_MS = 550;
-const SPIDER_CONTACT_MS = 450;
+const ENEMY_CONTACT_MS = 450;
 /** How far through `PickUp` the result of a pick shows (spec §7). */
 const PICK_RESULT_AT = 0.4;
 const EAT_CLIP_SPEED = 1.33;
@@ -37,6 +37,8 @@ function atContact(
 
 /** Plays each tick's events on the figures. */
 export function showFights(room: WorldConnection) {
+  const clipsOf = (id: string) => ENEMY_CLIPS[room.state.enemies.get(id)!.kind];
+
   // A reconnect brings the state, just after onReconnect, but not the events missed, so a death
   // or return may be owed.
   room.onReconnect(() =>
@@ -46,10 +48,11 @@ export function showFights(room: WorldConnection) {
         if (player.dead && !figure?.downed) figure?.alreadyDown("Death_A");
         else if (!player.dead && figure?.downed) figure.respawn();
       });
-      room.state.spiders.forEach((spider, id) => {
-        const figure = spiderFigures.get(id)!;
-        const dead = spider.state === "dead";
-        if (dead && !figure.downed) figure.dieAndSink("Spider_Death");
+      room.state.enemies.forEach((enemy, id) => {
+        const figure = enemyFigures.get(id)!;
+        const dead = enemy.state === "dead";
+        if (dead && !figure.downed)
+          figure.dieAndSink(ENEMY_CLIPS[enemy.kind].death);
         else if (!dead && figure.downed) figure.reappear();
       });
     }),
@@ -59,41 +62,42 @@ export function showFights(room: WorldConnection) {
     for (const event of events) {
       if (event.type === "playerSwing") {
         const attacker = playerFigures.get(event.player);
-        const spider = spiderFigures.get(event.spider)!;
+        const enemy = enemyFigures.get(event.enemy)!;
         attacker?.once("Melee_Unarmed_Attack_Punch_A");
         const from = room.state.players.get(event.player);
         atContact(
-          spiderOverheads.get(event.spider),
+          enemyOverheads.get(event.enemy),
           event.damage,
           PLAYER_CONTACT_MS,
           () => {
-            spider.flash();
-            if (from) spider.nudgeFrom(from);
+            enemy.flash();
+            if (from) enemy.nudgeFrom(from);
           },
         );
-      } else if (event.type === "spiderSwing") {
-        spiderFigures.get(event.spider)!.once("Spider_Attack");
+      } else if (event.type === "enemySwing") {
+        enemyFigures.get(event.enemy)!.once(clipsOf(event.enemy).attack);
         atContact(
           playerOverheads.get(event.player),
           event.damage,
-          SPIDER_CONTACT_MS,
+          ENEMY_CONTACT_MS,
           () => {
             const victim = playerFigures.get(event.player);
             if (victim && !victim.playingOnce) victim.once("Hit_A");
           },
         );
-      } else if (event.type === "spiderDied") {
-        const spider = spiderFigures.get(event.spider)!;
-        setTimeout(() => spider.dieAndSink("Spider_Death"), PLAYER_CONTACT_MS);
+      } else if (event.type === "enemyDied") {
+        const enemy = enemyFigures.get(event.enemy)!;
+        const { death } = clipsOf(event.enemy);
+        setTimeout(() => enemy.dieAndSink(death), PLAYER_CONTACT_MS);
       } else if (event.type === "playerDied") {
         setTimeout(
           () => playerFigures.get(event.player)?.once("Death_A", 1, true),
-          SPIDER_CONTACT_MS,
+          ENEMY_CONTACT_MS,
         );
       } else if (event.type === "playerRespawned") {
         playerFigures.get(event.player)?.respawn();
-      } else if (event.type === "spiderReturned") {
-        spiderFigures.get(event.spider)!.reappear();
+      } else if (event.type === "enemyReturned") {
+        enemyFigures.get(event.enemy)!.reappear();
       } else if (event.type === "pick") {
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
