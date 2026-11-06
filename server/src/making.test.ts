@@ -351,7 +351,7 @@ test("anything but `all: true` means Make 1", () => {
   expect(makes()).toHaveLength(1);
 });
 
-test("an anvil pick with no hammer is ignored, and a furnace pick needs no tool", () => {
+test("choosing an anvil recipe with no hammer is ignored, and a furnace recipe needs no tool", () => {
   add([["copperBar", 5]], { tools: [] });
   sim.queueMake("a", { item: "copperSword", all: false });
   run(20);

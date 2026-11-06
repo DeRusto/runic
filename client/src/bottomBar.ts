@@ -31,16 +31,16 @@ export function printChatLine(line: string) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
-let holdingPick = false;
+let holdingResult = false;
 let showHeld = () => {};
 
 /** A pick's or mine's item and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
-export function holdPick() {
-  holdingPick = true;
+export function holdResult() {
+  holdingResult = true;
 }
 
-export function revealPick() {
-  holdingPick = false;
+export function revealResult() {
+  holdingResult = false;
   showHeld();
 }
 
@@ -140,9 +140,9 @@ export function showBottomBar(
   bar.hidden = false;
 
   // A room left mid-hold never reveals, and a rejoin comes back through here.
-  holdingPick = false;
+  holdingResult = false;
   // The pick events a drop lost never come, so what a reconnect's state brings shows at once.
-  room.onReconnect(() => room.onStateChange.once(revealPick));
+  room.onReconnect(() => room.onStateChange.once(revealResult));
   let frame = 0;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
@@ -180,7 +180,7 @@ export function showBottomBar(
     // A tick's pick event comes right after its patch, so draw on the next frame, when it has had the chance to hold.
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
-      if (!holdingPick) showHeld();
+      if (!holdingResult) showHeld();
     });
   });
 }

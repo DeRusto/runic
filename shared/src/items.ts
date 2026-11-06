@@ -3,7 +3,7 @@ import { EMPTY_SLOT } from "./index.ts";
 /** How many of one material or food fit in a slot (spec §4). */
 export const STACK_SIZE = 20;
 const STACKS = { stack: STACK_SIZE };
-const GEAR = { stack: 1 };
+const SINGLE = { stack: 1 };
 
 /** Every item, by the id saves and state hold. `berry` and `herb` are in existing saves, so they can't change (spec §6). */
 export const ITEMS = {
@@ -12,16 +12,16 @@ export const ITEMS = {
   emberbone: STACKS,
   copperOre: STACKS,
   copperBar: STACKS,
-  copperSword: GEAR,
-  copperShield: GEAR,
+  copperSword: SINGLE,
+  copperShield: SINGLE,
   ironOre: STACKS,
   ironBar: STACKS,
-  ironSword: GEAR,
-  ironShield: GEAR,
+  ironSword: SINGLE,
+  ironShield: SINGLE,
   emberiteOre: STACKS,
   emberiteBar: STACKS,
-  emberiteSword: GEAR,
-  emberiteShield: GEAR,
+  emberiteSword: SINGLE,
+  emberiteShield: SINGLE,
 } as const;
 export type ItemId = keyof typeof ITEMS;
 

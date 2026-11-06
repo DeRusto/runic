@@ -153,7 +153,7 @@ export class Simulation {
       /** `doneTick` stays unset until arrival starts the first wait. */
       making?: { item: RecipeItem; all: boolean; doneTick?: number };
       /** Outlives the action, so clicking again can't beat the attempt interval. */
-      nextPickTick: number;
+      nextAttemptTick: number;
       nextEatTick: number;
       /** Health eaten but not yet given. Not saved, so leaving loses it (spec §6). */
       healingPool: number;
@@ -170,12 +170,13 @@ export class Simulation {
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
-    { nextPickTick: number; nextEatTick: number }
+    { nextAttemptTick: number; nextEatTick: number }
   >();
-  /** Each enemy's home tile, plus the timers clients don't need. */
+  /** What an enemy needs that clients don't: its home tile, timers and who has damaged it. */
   private unsyncedEnemies = new Map<
     string,
-    Tile & {
+    {
+      home: Tile;
       nextStepTick: number;
       nextSwingTick: number;
       returnTick: number;
@@ -226,8 +227,7 @@ export class Simulation {
         if (!enemy) return;
         const id = String(this.unsyncedEnemies.size);
         this.unsyncedEnemies.set(id, {
-          x,
-          y,
+          home: { x, y },
           nextStepTick: 0,
           nextSwingTick: 0,
           returnTick: 0,
@@ -274,7 +274,7 @@ export class Simulation {
       path: [],
       nextStepTick: 0,
       nextSwingTick: 0,
-      nextPickTick: 0,
+      nextAttemptTick: 0,
       nextEatTick: 0,
       healingPool: 0,
       lockEndTick: 0,
@@ -350,8 +350,8 @@ export class Simulation {
     const username = this.state.players.get(id)?.username;
     const unsynced = this.unsyncedPlayers.get(id);
     if (username && unsynced) {
-      const { nextPickTick, nextEatTick } = unsynced;
-      this.timersOfLeavers.set(username, { nextPickTick, nextEatTick });
+      const { nextAttemptTick, nextEatTick } = unsynced;
+      this.timersOfLeavers.set(username, { nextAttemptTick, nextEatTick });
     }
     this.state.players.delete(id);
     this.unsyncedPlayers.delete(id);
@@ -360,7 +360,8 @@ export class Simulation {
     this.queuedDiscards.delete(id);
     this.queuedLogouts.delete(id);
     // A leaver has no inventory to fill (spec D8).
-    for (const home of this.unsyncedEnemies.values()) home.damagers.delete(id);
+    for (const enemy of this.unsyncedEnemies.values())
+      enemy.damagers.delete(id);
   }
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
@@ -437,8 +438,8 @@ export class Simulation {
   }
 
   /**
-   * Comes straight off the network, so anything but a recipe's item is ignored, as is an
-   * anvil pick with no hammer. Level and materials wait for arrival (spec §4).
+   * Comes straight off the network, so anything but a recipe's item is ignored, as is choosing
+   * an anvil recipe with no hammer. Level and materials wait for arrival (spec §4).
    */
   queueMake(id: string, intent: { item: string; all: boolean }) {
     const player = this.state.players.get(id);
@@ -671,9 +672,9 @@ export class Simulation {
         unsynced.bush = undefined;
         continue;
       }
-      if (this.state.tick < unsynced.nextPickTick) continue;
+      if (this.state.tick < unsynced.nextAttemptTick) continue;
       const level = levelFor(player.foragingXp);
-      unsynced.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
       const success = this.random() < pickChance(site.kind, level);
       this.events.push({ type: "pick", player: id, success });
       if (!success) continue;
@@ -698,9 +699,9 @@ export class Simulation {
         unsynced.vein = undefined;
         continue;
       }
-      if (this.state.tick < unsynced.nextPickTick) continue;
+      if (this.state.tick < unsynced.nextAttemptTick) continue;
       const level = levelFor(player.miningXp);
-      unsynced.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
       const success = this.random() < mineChance(site.tier, level);
       this.events.push({ type: "mine", player: id, success });
       if (!success) continue;
@@ -876,22 +877,23 @@ export class Simulation {
       damage,
     });
 
-    const home = this.unsyncedEnemies.get(enemyId)!;
+    const unsyncedEnemy = this.unsyncedEnemies.get(enemyId)!;
     const { noticeTiles } = ENEMIES[enemy.kind];
     // One that attacks first ignores players on its way home, though they can attack it (spec §4).
     if (enemy.state !== "going home" || noticeTiles === undefined) {
-      if (enemy.state !== "fighting") this.startFight(enemy, home);
+      if (enemy.state !== "fighting") this.startFight(enemy, unsyncedEnemy);
       enemy.target = id;
     }
-    if (damage) home.damagers.add(id);
+    if (damage) unsyncedEnemy.damagers.add(id);
     enemy.health -= damage;
     if (enemy.health > 0) return;
 
     enemy.state = "dead";
     enemy.target = "";
-    home.returnTick = this.state.tick + ENEMIES[enemy.kind].returnTicks;
+    unsyncedEnemy.returnTick =
+      this.state.tick + ENEMIES[enemy.kind].returnTicks;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    this.rollEmberbones(enemy.kind, home.damagers);
+    this.rollEmberbones(enemy.kind, unsyncedEnemy.damagers);
     for (const unsynced of this.unsyncedPlayers.values()) {
       if (unsynced.enemy !== enemyId) continue;
       unsynced.enemy = undefined;
@@ -918,13 +920,13 @@ export class Simulation {
 
   private startFight(
     enemy: InstanceType<typeof Enemy>,
-    home: { fightStart: Tile; nextSwingTick: number },
+    unsynced: { fightStart: Tile; nextSwingTick: number },
   ) {
     enemy.state = "fighting";
-    home.fightStart = { x: enemy.x, y: enemy.y };
+    unsynced.fightStart = { x: enemy.x, y: enemy.y };
     // Its timer outlives a fight, like the player's (spec D2).
-    home.nextSwingTick = Math.max(
-      home.nextSwingTick,
+    unsynced.nextSwingTick = Math.max(
+      unsynced.nextSwingTick,
       this.state.tick + ENEMIES[enemy.kind].firstSwingDelayTicks,
     );
   }
@@ -955,25 +957,28 @@ export class Simulation {
   /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
   private stepEnemy(
     enemy: InstanceType<typeof Enemy>,
-    home: { nextStepTick: number },
+    unsynced: { nextStepTick: number },
     to: Tile,
     stopNextTo: boolean,
   ) {
-    if (this.state.tick < home.nextStepTick) return;
+    if (this.state.tick < unsynced.nextStepTick) return;
     const path = findPath(this.tiles, enemy, to);
     if (stopNextTo) path.pop();
     if (!path.length) return;
     Object.assign(enemy, path[0]);
-    home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+    unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
   }
 
   private enemySwing(
     id: string,
     enemy: InstanceType<typeof Enemy>,
     player: InstanceType<typeof Player>,
-    home: { nextSwingTick: number },
+    unsynced: { nextSwingTick: number },
   ) {
-    if (this.state.tick < home.nextSwingTick || !this.nextTo(enemy, player)) {
+    if (
+      this.state.tick < unsynced.nextSwingTick ||
+      !this.nextTo(enemy, player)
+    ) {
       return;
     }
     const {
@@ -982,7 +987,7 @@ export class Simulation {
       maxDamage,
       swingIntervalTicks,
     } = ENEMIES[enemy.kind];
-    home.nextSwingTick = this.state.tick + swingIntervalTicks;
+    unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
     const defense = levelFor(player.defenseXp);
     const rolled = Math.min(
@@ -1081,14 +1086,13 @@ export class Simulation {
   }
 
   private advanceEnemyReturns() {
-    for (const [id, home] of this.unsyncedEnemies) {
+    for (const [id, unsynced] of this.unsyncedEnemies) {
       const enemy = this.state.enemies.get(id)!;
-      if (enemy.state !== "dead" || this.state.tick < home.returnTick) {
+      if (enemy.state !== "dead" || this.state.tick < unsynced.returnTick) {
         continue;
       }
       Object.assign(enemy, {
-        x: home.x,
-        y: home.y,
+        ...unsynced.home,
         health: ENEMIES[enemy.kind].health,
         state: "idle",
       });
@@ -1097,13 +1101,13 @@ export class Simulation {
   }
 
   private advanceEnemies() {
-    for (const [id, home] of this.unsyncedEnemies) {
+    for (const [id, unsynced] of this.unsyncedEnemies) {
       const enemy = this.state.enemies.get(id)!;
       const { noticeTiles } = ENEMIES[enemy.kind];
       if (enemy.state === "idle" && noticeTiles !== undefined) {
         const noticed = this.noticedBy(enemy, noticeTiles);
         if (noticed !== undefined) {
-          this.startFight(enemy, home);
+          this.startFight(enemy, unsynced);
           enemy.target = noticed;
         }
       }
@@ -1112,34 +1116,35 @@ export class Simulation {
         if (
           target &&
           target.health > 0 &&
-          tilesApart(target, home.fightStart) <= ENEMIES[enemy.kind].leashTiles
+          tilesApart(target, unsynced.fightStart) <=
+            ENEMIES[enemy.kind].leashTiles
         ) {
-          this.stepEnemy(enemy, home, target, true);
-          this.enemySwing(id, enemy, target, home);
+          this.stepEnemy(enemy, unsynced, target, true);
+          this.enemySwing(id, enemy, target, unsynced);
           if (target.health > 0) continue;
         }
         enemy.state = "going home";
         enemy.target = "";
       }
       if (enemy.state === "going home") {
-        this.stepEnemy(enemy, home, home, false);
-        if (tilesApart(enemy, home) === 0) {
+        this.stepEnemy(enemy, unsynced, unsynced.home, false);
+        if (tilesApart(enemy, unsynced.home) === 0) {
           enemy.health = ENEMIES[enemy.kind].health;
           enemy.state = "idle";
-          home.damagers.clear();
+          unsynced.damagers.clear();
         }
         continue;
       }
-      if (enemy.state !== "idle" || this.state.tick < home.nextStepTick) {
+      if (enemy.state !== "idle" || this.state.tick < unsynced.nextStepTick) {
         continue;
       }
       const { wanderChance, wanderTiles } = ENEMIES[enemy.kind];
       if (this.random() >= wanderChance) continue;
       const steps = legalSteps(this.tiles, enemy).filter(
-        (step) => tilesApart(step, home) <= wanderTiles,
+        (step) => tilesApart(step, unsynced.home) <= wanderTiles,
       );
       Object.assign(enemy, steps[Math.floor(this.random() * steps.length)]);
-      home.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
+      unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
   }
 }

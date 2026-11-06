@@ -8,8 +8,8 @@ const {
   figure,
   overhead,
   printChatLine,
-  holdPick,
-  revealPick,
+  holdResult,
+  revealResult,
   enemyFigures,
   enemyOverheads,
 } = vi.hoisted(() => ({
@@ -21,8 +21,8 @@ const {
   },
   overhead: { pop: vi.fn() },
   printChatLine: vi.fn(),
-  holdPick: vi.fn(),
-  revealPick: vi.fn(),
+  holdResult: vi.fn(),
+  revealResult: vi.fn(),
   enemyFigures: new Map<string, unknown>(),
   enemyOverheads: new Map<string, unknown>(),
 }));
@@ -34,7 +34,7 @@ vi.mock("./enemies.ts", () => ({
   enemyFigures,
   enemyOverheads,
 }));
-vi.mock("./bottomBar.ts", () => ({ printChatLine, holdPick, revealPick }));
+vi.mock("./bottomBar.ts", () => ({ printChatLine, holdResult, revealResult }));
 vi.mock("./stations.ts", () => ({
   stationTile: (kind: string) =>
     kind === "anvil" ? { x: 6, y: 1 } : { x: 4, y: 1 },
@@ -490,27 +490,27 @@ describe("the mine event", () => {
 
   test("holds a success's result until 0.4 of the clip", () => {
     send({ type: "mine", player: "a", success: true });
-    expect(holdPick).toHaveBeenCalledOnce();
+    expect(holdResult).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(0.4 * 2400 - 1);
-    expect(revealPick).not.toHaveBeenCalled();
+    expect(revealResult).not.toHaveBeenCalled();
     expect(overhead.pop).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
-    expect(revealPick).toHaveBeenCalledOnce();
+    expect(revealResult).toHaveBeenCalledOnce();
     expect(overhead.pop).toHaveBeenCalledWith("Mined!", "pick");
   });
 
   test("a failure holds nothing, and says so at the same moment", () => {
     send({ type: "mine", player: "a", success: false });
-    expect(holdPick).not.toHaveBeenCalled();
+    expect(holdResult).not.toHaveBeenCalled();
     vi.advanceTimersByTime(0.4 * 2400);
     expect(overhead.pop).toHaveBeenCalledWith("No luck", "pick");
   });
 
   test("someone else's success doesn't hold our bar", () => {
     send({ type: "mine", player: "a", success: true }, 0, "me");
-    expect(holdPick).not.toHaveBeenCalled();
+    expect(holdResult).not.toHaveBeenCalled();
     vi.advanceTimersByTime(0.4 * 2400);
-    expect(revealPick).not.toHaveBeenCalled();
+    expect(revealResult).not.toHaveBeenCalled();
     expect(overhead.pop).toHaveBeenCalledWith("Mined!", "pick");
   });
 });

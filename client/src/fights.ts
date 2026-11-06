@@ -5,7 +5,7 @@ import {
   TICK_MS,
   type WorldEvent,
 } from "@runic/shared";
-import { holdPick, printChatLine, revealPick } from "./bottomBar.ts";
+import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
 import {
   playerFigures,
@@ -17,7 +17,7 @@ import type { Overhead } from "./overhead.ts";
 import { stationTile } from "./stations.ts";
 
 /** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
-const PICK_RESULT_AT = 0.4;
+const ATTEMPT_RESULT_AT = 0.4;
 const EAT_CLIP_SPEED = 1.33;
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
@@ -140,7 +140,7 @@ export function showFights(room: WorldConnection) {
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
         if (!figure || !player) continue;
-        if (event.success && event.player === room.sessionId) holdPick();
+        if (event.success && event.player === room.sessionId) holdResult();
         const interval = pickIntervalTicks(
           levelFor(mining ? player.miningXp : player.foragingXp),
         );
@@ -155,8 +155,8 @@ export function showFights(room: WorldConnection) {
               event.success ? (mining ? "Mined!" : "Picked!") : "No luck",
               "pick",
             );
-          if (event.player === room.sessionId) revealPick();
-        }, PICK_RESULT_AT * clipMs);
+          if (event.player === room.sessionId) revealResult();
+        }, ATTEMPT_RESULT_AT * clipMs);
       } else if (event.type === "make") {
         const figure = playerFigures.get(event.player);
         if (!figure) continue;
