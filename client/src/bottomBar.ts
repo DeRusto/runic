@@ -2,7 +2,10 @@ import {
   CHAT,
   DISCARD_INTENT,
   EAT_INTENT,
+  EQUIP_INTENT,
   FOOD_HEALS,
+  GEAR,
+  gearRefusal,
   INVENTORY_SLOTS,
   levelFor,
   levelProgress,
@@ -10,7 +13,7 @@ import {
   SKILLS,
   type ChatLine,
 } from "@runic/shared";
-import { showCharacterSheet } from "./characterSheet.ts";
+import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 
@@ -62,41 +65,48 @@ export function showBottomBar(
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
-    // Only food does anything on a left-click, so a material's slot sends nothing.
+    const eat = () => room.send(EAT_INTENT, i);
+    const equip = () => room.send(EQUIP_INTENT, i);
+    // Only food and gear do anything on a left-click, so a material's slot sends nothing.
     slot.onclick = () => {
-      if (FOOD_HEALS.has(slot.dataset.item!)) room.send(EAT_INTENT, i);
+      const item = slot.dataset.item!;
+      if (FOOD_HEALS.has(item)) eat();
+      if (GEAR.has(item)) equip();
     };
     slot.oncontextmenu = (event) => {
       event.preventDefault();
       const item = slot.dataset.item;
       if (!item) return;
-      menu.replaceChildren(
-        ...(FOOD_HEALS.has(item)
-          ? [choice("Eat", () => room.send(EAT_INTENT, i))]
-          : []),
-        choice("Discard", () => room.send(DISCARD_INTENT, i)),
-      );
-      menu.style.left = `${event.clientX}px`;
-      // The bar is at the bottom of the window, so the menu opens upwards.
-      menu.style.bottom = `${innerHeight - event.clientY}px`;
-      menu.hidden = false;
-      (menu.firstElementChild as HTMLElement).focus();
+      openMenu(event, [
+        ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
+        ...(GEAR.has(item) ? ([["Equip", equip]] as const) : []),
+        ["Discard", () => room.send(DISCARD_INTENT, i)],
+      ]);
     };
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
 
   const menu = document.getElementById("slot-menu")!;
-  const choice = (label: string, choose: () => void) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.setAttribute("role", "menuitem");
-    button.textContent = label;
-    button.onclick = () => {
-      menu.hidden = true;
-      choose();
-    };
-    return button;
+  const openMenu: OpenMenu = (event, choices) => {
+    menu.replaceChildren(
+      ...choices.map(([label, choose]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("role", "menuitem");
+        button.textContent = label;
+        button.onclick = () => {
+          menu.hidden = true;
+          choose();
+        };
+        return button;
+      }),
+    );
+    menu.style.left = `${event.clientX}px`;
+    // The bar is at the bottom of the window, so the menu opens upwards.
+    menu.style.bottom = `${innerHeight - event.clientY}px`;
+    menu.hidden = false;
+    (menu.firstElementChild as HTMLElement).focus();
   };
   menu.hidden = true;
   menu.oncontextmenu = (event) => event.preventDefault();
@@ -123,7 +133,7 @@ export function showBottomBar(
   document
     .getElementById("skills")!
     .replaceChildren(...skills.map((skill) => skill.row), noPins);
-  const sheet = showCharacterSheet(room);
+  const sheet = showCharacterSheet(room, openMenu);
 
   const health = document.getElementById("health")!;
   const bar = document.getElementById("bar")!;
@@ -144,11 +154,16 @@ export function showBottomBar(
     noPins.hidden = me.pinnedSkills.length > 0;
     sheet.drawPins(me);
     sheet.drawTools(me);
+    sheet.drawGear(me);
     showHeld = () => {
       slots.forEach((slot, i) => {
         const item = me.inventory[i] ?? "";
         slot.dataset.item = item;
-        slot.title = item && itemName(item);
+        const refusal = gearRefusal(item, me);
+        slot.dataset.locked = String(!!refusal);
+        slot.title = refusal
+          ? `${itemName(item)}. ${refusal}`
+          : item && itemName(item);
         slot.style.backgroundImage = item && `url("${iconUrl(item)}")`;
         slot.disabled = !item;
         const count = me.inventoryCounts[i] ?? 0;

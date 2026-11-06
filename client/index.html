@@ -88,8 +88,8 @@
         position: fixed;
         inset: auto 0 0;
         display: grid;
-        /* The right end's minimum fits two skills across beside its buttons at 800 px. */
-        grid-template-columns: minmax(0, 1fr) auto minmax(236px, 1fr);
+        /* The right end's minimum fits two skills across beside its buttons and both gear icons at 800 px. */
+        grid-template-columns: minmax(0, 1fr) auto minmax(272px, 1fr);
         gap: 8px;
         height: 132px;
         padding: 8px;
@@ -143,6 +143,10 @@
           1px 0 #000,
           0 -1px #000,
           0 1px #000;
+      }
+      #slots > button[data-locked="true"] {
+        filter: grayscale(1);
+        opacity: 0.6;
       }
       #slot-menu {
         position: fixed;
@@ -206,6 +210,11 @@
       #character kbd {
         font: inherit;
         opacity: 0.7;
+      }
+      #worn-gear img {
+        width: 16px;
+        height: 16px;
+        vertical-align: text-bottom;
       }
       /*
        * Hidden by visibility, not display, on the window and its panes: a box that goes away
@@ -289,14 +298,22 @@
         text-align: center;
       }
       .gear-slot {
+        display: block;
         width: 64px;
         height: 64px;
         margin: 2px auto;
-        background: #6d4a28;
+        padding: 0;
+        border: 0;
+        background: #6d4a28 center / 52px no-repeat;
         outline: 2px solid #a26a35;
       }
       #gear-slots b {
+        display: block;
         font-weight: 600;
+      }
+      #gear-slots small {
+        display: block;
+        font-size: 11px;
       }
       #toolbelt {
         display: grid;
@@ -490,13 +507,27 @@
           <div id="gear-slots">
             <div>
               Weapon
-              <div class="gear-slot"></div>
-              <b>Empty</b>
+              <button
+                id="gear-weapon"
+                class="gear-slot"
+                type="button"
+                aria-labelledby="gear-weapon-name"
+                disabled
+              ></button>
+              <b id="gear-weapon-name">Empty</b>
+              <small id="gear-weapon-does"></small>
             </div>
             <div>
               Shield
-              <div class="gear-slot"></div>
-              <b>Empty</b>
+              <button
+                id="gear-shield"
+                class="gear-slot"
+                type="button"
+                aria-labelledby="gear-shield-name"
+                disabled
+              ></button>
+              <b id="gear-shield-name">Empty</b>
+              <small id="gear-shield-does"></small>
             </div>
           </div>
           Toolbelt
@@ -552,7 +583,7 @@
           aria-pressed="false"
           aria-keyshortcuts="C"
         >
-          Character <kbd>C</kbd>
+          Character <kbd>C</kbd> <span id="worn-gear"></span>
         </button>
         <button id="logout" type="button">Log out</button>
       </div>

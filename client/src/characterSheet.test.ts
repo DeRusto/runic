@@ -1,6 +1,10 @@
-import { PIN_INTENT } from "@runic/shared";
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { showCharacterSheet, type SyncedPlayer } from "./characterSheet.ts";
+import { PIN_INTENT, TAKE_OFF_INTENT } from "@runic/shared";
+import { beforeEach, describe, expect, test, vi, type Mock } from "vitest";
+import {
+  showCharacterSheet,
+  type OpenMenu,
+  type SyncedPlayer,
+} from "./characterSheet.ts";
 import type { WorldConnection } from "./players.ts";
 
 class FakeInput {}
@@ -18,12 +22,15 @@ const element = () => ({
     this.attributes[name] = value;
   },
   children: [] as any[],
+  dataset: {} as Record<string, string>,
+  style: {} as Record<string, string>,
   hidden: false,
   disabled: false,
   textContent: "",
   title: "",
   value: 0,
   onclick: undefined as undefined | (() => void),
+  oncontextmenu: undefined as undefined | ((event: unknown) => void),
 });
 
 let byId: Map<string, ReturnType<typeof element>>;
@@ -64,6 +71,7 @@ const TODAY = [
 ];
 
 let room: { send: ReturnType<typeof vi.fn> };
+let openMenu: Mock<OpenMenu>;
 let sheet: ReturnType<typeof showCharacterSheet>;
 const isOpen = () => !el("sheet").hidden;
 /** A row's children are its text, pin and progress bar. */
@@ -79,7 +87,77 @@ beforeEach(() => {
   el("sheet").hidden = true;
   el("sheet-skills").hidden = true;
   room = { send: vi.fn() };
-  sheet = showCharacterSheet(room as unknown as WorldConnection);
+  openMenu = vi.fn<OpenMenu>();
+  sheet = showCharacterSheet(room as unknown as WorldConnection, openMenu);
+});
+
+describe("the Gear tab", () => {
+  const wearing = (weapon: string, shield = "") =>
+    sheet.drawGear({ weapon, shield } as unknown as SyncedPlayer);
+  const box = () => el("gear-weapon") as any;
+
+  test("an empty gear slot says so, and can't be clicked", () => {
+    wearing("");
+    expect(el("gear-weapon-name").textContent).toBe("Empty");
+    expect(el("gear-weapon-does").textContent).toBe("");
+    expect(box().disabled).toBe(true);
+    expect(box().dataset.item).toBe("");
+    expect(box().style.backgroundImage).toBe("");
+  });
+
+  test("a worn sword shows its icon, name and what it does", () => {
+    wearing("ironSword");
+    expect(el("gear-weapon-name").textContent).toBe("Iron sword");
+    expect(el("gear-weapon-does").textContent).toBe(
+      "Adds 2 to your minimum and maximum hit",
+    );
+    expect(box().disabled).toBe(false);
+    expect(box().dataset.item).toBe("ironSword");
+    expect(box().style.backgroundImage).toBe('url("/icons/ironSword.png")');
+    expect(el("gear-shield-name").textContent).toBe("Empty");
+  });
+
+  test("taking it off empties the slot again", () => {
+    wearing("ironSword");
+    wearing("");
+    expect(el("gear-weapon-name").textContent).toBe("Empty");
+    expect(el("worn-gear").children).toEqual([]);
+  });
+
+  test("a left-click takes it off", () => {
+    wearing("ironSword");
+    box().onclick();
+    expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "weapon");
+  });
+
+  test("a right-click offers Take off", () => {
+    wearing("ironSword");
+    const event = { preventDefault: vi.fn() };
+    box().oncontextmenu(event);
+    expect(event.preventDefault).toHaveBeenCalled();
+    const [[shown, choices]] = openMenu.mock.calls as any;
+    expect(shown).toBe(event);
+    expect(choices.map(([label]: [string]) => label)).toEqual(["Take off"]);
+    choices[0][1]();
+    expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "weapon");
+  });
+
+  test("the Character button shows small icons of the worn gear", () => {
+    wearing("ironSword", "copperShield");
+    const icons = el("worn-gear").children;
+    expect(icons.map(({ src }) => src)).toEqual([
+      "/icons/ironSword.png",
+      "/icons/copperShield.png",
+    ]);
+    expect(icons[0].alt).toBe("Iron sword");
+  });
+
+  test("patches with no change to the gear don't redraw", () => {
+    wearing("ironSword");
+    const icon = el("worn-gear").children[0];
+    wearing("ironSword");
+    expect(el("worn-gear").children[0]).toBe(icon);
+  });
 });
 
 describe("opening and closing", () => {

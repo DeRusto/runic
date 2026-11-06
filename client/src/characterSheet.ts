@@ -1,9 +1,12 @@
 import {
+  GEAR,
+  GEAR_SLOTS,
   levelFor,
   levelProgress,
   MAX_PINNED_SKILLS,
   PIN_INTENT,
   SKILLS,
+  TAKE_OFF_INTENT,
 } from "@runic/shared";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
@@ -11,6 +14,12 @@ import type { WorldConnection } from "./players.ts";
 export type SyncedPlayer = NonNullable<
   ReturnType<WorldConnection["state"]["players"]["get"]>
 >;
+
+/** The bar's right-click menu, which opens at the click. */
+export type OpenMenu = (
+  event: MouseEvent,
+  choices: (readonly [label: string, choose: () => void])[],
+) => void;
 
 const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1 7 4 4v2h-5l-1 7-1-7H6v-2l4-4z"/></svg>`;
 
@@ -25,7 +34,7 @@ function sheetKey(event: KeyboardEvent) {
  * The floating window's controls and rows. The page holds it, and `hidden` only takes it
  * out of sight, so the open tab and each tab's scroll position last through closing it.
  */
-export function showCharacterSheet(room: WorldConnection) {
+export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const sheet = document.getElementById("sheet")!;
   const button = document.getElementById("character")!;
   const setOpen = (open: boolean) => {
@@ -60,6 +69,26 @@ export function showCharacterSheet(room: WorldConnection) {
   toolbelt.oncontextmenu = (event) => event.preventDefault();
   let toolsDrawn = "";
 
+  const gearSlots = GEAR_SLOTS.map((gearSlot) => {
+    const box = document.getElementById(
+      `gear-${gearSlot}`,
+    ) as HTMLButtonElement;
+    const takeOff = () => room.send(TAKE_OFF_INTENT, gearSlot);
+    box.onclick = takeOff;
+    box.oncontextmenu = (event) => {
+      event.preventDefault();
+      openMenu(event, [["Take off", takeOff]]);
+    };
+    return {
+      gearSlot,
+      box,
+      name: document.getElementById(`gear-${gearSlot}-name`)!,
+      does: document.getElementById(`gear-${gearSlot}-does`)!,
+    };
+  });
+  const wornIcons = document.getElementById("worn-gear")!;
+  let gearDrawn: string | undefined;
+
   const note = document.createElement("p");
   const rows = SKILLS.map(([skill, field]) => {
     const row = document.createElement("div");
@@ -88,6 +117,29 @@ export function showCharacterSheet(room: WorldConnection) {
           const icon = document.createElement("img");
           icon.src = iconUrl(tool);
           icon.alt = icon.title = itemName(tool);
+          return icon;
+        }),
+      );
+    },
+    /** Only redraws when the gear changes, as with the tools. */
+    drawGear(me: SyncedPlayer) {
+      const worn = GEAR_SLOTS.map((gearSlot) => me[gearSlot]);
+      if (worn.join() === gearDrawn) return;
+      gearDrawn = worn.join();
+      for (const { gearSlot, box, name, does } of gearSlots) {
+        const item = me[gearSlot];
+        box.dataset.item = item;
+        box.disabled = !item;
+        box.title = item && `Take off ${itemName(item)}`;
+        box.style.backgroundImage = item && `url("${iconUrl(item)}")`;
+        name.textContent = item ? itemName(item) : "Empty";
+        does.textContent = GEAR.get(item)?.does ?? "";
+      }
+      wornIcons.replaceChildren(
+        ...worn.filter(Boolean).map((item) => {
+          const icon = document.createElement("img");
+          icon.src = iconUrl(item);
+          icon.alt = itemName(item);
           return icon;
         }),
       );

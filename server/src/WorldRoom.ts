@@ -9,6 +9,7 @@ import {
   CHAT,
   DISCARD_INTENT,
   EAT_INTENT,
+  EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
   LOGOUT_INTENT,
@@ -20,12 +21,14 @@ import {
   REGION_GRID,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
+  TAKE_OFF_INTENT,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
   TICK_MS,
   VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
+  type GearSlot,
   type Tile,
 } from "@runic/shared";
 import { accountForToken } from "./accounts.ts";
@@ -59,6 +62,10 @@ export class WorldRoom extends Room {
       this.sim.queueEat(client.sessionId, slot),
     [DISCARD_INTENT]: (client: Client, slot: number) =>
       this.sim.queueDiscard(client.sessionId, slot),
+    [EQUIP_INTENT]: (client: Client, slot: number) =>
+      this.sim.equip(client.sessionId, slot),
+    [TAKE_OFF_INTENT]: (client: Client, slot: GearSlot) =>
+      this.sim.takeOff(client.sessionId, slot),
     [PIN_INTENT]: (
       client: Client,
       intent: { skill: string; pinned: boolean },
