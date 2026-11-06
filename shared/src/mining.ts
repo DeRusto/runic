@@ -1,5 +1,5 @@
 import { attemptChance, bushId } from "./foraging.ts";
-import { slotFor } from "./items.ts";
+import { slotFor, type HasInventory } from "./items.ts";
 import type { Tier } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -26,12 +26,7 @@ export const mineChance = (tier: Tier, level: number) =>
 export function veinRefusal(
   tier: Tier,
   oreLeft: number,
-  player: {
-    tools: Iterable<string>;
-    miningXp: number;
-    inventory: Iterable<string>;
-    inventoryCounts: Iterable<number>;
-  },
+  player: HasInventory & { tools: Iterable<string>; miningXp: number },
 ) {
   if (![...player.tools].includes("pickaxe"))
     return "You need a pickaxe. The Blacksmith will give you one.";

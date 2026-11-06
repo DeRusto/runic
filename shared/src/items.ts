@@ -28,11 +28,14 @@ export type ItemId = keyof typeof ITEMS;
 /** Every tool the Blacksmith gives. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). */
 export const TOOLS = ["pickaxe", "hammer"];
 
+/** A player's two parallel inventory fields, which are also their save columns (spec D9). */
+export type HasInventory = {
+  inventory: Iterable<string>;
+  inventoryCounts: Iterable<number>;
+};
+
 /** The slot a new `item` goes in: the first stack of it with room, then the first empty slot. -1 means full (spec §4). */
-export function slotFor(
-  item: ItemId,
-  player: { inventory: Iterable<string>; inventoryCounts: Iterable<number> },
-) {
+export function slotFor(item: ItemId, player: HasInventory) {
   const items = [...player.inventory];
   const counts = [...player.inventoryCounts];
   const stack = items.findIndex(

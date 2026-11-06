@@ -1,4 +1,4 @@
-import { slotFor } from "./items.ts";
+import { slotFor, type HasInventory } from "./items.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -32,11 +32,7 @@ export const pickIntervalTicks = (level: number) =>
 export function bushRefusal(
   kind: BushKind,
   picksLeft: number,
-  player: {
-    foragingXp: number;
-    inventory: Iterable<string>;
-    inventoryCounts: Iterable<number>;
-  },
+  player: HasInventory & { foragingXp: number },
 ) {
   if (picksLeft === 0) return "This bush has run out.";
   const { level } = BUSHES[kind];
