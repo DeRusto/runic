@@ -8,7 +8,7 @@ export const BUSHES = {
   herbBush: { level: 10, picks: 3, regrowTicks: 150, xp: 25, food: "herb" },
 } as const;
 export type BushKind = keyof typeof BUSHES;
-/** Health an item heals when eaten; anything else isn't food. */
+/** What an item adds to the healing pool when eaten; anything else isn't food. */
 export const FOOD_HEALS = new Map([
   ["berry", 2],
   ["herb", 5],
