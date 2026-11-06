@@ -125,12 +125,49 @@
         gap: 2px;
       }
       #slots > button {
+        position: relative;
         overflow: hidden;
         padding: 0;
         border: 0;
         background: #151b25;
         color: inherit;
         font-size: 10px;
+      }
+      #slots > button::after {
+        content: attr(data-count);
+        position: absolute;
+        right: 2px;
+        bottom: 1px;
+        color: #fff;
+        font-weight: 700;
+        text-shadow:
+          -1px 0 #000,
+          1px 0 #000,
+          0 -1px #000,
+          0 1px #000;
+      }
+      #slot-menu {
+        position: fixed;
+        display: flex;
+        flex-direction: column;
+        padding: 2px;
+        background: #151b25;
+        outline: 1px solid #000;
+      }
+      #slot-menu[hidden] {
+        display: none;
+      }
+      #slot-menu button {
+        padding: 4px 12px;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+      }
+      #slot-menu button:hover,
+      #slot-menu button:focus-visible {
+        background: #2f3b4d;
       }
       #player-panel {
         display: grid;
@@ -193,6 +230,7 @@
         </form>
       </div>
       <div id="slots" aria-label="Inventory"></div>
+      <div id="slot-menu" role="menu" hidden></div>
       <div id="player-panel">
         <div id="skills"></div>
         <div id="health"></div>

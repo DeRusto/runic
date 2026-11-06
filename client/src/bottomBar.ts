@@ -1,7 +1,8 @@
 import {
   CHAT,
+  DISCARD_INTENT,
   EAT_INTENT,
-  EMPTY_SLOT,
+  FOOD_HEALS,
   INVENTORY_SLOTS,
   levelFor,
   levelProgress,
@@ -34,6 +35,10 @@ let holdingPick = false;
 let showHeld = () => {};
 
 /** A pick's food and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
+export function holdPick() {
+  holdingPick = true;
+}
+
 export function revealPick() {
   holdingPick = false;
   showHeld();
@@ -61,9 +66,46 @@ export function showBottomBar(
     const slot = document.createElement("button");
     slot.type = "button";
     slot.onclick = () => room.send(EAT_INTENT, i);
+    slot.oncontextmenu = (event) => {
+      event.preventDefault();
+      const item = slot.textContent;
+      if (!item) return;
+      menu.replaceChildren(
+        ...(FOOD_HEALS.has(item)
+          ? [choice("Eat", () => room.send(EAT_INTENT, i))]
+          : []),
+        choice("Discard", () => room.send(DISCARD_INTENT, i)),
+      );
+      menu.style.left = `${event.clientX}px`;
+      // The bar is at the bottom of the window, so the menu opens upwards.
+      menu.style.bottom = `${innerHeight - event.clientY}px`;
+      menu.hidden = false;
+      (menu.firstElementChild as HTMLElement).focus();
+    };
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
+
+  const menu = document.getElementById("slot-menu")!;
+  const choice = (label: string, choose: () => void) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("role", "menuitem");
+    button.textContent = label;
+    button.onclick = () => {
+      menu.hidden = true;
+      choose();
+    };
+    return button;
+  };
+  menu.hidden = true;
+  menu.oncontextmenu = (event) => event.preventDefault();
+  menu.onkeydown = (event) => {
+    if (event.key === "Escape") menu.hidden = true;
+  };
+  document.onpointerdown = (event) => {
+    if (!menu.contains(event.target as Node)) menu.hidden = true;
+  };
 
   const skills = SKILLS.map(([name, field]) => {
     const row = document.createElement("label");
@@ -84,19 +126,17 @@ export function showBottomBar(
   holdingPick = false;
   // The pick events a drop lost never come, so what a reconnect's state brings shows at once.
   room.onReconnect(() => room.onStateChange.once(revealPick));
-  let food: number | undefined;
+  let frame = 0;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
-    // Food, not XP: XP stops rising at the cap. Only a pick adds food.
-    const foodNow = me.inventory.filter((item) => item !== EMPTY_SLOT).length;
-    if (food !== undefined && foodNow > food) holdingPick = true;
-    food = foodNow;
     showHeld = () => {
       slots.forEach((slot, i) => {
         slot.textContent = me.inventory[i] ?? "";
         slot.disabled = !slot.textContent;
+        const count = me.inventoryCounts[i] ?? 0;
+        slot.dataset.count = count > 1 ? String(count) : "";
       });
       for (const skill of skills) {
         const xp = me[skill.field];
@@ -105,6 +145,10 @@ export function showBottomBar(
         skill.bar.title = `${xp} XP`;
       }
     };
-    if (!holdingPick) showHeld();
+    // A tick's pick event comes right after its patch, so draw on the next frame, when it has had the chance to hold.
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      if (!holdingPick) showHeld();
+    });
   });
 }

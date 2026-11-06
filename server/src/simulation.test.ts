@@ -309,6 +309,7 @@ describe("Spiders", () => {
 });
 
 const EMPTY_INVENTORY = Array<string>(30).fill("");
+const EMPTY_COUNTS = Array<number>(30).fill(0);
 
 test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 10 health", () => {
   expect(sim.saveOf("a")).toEqual({
@@ -320,6 +321,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     hitpointsXp: 4050,
     health: 10,
     inventory: EMPTY_INVENTORY,
+    inventoryCounts: EMPTY_COUNTS,
   });
 });
 
@@ -332,6 +334,7 @@ const SAVED = {
   hitpointsXp: 4100,
   health: 7,
   inventory: ["berry", ...EMPTY_INVENTORY.slice(1)],
+  inventoryCounts: [7, ...EMPTY_COUNTS.slice(1)],
 };
 
 test("a returning player comes back exactly as saved", () => {

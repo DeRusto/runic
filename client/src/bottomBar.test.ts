@@ -1,15 +1,48 @@
-import { EMPTY_SLOT, INVENTORY_SLOTS } from "@runic/shared";
-import { beforeEach, expect, test, vi } from "vitest";
+import {
+  DISCARD_INTENT,
+  EAT_INTENT,
+  EMPTY_SLOT,
+  INVENTORY_SLOTS,
+} from "@runic/shared";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
 
-const element = () => ({ append() {}, replaceChildren() {} });
-const slotsBox = { ...element(), replaceChildren: vi.fn() };
-vi.stubGlobal("document", {
-  getElementById: (id: string) => (id === "slots" ? slotsBox : element()),
-  createElement: element,
+const element = () => ({
+  append() {},
+  replaceChildren(...children: any[]) {
+    this.children = children;
+  },
+  setAttribute() {},
+  contains: (other: unknown) => other === "inside",
+  focus() {},
+  children: [] as any[],
+  dataset: {} as Record<string, string>,
+  style: {} as Record<string, string>,
+  hidden: false,
+  textContent: "",
+  onclick: undefined as undefined | (() => void),
+  oncontextmenu: undefined as undefined | ((event: unknown) => void),
+  get firstElementChild() {
+    return this.children[0];
+  },
 });
+const slotsBox = element();
+const menu = element();
+const fakeDocument = {
+  getElementById: (id: string) =>
+    id === "slots" ? slotsBox : id === "slot-menu" ? menu : element(),
+  createElement: element,
+  onpointerdown: undefined as undefined | ((event: unknown) => void),
+};
+vi.stubGlobal("document", fakeDocument);
+vi.stubGlobal("innerHeight", 700);
+let frames: (() => void)[] = [];
+vi.stubGlobal("requestAnimationFrame", (draw: () => void) => frames.push(draw));
+vi.stubGlobal("cancelAnimationFrame", () => (frames = []));
+/** The next paint. The server sends a tick's events right after its patch, so both come before it. */
+const nextFrame = () => frames.splice(0).forEach((draw) => draw());
 // After the stub, since the module looks up the chat box as it loads.
-const { revealPick, showBottomBar } = await import("./bottomBar.ts");
+const { holdPick, revealPick, showBottomBar } = await import("./bottomBar.ts");
 
 function signal<Args extends unknown[]>() {
   let handlers: ((...args: Args) => void)[] = [];
@@ -26,7 +59,8 @@ function signal<Args extends unknown[]>() {
   });
 }
 
-const stateWith = (...food: string[]) => ({
+/** Our player, holding these [item, count] stacks from slot 0. */
+const stateHolding = (...stacks: [string, number][]) => ({
   players: new Map([
     [
       "me",
@@ -38,49 +72,164 @@ const stateWith = (...food: string[]) => ({
         foragingXp: 0,
         hitpointsXp: 0,
         inventory: [
-          ...food,
-          ...Array<string>(INVENTORY_SLOTS - food.length).fill(EMPTY_SLOT),
+          ...stacks.map(([item]) => item),
+          ...Array<string>(INVENTORY_SLOTS - stacks.length).fill(EMPTY_SLOT),
+        ],
+        inventoryCounts: [
+          ...stacks.map(([, count]) => count),
+          ...Array<number>(INVENTORY_SLOTS - stacks.length).fill(0),
         ],
       },
     ],
   ]),
 });
+const stateWith = (...food: string[]) =>
+  stateHolding(...food.map((item) => [item, 1] as [string, number]));
 
 let room: ReturnType<typeof fakeRoom>;
 const fakeRoom = () => ({
   sessionId: "me",
   onMessage() {},
+  send: vi.fn(),
   onReconnect: signal<[]>(),
   onStateChange: signal<[ReturnType<typeof stateWith>]>(),
 });
-const shownFood = () =>
-  (slotsBox.replaceChildren.mock.lastCall as { textContent: string }[])[0]!
-    .textContent;
+const slot = (i = 0) => slotsBox.children[i]!;
+const shownFood = () => slot().textContent;
+const rightClick = (i = 0) =>
+  slot(i).oncontextmenu!({
+    preventDefault() {},
+    clientX: 50,
+    clientY: 600,
+  });
+const menuChoices = () => menu.children.map((choice) => choice.textContent);
 
 beforeEach(() => {
+  frames = [];
   room = fakeRoom();
   showBottomBar(room as unknown as WorldConnection, () => {});
   room.onStateChange.invoke(stateWith());
+  nextFrame();
 });
 
-test("a pick's food stays hidden until its clip reveals it", () => {
-  room.onStateChange.invoke(stateWith("berry"));
-  expect(shownFood()).toBe("");
-  revealPick();
-  expect(shownFood()).toBe("berry");
+describe("holding a pick's result", () => {
+  test("a pick's food stays hidden until its clip reveals it", () => {
+    room.onStateChange.invoke(stateWith("berry"));
+    holdPick();
+    nextFrame();
+    expect(shownFood()).toBe("");
+    revealPick();
+    expect(shownFood()).toBe("berry");
+  });
+
+  test("so does food landing on an existing stack, which fills no new slot", () => {
+    room.onStateChange.invoke(stateHolding(["berry", 3]));
+    nextFrame();
+    room.onStateChange.invoke(stateHolding(["berry", 4]));
+    holdPick();
+    nextFrame();
+    expect(slot().dataset.count).toBe("3");
+    revealPick();
+    expect(slot().dataset.count).toBe("4");
+  });
+
+  test("a slot filling with no pick event isn't held", () => {
+    room.onStateChange.invoke(stateWith("berry"));
+    nextFrame();
+    expect(shownFood()).toBe("berry");
+  });
+
+  test("patches during the hold don't show until the reveal", () => {
+    holdPick();
+    room.onStateChange.invoke(stateWith("berry"));
+    nextFrame();
+    room.onStateChange.invoke(stateWith("berry"));
+    nextFrame();
+    expect(shownFood()).toBe("");
+    revealPick();
+    expect(shownFood()).toBe("berry");
+  });
+
+  test("food a reconnect's state brings shows with no pick event to reveal it", () => {
+    room.onReconnect.invoke();
+    room.onStateChange.invoke(stateWith("berry"));
+    expect(shownFood()).toBe("berry");
+    room.onStateChange.invoke(stateWith());
+    nextFrame();
+    expect(shownFood()).toBe("");
+  });
+
+  test("a reconnect shows a pick already held when the connection dropped", () => {
+    room.onStateChange.invoke(stateWith("berry"));
+    holdPick();
+    room.onReconnect.invoke();
+    room.onStateChange.invoke(stateWith("berry"));
+    expect(shownFood()).toBe("berry");
+  });
 });
 
-test("food a reconnect's state brings shows with no pick event to reveal it", () => {
-  room.onReconnect.invoke();
-  room.onStateChange.invoke(stateWith("berry"));
-  expect(shownFood()).toBe("berry");
-  room.onStateChange.invoke(stateWith());
-  expect(shownFood()).toBe("");
+describe("a slot's stack count", () => {
+  test("shows above 1", () => {
+    room.onStateChange.invoke(stateHolding(["berry", 2], ["herb", 20]));
+    nextFrame();
+    expect(slot(0).dataset.count).toBe("2");
+    expect(slot(1).dataset.count).toBe("20");
+  });
+
+  test("doesn't show at 1 or on an empty slot", () => {
+    room.onStateChange.invoke(stateHolding(["berry", 1]));
+    nextFrame();
+    expect(slot(0).dataset.count).toBe("");
+    expect(slot(1).dataset.count).toBe("");
+  });
 });
 
-test("a reconnect shows a pick already held when the connection dropped", () => {
-  room.onStateChange.invoke(stateWith("berry"));
-  room.onReconnect.invoke();
-  room.onStateChange.invoke(stateWith("berry"));
-  expect(shownFood()).toBe("berry");
+describe("the right-click menu", () => {
+  beforeEach(() => {
+    room.onStateChange.invoke(
+      stateHolding(["berry", 5], ["copperOre", 3], ["herb", 1]),
+    );
+    nextFrame();
+  });
+
+  test("offers Eat and Discard on food", () => {
+    rightClick(0);
+    expect(menu.hidden).toBe(false);
+    expect(menuChoices()).toEqual(["Eat", "Discard"]);
+  });
+
+  test("offers only Discard on a material, whose slot can still catch the click", () => {
+    expect((slot(1) as unknown as { disabled: boolean }).disabled).toBe(false);
+    rightClick(1);
+    expect(menu.hidden).toBe(false);
+    expect(menuChoices()).toEqual(["Discard"]);
+  });
+
+  test("opens nothing on an empty slot", () => {
+    menu.hidden = true;
+    rightClick(9);
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("Eat eats from the slot clicked, and closes", () => {
+    rightClick(2);
+    menu.children[0]!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 2);
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("Discard discards the slot clicked, and closes", () => {
+    rightClick(1);
+    menu.children[0]!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(DISCARD_INTENT, 1);
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("clicking anywhere else closes it, and clicking inside doesn't", () => {
+    rightClick(0);
+    fakeDocument.onpointerdown!({ target: "inside" });
+    expect(menu.hidden).toBe(false);
+    fakeDocument.onpointerdown!({ target: "outside" });
+    expect(menu.hidden).toBe(true);
+  });
 });

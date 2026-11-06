@@ -86,6 +86,141 @@ describe("what eating does", () => {
   });
 });
 
+describe("eating from a stack", () => {
+  const stacked = (...counts: number[]) => {
+    const sim = eater(5, ...counts.map(() => "berry"));
+    const saved = sim.saveOf("a")!;
+    counts.forEach((count, slot) => (saved.inventoryCounts![slot] = count));
+    sim.removePlayer("a");
+    sim.addPlayer("a", saved);
+    return sim;
+  };
+
+  test("one click eats one food and leaves the rest", () => {
+    const sim = stacked(3);
+    sim.queueEat("a", 0);
+    sim.tick();
+    expect(player(sim).inventory[0]).toBe("berry");
+    expect(player(sim).inventoryCounts[0]).toBe(2);
+    expect(player(sim).health).toBe(7);
+  });
+
+  test("eating the last one frees the slot", () => {
+    const sim = stacked(1);
+    sim.queueEat("a", 0);
+    sim.tick();
+    expect(player(sim).inventory[0]).toBe("");
+    expect(player(sim).inventoryCounts[0]).toBe(0);
+  });
+
+  test("the slot clicked is the one eaten from", () => {
+    const sim = stacked(4, 4);
+    sim.queueEat("a", 1);
+    sim.tick();
+    expect([...player(sim).inventoryCounts].slice(0, 2)).toEqual([4, 3]);
+  });
+});
+
+describe("discarding", () => {
+  const twenty = () => {
+    const sim = eater(5, "berry", "herb");
+    const saved = sim.saveOf("a")!;
+    saved.inventoryCounts![0] = 20;
+    sim.removePlayer("a");
+    sim.addPlayer("a", saved);
+    return sim;
+  };
+
+  test("destroys the whole slot, including a stack of 20", () => {
+    const sim = twenty();
+    sim.queueDiscard("a", 0);
+    sim.tick();
+    expect(player(sim).inventory[0]).toBe("");
+    expect(player(sim).inventoryCounts[0]).toBe(0);
+    expect(player(sim).inventory[1]).toBe("herb");
+    expect(player(sim).inventoryCounts[1]).toBe(1);
+  });
+
+  test("the freed slot takes the next item from scratch", () => {
+    const sim = new Simulation(
+      parseRegion(["TTTTT", "TRb.T", "TTTTT"].join("\n")),
+      () => 0,
+    );
+    sim.addPlayer("a");
+    const saved = sim.saveOf("a")!;
+    saved.inventory[0] = "berry";
+    saved.inventoryCounts![0] = 20;
+    sim.removePlayer("a");
+    sim.addPlayer("a", saved);
+    sim.queueDiscard("a", 0);
+    sim.queueForage("a", "2,1");
+    sim.tick();
+    expect(player(sim).inventory[0]).toBe("berry");
+    expect(player(sim).inventoryCounts[0]).toBe(1);
+  });
+
+  test("mid-fight it interrupts nothing: not the target, not the swing timer", () => {
+    const sim = twenty();
+    sim.queueTarget("a", "0");
+    expect(
+      ticksOf(sim, "playerSwing", 17, { 3: () => sim.queueDiscard("a", 0) }),
+    ).toEqual([1, 9, 17]);
+    expect(player(sim).target).toBe("0");
+    expect(player(sim).inventory[0]).toBe("");
+  });
+
+  test("doesn't stop a walk", () => {
+    const sim = twenty();
+    sim.queueWalk("a", { x: 5, y: 2 });
+    sim.queueDiscard("a", 0);
+    for (let i = 0; i < 10; i++) sim.tick();
+    expect({ x: player(sim).x, y: player(sim).y }).toEqual({ x: 5, y: 2 });
+    expect(player(sim).inventory[0]).toBe("");
+  });
+
+  test.each([
+    [-1],
+    [1.5],
+    [30],
+    ["0"],
+    ["constructor"],
+    [null],
+    [undefined],
+    [{}],
+  ])("a slot of %j is ignored", (slot) => {
+    const sim = twenty();
+    sim.queueDiscard("a", slot as number);
+    sim.tick();
+    expect([...player(sim).inventory].slice(0, 2)).toEqual(["berry", "herb"]);
+    expect(player(sim).inventoryCounts[0]).toBe(20);
+    expect(player(sim).inventory).toHaveLength(30);
+  });
+
+  test("an empty slot is ignored", () => {
+    const sim = twenty();
+    sim.queueDiscard("a", 5);
+    sim.tick();
+    expect(player(sim).inventory[5]).toBe("");
+    expect(player(sim).inventoryCounts[5]).toBe(0);
+  });
+
+  test("a player who isn't here, or who left with a discard queued", () => {
+    const sim = twenty();
+    sim.queueDiscard("nobody", 0);
+    sim.queueDiscard("a", 0);
+    sim.removePlayer("a");
+    expect(() => sim.tick()).not.toThrow();
+  });
+
+  test("a discard queued before a drop is forgotten", () => {
+    const sim = twenty();
+    sim.queueDiscard("a", 0);
+    sim.dropPlayer("a");
+    sim.tick();
+    expect(player(sim).inventory[0]).toBe("berry");
+  });
+});
+
 describe("what the server ignores", () => {
   test.each([[-1], [1.5], [30], ["0"], ["constructor"], [null], [undefined]])(
     "a slot of %j",
