@@ -6,18 +6,16 @@ import {
   type WorldEvent,
 } from "@runic/shared";
 import { holdPick, printChatLine, revealPick } from "./bottomBar.ts";
-import { swingFor } from "./characters.ts";
+import { ENEMY_CLIPS, swingFor } from "./characters.ts";
 import {
   playerFigures,
   playerOverheads,
   type WorldConnection,
 } from "./players.ts";
-import { ENEMY_CLIPS, enemyFigures, enemyOverheads } from "./enemies.ts";
+import { enemyFigures, enemyOverheads } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
 import { stationTile } from "./stations.ts";
 
-// The moment the clip connects (spec §7). The server decided on the tick.
-const ENEMY_CONTACT_MS = 450;
 /** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
 const PICK_RESULT_AT = 0.4;
 const EAT_CLIP_SPEED = 1.33;
@@ -54,13 +52,15 @@ export function showFights(room: WorldConnection) {
         const dead = enemy.state === "dead";
         if (dead && !figure.downed)
           figure.dieAndSink(ENEMY_CLIPS[enemy.kind].death);
-        else if (!dead && figure.downed) figure.reappear();
+        else if (!dead && figure.downed)
+          figure[ENEMY_CLIPS[enemy.kind].returns]();
       });
     }),
   );
 
   room.onMessage(EVENTS, (events: WorldEvent[]) => {
     // A death follows its killing swing in the same batch, and falls when that swing connects.
+    // The server decided on the tick; this is the moment the clip connects (spec §7).
     let killingContactMs = 0;
     for (const event of events) {
       if (event.type === "playerSwing") {
@@ -82,14 +82,21 @@ export function showFights(room: WorldConnection) {
           () => {
             enemy.flash();
             if (from) enemy.nudgeFrom(from);
+            const { hit } = clipsOf(event.enemy);
+            if (hit && !enemy.playingOnce) enemy.once(hit);
           },
         );
       } else if (event.type === "enemySwing") {
-        enemyFigures.get(event.enemy)!.once(clipsOf(event.enemy).attack);
+        const { clip, contactMs } = clipsOf(event.enemy).swing(
+          event.enemy,
+          room.state.tick,
+        );
+        enemyFigures.get(event.enemy)!.once(clip);
+        killingContactMs = contactMs;
         atContact(
           playerOverheads.get(event.player),
           event.damage,
-          ENEMY_CONTACT_MS,
+          contactMs,
           () => {
             const victim = playerFigures.get(event.player);
             if (victim && !victim.playingOnce) victim.once("Hit_A");
@@ -102,12 +109,12 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "playerDied") {
         setTimeout(
           () => playerFigures.get(event.player)?.once("Death_A", 1, true),
-          ENEMY_CONTACT_MS,
+          killingContactMs,
         );
       } else if (event.type === "playerRespawned") {
         playerFigures.get(event.player)?.respawn();
       } else if (event.type === "enemyReturned") {
-        enemyFigures.get(event.enemy)!.reappear();
+        enemyFigures.get(event.enemy)![clipsOf(event.enemy).returns]();
       } else if (event.type === "pick" || event.type === "mine") {
         const mining = event.type === "mine";
         const figure = playerFigures.get(event.player);

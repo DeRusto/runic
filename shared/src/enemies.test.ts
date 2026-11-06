@@ -7,9 +7,28 @@ test("a Spider's numbers are the first slice's", () => {
     hitChance: 0.35,
     hitChancePerDefenseLevel: -0.002,
     maxDamage: 2,
+    swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
     wanderChance: 0.1,
     wanderTiles: 5,
+    leashTiles: 4,
+  });
+});
+
+test("a Skeleton's numbers are spec §5's, and otherwise a Spider's", () => {
+  expect(ENEMIES.skeleton).toEqual({
+    health: 24,
+    hitChance: 0.55,
+    hitChancePerDefenseLevel: -0.003,
+    maxDamage: 5,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 200,
+    wanderChance: 0.1,
+    wanderTiles: 3,
+    noticeTiles: 3,
+    leashTiles: 4,
+    emberboneChance: 0.25,
   });
 });

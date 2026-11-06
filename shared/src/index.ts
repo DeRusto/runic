@@ -61,8 +61,6 @@ export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const HEALING_POOL_INTERVAL_TICKS = 4;
 export const SAVE_INTERVAL_TICKS = 100;
 
-export const LEASH_TILES = 4;
-
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
 export const PLAYER_HIT_CHANCE = 0.4;
 export const PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL = 0.005;

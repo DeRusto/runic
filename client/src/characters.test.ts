@@ -872,6 +872,81 @@ describe("paintGear", () => {
   });
 });
 
+describe("the Skeleton", () => {
+  /** The joint names in a GLB's JSON chunk, as its embedded texture won't load outside a browser. */
+  const jointsOf = (file: string) => {
+    const glb = readFileSync(`client/public/models/${file}.glb`);
+    const { nodes, skins } = JSON.parse(
+      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
+    );
+    return skins[0].joints.map((i: number) => nodes[i].name).sort();
+  };
+  const STANCE_CLIPS = new Map(
+    ["Idle_A", "Running_A", "Melee_Blocking", "Melee_1H_Attack_Chop"].map(
+      (name) => [name, new THREE.AnimationClip(name, 1, [])],
+    ),
+  );
+
+  it("is on the players' rig, with a right hand for the blade", () => {
+    const joints = jointsOf("Skeleton_Warrior");
+    expect(joints).toContain("handslot.r");
+    expect(joints).toEqual(jointsOf("Knight"));
+  });
+
+  it("holds its blade in a stance, walking and swinging, as its name isn't worn gear", () => {
+    const blade = new THREE.Object3D();
+    blade.name = "Skeleton_Blade";
+    const tile = { x: 1, y: 1 };
+    const figure = new Figure(
+      tile,
+      new THREE.Object3D().add(blade),
+      STANCE_CLIPS,
+    );
+    figure.weapon = blade.name;
+    figure.update(1000);
+    expect(blade.visible).toBe(true);
+    figure.fightTile = { x: 2, y: 1 };
+    figure.update(2000);
+    const stance = figure.mixer.clipAction(STANCE_CLIPS.get("Melee_Blocking")!);
+    expect(stance.isRunning()).toBe(true);
+    figure.once("Melee_1H_Attack_Chop");
+    figure.update(2100);
+    expect(blade.visible).toBe(true);
+    Object.assign(tile, { x: 2 });
+    figure.update(2200);
+    expect(blade.visible).toBe(true);
+  });
+
+  it("comes back visible from a respawn, having sunk out of sight", () => {
+    const figure = new Figure(
+      { x: 1, y: 1 },
+      new THREE.Object3D(),
+      new Map([
+        ...STANCE_CLIPS,
+        ["Death_A", new THREE.AnimationClip("Death_A", 1, [])],
+        ["Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, [])],
+      ]),
+    );
+    figure.alreadyGone("Death_A");
+    expect(figure.model.visible).toBe(false);
+    figure.respawn();
+    expect(figure.model.visible).toBe(true);
+    expect(figure.downed).toBe(false);
+  });
+
+  it("has its blade's files and its licence committed", () => {
+    const gltf = JSON.parse(
+      readFileSync("client/public/models/Skeleton_Blade.gltf", "utf8"),
+    );
+    expect(gltf.nodes[0].name).toBe("Skeleton_Blade");
+    for (const { uri } of [...gltf.buffers, ...gltf.images])
+      expect(existsSync(`client/public/models/${uri}`)).toBe(true);
+    expect(
+      readFileSync("client/public/models/LICENSE-KayKit-Skeletons.txt", "utf8"),
+    ).toContain("Creative Commons Zero");
+  });
+});
+
 test("every tier's model and its licence are committed", () => {
   for (const file of [
     "sword_A",

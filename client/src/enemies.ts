@@ -1,15 +1,11 @@
 import { Callbacks } from "@colyseus/sdk";
 import { ENEMIES, type EnemyKind, type EnemyState } from "@runic/shared";
 import type * as THREE from "three";
-import type { Figure, loadSpiders } from "./characters.ts";
+import { ENEMY_CLIPS, type Figure, type loadSpiders } from "./characters.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
 import type { WorldConnection } from "./players.ts";
 import { scene } from "./scene.ts";
-
-/** The one-shot clips each kind plays; its other clips are in its Figure's gait. */
-export const ENEMY_CLIPS: Record<EnemyKind, { attack: string; death: string }> =
-  { spider: { attack: "Spider_Attack", death: "Spider_Death" } };
 
 export const enemyFigures = new Map<string, Figure>();
 export const enemyOverheads = new Map<string, Overhead>();
