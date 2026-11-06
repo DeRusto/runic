@@ -693,8 +693,8 @@ describe("the end of a fight", () => {
     s.queueTarget("a", "0");
     run(s, 1);
     expect(player(s).target).toBe("0");
-    s.queueWalk("a", { x: 1, y: 2 });
-    const events = run(s, 10);
+    s.queueWalk("a", { x: 5, y: 2 }); // Still walking when the Spider swings on tick 5.
+    const events = run(s, 8);
     expect(player(s).target).toBe("");
     expect(swingTicks(events, "playerSwing")).toEqual([]);
   });
@@ -715,6 +715,85 @@ describe("the end of a fight", () => {
     expect(s.state.enemies.get("1")!.state).toBe("idle");
     expect(swingTicks(events, "playerSwing")).toEqual([1]);
     expect(swingTicks(events, "enemyDied")).toEqual([1]);
+  });
+});
+
+describe("fighting back", () => {
+  /** Sets an enemy on a player, so its next due swing comes with no swing of theirs before it. */
+  const setOn = (s: Simulation, id: string, enemy = "0") =>
+    Object.assign(s.state.enemies.get(enemy)!, {
+      state: "fighting",
+      target: id,
+    });
+
+  test("an idle player swung at fights that enemy, replying 4 ticks later and then every 8", () => {
+    const s = fight();
+    s.addPlayer("a");
+    setOn(s, "a");
+    const first = run(s, 1);
+    expect(swingTicks(first, "enemySwing")).toEqual([1]);
+    expect(player(s).target).toBe("0");
+    expect(player(s).action).toBe("fighting");
+    const events = run(s, 12);
+    expect(swingTicks(events, "playerSwing")).toEqual([5, 13]);
+  });
+
+  test("the reply waits for the player's swing timer, if that says later", () => {
+    // A second Spider at (1,2), also next to the player.
+    const s = fight(["TTTTTTT", "TRS...T", "TS....T", "TTTTTTT"]);
+    s.addPlayer("a");
+    s.queueTarget("a", "0");
+    run(s, 1); // Swings on tick 1, so the next can't come before 9.
+    s.queueWalk("a", { x: 1, y: 1 });
+    setOn(s, "a", "1");
+    const events = run(s, 9); // Its swing comes on tick 2, so 6 would be 4 later.
+    expect(player(s).target).toBe("1");
+    expect(swingTicks(events, "playerSwing")).toEqual([9]);
+  });
+
+  test("a walking player carries on", () => {
+    const s = fight(CORRIDOR);
+    s.addPlayer("a");
+    s.queueWalk("a", { x: 5, y: 1 });
+    setOn(s, "a");
+    const events = run(s, 8); // Arrives on tick 7, before the Spider's second swing on 9.
+    expect(swingTicks(events, "enemySwing")).toEqual([1]);
+    expect(swingTicks(events, "playerSwing")).toEqual([]);
+    expect(player(s).x).toBe(5);
+    expect(player(s).target).toBe("");
+  });
+
+  test("a foraging player carries on", () => {
+    // The bush at (3,1), and the Spider next to the player at the tile they stop on.
+    const s = fight(["TTTTTTT", "TRSb..T", "T.....T", "TTTTTTT"]);
+    s.addPlayer("a");
+    s.queueForage("a", bushId({ x: 3, y: 1 }));
+    setOn(s, "a");
+    const events = run(s, 7);
+    expect(swingTicks(events, "enemySwing")).toEqual([1]);
+    expect(swingTicks(events, "playerSwing")).toEqual([]);
+    expect(player(s).action).toBe("foraging");
+  });
+
+  test("a dropped player doesn't", () => {
+    const s = fight();
+    s.addPlayer("a");
+    s.dropPlayer("a");
+    setOn(s, "a");
+    const events = run(s, 6);
+    expect(swingTicks(events, "enemySwing")).toEqual([1]);
+    expect(player(s).target).toBe("");
+    expect(swingTicks(events, "playerSwing")).toEqual([]);
+  });
+
+  test("a player killed by the swing doesn't", () => {
+    const s = fight(NEXT_TO, 0, 0);
+    s.addPlayer("a");
+    player(s).health = 1;
+    setOn(s, "a");
+    run(s, 1);
+    expect(player(s).dead).toBe(true);
+    expect(player(s).target).toBe("");
   });
 });
 

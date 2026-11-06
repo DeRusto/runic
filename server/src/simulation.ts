@@ -11,6 +11,7 @@ import {
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
+  FIGHT_BACK_DELAY_TICKS,
   FOOD_HEALS,
   HEALING_POOL_INTERVAL_TICKS,
   INVENTORY_SLOTS,
@@ -615,6 +616,24 @@ export class Simulation {
       damage,
     });
     if (player.health === 0) this.die(enemy.target, player);
+    else if (player.action === "") this.fightBack(enemy.target, player, id);
+  }
+
+  /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
+  private fightBack(
+    id: string,
+    player: InstanceType<typeof Player>,
+    enemyId: string,
+  ) {
+    const unsynced = this.unsyncedPlayers.get(id)!;
+    if (unsynced.dropped) return;
+    unsynced.enemy = enemyId;
+    unsynced.nextSwingTick = Math.max(
+      unsynced.nextSwingTick,
+      this.state.tick + FIGHT_BACK_DELAY_TICKS,
+    );
+    // Now, as a second enemy swinging this tick must find them busy.
+    Object.assign(player, { target: enemyId, action: "fighting" });
   }
 
   /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
