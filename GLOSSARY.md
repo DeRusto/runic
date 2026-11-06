@@ -94,7 +94,15 @@ _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
 The skill that makes a player harder to hit; trained by being attacked, whether the swing lands or misses.
-_Avoid_: Armour, block, defence
+_Avoid_: Armour, defence
+
+**Blocking**:
+The skill that makes a shield block more often; trained by blocking. It doesn't decide who can use a shield.
+_Avoid_: Shield skill, parry
+
+**Block**:
+When a shield stops an enemy's hit that would have landed, so it does no damage. Only a player with a shield can block.
+_Avoid_: Parry, dodge, miss
 
 **Foraging**:
 The skill trained by picking food from bushes; the food heals when eaten.
@@ -159,7 +167,7 @@ A drop from a Skeleton, needed to make Emberite gear. Each player who damaged th
 _Avoid_: Loot, trophy, token
 
 **Gear**:
-What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which makes them harder to hit. It never wears out.
+What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which gives them a chance to block. It never wears out.
 _Avoid_: Equipment, armour, loot
 
 **Gear slot**:
