@@ -1,3 +1,4 @@
+import { STARTING_PINNED_SKILLS } from "@runic/shared";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const accounts = sqliteTable("accounts", {
@@ -41,12 +42,5 @@ export const players = sqliteTable("players", {
   pinnedSkills: text("pinned_skills", { mode: "json" })
     .notNull()
     .$type<string[]>()
-    .default([
-      "Combat",
-      "Defense",
-      "Foraging",
-      "Hitpoints",
-      "Mining",
-      "Smithing",
-    ]),
+    .default(STARTING_PINNED_SKILLS),
 });

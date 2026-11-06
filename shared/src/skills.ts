@@ -14,7 +14,7 @@ export const SKILLS = [
 /** What the bottom bar's skills column fits: two across, three down. */
 export const MAX_PINNED_SKILLS = 6;
 
-/** Any later skill starts unpinned. Matches the `pinned_skills` column's default. */
+/** Any later skill starts unpinned. Also the `pinned_skills` column's default, so changing it needs a migration. */
 export const STARTING_PINNED_SKILLS = [
   "Combat",
   "Defense",
