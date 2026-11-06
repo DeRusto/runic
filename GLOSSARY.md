@@ -167,8 +167,12 @@ Where a piece of gear goes when it is equipped, out of the inventory. A player h
 _Avoid_: Equipment slot
 
 **Character sheet**:
-The panel a player opens to see their gear slots.
+The panel a player opens to see their gear slots, Toolbelt and all their skills.
 _Avoid_: Equipment screen, paper doll
+
+**Pinned skill**:
+A skill a player has chosen to show on the bottom bar, up to six. Every skill always shows on the character sheet, pinned or not.
+_Avoid_: Favourite skill, tracked skill
 
 **Smithing panel**:
 The panel a player opens by clicking a furnace or anvil, to choose what to make there.
