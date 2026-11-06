@@ -47,6 +47,7 @@ import {
   STARTING_HITPOINTS_XP,
   TOOLS,
   WALK_TICKS_PER_TILE,
+  xpOf,
   type GatheringLeftField,
   type GatheringSkill,
   type PlayerAction,
@@ -721,7 +722,8 @@ export class Simulation {
       player.inventory[i] = held;
       player.inventoryCounts[i] = inventoryCounts[i]!;
     });
-    player.smithingXp = addXp(player.smithingXp, RECIPES[item].xp);
+    for (const [field, gained] of xpOf(item))
+      player[field] = addXp(player[field], gained);
     return true;
   }
 

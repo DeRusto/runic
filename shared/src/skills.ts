@@ -10,6 +10,7 @@ export const SKILLS = [
   ["Smithing", "smithingXp"],
   ["Blocking", "blockingXp"],
 ] as const;
+export type XpField = (typeof SKILLS)[number][1];
 
 /** What the bottom bar's skills column fits: two across, three down. */
 export const MAX_PINNED_SKILLS = 6;

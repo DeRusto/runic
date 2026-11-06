@@ -142,11 +142,11 @@ Next to, pathfinding, the combat lock, respawning, disconnects, duplicate logins
 
 **Skills.** The experience curve doesn't change. Mining, Smithing and Blocking start at 0 experience, level 1.
 
-Pacing targets for the full loop of mining, smelting and smithing, as simulated: level 10 in about 1 h, level 20 in about 3 h, level 99 in 50 to 60 h. A first full Emberite set is a rough estimate of 6 to 8 h of play, not simulated.
+Pacing targets for the full loop of mining, smelting and smithing, as simulated: level 10 in about 1 h, level 20 in about 3 h, level 99 in 50 to 60 h. A first full Emberite set is a rough estimate of 6 to 8 h of play, not simulated. These targets predate smelting giving Mining experience: they have not been re-simulated, and Mining now levels faster than they assumed.
 
 | Skill | Experience |
 |---|---|
-| Mining | Per ore, by tier (below) |
+| Mining | Per ore, by tier (below), plus each bar's experience when it is smelted |
 | Smithing | Per item made, by tier (below) |
 | Blocking | 40 per block |
 | Defense | 6 per enemy swing at you, landed or missed or blocked, plus 4 per damage taken |
@@ -166,7 +166,9 @@ Attempts: one every 8 ticks, one fewer per 15 levels, down to 4 (`pickIntervalTi
 
 **Making**
 
-| Tier | Bar: 1 ore, 6 ticks | Sword: 3 bars, 12 ticks | Shield: 4 bars, 16 ticks |
+A bar's experience goes to Smithing and the same amount to Mining. Swords and shields give only Smithing. Experience arrives at the end of the wait, with the item.
+
+| Tier | Bar: 1 ore, 6 ticks (in Smithing and in Mining) | Sword: 3 bars, 12 ticks | Shield: 4 bars, 16 ticks |
 |---|---|---|---|
 | Copper | 4 experience | 18 | 24 |
 | Iron | 12 | 54 | 72 |
