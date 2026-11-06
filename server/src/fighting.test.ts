@@ -738,6 +738,17 @@ describe("fighting back", () => {
     expect(swingTicks(events, "playerSwing")).toEqual([5, 13]);
   });
 
+  test("a walk to a station stops next to it, idle, so an enemy's swing is still fought back", () => {
+    const s = fight(["TTTTTTTT", "TR..N..T", "T..S...T", "TTTTTTTT"]);
+    s.addPlayer("a");
+    s.queueWalk("a", { x: 4, y: 1 });
+    run(s, 6);
+    expect(player(s)).toMatchObject({ x: 3, y: 1, action: "" });
+    Object.assign(setOn(s, "a"), { x: 3, y: 2 });
+    run(s, 2);
+    expect(player(s)).toMatchObject({ target: "0", action: "fighting" });
+  });
+
   test("the reply waits for the player's swing timer, if that says later", () => {
     // A second Spider at (1,2), also next to the player.
     const s = fight(["TTTTTTT", "TRS...T", "TS....T", "TTTTTTT"]);

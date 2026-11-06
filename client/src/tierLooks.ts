@@ -2,7 +2,7 @@ import type { Tier } from "@runic/shared";
 
 export type TierLook = { tint: number; glow?: number };
 
-/** Each tier's colours (spec §7), for gear in hand, its icons and its veins. */
+/** Each tier's colours (spec §7), for gear in hand and its icons. */
 export const TIER_LOOKS: Record<Tier, TierLook> = {
   copper: { tint: 0xf0935a },
   iron: { tint: 0xd5dde4 },

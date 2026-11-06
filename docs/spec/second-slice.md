@@ -89,7 +89,7 @@ The counts live only in this test.
 
 ### Making
 
-- Clicking a furnace or anvil opens the Smithing panel at any distance, with no server involved (§7). Clicking an anvil with no hammer is refused before the panel opens, with a chat-box line pointing to the Blacksmith. The furnace needs no tool.
+- Clicking a furnace or anvil walks the player next to it, replacing the action as any walking click does, and the Smithing panel opens on arrival (§7). If they're already next to it, it opens at once and the action carries on. Clicking anything else before arrival cancels the panel, and so does dying. Clicking an anvil with no hammer is refused at the click, with no walk and a chat-box line pointing to the Blacksmith. The furnace needs no tool.
 - Picking **Make 1** or **Make all** sends one intent, which walks the player next to the station and starts work.
 - **The wait:** each item takes N ticks from arrival. Materials leave and the item and experience arrive together, at the end of the wait, so stopping early costs only the progress on that item. Any new choice, including the same item, replaces the action and starts the wait over.
 - **What ends it:** running out of materials, having no room for the item, finishing a Make 1, or clicking something else. Eating, chat and discarding don't interrupt it. Running out or having no room prints one chat-box line.
@@ -284,8 +284,10 @@ The prototype to copy from is [`client/prototype-sheet`](https://github.com/DeRu
 
 - One row per item: three at the furnace, six at the anvil. Each row has the item's name, its cost, how many of those materials the player has, the level it needs, and **Make 1** and **Make all**.
 - Every row always shows. One that can't be made yet is greyed out with the reason on it, such as "Needs Smithing 10", and its buttons do nothing.
-- It closes when the player picks an item, presses `Esc`, clicks anything else or dies. A click in the world still does what it normally does.
-- It uses the sheet's panel art, sits above the middle of the bar and scrolls inside itself **[D12]**. Rows carry no icons **[D12]**.
+- It opens only with the player next to the station (§4), and never later by surprise once something else has been clicked.
+- It stays open after a pick, and its rows follow the player's inventory and levels as items get made. A second pick replaces the action, as any new choice does.
+- It closes when the player presses `Esc`, clicks its X, clicks anywhere else or dies. A click in the world still does what it normally does.
+- It uses the sheet's panel art and close X, sits above the left end of the bar, clear of the world's centre, and its rows scroll inside it **[D12]**. Rows carry no icons **[D12]**.
 
 ### How gear shows
 
@@ -333,7 +335,7 @@ All new files are committed under `client/`, with a licence copy beside them. Th
 | `Rig_Medium_Tools.glb` (1.4 MB) | KayKit Character Animations 1.1 | CC0 |
 | Furnace | KayKit Medieval Hexagon Pack `building_blacksmith_red`, a stand-in; it replaced Kenney Hexagon Kit `building-smelter`, as §15's fallback **[D17]** | CC0 |
 | Blacksmith | KayKit Adventurers `Ranger` (473 KB), hammer in hand, `Idle_A`, a nameplate reading "Blacksmith" **[D18]** | CC0 |
-| Veins | Our committed rock models tinted by tier, shrunk and greyed when run out as bushes are **[D19]** | CC0 |
+| Veins | Our committed rock models tinted by tier (linear multipliers: Copper `#ff8a3c` x 1.8, Iron `#4f8fd8` x 2.4, Emberite `#d42a1a` x 1.6), shrunk and greyed when run out as bushes are **[D19]** | CC0 |
 | Sheet and panel art | Kenney UI Pack - Adventure | CC0 |
 | Ashen ground | A new ground colour, no art | |
 
@@ -440,14 +442,14 @@ These filled small gaps and were accepted in review.
 | D9 | Stack counts sit in a parallel column, with a missing count meaning 1 | Existing saves need no conversion, so the hard rule can't be broken by a bad data step |
 | D10 | Below 800 px wide, one line asks for a wider window | Touch and small windows are already out of scope; 800 was checked and fits |
 | D11 | The bar stays flat, and only the sheet and panel use the new art | The prototype's bar was flat, and whether the art fits it wasn't seen |
-| D12 | The panel's place and art, and no icons on its rows | No ticket placed it; the ticket's row list has no icon |
+| D12 | The panel's place and art, and no icons on its rows | No ticket placed it, and the owner's playtest moved it off the world's centre; the ticket's row list has no icon |
 | D13 | Holding only a sword, or only a shield, uses the `Melee_Blocking` stance; swings follow the weapon | One stance rule; neither case has been seen, so watch it in the build |
 | D14 | `Pickaxing` is the mining clip | It matches the `Hammering` and `Working_A` already chosen from the same pack, by name; nobody has watched it |
 | D15 | Swing clips come from a hash of id and tick | No new data, and everyone sees the same clip |
 | D16 | Skeletons use the players' clips | They share the rig |
 | D17 | `building_blacksmith_red` as the furnace, replacing `building-smelter` | `building-smelter` didn't read as a furnace at a tile's scale, so this is §15's first fallback |
 | D18 | `Ranger` as the Blacksmith | A model no player has, so they read apart; the owner can swap it |
-| D19 | Veins are tinted rock models | No new art, and the tier colours already exist |
+| D19 | Veins are tinted rock models, in their own tints rather than gear's | No new art, and in the playtest gear's tints left veins hard to tell from grey rock props |
 | D20 | `grapes` and `Plant_1` as the food icons | The research's first picks; the owner will revisit the icons |
 
 ## 15. Check while building

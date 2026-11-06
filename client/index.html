@@ -245,14 +245,16 @@
       #sheet[hidden] {
         visibility: hidden;
       }
-      #sheet h2 {
+      #sheet h2,
+      #smithing h2 {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin: 0 0 8px;
         font-size: 14px;
       }
-      #sheet-close {
+      #sheet-close,
+      #smithing-close {
         width: 24px;
         height: 24px;
         padding: 0;
@@ -380,24 +382,29 @@
       .pin:disabled {
         opacity: 0.35;
       }
+      /* Narrow enough to stay clear of the player at the world's centre, even at 800 px. */
       #smithing {
         position: fixed;
-        left: 50%;
+        left: 8px;
         bottom: 140px;
-        width: 520px;
+        display: flex;
+        flex-direction: column;
+        width: 340px;
         max-height: calc(100vh - 148px);
-        overflow-y: auto;
         box-sizing: border-box;
         padding: 8px;
-        transform: translateX(-50%);
         border: 16px solid transparent;
         border-image: url(/ui/panel_brown.png) 20 fill stretch;
         color: #4a3018;
         font: 12px system-ui;
       }
-      #smithing h2 {
-        margin: 0 0 8px;
-        font-size: 14px;
+      #smithing[hidden] {
+        display: none;
+      }
+      /* Only the rows scroll, so the X stays in reach in a short window. */
+      #smithing-rows {
+        min-height: 0;
+        overflow-y: auto;
       }
       #smithing-rows > div {
         display: grid;
@@ -548,7 +555,10 @@
       aria-labelledby="smithing-title"
       hidden
     >
-      <h2 id="smithing-title"></h2>
+      <h2>
+        <span id="smithing-title"></span>
+        <button id="smithing-close" type="button" aria-label="Close"></button>
+      </h2>
       <div id="smithing-rows"></div>
     </section>
     <section id="bar" hidden>

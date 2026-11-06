@@ -16,7 +16,7 @@ import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
-import type { addStations } from "./stations.ts";
+import { stationTile, type addStations } from "./stations.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
@@ -76,8 +76,13 @@ export function walkOnClick(
     const station = stationUnder(raycaster);
     if (station && me) {
       const refusal = stationRefusal(station, me);
-      if (refusal) printChatLine(refusal);
-      else openSmithingPanel(station);
+      if (refusal) {
+        printChatLine(refusal);
+      } else {
+        const { x, y } = stationTile(station);
+        showMarker(x, y);
+        openSmithingPanel(station);
+      }
       return;
     }
     const blacksmith = blacksmithUnder(raycaster);

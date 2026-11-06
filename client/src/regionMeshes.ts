@@ -10,7 +10,6 @@ import {
 } from "@runic/shared";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { TIER_LOOKS } from "./tierLooks.ts";
 
 const SLAB_HEIGHT = 0.2;
 const GROUND: Record<GroundKind, { color: number; top: number }> = {
@@ -21,11 +20,11 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
 };
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
+// Not gear's tints, which leave veins looking like plain or dark rock. Above 1 is fine, it's a float.
 const VEIN_TINT: Record<Tier, THREE.Color> = {
-  copper: new THREE.Color(TIER_LOOKS.copper.tint),
-  // Brightened, since its plain tint leaves a vein looking like any grey rock prop.
-  iron: new THREE.Color(TIER_LOOKS.iron.tint).multiplyScalar(1.8),
-  emberite: new THREE.Color(TIER_LOOKS.emberite.tint),
+  copper: new THREE.Color(0xff8a3c).multiplyScalar(1.8),
+  iron: new THREE.Color(0x4f8fd8).multiplyScalar(2.4),
+  emberite: new THREE.Color(0xd42a1a).multiplyScalar(1.6),
 };
 const STATIONS: Record<StationKind, { file: string; width: number }> = {
   // Kenney's building-smelter didn't read as a furnace at a tile's scale, so this is spec §15's first fallback.

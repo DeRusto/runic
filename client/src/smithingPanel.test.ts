@@ -1,8 +1,13 @@
-import { MAKE_INTENT, xpForLevel } from "@runic/shared";
-import { beforeEach, expect, test, vi } from "vitest";
+import { MAKE_INTENT, WALK_INTENT, xpForLevel } from "@runic/shared";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import type { WorldConnection } from "./players.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
+
+vi.mock("./stations.ts", () => ({
+  stationTile: (kind: string) =>
+    kind === "anvil" ? { x: 6, y: 1 } : { x: 4, y: 1 },
+}));
 
 const element = () => ({
   append(...children: any[]) {
@@ -38,6 +43,9 @@ vi.stubGlobal("document", {
 
 const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
   ({
+    // Next to both stations, unless a test walks away.
+    x: 5,
+    y: 1,
     dead: false,
     smithingXp: 0,
     inventory: held.map(([item]) => item),
@@ -168,14 +176,104 @@ test("a row opens right away, with no patch in between", () => {
 test.each([
   ["Make 1", false],
   ["Make all", true],
-])("%s sends one intent and closes the panel", (label, all) => {
+])("%s sends one intent and leaves the panel open", (label, all) => {
   patch(me([["copperOre", 1]]));
   open("furnace");
   buttons(shownRows()[0])
     .find((b: any) => b.textContent === label)
     .onclick();
   expect(send.mock.calls).toEqual([[MAKE_INTENT, { item: "copperBar", all }]]);
+  expect(panel().hidden).toBe(false);
+});
+
+test("a second pick sends its own intent, for the server to replace the action with", () => {
+  patch(me([["copperOre", 2]]));
+  open("furnace");
+  const [makeOne, makeAll] = buttons(shownRows()[0]);
+  makeAll.onclick();
+  makeOne.onclick();
+  expect(send.mock.calls).toEqual([
+    [MAKE_INTENT, { item: "copperBar", all: true }],
+    [MAKE_INTENT, { item: "copperBar", all: false }],
+  ]);
+});
+
+test("the row greys itself as a pick uses up the materials, with the panel still open", () => {
+  patch(me([["copperOre", 1]]));
+  open("furnace");
+  const [bar] = shownRows();
+  buttons(bar)[0].onclick();
+  patch(me([["copperBar", 1]], { smithingXp: 10 }));
+  expect(panel().hidden).toBe(false);
+  expect(bar.className).toBe("cant");
+  expect(texts(bar)).toContain("1 Copper ore (have 0)");
+  expect(texts(bar)).toContain("Not enough materials");
+  expect(buttons(bar).every((b: any) => b.disabled)).toBe(true);
+});
+
+test("a level gained while it's open lifts that row's level reason", () => {
+  patch(me([["ironBar", 3]], { smithingXp: xpForLevel(9) }));
+  open("anvil");
+  const iron = shownRows()[2];
+  expect(texts(iron)).toContain("Needs Smithing 10");
+  patch(me([["ironBar", 3]], { smithingXp: xpForLevel(10) }));
+  expect(iron.className).toBe("");
+  expect(texts(iron)).not.toContain("Needs Smithing 10");
+});
+
+test("its X closes it", () => {
+  open("furnace");
+  byId.get("smithing-close")!.onclick!();
   expect(panel().hidden).toBe(true);
+});
+
+describe("clicking a station from afar", () => {
+  const far = { x: 20, y: 20 };
+  const walkingToAnvil = () => {
+    patch(me([], far));
+    send.mockClear();
+    open("anvil");
+  };
+
+  test("walks there and stays closed until the player arrives", () => {
+    walkingToAnvil();
+    expect(send.mock.calls).toEqual([[WALK_INTENT, { x: 6, y: 1 }]]);
+    expect(panel().hidden).toBe(true);
+    patch(me([], { x: 8, y: 1 }));
+    expect(panel().hidden).toBe(true);
+    patch(me([], { x: 7, y: 2 }));
+    expect(panel().hidden).toBe(false);
+    expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
+    expect(shownRows()).toHaveLength(6);
+  });
+
+  test("already next to it, opens at once and leaves the action alone", () => {
+    open("anvil");
+    expect(panel().hidden).toBe(false);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    [
+      "a press elsewhere",
+      () => listeners.get("pointerdown")!({ target: element() }),
+    ],
+    ["Esc", () => listeners.get("keydown")!({ key: "Escape" })],
+    ["death", () => patch(me([], { ...far, dead: true }))],
+  ])("%s cancels it, so it never opens later", (_, cancel) => {
+    walkingToAnvil();
+    cancel();
+    patch(me([], { x: 7, y: 1 }));
+    expect(panel().hidden).toBe(true);
+  });
+
+  test("opens only once, so closing it next to the station stays closed", () => {
+    walkingToAnvil();
+    patch(me([], { x: 7, y: 1 }));
+    listeners.get("keydown")!({ key: "Escape" });
+    patch(me([], { x: 7, y: 1 }));
+    expect(panel().hidden).toBe(true);
+  });
 });
 
 test("Esc closes it", () => {
