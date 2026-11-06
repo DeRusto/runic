@@ -6,6 +6,7 @@ import {
   respawnTile,
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
+import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { showBushes } from "./bushes.ts";
 import { loadCharacters, loadSpiders } from "./characters.ts";
@@ -25,6 +26,7 @@ const [newFigure, newSpider, setBushRunOut] = await Promise.all([
   loadCharacters(),
   loadSpiders(),
   addRegionMeshes(scene, tiles),
+  addBlacksmith(tiles),
 ]).catch((error) => {
   document.getElementById("loading")!.textContent =
     "Could not load the game. Reload to try again.";
