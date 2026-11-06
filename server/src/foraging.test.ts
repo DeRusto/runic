@@ -1,4 +1,5 @@
 import {
+  bushRefusal,
   INVENTORY_SLOTS,
   MAX_XP,
   parseRegion,
@@ -163,13 +164,106 @@ test("a refused click doesn't replace the current walk", () => {
   expect(player()).toMatchObject({ x: 2, y: 1 });
 });
 
-test("a click with a full inventory is ignored", () => {
-  const save = sim.saveOf("a")!;
-  save.inventory = Array<string>(INVENTORY_SLOTS).fill("berry");
-  save.x = 4;
-  sim.addPlayer("b", save);
-  sim.queueForage("b", BERRY);
-  expect(attemptTicks(10)).toEqual([]);
+describe("stacks", () => {
+  /** Beside the bushes at (5,2), holding these [item, count] stacks from slot 0. */
+  const addHolding = (id: string, ...stacks: [string, number][]) => {
+    const save = sim.saveOf("a")!;
+    stacks.forEach(([item, count], slot) => {
+      save.inventory[slot] = item;
+      save.inventoryCounts![slot] = count;
+    });
+    sim.addPlayer(id, {
+      ...save,
+      x: 5,
+      y: 2,
+      foragingXp: xpForLevel(10),
+    });
+  };
+  const counts = (id: string) => [...player(id).inventoryCounts].slice(0, 3);
+  const items = (id: string) => [...player(id).inventory].slice(0, 3);
+
+  test("food tops up the first stack of it with room", () => {
+    addHolding("b", ["herb", 3], ["berry", 20], ["berry", 4]);
+    sim.queueForage("b", BERRY);
+    runTicks(1);
+    expect(items("b")).toEqual(["herb", "berry", "berry"]);
+    expect(counts("b")).toEqual([3, 20, 5]);
+  });
+
+  test("a stack fills to 20, and the next one takes the first empty slot", () => {
+    addHolding("b", ["berry", 19], ["herb", 1]);
+    sim.queueForage("b", BERRY);
+    runTicks(1);
+    expect(counts("b")).toEqual([20, 1, 0]);
+    pick(BERRY, "b");
+    expect(items("b")).toEqual(["berry", "herb", "berry"]);
+    expect(counts("b")).toEqual([20, 1, 1]);
+  });
+
+  test("each food stacks separately", () => {
+    addHolding("b", ["berry", 2]);
+    sim.queueForage("b", HERB);
+    runTicks(1);
+    expect(items("b")).toEqual(["berry", "herb", ""]);
+    expect(counts("b")).toEqual([2, 1, 0]);
+  });
+
+  test("a click is refused only with no room in a matching stack and no empty slot", () => {
+    const stacks = Array.from(
+      { length: INVENTORY_SLOTS },
+      () => ["berry", 20] as [string, number],
+    );
+    addHolding("full", ...stacks);
+    sim.queueForage("full", BERRY);
+    sim.queueForage("full", HERB);
+    expect(attemptTicks(10)).toEqual([]);
+
+    stacks[INVENTORY_SLOTS - 1] = ["berry", 19];
+    addHolding("room", ...stacks);
+    sim.queueForage("room", BERRY);
+    runTicks(1);
+    expect(player("room").inventoryCounts[INVENTORY_SLOTS - 1]).toBe(20);
+  });
+
+  test("every slot filled with stacks of 1 still has room for that food", () => {
+    const save = sim.saveOf("a")!;
+    save.inventory = Array<string>(INVENTORY_SLOTS).fill("berry");
+    sim.addPlayer("b", { ...save, inventoryCounts: [], x: 4 });
+    sim.queueForage("b", BERRY);
+    runTicks(1);
+    expect(player("b").inventoryCounts[0]).toBe(2);
+  });
+
+  test("filling up on the way stops the forager before any attempt", () => {
+    sim.queueForage("a", BERRY);
+    runTicks(1);
+    for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
+      player().inventory[slot] = "berry";
+      player().inventoryCounts[slot] = 20;
+    }
+    expect(attemptTicks(ARRIVAL_TICK)).toEqual([]);
+    expect(player().action).toBe("");
+  });
+});
+
+test("a click with a full inventory prints the refusal the client shows", () => {
+  const inventory = Array<string>(INVENTORY_SLOTS).fill("berry");
+  const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(20);
+  expect(
+    bushRefusal("berryBush", 5, {
+      foragingXp: 0,
+      inventory,
+      inventoryCounts,
+    }),
+  ).toBe("Your inventory is full.");
+  inventoryCounts[9] = 19;
+  expect(
+    bushRefusal("berryBush", 5, {
+      foragingXp: 0,
+      inventory,
+      inventoryCounts,
+    }),
+  ).toBeUndefined();
 });
 
 test("a click on a run-out bush is ignored", () => {

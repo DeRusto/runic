@@ -26,4 +26,27 @@ export const players = sqliteTable("players", {
   y: integer().notNull(),
   health: integer().notNull(),
   inventory: text({ mode: "json" }).notNull().$type<string[]>(),
+  // Every column below has a default, so a row from before them needs no conversion (spec D9).
+  miningXp: integer("mining_xp").notNull().default(0),
+  smithingXp: integer("smithing_xp").notNull().default(0),
+  blockingXp: integer("blocking_xp").notNull().default(0),
+  /** Parallel to `inventory`. A filled slot with no count is a stack of 1. */
+  inventoryCounts: text("inventory_counts", { mode: "json" })
+    .notNull()
+    .$type<number[]>()
+    .default([]),
+  weapon: text().notNull().default(""),
+  shield: text().notNull().default(""),
+  tools: text({ mode: "json" }).notNull().$type<string[]>().default([]),
+  pinnedSkills: text("pinned_skills", { mode: "json" })
+    .notNull()
+    .$type<string[]>()
+    .default([
+      "Combat",
+      "Defense",
+      "Foraging",
+      "Hitpoints",
+      "Mining",
+      "Smithing",
+    ]),
 });

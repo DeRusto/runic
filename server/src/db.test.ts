@@ -2,9 +2,12 @@ import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { parseRegion } from "@runic/shared";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { db, openDatabase } from "./db.ts";
+import { readSave, writeSave } from "./saves.ts";
 import { accounts } from "./schema.ts";
+import { Simulation } from "./simulation.ts";
 
 let folder: string;
 let path: string;
@@ -18,11 +21,26 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
+const LATEST_COLUMNS = [
+  "mining_xp",
+  "smithing_xp",
+  "blocking_xp",
+  "inventory_counts",
+  "weapon",
+  "shield",
+  "tools",
+  "pinned_skills",
+];
+
 /** Makes the newest migration pending again, as if this build had just added it. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
-  sqlite.exec(`ALTER TABLE accounts DROP COLUMN token_version;
-    DELETE FROM __drizzle_migrations WHERE id = (SELECT max(id) FROM __drizzle_migrations)`);
+  for (const column of LATEST_COLUMNS) {
+    sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
+  }
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT max(id) FROM __drizzle_migrations)",
+  );
   sqlite.close();
 }
 
@@ -30,7 +48,7 @@ function hasLatestMigration(file: string) {
   const sqlite = new DatabaseSync(file);
   const row = sqlite
     .prepare(
-      "SELECT 1 FROM pragma_table_info('accounts') WHERE name = 'token_version'",
+      "SELECT 1 FROM pragma_table_info('players') WHERE name = 'pinned_skills'",
     )
     .get();
   sqlite.close();
@@ -69,6 +87,104 @@ test("pending migrations copy the database first, with its data, before migratin
     { username: "Kept" },
   ]);
   sqlite.close();
+});
+
+describe("a save from the first slice, written before the stacks migration", () => {
+  const INVENTORY = Array<string>(30).fill("");
+  INVENTORY[0] = "berry";
+  INVENTORY[4] = "herb";
+  INVENTORY[9] = "berry";
+  const FILLED_SLOTS = [0, 4, 9];
+  // The saved tile, (4,1), is next to the berry bush.
+  const TILES = parseRegion(["TTTTTTT", "TR...bT", "TTTTTTT"].join("\n"));
+
+  async function migratedFromOldRow() {
+    await boot();
+    unapplyLatest();
+    const sqlite = new DatabaseSync(path);
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (7, 'Old', 'old', 'x', 0)`);
+    sqlite
+      .prepare(
+        `INSERT INTO players (account_id, combat_xp, defense_xp, foraging_xp, hitpoints_xp, x, y, health, inventory)
+         VALUES (7, 1234, 567, 890, 4500, 4, 1, 6, ?)`,
+      )
+      .run(JSON.stringify(INVENTORY));
+    sqlite.close();
+    return openDatabase();
+  }
+
+  test("the migration adds every new column with its default and changes nothing else", async () => {
+    const database = await migratedFromOldRow();
+    expect(readSave(7)).toEqual({
+      accountId: 7,
+      combatXp: 1234,
+      defenseXp: 567,
+      foragingXp: 890,
+      hitpointsXp: 4500,
+      x: 4,
+      y: 1,
+      health: 6,
+      inventory: INVENTORY,
+      miningXp: 0,
+      smithingXp: 0,
+      blockingXp: 0,
+      inventoryCounts: [],
+      weapon: "",
+      shield: "",
+      tools: [],
+      pinnedSkills: [
+        "Combat",
+        "Defense",
+        "Foraging",
+        "Hitpoints",
+        "Mining",
+        "Smithing",
+      ],
+    });
+    await database.shutdown();
+  });
+
+  test("it loads with its experience, inventory and tile intact, and its food as stacks of 1 in the same slots", async () => {
+    const database = await migratedFromOldRow();
+    const sim = new Simulation(TILES, () => 0);
+    sim.addPlayer("a", readSave(7), "Old");
+
+    const player = sim.state.players.get("a")!;
+    expect(player).toMatchObject({
+      combatXp: 1234,
+      defenseXp: 567,
+      foragingXp: 890,
+      hitpointsXp: 4500,
+      x: 4,
+      y: 1,
+      health: 6,
+    });
+    expect([...player.inventory]).toEqual(INVENTORY);
+    expect([...player.inventoryCounts]).toEqual(
+      INVENTORY.map((_, slot) => (FILLED_SLOTS.includes(slot) ? 1 : 0)),
+    );
+    await database.shutdown();
+  });
+
+  test("saving it and loading it again keeps everything, and new food tops up its first stack", async () => {
+    const database = await migratedFromOldRow();
+    const sim = new Simulation(TILES, () => 0);
+    sim.addPlayer("a", readSave(7), "Old");
+    sim.queueForage("a", "5,1");
+    sim.tick();
+    writeSave(7, sim.saveOf("a")!);
+    sim.removePlayer("a");
+
+    sim.addPlayer("b", readSave(7), "Old");
+    const player = sim.state.players.get("b")!;
+    expect([...player.inventory]).toEqual(INVENTORY);
+    expect(player.inventoryCounts[0]).toBe(2);
+    expect(player.inventoryCounts[4]).toBe(1);
+    expect(player.inventoryCounts[9]).toBe(1);
+    expect(player.combatXp).toBe(1234);
+    await database.shutdown();
+  });
 });
 
 test("only the last five copies are kept", async () => {

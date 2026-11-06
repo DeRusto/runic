@@ -5,7 +5,7 @@ import {
   TICK_MS,
   type WorldEvent,
 } from "@runic/shared";
-import { revealPick } from "./bottomBar.ts";
+import { holdPick, revealPick } from "./bottomBar.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -102,6 +102,7 @@ export function showFights(room: WorldConnection) {
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
         if (!figure || !player) continue;
+        if (event.success && event.player === room.sessionId) holdPick();
         const interval = pickIntervalTicks(levelFor(player.foragingXp));
         const clipMs = figure.onceWithin("PickUp", interval * TICK_MS);
         setTimeout(() => {
