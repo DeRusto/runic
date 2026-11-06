@@ -11,15 +11,15 @@ import { printChatLine } from "./bottomBar.ts";
 import type { showBushes } from "./bushes.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
-import type { showSpiders } from "./spiders.ts";
+import type { showEnemies } from "./enemies.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live Spider or bush under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy or bush under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
-  spiderUnder: ReturnType<typeof showSpiders>,
+  enemyUnder: ReturnType<typeof showEnemies>,
   bushUnder: ReturnType<typeof showBushes>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
@@ -47,10 +47,10 @@ export function walkOnClick(
       -(event.clientY / innerHeight) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
-    const spider = spiderUnder(raycaster);
-    if (spider) {
-      showMarker(spider.tile.x, spider.tile.y);
-      room.send(TARGET_INTENT, spider.id);
+    const enemy = enemyUnder(raycaster);
+    if (enemy) {
+      showMarker(enemy.tile.x, enemy.tile.y);
+      room.send(TARGET_INTENT, enemy.id);
       return;
     }
     const bush = bushUnder(raycaster);
