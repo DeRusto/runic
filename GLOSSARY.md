@@ -54,6 +54,10 @@ _Avoid_: Mob, monster, NPC
 The one enemy type in the first playable slice: a large spider that fights back only when attacked.
 _Avoid_: Thornback (its old name)
 
+**Skeleton**:
+The harder enemy: an armed skeleton that attacks players who come near, unlike a Spider. It is the only source of Emberbones.
+_Avoid_: Undead, boss
+
 **Leash**:
 How far an enemy follows a player who walks away from a fight, before it gives up, walks home and recovers.
 _Avoid_: Aggro range, chase radius
@@ -125,6 +129,10 @@ _Avoid_: Rock, stone
 **Bar**:
 Metal made from ore at a furnace, ready to become gear at an anvil.
 _Avoid_: Ingot
+
+**Emberbone**:
+A drop from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one, and it goes straight into their inventory, or is lost if the inventory is full.
+_Avoid_: Loot, trophy, token
 
 **Gear**:
 What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which makes them harder to hit. It lasts forever.
