@@ -37,6 +37,18 @@ function atContact(
 /** Plays each tick's events on the figures. */
 export function showFights(room: WorldConnection) {
   const clipsOf = (id: string) => ENEMY_CLIPS[room.state.enemies.get(id)!.kind];
+  /** When each player's latest swing connects, by Date.now(). */
+  const ownContactAt = new Map<string, number>();
+  /** Waits for the player's own swing to connect, as playing now would cut it off before its blow lands. */
+  const showBlockClip = (id: string) => {
+    const wait = (ownContactAt.get(id) ?? 0) - Date.now();
+    if (wait > 0) {
+      setTimeout(() => showBlockClip(id), wait);
+      return;
+    }
+    const victim = playerFigures.get(id);
+    if (victim && !victim.downed) victim.once(BLOCK_CLIP);
+  };
 
   // A reconnect brings the state, just after onReconnect, but not the events missed, so a death
   // or return may be owed.
@@ -74,6 +86,7 @@ export function showFights(room: WorldConnection) {
           room.state.tick,
         );
         attacker?.once(clip);
+        ownContactAt.set(event.player, Date.now() + contactMs);
         killingContactMs = contactMs;
         atContact(
           enemyOverheads.get(event.enemy),
@@ -96,8 +109,7 @@ export function showFights(room: WorldConnection) {
         if (event.blocked) {
           setTimeout(() => {
             playerOverheads.get(event.player)?.pop("Blocked", "blocked");
-            const victim = playerFigures.get(event.player);
-            if (victim && !victim.playingOnce) victim.once(BLOCK_CLIP);
+            showBlockClip(event.player);
           }, contactMs);
           continue;
         }

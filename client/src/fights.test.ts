@@ -339,11 +339,20 @@ describe("the enemySwing event", () => {
     expect(printChatLine).not.toHaveBeenCalled();
   });
 
-  test("a block doesn't cut off a clip already playing", () => {
+  test("a block shows its clip over one already playing", () => {
     Object.assign(figure, { playingOnce: true });
     send(0, true);
     vi.advanceTimersByTime(450);
     Object.assign(figure, { playingOnce: false });
+    expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
+    expect(figure.once).toHaveBeenCalledWith("Melee_Block_Hit");
+  });
+
+  test("a block doesn't lift a player off their death clip", () => {
+    Object.assign(figure, { downed: true });
+    send(0, true);
+    vi.advanceTimersByTime(450);
+    Object.assign(figure, { downed: false });
     expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
     expect(figure.once).not.toHaveBeenCalled();
   });
@@ -360,6 +369,91 @@ describe("the enemySwing event", () => {
     vi.advanceTimersByTime(450);
     expect(showBlow).toHaveBeenCalledWith(2);
     expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+});
+
+describe("a block during the player's own swing", () => {
+  const enemy = { flash: vi.fn(), nudgeFrom: vi.fn(), once: vi.fn() };
+  const playerSwing: WorldEvent = {
+    type: "playerSwing",
+    player: "a",
+    enemy: "0",
+    damage: 1,
+  };
+  const blockedSwing: WorldEvent = {
+    type: "enemySwing",
+    enemy: "0",
+    player: "a",
+    damage: 0,
+    blocked: true,
+  };
+  const connect = () => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      state: {
+        tick: 408,
+        players: new Map([["a", { weapon: "", x: 1, y: 1 }]]),
+        enemies: new Map([["0", { kind: "spider" }]]),
+      },
+    } as unknown as WorldConnection);
+    return onMessage.mock.calls[0]![1] as (events: WorldEvent[]) => void;
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    enemyFigures.set("0", enemy);
+    enemyOverheads.set("0", { holdBlow: vi.fn(), showBlow: vi.fn() });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  test("says Blocked on time, and plays the clip once the swing has connected", () => {
+    connect()([playerSwing, blockedSwing]);
+    figure.once.mockClear();
+    vi.advanceTimersByTime(450);
+    expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
+    expect(figure.once).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(99);
+    expect(enemy.flash).not.toHaveBeenCalled();
+    expect(figure.once).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(enemy.flash).toHaveBeenCalledOnce();
+    expect(figure.once).toHaveBeenCalledWith("Melee_Block_Hit");
+  });
+
+  test("waits for a swing that started after the enemy's", () => {
+    const handle = connect();
+    handle([blockedSwing]);
+    vi.advanceTimersByTime(300);
+    handle([playerSwing]);
+    figure.once.mockClear();
+    vi.advanceTimersByTime(150);
+    expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
+    expect(figure.once).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(400);
+    expect(figure.once).toHaveBeenCalledWith("Melee_Block_Hit");
+  });
+
+  test("plays at once when the swing connected before the enemy's did", () => {
+    const handle = connect();
+    handle([playerSwing]);
+    vi.advanceTimersByTime(550);
+    handle([blockedSwing]);
+    figure.once.mockClear();
+    vi.advanceTimersByTime(450);
+    expect(figure.once).toHaveBeenCalledWith("Melee_Block_Hit");
+  });
+
+  test("a player who died while it waited stays down", () => {
+    connect()([playerSwing, blockedSwing]);
+    figure.once.mockClear();
+    vi.advanceTimersByTime(500);
+    Object.assign(figure, { downed: true });
+    vi.advanceTimersByTime(50);
+    Object.assign(figure, { downed: false });
+    expect(figure.once).not.toHaveBeenCalled();
   });
 });
 
