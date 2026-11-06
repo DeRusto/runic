@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { CloseCode, matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
+  EQUIP_INTENT,
   EVENTS,
   LOGOUT_INTENT,
   parseRegion,
@@ -11,6 +12,7 @@ import {
   REGION_GRID,
   respawnTile,
   SAVE_INTERVAL_TICKS,
+  TAKE_OFF_INTENT,
   TAKEN_OVER_CLOSE_CODE,
   TICK_MS,
   VISIT_INTENT,
@@ -153,6 +155,40 @@ test("pins survive logging out, follow the player to another device, and new ski
   device.auth.token = client.auth.token!;
   const back = await joined(device);
   expect([...synced(back).pinnedSkills]).toEqual([...pinned, "Blocking"]);
+});
+
+test("a sword equipped over the network is synced, and worn again after logging back in", async () => {
+  const client = await clientFor("Swordsman");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  const me = world.sim.state.players.get(room.sessionId)!;
+  me.inventory[0] = "copperSword";
+  me.inventoryCounts[0] = 1;
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+
+  room.send(EQUIP_INTENT, 0);
+  await vi.waitFor(() => expect(synced(room).weapon).toBe("copperSword"), {
+    timeout: TICK_MS * 3,
+    interval: 20,
+  });
+  expect(synced(room).inventory[0]).toBe("");
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back).weapon).toBe("copperSword");
+
+  back.send(TAKE_OFF_INTENT, "weapon");
+  await vi.waitFor(
+    () => expect(synced(back).inventory[0]).toBe("copperSword"),
+    {
+      timeout: TICK_MS * 3,
+      interval: 20,
+    },
+  );
+  expect(synced(back).weapon).toBe("");
 });
 
 test("the Blacksmith's tools reach the client with a told line, and survive logging out", async () => {

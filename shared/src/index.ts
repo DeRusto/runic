@@ -19,6 +19,10 @@ export const VISIT_INTENT = "visit";
 export const EAT_INTENT = "eat";
 /** The discard intent's message type; its payload is the inventory slot's index. */
 export const DISCARD_INTENT = "discard";
+/** The equip intent's message type; its payload is the inventory slot's index. */
+export const EQUIP_INTENT = "equip";
+/** The take off intent's message type; its payload is the `GearSlot`. */
+export const TAKE_OFF_INTENT = "takeOff";
 /** The pin intent's message type; its payload is `{ skill, pinned }`, with `pinned` false to unpin. */
 export const PIN_INTENT = "pin";
 /** The log out intent's message type; it has no payload. */
@@ -92,6 +96,7 @@ export type WorldEvent =
 
 export * from "./enemies.ts";
 export * from "./foraging.ts";
+export * from "./gear.ts";
 export * from "./items.ts";
 export * from "./making.ts";
 export * from "./mining.ts";

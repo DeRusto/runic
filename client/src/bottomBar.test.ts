@@ -2,6 +2,7 @@ import {
   DISCARD_INTENT,
   EAT_INTENT,
   EMPTY_SLOT,
+  EQUIP_INTENT,
   INVENTORY_SLOTS,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -94,6 +95,8 @@ const stateHolding = (...stacks: [string, number][]) => ({
         blockingXp: 0,
         pinnedSkills: TODAY,
         tools: [],
+        weapon: "",
+        shield: "",
         inventory: [
           ...stacks.map(([item]) => item),
           ...Array<string>(INVENTORY_SLOTS - stacks.length).fill(EMPTY_SLOT),
@@ -266,6 +269,40 @@ test("a left-click eats food, and does nothing on a material", () => {
   expect(room.send).not.toHaveBeenCalled();
   slot(0).onclick!();
   expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 0);
+});
+
+describe("gear in the bar", () => {
+  const LEVEL_10_XP = 4050;
+  beforeEach(() => {
+    room.onStateChange.invoke(stateHolding(["ironSword", 1]));
+    nextFrame();
+    room.send.mockClear();
+  });
+
+  test("a left-click equips, even gear above the player's level, so the server can say why not", () => {
+    slot(0).onclick!();
+    expect(room.send).toHaveBeenCalledWith(EQUIP_INTENT, 0);
+  });
+
+  test("a right-click offers Equip and Discard", () => {
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Equip", "Discard"]);
+    menu.children[0].onclick!();
+    expect(room.send).toHaveBeenCalledWith(EQUIP_INTENT, 0);
+  });
+
+  test("gear they can't wear yet is greyed with the reason, until they can", () => {
+    expect(slot(0).dataset.locked).toBe("true");
+    expect((slot(0) as unknown as { title: string }).title).toBe(
+      "Iron sword. You need Combat 10 to equip this.",
+    );
+    const state = stateHolding(["ironSword", 1]);
+    state.players.get("me")!.combatXp = LEVEL_10_XP;
+    room.onStateChange.invoke(state);
+    nextFrame();
+    expect(slot(0).dataset.locked).toBe("false");
+    expect((slot(0) as unknown as { title: string }).title).toBe("Iron sword");
+  });
 });
 
 describe("the right-click menu", () => {

@@ -14,6 +14,9 @@ import {
   EMPTY_SLOT,
   FIGHT_BACK_DELAY_TICKS,
   FOOD_HEALS,
+  GEAR,
+  GEAR_SLOTS,
+  gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
   INVENTORY_SLOTS,
   levelFor,
@@ -49,6 +52,7 @@ import {
   type PlayerAction,
   type EnemyKind,
   type EnemyState,
+  type GearSlot,
   type RecipeItem,
   type StationKind,
   type Tier,
@@ -80,6 +84,9 @@ export const Player = schema(
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint8"),
     tools: t.array("string"),
+    /** The item id worn in each gear slot, or "". */
+    weapon: t.string().default(""),
+    shield: t.string().default(""),
     /** The id of the enemy this player is after, or "". */
     target: t.string().default(""),
     action: t.string<PlayerAction>().default(""),
@@ -302,6 +309,8 @@ export class Simulation {
       smithingXp,
       blockingXp,
       health,
+      weapon,
+      shield,
     } = player;
     return {
       x,
@@ -314,6 +323,8 @@ export class Simulation {
       smithingXp,
       blockingXp,
       health,
+      weapon,
+      shield,
       pinnedSkills: [...player.pinnedSkills],
       inventory: [...player.inventory],
       inventoryCounts: [...player.inventoryCounts],
@@ -460,6 +471,52 @@ export class Simulation {
     if (pinned === false && at >= 0) pins.splice(at, 1);
     if (pinned === true && at < 0 && pins.length < MAX_PINNED_SKILLS)
       pins.push(skill);
+  }
+
+  /**
+   * `slot` comes straight off the network, so anything but a slot holding gear is ignored.
+   * Like pins it skips the queue, so a second click within the tick isn't lost, and it
+   * touches no action or timer (spec §4).
+   */
+  equip(id: string, slot: number) {
+    if (!this.alive(id)) return;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    const player = this.state.players.get(id)!;
+    const item = player.inventory[slot]!;
+    const gear = GEAR.get(item);
+    if (!gear) return;
+    const refusal = gearRefusal(item, player);
+    if (refusal) {
+      this.events.push({ type: "told", player: id, line: refusal });
+      return;
+    }
+    // Whatever was worn lands where this came from, so swapping always works (spec §4).
+    this.placeGear(id, slot, player[gear.slot]);
+    player[gear.slot] = item;
+  }
+
+  /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
+  takeOff(id: string, gearSlot: GearSlot) {
+    if (!this.alive(id) || !GEAR_SLOTS.includes(gearSlot)) return;
+    const player = this.state.players.get(id)!;
+    const worn = player[gearSlot];
+    if (!worn) return;
+    const slot = player.inventory.indexOf(EMPTY_SLOT);
+    if (slot < 0) {
+      const line = "You have no empty slot to take that off into.";
+      this.events.push({ type: "told", player: id, line });
+      return;
+    }
+    this.placeGear(id, slot, worn);
+    player[gearSlot] = "";
+  }
+
+  /** Puts gear, or "", in a slot. A discard waiting on the slot meant what was there, not this. */
+  private placeGear(id: string, slot: number, item: string) {
+    const player = this.state.players.get(id)!;
+    player.inventory[slot] = item;
+    player.inventoryCounts[slot] = item ? 1 : 0;
+    if (this.queuedDiscards.get(id) === slot) this.queuedDiscards.delete(id);
   }
 
   private discard(id: string, slot: number) {
@@ -782,11 +839,13 @@ export class Simulation {
   ) {
     this.lock(id);
     const combat = levelFor(player.combatXp);
+    const rolled = this.rollDamage(
+      PLAYER_HIT_CHANCE + PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1),
+      PLAYER_BASE_DAMAGE + Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
+    );
     const damage = Math.min(
-      this.rollDamage(
-        PLAYER_HIT_CHANCE + PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1),
-        PLAYER_BASE_DAMAGE + Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
-      ),
+      // Only on a hit, as 0 means a miss.
+      rolled && rolled + (GEAR.get(player.weapon)?.hitBonus ?? 0),
       enemy.health, // No XP for overkill.
     );
     const xp = damage * XP_PER_DAMAGE_DEALT;
