@@ -40,6 +40,7 @@ export function showPlayers(
     for (const [id, figure] of figures) {
       const target = room.state.players.get(id)?.target;
       figure.fightTile = target ? room.state.enemies.get(target) : undefined;
+      figure.mining = room.state.players.get(id)?.action === "mining";
       figure.update(now);
     }
     const own = figures.get(room.sessionId)?.model.position;

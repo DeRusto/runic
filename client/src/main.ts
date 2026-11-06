@@ -18,21 +18,21 @@ import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
+import { showVeins } from "./veins.ts";
 
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, setBushRunOut, blacksmithUnder] =
-  await Promise.all([
-    loadCharacters(),
-    loadSpiders(),
-    addRegionMeshes(scene, tiles),
-    addBlacksmith(tiles),
-  ]).catch((error) => {
-    document.getElementById("loading")!.textContent =
-      "Could not load the game. Reload to try again.";
-    throw error;
-  });
+const [newFigure, newSpider, setRunOut, blacksmithUnder] = await Promise.all([
+  loadCharacters(),
+  loadSpiders(),
+  addRegionMeshes(scene, tiles),
+  addBlacksmith(tiles),
+]).catch((error) => {
+  document.getElementById("loading")!.textContent =
+    "Could not load the game. Reload to try again.";
+  throw error;
+});
 document.getElementById("loading")!.remove();
 
 const status = document.getElementById("status")!;
@@ -47,7 +47,8 @@ function enterWorld(room: WorldConnection) {
     room,
     tiles,
     showEnemies(room, { spider: newSpider }),
-    showBushes(room, tiles, setBushRunOut),
+    showBushes(room, tiles, setRunOut),
+    showVeins(room, tiles, setRunOut),
     blacksmithUnder,
   );
   showBottomBar(room, sayOverhead);

@@ -38,7 +38,9 @@ const CLIP_PACKS = [
   "Rig_Medium_General",
   "Rig_Medium_MovementBasic",
   "Rig_Medium_CombatMelee",
+  "Rig_Medium_Tools",
 ];
+const PICKAXE = "pickaxe";
 
 /** Which character a player is follows from their name alone, so nothing about it is stored. */
 export function characterFor(name: string) {
@@ -73,6 +75,9 @@ export class Figure {
   private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
   fightTile?: Tile;
+  /** On the mining action, so the pickaxe stays in hand between attempts. */
+  mining = false;
+  private pickaxe?: THREE.Object3D;
 
   constructor(
     private tile: Tile,
@@ -84,6 +89,7 @@ export class Figure {
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
+    this.pickaxe = model.getObjectByName(PICKAXE);
     this.mixer = new THREE.AnimationMixer(model);
     this.base = gait.idle;
     this.play(gait.idle);
@@ -254,6 +260,11 @@ export class Figure {
     if (this.shot && walkingOff) this.endShot();
     else if (baseChanged && !this.shot) this.playBase();
 
+    // Off the clip too, since a success ends the action while its clip still plays.
+    if (this.pickaxe)
+      this.pickaxe.visible =
+        this.shot?.getClip().name === "Pickaxing" || (this.mining && !running);
+
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
     this.mixer.update(dt);
@@ -356,13 +367,21 @@ const loadClips = () =>
 
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
-  const [knight, barbarian, clips] = await Promise.all([
+  const [knight, barbarian, pickaxe, clips] = await Promise.all([
     load("Knight"),
     load("Barbarian"),
+    new GLTFLoader().loadAsync("/models/pickaxe.gltf"),
     loadClips(),
   ]);
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
+  pickaxe.scene.name = PICKAXE;
+  pickaxe.scene.visible = false;
+  pickaxe.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  // Every Figure's clone carries its own, and shows it only when mining.
+  Object.values(models).forEach((m) =>
+    m.getObjectByName("handslotr")!.add(pickaxe.scene.clone()),
+  );
   return (tile: Tile, name: string) =>
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
 }

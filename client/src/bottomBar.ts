@@ -31,7 +31,7 @@ export function printChatLine(line: string) {
 let holdingPick = false;
 let showHeld = () => {};
 
-/** A pick's food and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
+/** A pick's or mine's item and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
 export function holdPick() {
   holdingPick = true;
 }
@@ -62,7 +62,10 @@ export function showBottomBar(
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
-    slot.onclick = () => room.send(EAT_INTENT, i);
+    // Only food does anything on a left-click, so a material's slot sends nothing.
+    slot.onclick = () => {
+      if (FOOD_HEALS.has(slot.dataset.item!)) room.send(EAT_INTENT, i);
+    };
     slot.oncontextmenu = (event) => {
       event.preventDefault();
       const item = slot.dataset.item;

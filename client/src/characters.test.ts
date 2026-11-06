@@ -21,6 +21,8 @@ CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
 const DEATH_S = 1.5;
 CLIPS.set("Death_A", new THREE.AnimationClip("Death_A", DEATH_S, []));
 CLIPS.set("Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, []));
+const PICKAXING_S = 3.733;
+CLIPS.set("Pickaxing", new THREE.AnimationClip("Pickaxing", PICKAXING_S, []));
 
 function figureAt(tile: { x: number; y: number }) {
   return new Figure(tile, new THREE.Object3D(), CLIPS);
@@ -496,5 +498,64 @@ describe("Spider.glb", () => {
     const size = box.getSize(new THREE.Vector3());
     expect(Math.max(size.x, size.z)).toBeCloseTo(1.1);
     expect(box.min.y).toBeCloseTo(0);
+  });
+});
+
+describe("the pickaxe in hand", () => {
+  const miner = (tile = { x: 1, y: 1 }) => {
+    const pickaxe = new THREE.Object3D();
+    pickaxe.name = "pickaxe";
+    const model = new THREE.Object3D().add(pickaxe);
+    return { pickaxe, figure: new Figure(tile, model, CLIPS) };
+  };
+
+  test("shows only while Pickaxing plays, even once the action has ended", () => {
+    const { figure, pickaxe } = miner();
+    figure.update(1000);
+    expect(pickaxe.visible).toBe(false);
+    figure.onceWithin("Pickaxing", 2400);
+    figure.update(1010);
+    expect(pickaxe.visible).toBe(true);
+    figure.update(3500);
+    figure.update(3510);
+    expect(pickaxe.visible).toBe(false);
+  });
+
+  test("stays out between attempts on the mining action, but not on the walk there", () => {
+    const tile = { x: 1, y: 1 };
+    const { figure, pickaxe } = miner(tile);
+    figure.mining = true;
+    tile.x = 2;
+    figure.update(1000);
+    expect(pickaxe.visible).toBe(false);
+    figure.update(2000);
+    expect(pickaxe.visible).toBe(true);
+    figure.mining = false;
+    figure.update(2010);
+    expect(pickaxe.visible).toBe(false);
+  });
+
+  test("another clip puts it away", () => {
+    const { figure, pickaxe } = miner();
+    figure.onceWithin("Pickaxing", 2400);
+    figure.update(1000);
+    figure.once("PickUp");
+    figure.update(1010);
+    expect(pickaxe.visible).toBe(false);
+  });
+
+  test("a figure with no pickaxe is fine", () => {
+    const figure = figureAt({ x: 1, y: 1 });
+    figure.onceWithin("Pickaxing", 2400);
+    expect(() => figure.update(1000)).not.toThrow();
+  });
+
+  test("the clip is sped up to fit one attempt", () => {
+    expect(miner().figure.onceWithin("Pickaxing", 2400)).toBeCloseTo(2400);
+  });
+
+  test("the committed clip pack has Pickaxing", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
+    expect(glb.toString("latin1")).toContain('"name":"Pickaxing"');
   });
 });

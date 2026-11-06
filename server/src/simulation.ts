@@ -17,6 +17,7 @@ import {
   INVENTORY_SLOTS,
   levelFor,
   MAX_PINNED_SKILLS,
+  mineChance,
   pickChance,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
@@ -36,11 +37,15 @@ import {
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
   TOOLS,
+  VEINS,
+  veinId,
+  veinRefusal,
   WALK_TICKS_PER_TILE,
   type BushKind,
   type PlayerAction,
   type EnemyKind,
   type EnemyState,
+  type Tier,
   XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
@@ -91,12 +96,15 @@ export const Enemy = schema(
 
 export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
 
+export const Vein = schema({ oreLeft: t.uint8() }, "Vein");
+
 export const WorldState = schema(
   {
     tick: t.uint32().default(0),
     players: t.map(Player),
     enemies: t.map(Enemy),
     bushes: t.map(Bush),
+    veins: t.map(Vein),
   },
   "WorldState",
 );
@@ -107,7 +115,11 @@ export class Simulation {
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
   private queuedActions = new Map<
     string,
-    { to: Tile } | { enemy: string } | { bush: string } | { blacksmith: Tile }
+    | { to: Tile }
+    | { enemy: string }
+    | { bush: string }
+    | { vein: string }
+    | { blacksmith: Tile }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -118,6 +130,7 @@ export class Simulation {
       nextSwingTick: number;
       enemy?: string;
       bush?: string;
+      vein?: string;
       visiting?: boolean;
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
@@ -153,6 +166,10 @@ export class Simulation {
     string,
     Tile & { kind: BushKind; regrowTick?: number }
   >();
+  private veinSites = new Map<
+    string,
+    Tile & { tier: Tier; regrowTick?: number }
+  >();
   private blacksmith?: Tile;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
@@ -166,13 +183,20 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { bush, enemy, blacksmith } = kind;
+        const { bush, vein, enemy, blacksmith } = kind;
         if (blacksmith) this.blacksmith = { x, y };
         if (bush) {
           this.bushSites.set(bushId({ x, y }), { x, y, kind: bush });
           this.state.bushes.set(
             bushId({ x, y }),
             Object.assign(new Bush(), { picksLeft: BUSHES[bush].picks }),
+          );
+        }
+        if (vein) {
+          this.veinSites.set(veinId({ x, y }), { x, y, tier: vein });
+          this.state.veins.set(
+            veinId({ x, y }),
+            Object.assign(new Vein(), { oreLeft: VEINS[vein].ores }),
           );
         }
         if (!enemy) return;
@@ -321,7 +345,7 @@ export class Simulation {
   private clearAction(id: string) {
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.path = [];
-    unsynced.enemy = unsynced.bush = undefined;
+    unsynced.enemy = unsynced.bush = unsynced.vein = undefined;
     unsynced.visiting = false;
     Object.assign(this.state.players.get(id)!, { target: "", action: "" });
   }
@@ -368,6 +392,16 @@ export class Simulation {
     const { picksLeft } = this.state.bushes.get(bush)!;
     if (bushRefusal(site.kind, picksLeft, player)) return;
     this.queuedActions.set(id, { bush });
+  }
+
+  /** `vein` comes straight off the network, so anything but a vein's id is ignored, as is a click the rules refuse. */
+  queueMine(id: string, vein: string) {
+    const player = this.state.players.get(id);
+    const site = this.veinSites.get(vein);
+    if (!player || !site || player.dead) return;
+    const { oreLeft } = this.state.veins.get(vein)!;
+    if (veinRefusal(site.tier, oreLeft, player)) return;
+    this.queuedActions.set(id, { vein });
   }
 
   queueVisit(id: string) {
@@ -429,18 +463,20 @@ export class Simulation {
     this.applyIntents();
     this.advancePlayers();
     this.advancePicks();
+    this.advanceMining();
     this.advanceVisits();
     this.advancePlayerSwings();
     this.advanceEnemies();
     this.advancePlayerTimers();
     this.advanceBushes();
+    this.advanceVeins();
     this.advanceEnemyReturns();
   }
 
   private applyIntents() {
     for (const [id, action] of this.queuedActions) {
       const unsynced = this.unsyncedPlayers.get(id)!;
-      unsynced.bush = undefined;
+      unsynced.bush = unsynced.vein = undefined;
       unsynced.visiting = false;
       if ("enemy" in action) {
         unsynced.enemy = action.enemy;
@@ -462,6 +498,15 @@ export class Simulation {
         );
         unsynced.path = path ?? [];
         if (path) unsynced.bush = action.bush;
+      } else if ("vein" in action) {
+        unsynced.enemy = undefined;
+        const path = pathNextTo(
+          this.tiles,
+          this.state.players.get(id)!,
+          this.veinSites.get(action.vein)!,
+        );
+        unsynced.path = path ?? [];
+        if (path) unsynced.vein = action.vein;
       } else {
         unsynced.enemy = undefined;
         unsynced.path = findPath(
@@ -529,6 +574,33 @@ export class Simulation {
     }
   }
 
+  /** As picks, and on the same timer, so swapping between them can't beat it. */
+  private advanceMining() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      if (unsynced.vein === undefined || unsynced.path.length) continue;
+      const player = this.state.players.get(id)!;
+      const site = this.veinSites.get(unsynced.vein)!;
+      const vein = this.state.veins.get(unsynced.vein)!;
+      if (veinRefusal(site.tier, vein.oreLeft, player)) {
+        unsynced.vein = undefined;
+        continue;
+      }
+      if (this.state.tick < unsynced.nextPickTick) continue;
+      const level = levelFor(player.miningXp);
+      unsynced.nextPickTick = this.state.tick + pickIntervalTicks(level);
+      const success = this.random() < mineChance(site.tier, level);
+      this.events.push({ type: "mine", player: id, success });
+      if (!success) continue;
+      const { xp, ore, regrowTicks } = VEINS[site.tier];
+      player.miningXp = addXp(player.miningXp, xp);
+      const slot = slotFor(ore, player);
+      player.inventory[slot] = ore;
+      player.inventoryCounts[slot]!++;
+      if (--vein.oreLeft === 0) site.regrowTick = this.state.tick + regrowTicks;
+      unsynced.vein = undefined;
+    }
+  }
+
   /** After the steps, so the tools come on the tick of arrival. */
   private advanceVisits() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
@@ -552,6 +624,14 @@ export class Simulation {
     }
   }
 
+  private advanceVeins() {
+    for (const [id, site] of this.veinSites) {
+      if (this.state.tick !== site.regrowTick) continue;
+      this.state.veins.get(id)!.oreLeft = VEINS[site.tier].ores;
+      site.regrowTick = undefined;
+    }
+  }
+
   /** After the moves, so the first swing lands on the tick the player arrives. */
   private advancePlayerSwings() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
@@ -571,9 +651,11 @@ export class Simulation {
           ? "fighting"
           : unsynced.bush !== undefined
             ? "foraging"
-            : unsynced.path.length
-              ? "walking"
-              : "";
+            : unsynced.vein !== undefined
+              ? "mining"
+              : unsynced.path.length
+                ? "walking"
+                : "";
     }
   }
 
