@@ -8,7 +8,7 @@ const holding = (held: [string, number][], smithingXp = 0) => ({
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are spec §5's table, Emberite gear aside", () => {
+test("the recipes are spec §5's table", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -59,7 +59,52 @@ test("the recipes are spec §5's table, Emberite gear aside", () => {
       ticks: 16,
       xp: 72,
     },
+    emberiteSword: {
+      station: "anvil",
+      level: 20,
+      costs: { emberiteBar: 3, emberbone: 2 },
+      ticks: 12,
+      xp: 108,
+    },
+    emberiteShield: {
+      station: "anvil",
+      level: 20,
+      costs: { emberiteBar: 4, emberbone: 3 },
+      ticks: 16,
+      xp: 144,
+    },
   });
+});
+
+test("Emberite gear needs its Emberbones as well as its bars and level", () => {
+  const level20 = xpForLevel(20);
+  expect(
+    makeRefusal("emberiteSword", holding([["emberiteBar", 3]], level20)),
+  ).toBe("Not enough materials");
+  expect(
+    makeRefusal(
+      "emberiteSword",
+      holding(
+        [
+          ["emberiteBar", 3],
+          ["emberbone", 2],
+        ],
+        xpForLevel(19),
+      ),
+    ),
+  ).toBe("Needs Smithing 20");
+  expect(
+    makeRefusal(
+      "emberiteShield",
+      holding(
+        [
+          ["emberiteBar", 4],
+          ["emberbone", 3],
+        ],
+        level20,
+      ),
+    ),
+  ).toBeUndefined();
 });
 
 test("countOf adds up every stack of an item", () => {

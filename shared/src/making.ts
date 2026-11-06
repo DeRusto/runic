@@ -62,6 +62,20 @@ export const RECIPES = {
     ticks: 16,
     xp: 72,
   },
+  emberiteSword: {
+    station: "anvil",
+    level: 20,
+    costs: { emberiteBar: 3, emberbone: 2 },
+    ticks: 12,
+    xp: 108,
+  },
+  emberiteShield: {
+    station: "anvil",
+    level: 20,
+    costs: { emberiteBar: 4, emberbone: 3 },
+    ticks: 16,
+    xp: 144,
+  },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
 

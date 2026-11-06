@@ -177,6 +177,8 @@ export class Simulation {
       nextSwingTick: number;
       returnTick: number;
       fightStart: Tile;
+      /** Who has damaged it since it last recovered or returned. Not saved (spec §6). */
+      damagers: Set<string>;
     }
   >();
   private bushSites = new Map<
@@ -227,6 +229,7 @@ export class Simulation {
           nextSwingTick: 0,
           returnTick: 0,
           fightStart: { x, y },
+          damagers: new Set(),
         });
         this.state.enemies.set(
           id,
@@ -353,6 +356,8 @@ export class Simulation {
     this.queuedEats.delete(id);
     this.queuedDiscards.delete(id);
     this.queuedLogouts.delete(id);
+    // A leaver has no inventory to fill (spec D8).
+    for (const home of this.unsyncedEnemies.values()) home.damagers.delete(id);
   }
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
@@ -867,6 +872,7 @@ export class Simulation {
       if (enemy.state !== "fighting") this.startFight(enemy, home);
       enemy.target = id;
     }
+    if (damage) home.damagers.add(id);
     enemy.health -= damage;
     if (enemy.health > 0) return;
 
@@ -874,11 +880,32 @@ export class Simulation {
     enemy.target = "";
     home.returnTick = this.state.tick + ENEMIES[enemy.kind].returnTicks;
     this.events.push({ type: "enemyDied", enemy: enemyId });
+    this.rollEmberbones(enemy.kind, home.damagers);
     for (const unsynced of this.unsyncedPlayers.values()) {
       if (unsynced.enemy !== enemyId) continue;
       unsynced.enemy = undefined;
       unsynced.path = [];
     }
+  }
+
+  /** Each damager's own chance, and then it starts over, as it can't be damaged until it returns. */
+  private rollEmberbones(kind: EnemyKind, damagers: Set<string>) {
+    const { emberboneChance = 0 } = ENEMIES[kind];
+    for (const id of emberboneChance ? damagers : []) {
+      if (this.random() >= emberboneChance) continue;
+      const player = this.state.players.get(id)!;
+      const slot = slotFor("emberbone", player);
+      if (slot >= 0) {
+        player.inventory[slot] = "emberbone";
+        player.inventoryCounts[slot]!++;
+      }
+      const line =
+        slot >= 0
+          ? "You find an Emberbone."
+          : "You find an Emberbone, but your inventory is full, so it is lost.";
+      this.events.push({ type: "told", player: id, line });
+    }
+    damagers.clear();
   }
 
   private startFight(
@@ -1091,6 +1118,7 @@ export class Simulation {
         if (tilesApart(enemy, home) === 0) {
           enemy.health = ENEMIES[enemy.kind].health;
           enemy.state = "idle";
+          home.damagers.clear();
         }
         continue;
       }
