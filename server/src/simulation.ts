@@ -65,6 +65,9 @@ import {
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
+const isInventorySlot = (slot: number) =>
+  Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
+
 export const Player = schema(
   {
     username: t.string(),
@@ -457,14 +460,14 @@ export class Simulation {
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
     if (!this.alive(id)) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    if (!isInventorySlot(slot)) return;
     this.queuedEats.set(id, slot);
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueDiscard(id: string, slot: number) {
     if (!this.alive(id)) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    if (!isInventorySlot(slot)) return;
     this.queuedDiscards.set(id, slot);
   }
 
@@ -486,7 +489,7 @@ export class Simulation {
    */
   equip(id: string, slot: number) {
     if (!this.alive(id)) return;
-    if (!Number.isInteger(slot) || slot < 0 || slot >= INVENTORY_SLOTS) return;
+    if (!isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
     const gear = GEAR.get(item);
