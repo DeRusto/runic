@@ -18,6 +18,10 @@ import { stationTile } from "./stations.ts";
 
 /** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
 const ATTEMPT_RESULT_AT = 0.4;
+const ATTEMPTS = {
+  pick: { xp: "foragingXp", clip: "PickUp", success: "Picked!" },
+  mine: { xp: "miningXp", clip: "Pickaxing", success: "Mined!" },
+} as const;
 const EAT_CLIP_SPEED = 1.33;
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
@@ -136,25 +140,17 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "enemyReturned") {
         enemyFigures.get(event.enemy)![clipsOf(event.enemy).returns]();
       } else if (event.type === "pick" || event.type === "mine") {
-        const mining = event.type === "mine";
+        const { xp, clip, success } = ATTEMPTS[event.type];
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
         if (!figure || !player) continue;
         if (event.success && event.player === room.sessionId) holdResult();
-        const interval = pickIntervalTicks(
-          levelFor(mining ? player.miningXp : player.foragingXp),
-        );
-        const clipMs = figure.onceWithin(
-          mining ? "Pickaxing" : "PickUp",
-          interval * TICK_MS,
-        );
+        const interval = pickIntervalTicks(levelFor(player[xp]));
+        const clipMs = figure.onceWithin(clip, interval * TICK_MS);
         setTimeout(() => {
           playerOverheads
             .get(event.player)
-            ?.pop(
-              event.success ? (mining ? "Mined!" : "Picked!") : "No luck",
-              "pick",
-            );
+            ?.pop(event.success ? success : "No luck", "pick");
           if (event.player === room.sessionId) revealResult();
         }, ATTEMPT_RESULT_AT * clipMs);
       } else if (event.type === "make") {
