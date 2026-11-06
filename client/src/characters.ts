@@ -343,20 +343,41 @@ export function addSeeThroughOutline(model: THREE.Object3D) {
   }
 }
 
+const load = (file: string) =>
+  new GLTFLoader().loadAsync(`/models/${file}.glb`);
+
+let clipsLoaded: Promise<Map<string, THREE.AnimationClip>> | undefined;
+/** The clip packs, loaded once for everyone who shares them. */
+const loadClips = () =>
+  (clipsLoaded ??= Promise.all(CLIP_PACKS.map(load)).then(
+    (packs) =>
+      new Map(packs.flatMap((pack) => pack.animations).map((c) => [c.name, c])),
+  ));
+
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
-  const loader = new GLTFLoader();
-  const load = (file: string) => loader.loadAsync(`/models/${file}.glb`);
-  const [knight, barbarian, ...packs] = await Promise.all(
-    [...CHARACTERS, ...CLIP_PACKS].map(load),
-  );
+  const [knight, barbarian, clips] = await Promise.all([
+    load("Knight"),
+    load("Barbarian"),
+    loadClips(),
+  ]);
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
-  const clips = new Map(
-    packs.flatMap((pack) => pack.animations).map((c) => [c.name, c]),
-  );
   return (tile: Tile, name: string) =>
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
+}
+
+/** The Blacksmith, on their tile with a hammer in hand. */
+export async function loadBlacksmith(tile: Tile) {
+  const [ranger, hammer, clips] = await Promise.all([
+    load("Ranger"),
+    new GLTFLoader().loadAsync("/models/hammer.gltf"),
+    loadClips(),
+  ]);
+  fit(ranger.scene, (size) => HEIGHT / size.y);
+  hammer.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  ranger.scene.getObjectByName("handslotr")!.add(hammer.scene);
+  return new Figure(tile, ranger.scene, clips);
 }
 
 export function fitSpider(model: THREE.Object3D) {
