@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { describe, expect, it, test, vi } from "vitest";
@@ -7,7 +7,9 @@ import {
   characterFor,
   Figure,
   fitSpider,
+  paintGear,
   SPIDER_GAIT,
+  swingFor,
 } from "./characters.ts";
 
 const PICK_UP_S = 1.296;
@@ -630,4 +632,270 @@ describe("the pickaxe in hand", () => {
     const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
     expect(glb.toString("latin1")).toContain('"name":"Pickaxing"');
   });
+});
+
+describe("swingFor", () => {
+  const ARMED = {
+    Melee_1H_Attack_Chop: 580,
+    Melee_1H_Attack_Slice_Diagonal: 420,
+    Melee_1H_Attack_Stab: 380,
+  };
+
+  test("a sword picks one of the three armed clips, with that clip's contact", () => {
+    for (let tick = 0; tick < 50; tick++) {
+      const { clip, contactMs } = swingFor("copperSword", "a", tick);
+      expect(ARMED[clip as keyof typeof ARMED]).toBe(contactMs);
+    }
+  });
+
+  test("the same swinger on the same tick gets the same clip", () => {
+    expect(swingFor("ironSword", "someId", 408)).toEqual(
+      swingFor("ironSword", "someId", 408),
+    );
+  });
+
+  test("no sword punches at 550 ms", () => {
+    expect(swingFor("", "a", 8)).toEqual({
+      clip: "Melee_Unarmed_Attack_Punch_A",
+      contactMs: 550,
+    });
+  });
+
+  test("one fighter's swings, 8 ticks apart, mix all three clips about evenly", () => {
+    for (const id of ["a", "Xk3_pQ9zT", "lZ0mNv-w2"]) {
+      const counts = new Map<string, number>();
+      for (let swing = 0; swing < 300; swing++) {
+        const { clip } = swingFor("copperSword", id, 1000 + swing * 8);
+        counts.set(clip, (counts.get(clip) ?? 0) + 1);
+      }
+      expect(counts.size).toBe(3);
+      for (const count of counts.values()) expect(count).toBeGreaterThan(60);
+    }
+  });
+});
+
+describe("gear in hand", () => {
+  const GEAR_CLIPS = new Map(
+    [
+      "Idle_A",
+      "Running_A",
+      "Melee_Unarmed_Idle",
+      "Melee_Blocking",
+      "Melee_Unarmed_Attack_Punch_A",
+      "Melee_1H_Attack_Chop",
+      "Pickaxing",
+      "Hammering",
+      "Death_A",
+    ].map((name) => [name, new THREE.AnimationClip(name, 1, [])]),
+  );
+  const named = (name: string) => {
+    const object = new THREE.Object3D();
+    object.name = name;
+    object.visible = false;
+    return object;
+  };
+  const wearer = (tile = { x: 0, y: 0 }) => {
+    const sword = named("copperSword");
+    const otherSword = named("ironSword");
+    const shield = named("copperShield");
+    const pickaxe = named("pickaxe");
+    const hammer = named("hammer in hand");
+    const model = new THREE.Object3D().add(
+      sword,
+      otherSword,
+      shield,
+      pickaxe,
+      hammer,
+    );
+    const figure = new Figure(tile, model, GEAR_CLIPS);
+    figure.update(1000);
+    return { figure, sword, otherSword, shield, pickaxe };
+  };
+  // An action never played still reports a weight of 1, so check it's running too.
+  const weight = (figure: Figure, name: string) => {
+    const action = figure.mixer.clipAction(GEAR_CLIPS.get(name)!);
+    return action.isRunning() ? action.getEffectiveWeight() : 0;
+  };
+  const FOE = { x: 1, y: 0 };
+
+  test("nothing shows out of a fight, worn or not", () => {
+    const { figure, sword, shield } = wearer();
+    figure.weapon = "copperSword";
+    figure.shield = "copperShield";
+    figure.update(1016);
+    expect(sword.visible).toBe(false);
+    expect(shield.visible).toBe(false);
+  });
+
+  test("in a fight only what's worn shows", () => {
+    const { figure, sword, otherSword, shield } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.update(1016);
+    expect(sword.visible).toBe(true);
+    expect(otherSword.visible).toBe(false);
+    expect(shield.visible).toBe(false);
+  });
+
+  test("taking it off mid-fight puts it away", () => {
+    const { figure, sword } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.weapon = "";
+    figure.update(1032);
+    expect(sword.visible).toBe(false);
+  });
+
+  test("a walk to the fight looks like any walk, until the swing on arrival", () => {
+    const tile = { x: 0, y: 0 };
+    const { figure, sword } = wearer(tile);
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    tile.x = -1;
+    figure.update(1100);
+    expect(sword.visible).toBe(false);
+    figure.once("Melee_1H_Attack_Chop");
+    figure.update(1116);
+    expect(sword.visible).toBe(true);
+  });
+
+  test("the killing swing stays in hand once the fight has ended", () => {
+    const { figure, sword } = wearer();
+    figure.weapon = "copperSword";
+    figure.once("Melee_1H_Attack_Chop");
+    figure.update(1016);
+    expect(sword.visible).toBe(true);
+    figure.update(2100);
+    figure.update(2116);
+    expect(sword.visible).toBe(false);
+  });
+
+  test("a punch with a shield worn keeps the shield up after the kill", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Melee_Unarmed_Attack_Punch_A");
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
+  test("a tool in hand beats gear, even as a fight starts", () => {
+    const { figure, sword, pickaxe } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.onceWithin("Pickaxing", 2400);
+    figure.update(1016);
+    expect(pickaxe.visible).toBe(true);
+    expect(sword.visible).toBe(false);
+  });
+
+  test("death puts gear away", () => {
+    const { figure, sword } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.once("Death_A", 1, true);
+    figure.update(1032);
+    expect(sword.visible).toBe(false);
+  });
+
+  test.each([
+    ["a sword", { weapon: "copperSword" }],
+    ["a shield", { shield: "copperShield" }],
+    ["both", { weapon: "copperSword", shield: "copperShield" }],
+  ])("holding %s stands in Melee_Blocking", (_, worn) => {
+    const { figure } = wearer();
+    Object.assign(figure, worn);
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.update(1300);
+    expect(weight(figure, "Melee_Blocking")).toBe(1);
+  });
+
+  test("holding nothing stands in Melee_Unarmed_Idle, and a swap mid-fight changes stance", () => {
+    const { figure } = wearer();
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.update(1300);
+    expect(weight(figure, "Melee_Unarmed_Idle")).toBe(1);
+    figure.shield = "copperShield";
+    figure.update(1316);
+    figure.update(1600);
+    expect(weight(figure, "Melee_Blocking")).toBe(1);
+  });
+
+  test("worn gear changes nothing when idle", () => {
+    const { figure } = wearer();
+    figure.weapon = "copperSword";
+    figure.update(1016);
+    figure.update(1300);
+    expect(weight(figure, "Idle_A")).toBe(1);
+  });
+
+  test("the committed clip packs have every swing and stance", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_CombatMelee.glb");
+    for (const name of [
+      "Melee_1H_Attack_Chop",
+      "Melee_1H_Attack_Slice_Diagonal",
+      "Melee_1H_Attack_Stab",
+      "Melee_Blocking",
+    ])
+      expect(glb.toString("latin1")).toContain(`"name":"${name}"`);
+  });
+});
+
+describe("paintGear", () => {
+  const painted = (look: { tint: number; glow?: number }) => {
+    const material = new THREE.MeshStandardMaterial({
+      map: new THREE.Texture(),
+    });
+    const grey = new THREE.Texture();
+    paintGear(
+      new THREE.Group().add(new THREE.Mesh(undefined, material)),
+      look,
+      grey,
+    );
+    return { material, grey };
+  };
+
+  test("tints over the grey atlas", () => {
+    const { material, grey } = painted({ tint: 0xf0935a });
+    expect(material.map).toBe(grey);
+    expect(material.color.getHex()).toBe(0xf0935a);
+    expect(material.emissive.getHex()).toBe(0);
+  });
+
+  test("Emberite glows at 0.15", () => {
+    const { material } = painted({ tint: 0x7a2a22, glow: 0xff4a10 });
+    expect(material.emissive.getHex()).toBe(0xff4a10);
+    expect(material.emissiveIntensity).toBe(0.15);
+  });
+});
+
+test("every tier's model and its licence are committed", () => {
+  for (const file of [
+    "sword_A",
+    "sword_B",
+    "sword_C",
+    "shield_A",
+    "shield_B",
+    "shield_C",
+  ]) {
+    const gltf = JSON.parse(
+      readFileSync(`client/public/models/${file}.gltf`, "utf8"),
+    );
+    expect(existsSync(`client/public/models/${gltf.buffers[0].uri}`)).toBe(
+      true,
+    );
+    expect(gltf.images[0].uri).toBe("weapons_bits_texture.png");
+  }
+  expect(existsSync("client/public/models/weapons_bits_texture.png")).toBe(
+    true,
+  );
+  expect(
+    readFileSync(
+      "client/public/models/LICENSE-KayKit-Fantasy-Weapons-Bits.txt",
+      "utf8",
+    ),
+  ).toContain("Creative Commons Zero");
 });
