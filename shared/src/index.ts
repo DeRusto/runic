@@ -38,11 +38,13 @@ export const TICK_DRIVER_MS = 20;
 export const WALK_TICKS_PER_TILE = 2;
 export const SWING_INTERVAL_TICKS = 8;
 export const EAT_SWING_DELAY_TICKS = 4;
+export const FIGHT_BACK_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 export const REGEN_INTERVAL_TICKS = 20;
 export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
+export const HEALING_POOL_INTERVAL_TICKS = 4;
 export const SAVE_INTERVAL_TICKS = 100;
 
 export const LEASH_TILES = 4;
@@ -70,7 +72,7 @@ export type WorldEvent =
   | { type: "playerRespawned"; player: string }
   | { type: "enemyReturned"; enemy: string }
   | { type: "pick"; player: string; success: boolean }
-  | { type: "eaten"; player: string; healed: number };
+  | { type: "eaten"; player: string };
 
 export * from "./enemies.ts";
 export * from "./foraging.ts";
