@@ -1,3 +1,4 @@
+import type { EnemyKind } from "./enemies.ts";
 import type { BushKind } from "./foraging.ts";
 
 export type GroundKind = "grass" | "thicket" | "path" | "ashen";
@@ -11,6 +12,7 @@ export type TileKind = {
   vein?: Tier;
   station?: StationKind;
   blacksmith?: true;
+  enemy?: EnemyKind;
   blocks: boolean;
 };
 export type Tile = { x: number; y: number };
@@ -26,7 +28,7 @@ export const TILE_KINDS = {
   '"': { ground: "grass", prop: "tuft", blocks: false },
   b: { ground: "thicket", bush: "berryBush", blocks: true },
   h: { ground: "thicket", bush: "herbBush", blocks: true },
-  S: { ground: "grass", blocks: false },
+  S: { ground: "grass", enemy: "spider", blocks: false },
   R: { ground: "path", blocks: false },
   a: { ground: "ashen", blocks: false },
   A: { ground: "ashen", prop: "tree", blocks: true },

@@ -11,13 +11,13 @@ import { showBottomBar } from "./bottomBar.ts";
 import { showBushes } from "./bushes.ts";
 import { loadCharacters, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
-import { showSpiders } from "./spiders.ts";
 
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
@@ -45,7 +45,7 @@ function enterWorld(room: WorldConnection) {
   walkOnClick(
     room,
     tiles,
-    showSpiders(room, newSpider),
+    showEnemies(room, { spider: newSpider }),
     showBushes(room, tiles, setBushRunOut),
   );
   showBottomBar(room, sayOverhead);

@@ -1,5 +1,5 @@
 import { Callbacks } from "@colyseus/sdk";
-import { SPIDER_HEALTH, type SpiderState } from "@runic/shared";
+import { ENEMIES, type EnemyKind, type EnemyState } from "@runic/shared";
 import type * as THREE from "three";
 import type { Figure, loadSpiders } from "./characters.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
@@ -7,40 +7,45 @@ import { Overhead } from "./overhead.ts";
 import type { WorldConnection } from "./players.ts";
 import { scene } from "./scene.ts";
 
-export const spiderFigures = new Map<string, Figure>();
-export const spiderOverheads = new Map<string, Overhead>();
+/** The one-shot clips each kind plays; its other clips are in its Figure's gait. */
+export const ENEMY_CLIPS: Record<EnemyKind, { attack: string; death: string }> =
+  { spider: { attack: "Spider_Attack", death: "Spider_Death" } };
 
-/** Draws every Spider, and returns what finds the live Spider under a click's ray. */
-export function showSpiders(
+export const enemyFigures = new Map<string, Figure>();
+export const enemyOverheads = new Map<string, Overhead>();
+
+/** Draws every enemy, and returns what finds the live enemy under a click's ray. */
+export function showEnemies(
   room: WorldConnection,
-  newSpider: Awaited<ReturnType<typeof loadSpiders>>,
+  newFigure: Record<EnemyKind, Awaited<ReturnType<typeof loadSpiders>>>,
 ) {
   const figures: { id: string; figure: Figure; hitBox: THREE.Mesh }[] = [];
   const hitBoxes = new Map<
     THREE.Object3D,
-    { id: string; tile: { x: number; y: number; state: SpiderState } }
+    { id: string; tile: { x: number; y: number; state: EnemyState } }
   >();
 
-  Callbacks.get(room).onAdd("spiders", (spider, id) => {
-    const figure = newSpider(spider);
+  Callbacks.get(room).onAdd("enemies", (enemy, id) => {
+    const figure = newFigure[enemy.kind](enemy);
     scene.add(figure.model);
     // A plain box, not the skinned mesh, so a click between the legs still counts.
     const hitBox = newHitBox();
     figures.push({ id, figure, hitBox });
-    hitBoxes.set(hitBox, { id, tile: spider });
-    if (spider.state === "dead") figure.alreadyGone("Spider_Death");
-    spiderFigures.set(id, figure);
-    spiderOverheads.set(id, new Overhead(""));
+    hitBoxes.set(hitBox, { id, tile: enemy });
+    if (enemy.state === "dead")
+      figure.alreadyGone(ENEMY_CLIPS[enemy.kind].death);
+    enemyFigures.set(id, figure);
+    enemyOverheads.set(id, new Overhead(""));
   });
 
   const frame = (now: number) => {
     for (const { id, figure, hitBox } of figures) {
-      const spider = room.state.spiders.get(id)!;
-      figure.fightTile = room.state.players.get(spider.target);
+      const enemy = room.state.enemies.get(id)!;
+      figure.fightTile = room.state.players.get(enemy.target);
       figure.update(now);
       hitBox.position.copy(figure.model.position).setY(HIT_BOX_HEIGHT / 2);
-      const overhead = spiderOverheads.get(id)!;
-      overhead.showHealth(spider.health, SPIDER_HEALTH);
+      const overhead = enemyOverheads.get(id)!;
+      overhead.showHealth(enemy.health, ENEMIES[enemy.kind].health);
       overhead.place(figure.model.position);
     }
     nextFrame = requestAnimationFrame(frame);
@@ -51,9 +56,9 @@ export function showSpiders(
     cancelAnimationFrame(nextFrame);
     for (const { figure, hitBox } of figures)
       scene.remove(figure.model, hitBox);
-    for (const overhead of spiderOverheads.values()) overhead.remove();
-    spiderFigures.clear();
-    spiderOverheads.clear();
+    for (const overhead of enemyOverheads.values()) overhead.remove();
+    enemyFigures.clear();
+    enemyOverheads.clear();
   });
 
   return (raycaster: THREE.Raycaster) => {
