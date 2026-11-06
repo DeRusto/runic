@@ -11,7 +11,9 @@ import {
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
+  FIGHT_BACK_DELAY_TICKS,
   FOOD_HEALS,
+  HEALING_POOL_INTERVAL_TICKS,
   INVENTORY_SLOTS,
   levelFor,
   MAX_PINNED_SKILLS,
@@ -117,6 +119,8 @@ export class Simulation {
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
       nextEatTick: number;
+      /** Health eaten but not yet given. Not saved, so leaving loses it (spec §6). */
+      healingPool: number;
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
@@ -216,6 +220,7 @@ export class Simulation {
       nextSwingTick: 0,
       nextPickTick: 0,
       nextEatTick: 0,
+      healingPool: 0,
       lockEndTick: 0,
       respawnTick: 0,
       ...this.timersOfLeavers.get(username),
@@ -399,13 +404,9 @@ export class Simulation {
       Math.max(unsynced.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
     if (--player.inventoryCounts[slot]! === 0)
       player.inventory[slot] = EMPTY_SLOT;
-    const health = Math.min(player.health + heals, player.maxHealth);
-    this.events.push({
-      type: "eaten",
-      player: id,
-      healed: health - player.health,
-    });
-    player.health = health;
+    // Not at full health, or a swing later this tick could save it from being lost.
+    if (player.health < player.maxHealth) unsynced.healingPool += heals;
+    this.events.push({ type: "eaten", player: id });
   }
 
   /** One tick, in the order of spec §6. */
@@ -650,6 +651,24 @@ export class Simulation {
       damage,
     });
     if (player.health === 0) this.die(enemy.target, player);
+    else if (player.action === "") this.fightBack(enemy.target, player, id);
+  }
+
+  /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
+  private fightBack(
+    id: string,
+    player: InstanceType<typeof Player>,
+    enemyId: string,
+  ) {
+    const unsynced = this.unsyncedPlayers.get(id)!;
+    if (unsynced.dropped) return;
+    unsynced.enemy = enemyId;
+    unsynced.nextSwingTick = Math.max(
+      unsynced.nextSwingTick,
+      this.state.tick + FIGHT_BACK_DELAY_TICKS,
+    );
+    // Now, as a second enemy swinging this tick must find them busy.
+    Object.assign(player, { target: enemyId, action: "fighting" });
   }
 
   /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
@@ -662,13 +681,15 @@ export class Simulation {
   private die(id: string, player: InstanceType<typeof Player>) {
     player.dead = true;
     this.clearAction(id);
-    this.unsyncedPlayers.get(id)!.respawnTick =
-      this.state.tick + PLAYER_DEAD_TICKS;
+    const unsynced = this.unsyncedPlayers.get(id)!;
+    unsynced.healingPool = 0;
+    unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
 
   private advancePlayerTimers() {
     const regenerates = this.state.tick % REGEN_INTERVAL_TICKS === 0;
+    const poolGives = this.state.tick % HEALING_POOL_INTERVAL_TICKS === 0;
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
       if (player.dead) {
@@ -676,12 +697,19 @@ export class Simulation {
         Object.assign(player, this.respawned(player), { dead: false });
         unsynced.lockEndTick = 0;
         this.events.push({ type: "playerRespawned", player: id });
-      } else if (regenerates && this.state.tick >= unsynced.lockEndTick) {
+        continue;
+      }
+      if (regenerates && this.state.tick >= unsynced.lockEndTick) {
         const heals = Math.ceil(
           (player.maxHealth * REGEN_PERCENT_OF_MAX_HEALTH) / 100,
         );
         player.health = Math.min(player.health + heals, player.maxHealth);
       }
+      if (poolGives && unsynced.healingPool > 0) {
+        unsynced.healingPool--;
+        player.health = Math.min(player.health + 1, player.maxHealth);
+      }
+      if (player.health === player.maxHealth) unsynced.healingPool = 0;
     }
   }
 
