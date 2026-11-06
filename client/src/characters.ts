@@ -161,6 +161,8 @@ export class Figure {
   /** The item ids worn, "" for none. They show in hand in a fight, and set the stance. */
   weapon = "";
   shield = "";
+  /** Takes the armed stance whatever is worn: a Skeleton's blade is part of its model, not gear. */
+  alwaysArmed = false;
   private gear: [item: string, model: THREE.Object3D][] = [];
 
   constructor(
@@ -344,7 +346,7 @@ export class Figure {
     const base = running
       ? this.gait.move
       : fightTile
-        ? this.weapon || this.shield
+        ? this.alwaysArmed || this.weapon || this.shield
           ? ARMED_STANCE
           : this.gait.fight
         : this.gait.idle;
@@ -460,6 +462,10 @@ export function addSeeThroughOutline(model: THREE.Object3D) {
 
 const load = (file: string) =>
   new GLTFLoader().loadAsync(`/models/${file}.glb`);
+const loadGltf = (file: string) =>
+  new GLTFLoader().loadAsync(`/models/${file}.gltf`);
+const castShadows = (model: THREE.Object3D) =>
+  model.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
 
 let clipsLoaded: Promise<Map<string, THREE.AnimationClip>> | undefined;
 /** The clip packs, loaded once for everyone who shares them. */
@@ -507,14 +513,10 @@ export async function loadCharacters() {
   const [knight, barbarian, pickaxe, hammer, clips, gear] = await Promise.all([
     load("Knight"),
     load("Barbarian"),
-    new GLTFLoader().loadAsync("/models/pickaxe.gltf"),
-    new GLTFLoader().loadAsync("/models/hammer.gltf"),
+    loadGltf("pickaxe"),
+    loadGltf("hammer"),
     loadClips(),
-    Promise.all(
-      gearLooks.map(([, { file }]) =>
-        new GLTFLoader().loadAsync(`/models/${file}.gltf`),
-      ),
-    ),
+    Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
   ]);
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
@@ -525,7 +527,7 @@ export async function loadCharacters() {
   ] as const) {
     tool.scene.name = name;
     tool.scene.visible = false;
-    tool.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+    castShadows(tool.scene);
     Object.values(models).forEach((m) =>
       m.getObjectByName("handslotr")!.add(tool.scene.clone()),
     );
@@ -536,8 +538,8 @@ export async function loadCharacters() {
     const { scene: held } = gear[i]!;
     held.name = item;
     held.visible = false;
+    castShadows(held);
     held.traverse((o) => {
-      o.castShadow = o instanceof THREE.Mesh;
       // All six share one atlas.
       if (o instanceof THREE.Mesh) grey ??= greyVersion(o.material.map);
     });
@@ -554,11 +556,11 @@ export async function loadCharacters() {
 export async function loadBlacksmith(tile: Tile) {
   const [ranger, hammer, clips] = await Promise.all([
     load("Ranger"),
-    new GLTFLoader().loadAsync("/models/hammer.gltf"),
+    loadGltf("hammer"),
     loadClips(),
   ]);
   fit(ranger.scene, (size) => HEIGHT / size.y);
-  hammer.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  castShadows(hammer.scene);
   ranger.scene.getObjectByName("handslotr")!.add(hammer.scene);
   return new Figure(tile, ranger.scene, clips);
 }
@@ -575,11 +577,11 @@ function withOwnMaterials(model: THREE.Object3D) {
 export async function loadSkeletons() {
   const [{ scene }, blade, clips] = await Promise.all([
     load("Skeleton_Warrior"),
-    new GLTFLoader().loadAsync("/models/Skeleton_Blade.gltf"),
+    loadGltf("Skeleton_Blade"),
     loadClips(),
   ]);
   fit(scene, (size) => HEIGHT / size.y);
-  blade.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  castShadows(blade.scene);
   scene.getObjectByName("handslotr")!.add(blade.scene);
   return (tile: Tile) => {
     const figure = new Figure(
@@ -587,8 +589,7 @@ export async function loadSkeletons() {
       withOwnMaterials(cloneSkinned(scene)),
       clips,
     );
-    // Any name sets the armed stance; this one isn't in GEAR_LOOKS, so the blade never hides.
-    figure.weapon = "Skeleton_Blade";
+    figure.alwaysArmed = true;
     return figure;
   };
 }
@@ -599,9 +600,7 @@ export function fitSpider(model: THREE.Object3D) {
 
 /** Loads the Spider once; every Figure it then makes shares its clips. */
 export async function loadSpiders() {
-  const { scene, animations } = await new GLTFLoader().loadAsync(
-    "/models/Spider.glb",
-  );
+  const { scene, animations } = await load("Spider");
   fitSpider(scene);
   const clips = new Map(animations.map((c) => [c.name, c]));
   return (tile: Tile) =>
