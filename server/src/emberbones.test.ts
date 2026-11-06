@@ -1,0 +1,224 @@
+import { parseRegion, type WorldEvent } from "@runic/shared";
+import { expect, test } from "vitest";
+import type { PlayerSave } from "./saves.ts";
+import { Simulation } from "./simulation.ts";
+
+const HIT = 0;
+const MISS = 0.99;
+const WIN = 0.2499;
+const LOSE = 0.25;
+/** The hit roll and the damage roll of a swing doing 1 damage. */
+const SWING = [HIT, HIT];
+
+// The Skeleton's home is (8,1), with players either side of it.
+const CORRIDOR = [
+  "TTTTTTTTTTTTTTTTTTTT",
+  "TR......K..........T",
+  "TTTTTTTTTTTTTTTTTTTT",
+];
+const SPIDER = ["TTTTTTTTTT", "TR......ST", "TTTTTTTTTT"];
+
+const SAVE: PlayerSave = {
+  x: 7,
+  y: 1,
+  combatXp: 0,
+  defenseXp: 0,
+  foragingXp: 0,
+  hitpointsXp: 4050,
+  health: 10,
+  inventory: Array<string>(30).fill(""),
+};
+
+/** Rolls come in order, and then everything misses. */
+function world(rows: string[]) {
+  const rolls: number[] = [];
+  const s = new Simulation(
+    parseRegion(rows.join("\n")),
+    () => rolls.shift() ?? MISS,
+  );
+  return { s, rolls };
+}
+
+const enemy = (s: Simulation) => s.state.enemies.get("0")!;
+const bones = (s: Simulation, id: string) =>
+  [...s.state.players.get(id)!.inventory].filter((item) => item === "emberbone")
+    .length;
+
+function run(s: Simulation, ticks = 1) {
+  const seen: WorldEvent[] = [];
+  for (let i = 0; i < ticks; i++) {
+    s.tick();
+    seen.push(...s.events.splice(0));
+  }
+  return seen;
+}
+
+const toldTo = (events: WorldEvent[], id: string) =>
+  events.flatMap((e) => (e.type === "told" && e.player === id ? [e.line] : []));
+
+/** "a" swings once and "b" lands the killing blow, each doing 1 damage. */
+function killedByTwo(rolls: number[], s: Simulation, ...bones: number[]) {
+  s.addPlayer("a", SAVE);
+  s.addPlayer("b", { ...SAVE, x: 9 });
+  enemy(s).health = 2;
+  rolls.push(...SWING, ...SWING, ...bones);
+  s.queueTarget("a", "0");
+  s.queueTarget("b", "0");
+}
+
+test("each player who damaged it rolls their own 1 in 4", () => {
+  const { s, rolls } = world(CORRIDOR);
+  killedByTwo(rolls, s, LOSE, WIN);
+  const events = run(s);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "a")).toBe(0);
+  expect(bones(s, "b")).toBe(1);
+  expect(toldTo(events, "a")).toEqual([]);
+  expect(toldTo(events, "b")).toEqual(["You find an Emberbone."]);
+});
+
+test("a swing that missed doesn't count", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", SAVE);
+  s.addPlayer("b", { ...SAVE, x: 9 });
+  enemy(s).health = 1;
+  // "a" misses, "b" kills, and the only roll left would win for anyone.
+  rolls.push(MISS, ...SWING, WIN, WIN);
+  s.queueTarget("a", "0");
+  s.queueTarget("b", "0");
+  run(s);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "a")).toBe(0);
+  expect(bones(s, "b")).toBe(1);
+});
+
+test("a dead player still rolls", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", SAVE);
+  s.addPlayer("b", { ...SAVE, x: 9 });
+  enemy(s).health = 2;
+  rolls.push(...SWING);
+  s.queueTarget("a", "0");
+  run(s);
+  // "a" is dead by the time "b" lands the killing blow.
+  Object.assign(s.state.players.get("a")!, { dead: true, health: 0 });
+  rolls.push(...SWING, WIN, LOSE);
+  s.queueTarget("b", "0");
+  run(s);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "a")).toBe(1);
+  expect(bones(s, "b")).toBe(0);
+});
+
+test("a player who has left doesn't roll", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", SAVE);
+  s.addPlayer("b", { ...SAVE, x: 9 });
+  enemy(s).health = 2;
+  rolls.push(...SWING);
+  s.queueTarget("a", "0");
+  run(s);
+  s.removePlayer("a");
+  // Only "b" rolls, so the one winning roll is theirs and nothing else is drawn.
+  rolls.push(...SWING, WIN);
+  s.queueTarget("b", "0");
+  const events = run(s, 8);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "b")).toBe(1);
+  expect(toldTo(events, "a")).toEqual([]);
+});
+
+test("a full inventory loses it, with a different line", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", {
+    ...SAVE,
+    inventory: Array<string>(30).fill("copperSword"),
+  });
+  enemy(s).health = 1;
+  rolls.push(...SWING, WIN);
+  s.queueTarget("a", "0");
+  const events = run(s);
+  expect(bones(s, "a")).toBe(0);
+  expect(toldTo(events, "a")).toEqual([
+    "You find an Emberbone, but your inventory is full, so it is lost.",
+  ]);
+});
+
+test("a full inventory with room on a stack of Emberbones still takes it", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", {
+    ...SAVE,
+    inventory: ["emberbone", ...Array<string>(29).fill("copperSword")],
+    inventoryCounts: [19, ...Array<number>(29).fill(1)],
+  });
+  enemy(s).health = 1;
+  rolls.push(...SWING, WIN);
+  s.queueTarget("a", "0");
+  run(s);
+  expect(s.state.players.get("a")!.inventoryCounts[0]).toBe(20);
+});
+
+test("recovering forgets who damaged it", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", SAVE);
+  s.addPlayer("b", { ...SAVE, x: 18 });
+  enemy(s).health = 2;
+  rolls.push(...SWING);
+  s.queueTarget("a", "0");
+  run(s);
+  // "a" walks out of the leash, and it walks home and recovers.
+  Object.assign(s.state.players.get("a")!, { x: 1 });
+  s.queueWalk("a", { x: 1, y: 1 });
+  run(s, 5);
+  expect(enemy(s)).toMatchObject({ state: "idle", health: 24 });
+  // "b" comes back and kills it alone, so "a"'s old hit gets no roll.
+  enemy(s).health = 1;
+  Object.assign(s.state.players.get("b")!, { x: 9 });
+  rolls.push(...SWING, WIN, WIN);
+  s.queueTarget("b", "0");
+  run(s, 8);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "a")).toBe(0);
+  expect(bones(s, "b")).toBe(1);
+});
+
+test("returning forgets who damaged it", () => {
+  const { s, rolls } = world(CORRIDOR);
+  s.addPlayer("a", SAVE);
+  enemy(s).health = 1;
+  rolls.push(...SWING, LOSE);
+  s.queueTarget("a", "0");
+  run(s);
+  expect(enemy(s).state).toBe("dead");
+  s.addPlayer("b", { ...SAVE, x: 9 });
+  run(s, 200);
+  expect(enemy(s).state).not.toBe("dead");
+  // "a" stands next to it, but only "b" hits it this time.
+  Object.assign(s.state.players.get("a")!, { x: 1 });
+  enemy(s).health = 1;
+  rolls.push(...SWING, WIN, WIN);
+  s.queueTarget("b", "0");
+  run(s, 8);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "a")).toBe(0);
+  expect(bones(s, "b")).toBe(1);
+});
+
+test("Spiders still give nothing, and draw no roll", () => {
+  const { s, rolls } = world(SPIDER);
+  s.addPlayer("a", SAVE);
+  enemy(s).health = 1;
+  rolls.push(...SWING, WIN);
+  s.queueTarget("a", "0");
+  const events = run(s);
+  expect(enemy(s).state).toBe("dead");
+  expect(bones(s, "a")).toBe(0);
+  expect(toldTo(events, "a")).toEqual([]);
+  expect(rolls).toEqual([WIN]);
+});
+
+test("who damaged what isn't in the save", () => {
+  const { s } = world(CORRIDOR);
+  s.addPlayer("a", SAVE);
+  expect(Object.keys(s.saveOf("a")!).join()).not.toMatch(/damag/i);
+});

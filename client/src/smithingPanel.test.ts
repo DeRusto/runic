@@ -84,7 +84,31 @@ test("starts closed, and opens at a station with that station's rows", () => {
   expect(shownRows()).toHaveLength(3);
   open("anvil");
   expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-  expect(shownRows()).toHaveLength(4);
+  expect(shownRows()).toHaveLength(6);
+});
+
+test("the Emberite rows show both materials, greyed until the player qualifies", () => {
+  const held: [string, number][] = [
+    ["emberiteBar", 3],
+    ["emberbone", 1],
+  ];
+  patch(me(held, { smithingXp: xpForLevel(19) }));
+  open("anvil");
+  const sword = shownRows()[4];
+  expect(texts(sword).slice(0, 2)).toEqual([
+    "Emberite sword",
+    "3 Emberite bar (have 3), 2 Emberbone (have 1)",
+  ]);
+  expect(texts(sword)).toContain("Needs Smithing 20");
+  expect(buttons(sword).every((b: any) => b.disabled)).toBe(true);
+
+  patch(me(held, { smithingXp: xpForLevel(20) }));
+  expect(texts(sword)).toContain("Not enough materials");
+
+  patch(me([held[0]!, ["emberbone", 2]], { smithingXp: xpForLevel(20) }));
+  expect(sword.className).toBe("");
+  expect(buttons(sword).every((b: any) => !b.disabled)).toBe(true);
+  expect(shownRows()[5].className).toBe("cant");
 });
 
 test("a row shows the name, cost, materials held and level", () => {
