@@ -32,7 +32,7 @@ export const TILE_KINDS = {
   R: { ground: "path", blocks: false },
   a: { ground: "ashen", blocks: false },
   A: { ground: "ashen", prop: "tree", blocks: true },
-  K: { ground: "ashen", blocks: false },
+  K: { ground: "ashen", enemy: "skeleton", blocks: false },
   c: { ground: "grass", vein: "copper", blocks: true },
   i: { ground: "grass", vein: "iron", blocks: true },
   e: { ground: "ashen", vein: "emberite", blocks: true },

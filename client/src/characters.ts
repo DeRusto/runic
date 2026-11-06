@@ -1,4 +1,9 @@
-import { TICK_MS, WALK_TICKS_PER_TILE, type Tile } from "@runic/shared";
+import {
+  TICK_MS,
+  WALK_TICKS_PER_TILE,
+  type EnemyKind,
+  type Tile,
+} from "@runic/shared";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
@@ -100,6 +105,32 @@ export function armedSwing(id: string, tick: number) {
 export function swingFor(weapon: string, id: string, tick: number) {
   return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }
+
+/**
+ * The clips each kind plays that aren't in its Figure's gait, and which of the Figure's returns
+ * it uses. `hit` is played when a blow lands on it, if anything.
+ */
+export const ENEMY_CLIPS: Record<
+  EnemyKind,
+  {
+    swing: (id: string, tick: number) => { clip: string; contactMs: number };
+    death: string;
+    hit?: string;
+    returns: "reappear" | "respawn";
+  }
+> = {
+  spider: {
+    swing: () => ({ clip: "Spider_Attack", contactMs: 450 }),
+    death: "Spider_Death",
+    returns: "reappear",
+  },
+  skeleton: {
+    swing: armedSwing,
+    death: "Death_A",
+    hit: "Hit_A",
+    returns: "respawn",
+  },
+};
 
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
 export class Figure {
@@ -248,9 +279,10 @@ export class Figure {
     this.sunk = 0;
   }
 
-  /** A player back from the dead, rising from the ground. */
+  /** Back from the dead, rising from the ground. A Skeleton has sunk from sight first. */
   respawn() {
     this.backOnTile();
+    this.model.visible = true;
     this.once("Spawn_Ground");
   }
 
@@ -534,6 +566,36 @@ export async function loadBlacksmith(tile: Tile) {
   return new Figure(tile, ranger.scene, clips);
 }
 
+/** So a hit's red flash shows on this enemy alone. */
+function withOwnMaterials(model: THREE.Object3D) {
+  model.traverse((o) => {
+    if (o instanceof THREE.Mesh) o.material = o.material.clone();
+  });
+  return model;
+}
+
+/** Loads the Skeleton once. Every Figure it then makes shares the players' clips (spec D16). */
+export async function loadSkeletons() {
+  const [{ scene }, blade, clips] = await Promise.all([
+    load("Skeleton_Warrior"),
+    new GLTFLoader().loadAsync("/models/Skeleton_Blade.gltf"),
+    loadClips(),
+  ]);
+  fit(scene, (size) => HEIGHT / size.y);
+  blade.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  scene.getObjectByName("handslotr")!.add(blade.scene);
+  return (tile: Tile) => {
+    const figure = new Figure(
+      tile,
+      withOwnMaterials(cloneSkinned(scene)),
+      clips,
+    );
+    // Any name sets the armed stance; this one isn't in GEAR_LOOKS, so the blade never hides.
+    figure.weapon = "Skeleton_Blade";
+    return figure;
+  };
+}
+
 export function fitSpider(model: THREE.Object3D) {
   fit(model, (size) => SPIDER_WIDTH / Math.max(size.x, size.z));
 }
@@ -545,12 +607,6 @@ export async function loadSpiders() {
   );
   fitSpider(scene);
   const clips = new Map(animations.map((c) => [c.name, c]));
-  return (tile: Tile) => {
-    const model = cloneSkinned(scene);
-    // Its own materials, so a hit's red flash shows on this Spider alone.
-    model.traverse((o) => {
-      if (o instanceof THREE.Mesh) o.material = o.material.clone();
-    });
-    return new Figure(tile, model, clips, SPIDER_GAIT);
-  };
+  return (tile: Tile) =>
+    new Figure(tile, withOwnMaterials(cloneSkinned(scene)), clips, SPIDER_GAIT);
 }

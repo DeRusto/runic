@@ -9,7 +9,7 @@ import {
 import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { showBushes } from "./bushes.ts";
-import { loadCharacters, loadSpiders } from "./characters.ts";
+import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
@@ -25,16 +25,18 @@ import { showVeins } from "./veins.ts";
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, setRunOut, blacksmithUnder] = await Promise.all([
-  loadCharacters(),
-  loadSpiders(),
-  addRegionMeshes(scene, tiles),
-  addBlacksmith(tiles),
-]).catch((error) => {
-  document.getElementById("loading")!.textContent =
-    "Could not load the game. Reload to try again.";
-  throw error;
-});
+const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
+  await Promise.all([
+    loadCharacters(),
+    loadSpiders(),
+    loadSkeletons(),
+    addRegionMeshes(scene, tiles),
+    addBlacksmith(tiles),
+  ]).catch((error) => {
+    document.getElementById("loading")!.textContent =
+      "Could not load the game. Reload to try again.";
+    throw error;
+  });
 document.getElementById("loading")!.remove();
 const stationUnder = addStations(tiles);
 
@@ -49,7 +51,7 @@ function enterWorld(room: WorldConnection) {
   walkOnClick(
     room,
     tiles,
-    showEnemies(room, { spider: newSpider }),
+    showEnemies(room, { spider: newSpider, skeleton: newSkeleton }),
     showBushes(room, tiles, setRunOut),
     showVeins(room, tiles, setRunOut),
     stationUnder,

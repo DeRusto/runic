@@ -39,7 +39,6 @@ import {
   slotFor,
   STARTING_PINNED_SKILLS,
   stationRefusal,
-  LEASH_TILES,
   tilesApart,
   SWING_INTERVAL_TICKS,
   ENEMIES,
@@ -862,16 +861,12 @@ export class Simulation {
     });
 
     const home = this.unsyncedEnemies.get(enemyId)!;
-    if (enemy.state !== "fighting") {
-      enemy.state = "fighting";
-      home.fightStart = { x: enemy.x, y: enemy.y };
-      // Its timer outlives a fight, like the player's (spec D2).
-      home.nextSwingTick = Math.max(
-        home.nextSwingTick,
-        this.state.tick + ENEMIES[enemy.kind].firstSwingDelayTicks,
-      );
+    const { noticeTiles } = ENEMIES[enemy.kind];
+    // One that attacks first ignores players on its way home, though they can attack it (spec §4).
+    if (enemy.state !== "going home" || noticeTiles === undefined) {
+      if (enemy.state !== "fighting") this.startFight(enemy, home);
+      enemy.target = id;
     }
-    enemy.target = id;
     enemy.health -= damage;
     if (enemy.health > 0) return;
 
@@ -884,6 +879,42 @@ export class Simulation {
       unsynced.enemy = undefined;
       unsynced.path = [];
     }
+  }
+
+  private startFight(
+    enemy: InstanceType<typeof Enemy>,
+    home: { fightStart: Tile; nextSwingTick: number },
+  ) {
+    enemy.state = "fighting";
+    home.fightStart = { x: enemy.x, y: enemy.y };
+    // Its timer outlives a fight, like the player's (spec D2).
+    home.nextSwingTick = Math.max(
+      home.nextSwingTick,
+      this.state.tick + ENEMIES[enemy.kind].firstSwingDelayTicks,
+    );
+  }
+
+  /** The nearest live, connected player in range that no other Skeleton is after (spec §4). */
+  private noticedBy(enemy: InstanceType<typeof Enemy>, noticeTiles: number) {
+    const chased = new Set(
+      [...this.state.enemies.values()]
+        .filter(
+          ({ kind, state }) => kind === enemy.kind && state === "fighting",
+        )
+        .map(({ target }) => target),
+    );
+    let nearest: string | undefined;
+    let nearestTiles = noticeTiles + 1;
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const player = this.state.players.get(id)!;
+      const tiles = tilesApart(enemy, player);
+      if (player.dead || unsynced.dropped || chased.has(id)) continue;
+      // Strictly nearer, so a tie stays with whoever was checked first.
+      if (tiles >= nearestTiles) continue;
+      nearest = id;
+      nearestTiles = tiles;
+    }
+    return nearest;
   }
 
   /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
@@ -910,10 +941,14 @@ export class Simulation {
     if (this.state.tick < home.nextSwingTick || !this.nextTo(enemy, player)) {
       return;
     }
-    home.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
+    const {
+      hitChance,
+      hitChancePerDefenseLevel,
+      maxDamage,
+      swingIntervalTicks,
+    } = ENEMIES[enemy.kind];
+    home.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
-    const { hitChance, hitChancePerDefenseLevel, maxDamage } =
-      ENEMIES[enemy.kind];
     const defense = levelFor(player.defenseXp);
     const rolled = Math.min(
       this.rollDamage(
@@ -1029,12 +1064,20 @@ export class Simulation {
   private advanceEnemies() {
     for (const [id, home] of this.unsyncedEnemies) {
       const enemy = this.state.enemies.get(id)!;
+      const { noticeTiles } = ENEMIES[enemy.kind];
+      if (enemy.state === "idle" && noticeTiles !== undefined) {
+        const noticed = this.noticedBy(enemy, noticeTiles);
+        if (noticed !== undefined) {
+          this.startFight(enemy, home);
+          enemy.target = noticed;
+        }
+      }
       if (enemy.state === "fighting") {
         const target = this.state.players.get(enemy.target);
         if (
           target &&
           target.health > 0 &&
-          tilesApart(target, home.fightStart) <= LEASH_TILES
+          tilesApart(target, home.fightStart) <= ENEMIES[enemy.kind].leashTiles
         ) {
           this.stepEnemy(enemy, home, target, true);
           this.enemySwing(id, enemy, target, home);

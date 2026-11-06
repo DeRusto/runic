@@ -1,6 +1,6 @@
 import { EVENTS, TICK_MS, xpForLevel, type WorldEvent } from "@runic/shared";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { swingFor } from "./characters.ts";
+import { armedSwing, swingFor } from "./characters.ts";
 import { showFights } from "./fights.ts";
 import type { WorldConnection } from "./players.ts";
 
@@ -31,7 +31,6 @@ vi.mock("./players.ts", () => ({
   playerOverheads: new Map([["a", overhead]]),
 }));
 vi.mock("./enemies.ts", () => ({
-  ENEMY_CLIPS: { spider: { attack: "Spider_Attack", death: "Spider_Death" } },
   enemyFigures,
   enemyOverheads,
 }));
@@ -104,7 +103,11 @@ test("eating plays Use_Item and shows no number", () => {
 });
 
 describe("the playerSwing event", () => {
-  const enemy = { flash: vi.fn(), nudgeFrom: vi.fn(), dieAndSink: vi.fn() };
+  const enemy = {
+    flash: vi.fn(),
+    nudgeFrom: vi.fn(),
+    dieAndSink: vi.fn(),
+  };
   const send = (events: WorldEvent[], weapon: string, tick = 408) => {
     const onMessage = vi.fn();
     showFights({
@@ -163,6 +166,136 @@ describe("the playerSwing event", () => {
     expect(enemy.dieAndSink).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(enemy.dieAndSink).toHaveBeenCalledOnce();
+  });
+});
+
+describe("an enemy's swing", () => {
+  const enemy = {
+    flash: vi.fn(),
+    nudgeFrom: vi.fn(),
+    dieAndSink: vi.fn(),
+    once: vi.fn(),
+    respawn: vi.fn(),
+    reappear: vi.fn(),
+    playingOnce: false,
+  };
+  const send = (kind: string, events: WorldEvent[], tick = 408) => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      state: {
+        tick,
+        players: new Map([["a", { weapon: "", x: 1, y: 1 }]]),
+        enemies: new Map([["0", { kind }]]),
+      },
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1](events);
+  };
+  const swing = (damage: number): WorldEvent => ({
+    type: "enemySwing",
+    enemy: "0",
+    player: "a",
+    damage,
+    blocked: false,
+  });
+  /** A tick on which Skeleton "0" swings with the given contact. */
+  const tickWith = (contactMs: number) =>
+    [...Array(100).keys()].find(
+      (tick) => armedSwing("0", tick).contactMs === contactMs,
+    )!;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    enemy.playingOnce = false;
+    enemyFigures.set("0", enemy);
+    enemyOverheads.set("0", { holdBlow: vi.fn(), showBlow: vi.fn() });
+    Object.assign(overhead, { holdBlow: vi.fn(), showBlow: vi.fn() });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  test("a Spider's plays its clip and lands at 450 ms", () => {
+    send("spider", [swing(1)]);
+    expect(enemy.once).toHaveBeenLastCalledWith("Spider_Attack");
+    vi.advanceTimersByTime(449);
+    expect(figure.once).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(figure.once).toHaveBeenLastCalledWith("Hit_A");
+  });
+
+  test.each([580, 420, 380])(
+    "a Skeleton's plays the armed swing every viewer picks, landing at %d ms",
+    (contactMs) => {
+      const tick = tickWith(contactMs);
+      send("skeleton", [swing(1)], tick);
+      expect(enemy.once).toHaveBeenLastCalledWith(armedSwing("0", tick).clip);
+      vi.advanceTimersByTime(contactMs - 1);
+      expect(figure.once).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+      expect(figure.once).toHaveBeenLastCalledWith("Hit_A");
+    },
+  );
+
+  test("the player falls at the killing swing's contact", () => {
+    const death: WorldEvent = { type: "playerDied", player: "a" };
+    send("skeleton", [swing(1), death], tickWith(380));
+    vi.advanceTimersByTime(379);
+    expect(figure.once).not.toHaveBeenCalledWith("Death_A", 1, true);
+    vi.advanceTimersByTime(1);
+    expect(figure.once).toHaveBeenLastCalledWith("Death_A", 1, true);
+  });
+
+  test("a player's landed hit plays a Skeleton's Hit_A, unless it's mid-clip", () => {
+    const hit: WorldEvent = {
+      type: "playerSwing",
+      player: "a",
+      enemy: "0",
+      damage: 1,
+    };
+    send("skeleton", [hit]);
+    vi.advanceTimersByTime(550);
+    expect(enemy.once).toHaveBeenLastCalledWith("Hit_A");
+    enemy.once.mockClear();
+    enemy.playingOnce = true;
+    send("skeleton", [hit]);
+    vi.advanceTimersByTime(550);
+    expect(enemy.once).not.toHaveBeenCalled();
+  });
+
+  test("a player's landed hit doesn't play a clip on a Spider", () => {
+    send("spider", [
+      { type: "playerSwing", player: "a", enemy: "0", damage: 1 },
+    ]);
+    vi.advanceTimersByTime(550);
+    expect(enemy.once).not.toHaveBeenCalled();
+  });
+
+  test("a Skeleton dies on Death_A and returns rising, a Spider scaling up", () => {
+    const kill: WorldEvent[] = [
+      { type: "playerSwing", player: "a", enemy: "0", damage: 1 },
+      { type: "enemyDied", enemy: "0" },
+    ];
+    send("skeleton", kill);
+    vi.advanceTimersByTime(550);
+    expect(enemy.dieAndSink).toHaveBeenLastCalledWith("Death_A");
+    send("skeleton", [{ type: "enemyReturned", enemy: "0" }]);
+    expect(enemy.respawn).toHaveBeenCalledOnce();
+    expect(enemy.reappear).not.toHaveBeenCalled();
+    send("spider", [{ type: "enemyReturned", enemy: "0" }]);
+    expect(enemy.reappear).toHaveBeenCalledOnce();
+  });
+
+  test("a block on a Skeleton's swing shows at that swing's contact", () => {
+    send(
+      "skeleton",
+      [{ ...swing(0), blocked: true } as WorldEvent],
+      tickWith(380),
+    );
+    vi.advanceTimersByTime(379);
+    expect(overhead.pop).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
   });
 });
 

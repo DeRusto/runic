@@ -152,7 +152,8 @@ describe("Spiders", () => {
 
   test("the real region has a Spider on every home", () => {
     const s = new Simulation(parseRegion(REGION_GRID), NEVER_WANDER);
-    expect(s.state.enemies.size).toBe(8);
+    const kinds = [...s.state.enemies.values()].map(({ kind }) => kind);
+    expect(kinds.filter((kind) => kind === "spider")).toHaveLength(8);
   });
 
   test.each([
