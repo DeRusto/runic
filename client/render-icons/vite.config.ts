@@ -15,6 +15,10 @@ export default defineConfig({
       name: "save-icon",
       configureServer(server) {
         server.middlewares.use("/save", (request, response) => {
+          if (request.method !== "POST") {
+            response.statusCode = 405;
+            return response.end();
+          }
           const name = request.url!.slice(1);
           if (!/^\w+\.png$/.test(name)) {
             response.statusCode = 400;
@@ -23,7 +27,12 @@ export default defineConfig({
           const chunks: Buffer[] = [];
           request.on("data", (chunk) => chunks.push(chunk));
           request.on("end", () => {
-            writeFileSync(new URL(name, ICONS), Buffer.concat(chunks));
+            const png = Buffer.concat(chunks);
+            if (png.length === 0) {
+              response.statusCode = 400;
+              return response.end();
+            }
+            writeFileSync(new URL(name, ICONS), png);
             response.end();
           });
         });
