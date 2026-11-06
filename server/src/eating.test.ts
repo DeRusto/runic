@@ -46,6 +46,23 @@ function ticksOf(
   return seen;
 }
 
+/** Ticks, running `onTick[tick]` first, and returns each `healed` event as [tick, amount]. */
+function heals(
+  sim: Simulation,
+  ticks: number,
+  onTick: Record<number, () => void> = {},
+) {
+  const seen: [number, number][] = [];
+  for (let i = 1; i <= ticks; i++) {
+    onTick[i]?.();
+    sim.tick();
+    for (const event of sim.events.splice(0)) {
+      if (event.type === "healed") seen.push([i, event.amount]);
+    }
+  }
+  return seen;
+}
+
 /** Ticks `ticks` times and returns the health at the end. */
 function healthAfter(sim: Simulation, ticks: number) {
   for (let i = 0; i < ticks; i++) sim.tick();
@@ -53,7 +70,7 @@ function healthAfter(sim: Simulation, ticks: number) {
 }
 
 describe("what eating does", () => {
-  test("a meal goes into the pool, which gives 1 every 4th tick", () => {
+  test("a berry gives 1 on each of the next 4 healing ticks", () => {
     const sim = eater(1, "berry");
     sim.queueEat("a", 0);
     sim.tick();
@@ -63,15 +80,18 @@ describe("what eating does", () => {
     expect(healthAfter(sim, 1)).toBe(2); // Tick 4.
     expect(healthAfter(sim, 3)).toBe(2); // Tick 7.
     expect(healthAfter(sim, 1)).toBe(3); // Tick 8.
+    expect(healthAfter(sim, 8)).toBe(5); // Tick 16, its last.
+    expect(healthAfter(sim, 3)).toBe(5); // Tick 19.
   });
 
-  test.each([
-    ["berry", 3],
-    ["herb", 5], // Its last point comes on tick 20.
-  ])("%s heals up to %i by tick 19", (food, health) => {
-    const sim = eater(1, food);
+  test("a herb gives 2 on each of the next 4 healing ticks", () => {
+    const sim = eater(1, "herb");
     sim.queueEat("a", 0);
-    expect(healthAfter(sim, 19)).toBe(health);
+    expect(healthAfter(sim, 3)).toBe(1); // Tick 3.
+    expect(healthAfter(sim, 1)).toBe(3); // Tick 4.
+    expect(healthAfter(sim, 4)).toBe(5); // Tick 8.
+    expect(healthAfter(sim, 8)).toBe(9); // Tick 16, its last.
+    expect(healthAfter(sim, 3)).toBe(9); // Tick 19.
   });
 
   test("the pool runs on the world's ticks, not from the meal", () => {
@@ -88,24 +108,77 @@ describe("what eating does", () => {
     healthAfter(sim, 4);
     sim.queueEat("a", 1);
     expect(healthAfter(sim, 4)).toBe(3); // Tick 8: one point per 4 ticks, still.
-    expect(healthAfter(sim, 8)).toBe(5); // Tick 16: all four points.
+    expect(healthAfter(sim, 8)).toBe(5); // Tick 16: the first berry's last.
     expect(healthAfter(sim, 3)).toBe(5);
+    expect(healthAfter(sim, 1)).toBe(7); // Tick 20: the second's first, and 1 regenerated.
+    expect(healthAfter(sim, 12)).toBe(10); // Tick 32: the second's last.
+  });
+
+  test("foods heal one at a time, in the order eaten", () => {
+    const sim = eater(1, "herb", "berry");
+    expect(
+      heals(sim, 40, {
+        1: () => sim.queueEat("a", 0),
+        5: () => sim.queueEat("a", 1),
+        17: () => (player(sim).health = 1), // Room for the berry, after the herb.
+      }),
+    ).toEqual([
+      [4, 2],
+      [8, 2],
+      [12, 2],
+      [16, 2],
+      [20, 1],
+      [24, 1],
+      [28, 1],
+      [32, 1],
+    ]);
+  });
+
+  test("a meal eaten mid-meal waits its turn, then what won't fit is lost", () => {
+    const sim = eater(1, "berry", "herb");
+    expect(
+      heals(sim, 40, {
+        1: () => sim.queueEat("a", 0),
+        5: () => sim.queueEat("a", 1),
+      }),
+    ).toEqual([
+      [4, 1],
+      [8, 1],
+      [12, 1],
+      [16, 1],
+      [20, 2], // With 1 regenerated, so 8.
+      [24, 2],
+    ]);
+    expect(player(sim).health).toBe(10);
   });
 
   test("regeneration runs alongside it", () => {
-    const sim = eater(1, "herb");
+    const sim = eater(1, "berry");
     sim.queueEat("a", 0);
     expect(healthAfter(sim, 19)).toBe(5);
-    expect(healthAfter(sim, 1)).toBe(7); // Tick 20: the last of the herb and 1 regenerated.
-    expect(healthAfter(sim, 19)).toBe(7); // The herb gave 5, and no more.
+    expect(healthAfter(sim, 1)).toBe(6); // Tick 20: 1 regenerated.
+    expect(healthAfter(sim, 19)).toBe(6); // The berry gave 4, and no more.
   });
 
-  test("at full health what remains is lost", () => {
+  test("a heal past max health gives what fits, and the rest is lost", () => {
     const sim = eater(9, "herb");
-    sim.queueEat("a", 0);
-    expect(healthAfter(sim, 4)).toBe(10);
+    expect(heals(sim, 4, { 1: () => sim.queueEat("a", 0) })).toEqual([[4, 1]]);
+    expect(player(sim).health).toBe(10);
     player(sim).health = 5;
-    expect(healthAfter(sim, 15)).toBe(5);
+    expect(heals(sim, 15)).toEqual([]);
+    expect(player(sim).health).toBe(5);
+  });
+
+  test("regeneration reaching full first leaves the tick nothing to give", () => {
+    const sim = eater(9, "berry");
+    expect(heals(sim, 20, { 17: () => sim.queueEat("a", 0) })).toEqual([]);
+    expect(player(sim).health).toBe(10);
+  });
+
+  test("regeneration alone sends no healed event", () => {
+    const sim = eater(1);
+    expect(heals(sim, 20)).toEqual([]);
+    expect(player(sim).health).toBe(2);
   });
 
   test("eating at full health heals nothing and uses the food", () => {
@@ -392,7 +465,7 @@ describe("eating in a fight", () => {
     sim.queueTarget("a", "0");
     sim.tick();
     sim.queueEat("a", 0);
-    expect(healthAfter(sim, 19)).toBe(6); // Tick 20: all five, and nothing regenerated.
+    expect(healthAfter(sim, 19)).toBe(9); // Tick 20: all eight, and nothing regenerated.
     expect(sim.lockRunning("a")).toBe(true);
     expect(player(sim).target).toBe("0");
   });

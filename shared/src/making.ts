@@ -1,6 +1,6 @@
 import type { HasInventory, ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
-import { levelFor } from "./skills.ts";
+import { levelFor, type XpField } from "./skills.ts";
 
 type Recipe = {
   station: StationKind;
@@ -8,7 +8,8 @@ type Recipe = {
   level: number;
   costs: Partial<Record<ItemId, number>>;
   ticks: number;
-  xp: number;
+  /** What finishing one grants, in each skill. */
+  xp: Partial<Record<XpField, number>>;
 };
 
 /** Spec §5. The order here is the order of the Smithing panel's rows. */
@@ -18,69 +19,72 @@ export const RECIPES = {
     level: 1,
     costs: { copperOre: 1 },
     ticks: 6,
-    xp: 4,
+    xp: { smithingXp: 4, miningXp: 4 },
   },
   ironBar: {
     station: "furnace",
     level: 10,
     costs: { ironOre: 1 },
     ticks: 6,
-    xp: 12,
+    xp: { smithingXp: 12, miningXp: 12 },
   },
   emberiteBar: {
     station: "furnace",
     level: 20,
     costs: { emberiteOre: 1 },
     ticks: 6,
-    xp: 24,
+    xp: { smithingXp: 24, miningXp: 24 },
   },
   copperSword: {
     station: "anvil",
     level: 1,
     costs: { copperBar: 3 },
     ticks: 12,
-    xp: 18,
+    xp: { smithingXp: 18 },
   },
   copperShield: {
     station: "anvil",
     level: 1,
     costs: { copperBar: 4 },
     ticks: 16,
-    xp: 24,
+    xp: { smithingXp: 24 },
   },
   ironSword: {
     station: "anvil",
     level: 10,
     costs: { ironBar: 3 },
     ticks: 12,
-    xp: 54,
+    xp: { smithingXp: 54 },
   },
   ironShield: {
     station: "anvil",
     level: 10,
     costs: { ironBar: 4 },
     ticks: 16,
-    xp: 72,
+    xp: { smithingXp: 72 },
   },
   emberiteSword: {
     station: "anvil",
     level: 20,
     costs: { emberiteBar: 3, emberbone: 2 },
     ticks: 12,
-    xp: 108,
+    xp: { smithingXp: 108 },
   },
   emberiteShield: {
     station: "anvil",
     level: 20,
     costs: { emberiteBar: 4, emberbone: 3 },
     ticks: 16,
-    xp: 144,
+    xp: { smithingXp: 144 },
   },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
 
 export const costsOf = (item: RecipeItem) =>
   Object.entries(RECIPES[item].costs) as [ItemId, number][];
+
+export const xpOf = (item: RecipeItem) =>
+  Object.entries(RECIPES[item].xp) as [XpField, number][];
 
 /** How many of `item` a player holds, across all their stacks. */
 export function countOf(item: string, player: HasInventory) {
