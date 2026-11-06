@@ -123,12 +123,28 @@ The one thing a player is currently doing (walking, foraging, mining, smithing o
 _Avoid_: Task, job, activity
 
 **Inventory**:
-The fixed set of slots a player carries items in, one item per slot.
+The fixed set of slots a player carries items in. A slot holds one piece of gear, or a stack.
 _Avoid_: Bag, backpack
 
+**Stack**:
+Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
+_Avoid_: Pile, bundle
+
+**Discard**:
+Destroying what is in an inventory slot. Nothing lands on the ground.
+_Avoid_: Drop (that's what a Skeleton gives), delete
+
 **Food**:
-An item that heals the player who eats it; berries and herbs are food.
+An item that heals the player who eats it, over the next few ticks rather than all at once; berries and herbs are food.
 _Avoid_: Consumable, potion
+
+**Healing pool**:
+The health a player's eaten food has yet to give back. Eating adds to it, and it drains into health at a fixed speed, so more food heals for longer but not faster.
+_Avoid_: Heal over time, buff
+
+**Material**:
+An item that goes into making something: ore, bars and Emberbones.
+_Avoid_: Resource, ingredient
 
 **Ore**:
 The raw metal a player takes from a vein.
@@ -143,8 +159,16 @@ A drop from a Skeleton, needed to make Emberite gear. Each player who damaged th
 _Avoid_: Loot, trophy, token
 
 **Gear**:
-What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which makes them harder to hit. It lasts forever.
+What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which makes them harder to hit. It never wears out.
 _Avoid_: Equipment, armour, loot
+
+**Gear slot**:
+Where a piece of gear goes when it is equipped, out of the inventory. A player has one for a weapon and one for a shield.
+_Avoid_: Equipment slot
+
+**Character sheet**:
+The panel a player opens to see their gear slots.
+_Avoid_: Equipment screen, paper doll
 
 **Tier**:
 One of the three metals, from lowest to highest: Copper, Iron and Emberite. A tier's ore, bars and gear all share its level gate.
