@@ -166,6 +166,70 @@ describe("the playerSwing event", () => {
   });
 });
 
+describe("the enemySwing event", () => {
+  const holdBlow = vi.fn();
+  const showBlow = vi.fn();
+  const send = (damage: number, blocked: boolean) => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      state: { enemies: new Map([["0", { kind: "spider" }]]) },
+    } as unknown as WorldConnection);
+    const swing: WorldEvent = {
+      type: "enemySwing",
+      enemy: "0",
+      player: "a",
+      damage,
+      blocked,
+    };
+    onMessage.mock.calls[0]![1]([swing]);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    enemyFigures.set("0", { once: vi.fn() });
+    Object.assign(overhead, { holdBlow, showBlow });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  test("a block shows Blocked and Melee_Block_Hit at contact, with no line", () => {
+    send(0, true);
+    vi.advanceTimersByTime(449);
+    expect(overhead.pop).not.toHaveBeenCalled();
+    expect(figure.once).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
+    expect(figure.once).toHaveBeenCalledWith("Melee_Block_Hit");
+    expect(showBlow).not.toHaveBeenCalled();
+    expect(printChatLine).not.toHaveBeenCalled();
+  });
+
+  test("a block doesn't cut off a clip already playing", () => {
+    Object.assign(figure, { playingOnce: true });
+    send(0, true);
+    vi.advanceTimersByTime(450);
+    Object.assign(figure, { playingOnce: false });
+    expect(overhead.pop).toHaveBeenCalledWith("Blocked", "blocked");
+    expect(figure.once).not.toHaveBeenCalled();
+  });
+
+  test("damage 0 alone is still a miss", () => {
+    send(0, false);
+    vi.advanceTimersByTime(450);
+    expect(showBlow).toHaveBeenCalledWith(0);
+    expect(figure.once).not.toHaveBeenCalled();
+  });
+
+  test("a landed hit plays Hit_A", () => {
+    send(2, false);
+    vi.advanceTimersByTime(450);
+    expect(showBlow).toHaveBeenCalledWith(2);
+    expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+});
+
 describe("the mine event", () => {
   const send = (event: WorldEvent, miningXp = 0, sessionId = "a") => {
     const onMessage = vi.fn();

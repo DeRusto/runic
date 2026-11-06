@@ -858,6 +858,13 @@ test("a swing's event says who, at whom, and the damage; a miss is 0", () => {
   s.queueTarget("a", "0");
   expect(run(s, 5)).toEqual([
     { type: "playerSwing", player: "a", enemy: "0", damage: 2, tick: 1 },
-    { type: "enemySwing", enemy: "0", player: "a", damage: 0, tick: 5 },
+    {
+      type: "enemySwing",
+      enemy: "0",
+      player: "a",
+      damage: 0,
+      blocked: false,
+      tick: 5,
+    },
   ]);
 });

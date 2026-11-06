@@ -4,6 +4,8 @@ import {
   bushId,
   bushRefusal,
   addXp,
+  BLOCK_CHANCE_PER_BLOCKING_LEVEL,
+  BLOCKING_XP_PER_BLOCK,
   COMBAT_LEVELS_PER_DAMAGE,
   COMBAT_LOCK_TICKS,
   costsOf,
@@ -913,13 +915,17 @@ export class Simulation {
     const { hitChance, hitChancePerDefenseLevel, maxDamage } =
       ENEMIES[enemy.kind];
     const defense = levelFor(player.defenseXp);
-    const damage = Math.min(
+    const rolled = Math.min(
       this.rollDamage(
         hitChance + hitChancePerDefenseLevel * (defense - 1),
         maxDamage,
       ),
       player.health,
     );
+    const blocked = rolled > 0 && this.rollBlock(player);
+    const damage = blocked ? 0 : rolled;
+    if (blocked)
+      player.blockingXp = addXp(player.blockingXp, BLOCKING_XP_PER_BLOCK);
     player.health -= damage;
     player.defenseXp = addXp(
       player.defenseXp,
@@ -930,9 +936,19 @@ export class Simulation {
       enemy: id,
       player: enemy.target,
       damage,
+      blocked,
     });
     if (player.health === 0) this.die(enemy.target, player);
     else if (player.action === "") this.fightBack(enemy.target, player, id);
+  }
+
+  private rollBlock(player: InstanceType<typeof Player>) {
+    const base = GEAR.get(player.shield)?.blockChance;
+    if (base === undefined) return false;
+    const levelsAbove1 = levelFor(player.blockingXp) - 1;
+    return (
+      this.random() < base + BLOCK_CHANCE_PER_BLOCKING_LEVEL * levelsAbove1
+    );
   }
 
   /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
