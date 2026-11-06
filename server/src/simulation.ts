@@ -35,6 +35,7 @@ import {
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
+  TOOLS,
   WALK_TICKS_PER_TILE,
   type BushKind,
   type PlayerAction,
@@ -67,6 +68,7 @@ export const Player = schema(
     inventory: t.array("string"),
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint8"),
+    tools: t.array("string"),
     /** The id of the enemy this player is after, or "". */
     target: t.string().default(""),
     action: t.string<PlayerAction>().default(""),
@@ -105,7 +107,7 @@ export class Simulation {
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
   private queuedActions = new Map<
     string,
-    { to: Tile } | { enemy: string } | { bush: string }
+    { to: Tile } | { enemy: string } | { bush: string } | { blacksmith: Tile }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -116,6 +118,7 @@ export class Simulation {
       nextSwingTick: number;
       enemy?: string;
       bush?: string;
+      visiting?: boolean;
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
       nextEatTick: number;
@@ -150,6 +153,7 @@ export class Simulation {
     string,
     Tile & { kind: BushKind; regrowTick?: number }
   >();
+  private blacksmith?: Tile;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -162,7 +166,8 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { bush, enemy } = kind;
+        const { bush, enemy, blacksmith } = kind;
+        if (blacksmith) this.blacksmith = { x, y };
         if (bush) {
           this.bushSites.set(bushId({ x, y }), { x, y, kind: bush });
           this.state.bushes.set(
@@ -199,6 +204,7 @@ export class Simulation {
       inventory,
       inventoryCounts = [],
       pinnedSkills = STARTING_PINNED_SKILLS,
+      tools = [],
       ...fields
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
@@ -206,6 +212,7 @@ export class Simulation {
       maxHealth: levelFor(fields.hitpointsXp),
     });
     player.pinnedSkills = new ArraySchema(...pinnedSkills);
+    player.tools = new ArraySchema(...tools);
     player.inventory = new ArraySchema(...inventory);
     // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
     player.inventoryCounts = new ArraySchema(
@@ -275,6 +282,7 @@ export class Simulation {
       pinnedSkills: [...player.pinnedSkills],
       inventory: [...player.inventory],
       inventoryCounts: [...player.inventoryCounts],
+      tools: [...player.tools],
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.respawned(player)),
     };
@@ -314,6 +322,7 @@ export class Simulation {
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.path = [];
     unsynced.enemy = unsynced.bush = undefined;
+    unsynced.visiting = false;
     Object.assign(this.state.players.get(id)!, { target: "", action: "" });
   }
 
@@ -359,6 +368,11 @@ export class Simulation {
     const { picksLeft } = this.state.bushes.get(bush)!;
     if (bushRefusal(site.kind, picksLeft, player)) return;
     this.queuedActions.set(id, { bush });
+  }
+
+  queueVisit(id: string) {
+    if (this.alive(id) && this.blacksmith)
+      this.queuedActions.set(id, { blacksmith: this.blacksmith });
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
@@ -415,6 +429,7 @@ export class Simulation {
     this.applyIntents();
     this.advancePlayers();
     this.advancePicks();
+    this.advanceVisits();
     this.advancePlayerSwings();
     this.advanceEnemies();
     this.advancePlayerTimers();
@@ -426,8 +441,18 @@ export class Simulation {
     for (const [id, action] of this.queuedActions) {
       const unsynced = this.unsyncedPlayers.get(id)!;
       unsynced.bush = undefined;
+      unsynced.visiting = false;
       if ("enemy" in action) {
         unsynced.enemy = action.enemy;
+      } else if ("blacksmith" in action) {
+        unsynced.enemy = undefined;
+        const path = pathNextTo(
+          this.tiles,
+          this.state.players.get(id)!,
+          action.blacksmith,
+        );
+        unsynced.path = path ?? [];
+        unsynced.visiting = path !== undefined;
       } else if ("bush" in action) {
         unsynced.enemy = undefined;
         const path = pathNextTo(
@@ -501,6 +526,21 @@ export class Simulation {
       if (--bush.picksLeft === 0)
         site.regrowTick = this.state.tick + regrowTicks;
       unsynced.bush = undefined;
+    }
+  }
+
+  /** After the steps, so the tools come on the tick of arrival. */
+  private advanceVisits() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      if (!unsynced.visiting || unsynced.path.length) continue;
+      unsynced.visiting = false;
+      const player = this.state.players.get(id)!;
+      const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
+      player.tools.push(...lacking);
+      const line = lacking.length
+        ? `The Blacksmith gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`
+        : "You already have every tool.";
+      this.events.push({ type: "told", player: id, line });
     }
   }
 

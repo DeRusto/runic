@@ -140,6 +140,7 @@ export function showBottomBar(
       row.hidden = !me.pinnedSkills.includes(name);
     noPins.hidden = me.pinnedSkills.length > 0;
     sheet.drawPins(me);
+    sheet.drawTools(me);
     showHeld = () => {
       slots.forEach((slot, i) => {
         const item = me.inventory[i] ?? "";

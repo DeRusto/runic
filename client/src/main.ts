@@ -22,16 +22,17 @@ import { focusOn, scene } from "./scene.ts";
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, setBushRunOut] = await Promise.all([
-  loadCharacters(),
-  loadSpiders(),
-  addRegionMeshes(scene, tiles),
-  addBlacksmith(tiles),
-]).catch((error) => {
-  document.getElementById("loading")!.textContent =
-    "Could not load the game. Reload to try again.";
-  throw error;
-});
+const [newFigure, newSpider, setBushRunOut, blacksmithUnder] =
+  await Promise.all([
+    loadCharacters(),
+    loadSpiders(),
+    addRegionMeshes(scene, tiles),
+    addBlacksmith(tiles),
+  ]).catch((error) => {
+    document.getElementById("loading")!.textContent =
+      "Could not load the game. Reload to try again.";
+    throw error;
+  });
 document.getElementById("loading")!.remove();
 
 const status = document.getElementById("status")!;
@@ -47,6 +48,7 @@ function enterWorld(room: WorldConnection) {
     tiles,
     showEnemies(room, { spider: newSpider }),
     showBushes(room, tiles, setBushRunOut),
+    blacksmithUnder,
   );
   showBottomBar(room, sayOverhead);
   showFights(room);

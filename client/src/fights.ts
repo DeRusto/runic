@@ -5,7 +5,7 @@ import {
   TICK_MS,
   type WorldEvent,
 } from "@runic/shared";
-import { holdPick, revealPick } from "./bottomBar.ts";
+import { holdPick, printChatLine, revealPick } from "./bottomBar.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -114,6 +114,8 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "eaten") {
         const figure = playerFigures.get(event.player);
         if (figure && !figure.moving) figure.once("Use_Item", EAT_CLIP_SPEED);
+      } else if (event.type === "told") {
+        if (event.player === room.sessionId) printChatLine(event.line);
       }
     }
   });

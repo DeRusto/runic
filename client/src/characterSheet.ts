@@ -5,6 +5,7 @@ import {
   PIN_INTENT,
   SKILLS,
 } from "@runic/shared";
+import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 
 export type SyncedPlayer = NonNullable<
@@ -54,6 +55,11 @@ export function showCharacterSheet(room: WorldConnection) {
     };
   }
 
+  const toolbelt = document.getElementById("toolbelt")!;
+  // Tools have no menu, and the browser's "save image" would read as one.
+  toolbelt.oncontextmenu = (event) => event.preventDefault();
+  let toolsDrawn = "";
+
   const note = document.createElement("p");
   const rows = SKILLS.map(([skill, field]) => {
     const row = document.createElement("div");
@@ -72,6 +78,20 @@ export function showCharacterSheet(room: WorldConnection) {
     .replaceChildren(note, ...rows.map(({ row }) => row));
 
   return {
+    /** Only redraws when the tools change, or each patch would lose a showing tooltip. */
+    drawTools(me: SyncedPlayer) {
+      const tools = [...me.tools];
+      if (tools.join() === toolsDrawn) return;
+      toolsDrawn = tools.join();
+      toolbelt.replaceChildren(
+        ...tools.map((tool) => {
+          const icon = document.createElement("img");
+          icon.src = iconUrl(tool);
+          icon.alt = icon.title = itemName(tool);
+          return icon;
+        }),
+      );
+    },
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {
       const count = me.pinnedSkills.length;

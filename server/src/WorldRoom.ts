@@ -21,6 +21,7 @@ import {
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
   TICK_MS,
+  VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
   type Tile,
@@ -47,6 +48,7 @@ export class WorldRoom extends Room {
       this.sim.queueTarget(client.sessionId, enemy),
     [FORAGE_INTENT]: (client: Client, bush: string) =>
       this.sim.queueForage(client.sessionId, bush),
+    [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
     [DISCARD_INTENT]: (client: Client, slot: number) =>

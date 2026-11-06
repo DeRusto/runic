@@ -143,6 +143,45 @@ describe("opening and closing", () => {
   });
 });
 
+describe("the Toolbelt", () => {
+  const drawn = (tools: string[]) =>
+    sheet.drawTools(me([], { tools } as unknown as Partial<SyncedPlayer>));
+
+  test("is an icon per tool, each with its name as a tooltip", () => {
+    drawn(["pickaxe", "hammer"]);
+    expect(
+      el("toolbelt").children.map(({ src, title, alt }) => ({
+        src,
+        title,
+        alt,
+      })),
+    ).toEqual([
+      { src: "/icons/pickaxe.png", title: "Pickaxe", alt: "Pickaxe" },
+      { src: "/icons/hammer.png", title: "Hammer", alt: "Hammer" },
+    ]);
+  });
+
+  test("is empty with no tools", () => {
+    drawn([]);
+    expect(el("toolbelt").children).toEqual([]);
+  });
+
+  test("a patch that changes no tools keeps the icons, so a tooltip isn't lost", () => {
+    drawn(["pickaxe"]);
+    const [icon] = el("toolbelt").children;
+    drawn(["pickaxe"]);
+    expect(el("toolbelt").children[0]).toBe(icon);
+    drawn(["pickaxe", "hammer"]);
+    expect(el("toolbelt").children).toHaveLength(2);
+  });
+
+  test("has no right-click menu", () => {
+    const preventDefault = vi.fn();
+    (el("toolbelt") as any).oncontextmenu({ preventDefault });
+    expect(preventDefault).toHaveBeenCalled();
+  });
+});
+
 describe("the Skills tab", () => {
   test("shows every skill, with its level and progress, in the sheet's order", () => {
     sheet.drawPins(me(TODAY));

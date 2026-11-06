@@ -3,10 +3,12 @@ import {
   FORAGE_INTENT,
   TARGET_INTENT,
   TICK_MS,
+  VISIT_INTENT,
   WALK_INTENT,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
+import type { addBlacksmith } from "./blacksmith.ts";
 import { printChatLine } from "./bottomBar.ts";
 import type { showBushes } from "./bushes.ts";
 import type { WorldConnection } from "./players.ts";
@@ -15,12 +17,13 @@ import type { showEnemies } from "./enemies.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy or bush under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy, bush or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
   enemyUnder: ReturnType<typeof showEnemies>,
   bushUnder: ReturnType<typeof showBushes>,
+  blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
   const raycaster = new THREE.Raycaster();
@@ -63,6 +66,12 @@ export function walkOnClick(
         showMarker(bush.x, bush.y);
         room.send(FORAGE_INTENT, bush.id);
       }
+      return;
+    }
+    const blacksmith = blacksmithUnder(raycaster);
+    if (blacksmith) {
+      showMarker(blacksmith.x, blacksmith.y);
+      room.send(VISIT_INTENT);
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;
