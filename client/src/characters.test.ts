@@ -683,6 +683,7 @@ describe("gear in hand", () => {
       "Melee_Blocking",
       "Melee_Unarmed_Attack_Punch_A",
       "Melee_1H_Attack_Chop",
+      "Melee_Block_Hit",
       "Pickaxing",
       "Hammering",
       "Death_A",
@@ -779,6 +780,14 @@ describe("gear in hand", () => {
     expect(shield.visible).toBe(true);
   });
 
+  test("a block shows the shield, even with no fight going on", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Melee_Block_Hit");
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
   test("a tool in hand beats gear, even as a fight starts", () => {
     const { figure, sword, pickaxe } = wearer();
     figure.weapon = "copperSword";
@@ -832,13 +841,14 @@ describe("gear in hand", () => {
     expect(weight(figure, "Idle_A")).toBe(1);
   });
 
-  test("the committed clip packs have every swing and stance", () => {
+  test("the committed clip packs have every swing, stance and block", () => {
     const glb = readFileSync("client/public/models/Rig_Medium_CombatMelee.glb");
     for (const name of [
       "Melee_1H_Attack_Chop",
       "Melee_1H_Attack_Slice_Diagonal",
       "Melee_1H_Attack_Stab",
       "Melee_Blocking",
+      "Melee_Block_Hit",
     ])
       expect(glb.toString("latin1")).toContain(`"name":"${name}"`);
   });
