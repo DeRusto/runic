@@ -155,7 +155,7 @@ An item that heals the player who eats it, over the next few ticks rather than a
 _Avoid_: Consumable, potion
 
 **Healing pool**:
-The health a player's eaten food has yet to give back. Eating adds to it, and it drains into health at a fixed speed, so more food heals for longer but not faster.
+The health a player's eaten food has yet to give back, as healing ticks waiting in eating order. Each food gives its own amount per healing tick, one food's ticks at a time, so more food heals for longer but not faster.
 _Avoid_: Heal over time, buff
 
 **Material**:

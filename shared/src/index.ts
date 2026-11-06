@@ -92,6 +92,8 @@ export type WorldEvent =
   /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }
   | { type: "eaten"; player: string }
+  /** A healing tick that restored health; `amount` is what it actually restored. */
+  | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
   | { type: "told"; player: string; line: string };
 

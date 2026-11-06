@@ -74,8 +74,9 @@ The counts live only in this test.
 ### Food and the healing pool
 
 - One click eats one food from the stack. The 4-tick wait between meals and the 4 ticks added to the next swing stay.
-- A berry adds 2 and a herb adds 5 to the **healing pool**. Every 4th tick the pool gives 1 health **[D1]**. Regeneration runs alongside it, and the combat lock doesn't pause the pool.
-- At full health, whatever remains in the pool is lost. Eating at full health is still allowed, heals nothing and uses the food.
+- Eating adds the food's healing ticks to the **healing pool**. A berry gives 1 health per healing tick and a herb gives 2, each for 4 healing ticks (4 and 8 in all). A healing tick is every 4th world tick **[D1]**, so a meal lasts about 4.8 s. Regeneration runs alongside it, and the combat lock doesn't pause the pool.
+- Food eaten while healing waits its turn: foods run in eating order, one food's ticks at a time, so more food heals for longer but not faster.
+- A heal that would pass max health gives only what fits. At full health, whatever remains in the pool is lost. Eating at full health is still allowed, heals nothing and uses the food.
 - Death empties the pool. It isn't saved, so logging out or a server restart loses it.
 
 ### Mining
@@ -198,7 +199,7 @@ A bar's experience goes to Smithing and the same amount to Mining. Swords and sh
 | Leash | 4 tiles, from where it noticed the player |
 | Emberbone chance | 1 in 4, per player who damaged it |
 
-**Everything else:** a stack holds 20; the healing pool gives 1 health every 4 ticks; 6 Skeletons; one furnace and one anvil; 6 pinned skills at most.
+**Everything else:** a stack holds 20; a healing tick every 4 ticks, with a berry giving 1 and a herb 2 for 4 healing ticks; 6 Skeletons; one furnace and one anvil; 6 pinned skills at most.
 
 All of these live in `shared/` as named constants, apart from the counts (region test only).
 
@@ -231,8 +232,9 @@ All of these live in `shared/` as named constants, apart from the counts (region
 | `make` | player, station, ticks | One at the start of each item's wait; `ticks` is N, so viewers can fit the clip to it |
 | `enemyDied`, `enemyReturned` | enemy | Renamed from the Spider events |
 | `told` | player, line | Tools given, Emberbone won or lost, making stopped |
+| `healed` | player, amount | One for each healing tick that restores health; `amount` is what it actually restored. Regeneration sends none |
 
-`eaten` drops `healed`, because food no longer heals at once.
+`eaten` drops its `healed` field, because food no longer heals at once.
 
 **Database.** One new migration on `players`. Every new column has a default, so existing rows need no conversion and keep working **[D9]**.
 
@@ -316,7 +318,7 @@ Tints go over a greyscale copy of the pack's atlas, because multiplying over the
 - **Which swing:** each viewer picks from a hash of the swinger's id and the tick, so every viewer sees the same clip with no new data sent, and it looks random **[D15]**.
 - **Sword or shield alone:** swings follow the weapon, so a shield with no sword punches **[D13]**.
 - **Making:** the player faces the station. Other players see the clip too. The item shows in its slot at the end of the wait, with experience shown the way foraging shows it. There is no progress bar and no chat-box line per item.
-- **Eating:** no green number, because the player sees only the health bar rising. The `Use_Item` clip stays.
+- **Eating:** the `Use_Item` clip stays, with no number of its own. Each `healed` event shows every viewer a green "+N" over that player, where damage numbers show. Regeneration shows no number.
 - **Skeleton:** `Skeleton_Warrior` with `Skeleton_Blade` in hand, about as tall as a player, using the players' armed swings, stance and contact moments. Otherwise it uses the players' clips for standing, moving, being hit, dying and returning **[D16]**.
 
 ### Assets
@@ -367,7 +369,7 @@ Each build ticket has its own tests. The slice as a whole is done when, on `runi
 3. A player gets from ore to a worn Copper sword and shield, using both Make 1 and Make all, and sees all three swing clips and the stance in a fight.
 4. Rows above the player's level are greyed with the reason, and so is gear they can't wear yet.
 5. Stacks hold 20, a full inventory refuses ore, and discarding clears a slot.
-6. Food heals gradually, the pool stops at full health, and death empties it.
+6. Food heals gradually with a green number on each healing tick, the pool stops at full health, and death empties it.
 7. A player with a shield sees "Blocked", and Blocking rises.
 8. An idle player swung at by a Spider or a Skeleton fights back. A walking one carries on.
 9. A Skeleton goes for a player in range, gives up at the leash and walks home, and can always be walked away from.
@@ -408,7 +410,7 @@ Each is a thin working slice that builds on those above it.
 | One 64×64 region | About 96×64 | [Where the harder content lives](https://github.com/DeRusto/runic/issues/41) |
 | Four skills | Seven | [What the gear loop is](https://github.com/DeRusto/runic/issues/37), [The second slice's numbers](https://github.com/DeRusto/runic/issues/43) |
 | One item per slot; eating is the only way to free a slot | Stacks of 20; Discard | [Carrying and storing items](https://github.com/DeRusto/runic/issues/42) |
-| Food heals at once, with a green number | The healing pool, with no number | [Carrying and storing items](https://github.com/DeRusto/runic/issues/42) |
+| Food heals at once, with a green number | The healing pool, with a green number each healing tick | [Carrying and storing items](https://github.com/DeRusto/runic/issues/42) |
 | Nothing retargets by itself | Idle players fight back | [What the harder enemy is](https://github.com/DeRusto/runic/issues/40) |
 | An enemy only fights back | The Skeleton attacks first | [What the harder enemy is](https://github.com/DeRusto/runic/issues/40) |
 | All skills on the bar | All on the sheet, up to six pinned on the bar | [The character sheet and bottom bar](https://github.com/DeRusto/runic/issues/46) |
@@ -427,7 +429,7 @@ These filled small gaps and were accepted in review.
 
 | | Default | Why |
 |---|---|---|
-| D1 | The pool gives health on every 4th world tick, not 4 ticks after eating | Same as regeneration; needs no timer |
+| D1 | A healing tick is every 4th world tick, not 4 ticks after eating | Same as regeneration; needs no timer |
 | D2 | Veins aren't saved | Same as bushes |
 | D3 | A player with every tool gets a line from the Blacksmith | Silence reads as a bug (first-slice D6) |
 | D4 | Changing gear doesn't touch the swing timer | Timers already stop it being abused |

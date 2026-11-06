@@ -91,7 +91,7 @@ test("a told line prints only for the player it's for", () => {
   expect(printChatLine.mock.calls).toEqual([["For you."]]);
 });
 
-test("eating plays Use_Item and shows no number", () => {
+test("eating plays Use_Item and shows no number until a healing tick", () => {
   const onMessage = vi.fn();
   showFights({ onReconnect: vi.fn(), onMessage } as unknown as WorldConnection);
   const [type, handler] = onMessage.mock.calls[0]!;
@@ -100,6 +100,31 @@ test("eating plays Use_Item and shows no number", () => {
   handler(eaten);
   expect(figure.once).toHaveBeenCalledWith("Use_Item", expect.any(Number));
   expect(overhead.pop).not.toHaveBeenCalled();
+});
+
+describe("the healed event", () => {
+  const send = (event: WorldEvent) => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      sessionId: "someone else",
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1]([event]);
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  test("shows a green number over that player, for every viewer", () => {
+    send({ type: "healed", player: "a", amount: 2 });
+    expect(overhead.pop).toHaveBeenCalledWith("+2", "heal");
+  });
+
+  test("for someone no longer here, does nothing", () => {
+    expect(() =>
+      send({ type: "healed", player: "gone", amount: 1 }),
+    ).not.toThrow();
+  });
 });
 
 describe("the playerSwing event", () => {

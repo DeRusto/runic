@@ -168,6 +168,8 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "eaten") {
         const figure = playerFigures.get(event.player);
         if (figure && !figure.moving) figure.once("Use_Item", EAT_CLIP_SPEED);
+      } else if (event.type === "healed") {
+        playerOverheads.get(event.player)?.pop(`+${event.amount}`, "heal");
       } else if (event.type === "told") {
         if (event.player === room.sessionId) printChatLine(event.line);
       }
