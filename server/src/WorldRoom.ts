@@ -12,6 +12,7 @@ import {
   EVENTS,
   FORAGE_INTENT,
   LOGOUT_INTENT,
+  MAKE_INTENT,
   MAX_CHAT_LENGTH,
   MINE_INTENT,
   parseRegion,
@@ -51,6 +52,8 @@ export class WorldRoom extends Room {
       this.sim.queueForage(client.sessionId, bush),
     [MINE_INTENT]: (client: Client, vein: string) =>
       this.sim.queueMine(client.sessionId, vein),
+    [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
+      this.sim.queueMake(client.sessionId, intent),
     [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),

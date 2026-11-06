@@ -5,7 +5,12 @@ import type { WorldConnection } from "./players.ts";
 
 const { figure, overhead, printChatLine, holdPick, revealPick } = vi.hoisted(
   () => ({
-    figure: { moving: false, once: vi.fn(), onceWithin: vi.fn(() => 2400) },
+    figure: {
+      moving: false,
+      once: vi.fn(),
+      onceWithin: vi.fn(() => 2400),
+      work: undefined as unknown,
+    },
     overhead: { pop: vi.fn() },
     printChatLine: vi.fn(),
     holdPick: vi.fn(),
@@ -18,6 +23,45 @@ vi.mock("./players.ts", () => ({
 }));
 vi.mock("./enemies.ts", () => ({}));
 vi.mock("./bottomBar.ts", () => ({ printChatLine, holdPick, revealPick }));
+vi.mock("./stations.ts", () => ({
+  stationTile: (kind: string) =>
+    kind === "anvil" ? { x: 6, y: 1 } : { x: 4, y: 1 },
+}));
+
+describe("the make event", () => {
+  const send = (event: WorldEvent) => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1]([event]);
+  };
+
+  test("at the anvil, faces it and hammers, fitted to the wait", () => {
+    send({ type: "make", player: "a", station: "anvil", ticks: 12 });
+    expect(figure.work).toEqual({ tile: { x: 6, y: 1 }, hammer: true });
+    expect(figure.onceWithin).toHaveBeenLastCalledWith(
+      "Hammering",
+      12 * TICK_MS,
+    );
+  });
+
+  test("at the furnace, faces it and works with empty hands", () => {
+    send({ type: "make", player: "a", station: "furnace", ticks: 6 });
+    expect(figure.work).toEqual({ tile: { x: 4, y: 1 }, hammer: false });
+    expect(figure.onceWithin).toHaveBeenLastCalledWith(
+      "Working_A",
+      6 * TICK_MS,
+    );
+  });
+
+  test("for someone no longer here, does nothing", () => {
+    expect(() =>
+      send({ type: "make", player: "gone", station: "furnace", ticks: 6 }),
+    ).not.toThrow();
+  });
+});
 
 test("a told line prints only for the player it's for", () => {
   const onMessage = vi.fn();

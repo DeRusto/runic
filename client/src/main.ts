@@ -18,6 +18,8 @@ import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
+import { showSmithingPanel } from "./smithingPanel.ts";
+import { addStations } from "./stations.ts";
 import { showVeins } from "./veins.ts";
 
 const tiles = parseRegion(REGION_GRID);
@@ -34,6 +36,7 @@ const [newFigure, newSpider, setRunOut, blacksmithUnder] = await Promise.all([
   throw error;
 });
 document.getElementById("loading")!.remove();
+const stationUnder = addStations(tiles);
 
 const status = document.getElementById("status")!;
 const logout = document.getElementById("logout")!;
@@ -49,6 +52,8 @@ function enterWorld(room: WorldConnection) {
     showEnemies(room, { spider: newSpider }),
     showBushes(room, tiles, setRunOut),
     showVeins(room, tiles, setRunOut),
+    stationUnder,
+    showSmithingPanel(room),
     blacksmithUnder,
   );
   showBottomBar(room, sayOverhead);

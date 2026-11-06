@@ -1,3 +1,5 @@
+import type { StationKind } from "./region.ts";
+
 export const SERVER_PORT = 2567;
 export const WORLD_ROOM = "world";
 
@@ -9,6 +11,8 @@ export const TARGET_INTENT = "target";
 export const FORAGE_INTENT = "forage";
 /** The mine intent's message type; its payload is the clicked vein's id in state. */
 export const MINE_INTENT = "mine";
+/** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
+export const MAKE_INTENT = "make";
 /** The visit intent's message type, for clicking the Blacksmith; it has no payload. */
 export const VISIT_INTENT = "visit";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
@@ -65,7 +69,8 @@ export const DEFENSE_XP_PER_ENEMY_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
 
 /** What a player is doing; "" for nothing. */
-export type PlayerAction = "" | "walking" | "foraging" | "mining" | "fighting";
+export type PlayerAction =
+  "" | "walking" | "foraging" | "mining" | "smithing" | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
@@ -79,6 +84,8 @@ export type WorldEvent =
   | { type: "enemyReturned"; enemy: string }
   | { type: "pick"; player: string; success: boolean }
   | { type: "mine"; player: string; success: boolean }
+  /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
+  | { type: "make"; player: string; station: StationKind; ticks: number }
   | { type: "eaten"; player: string }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
   | { type: "told"; player: string; line: string };
@@ -86,6 +93,7 @@ export type WorldEvent =
 export * from "./enemies.ts";
 export * from "./foraging.ts";
 export * from "./items.ts";
+export * from "./making.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./skills.ts";
