@@ -6,6 +6,7 @@ import {
   addXp,
   COMBAT_LEVELS_PER_DAMAGE,
   COMBAT_LOCK_TICKS,
+  costsOf,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_ENEMY_SWING,
   EAT_INTERVAL_TICKS,
@@ -16,6 +17,7 @@ import {
   HEALING_POOL_INTERVAL_TICKS,
   INVENTORY_SLOTS,
   levelFor,
+  makeRefusal,
   MAX_PINNED_SKILLS,
   mineChance,
   pickChance,
@@ -24,12 +26,14 @@ import {
   PLAYER_DEAD_TICKS,
   PLAYER_HIT_CHANCE,
   PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
+  RECIPES,
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
   SKILLS,
   slotFor,
   STARTING_PINNED_SKILLS,
+  stationRefusal,
   LEASH_TILES,
   tilesApart,
   SWING_INTERVAL_TICKS,
@@ -45,6 +49,8 @@ import {
   type PlayerAction,
   type EnemyKind,
   type EnemyState,
+  type RecipeItem,
+  type StationKind,
   type Tier,
   XP_PER_DAMAGE_DEALT,
   type Tile,
@@ -120,6 +126,7 @@ export class Simulation {
     | { bush: string }
     | { vein: string }
     | { blacksmith: Tile }
+    | { make: RecipeItem; all: boolean }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -132,6 +139,8 @@ export class Simulation {
       bush?: string;
       vein?: string;
       visiting?: boolean;
+      /** `doneTick` stays unset until arrival starts the first wait. */
+      making?: { item: RecipeItem; all: boolean; doneTick?: number };
       /** Outlives the action, so clicking again can't beat the attempt interval. */
       nextPickTick: number;
       nextEatTick: number;
@@ -171,6 +180,7 @@ export class Simulation {
     Tile & { tier: Tier; regrowTick?: number }
   >();
   private blacksmith?: Tile;
+  private stations: Partial<Record<StationKind, Tile>> = {};
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -183,8 +193,9 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { bush, vein, enemy, blacksmith } = kind;
+        const { bush, vein, enemy, blacksmith, station } = kind;
         if (blacksmith) this.blacksmith = { x, y };
+        if (station) this.stations[station] = { x, y };
         if (bush) {
           this.bushSites.set(bushId({ x, y }), { x, y, kind: bush });
           this.state.bushes.set(
@@ -346,6 +357,7 @@ export class Simulation {
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.path = [];
     unsynced.enemy = unsynced.bush = unsynced.vein = undefined;
+    unsynced.making = undefined;
     unsynced.visiting = false;
     Object.assign(this.state.players.get(id)!, { target: "", action: "" });
   }
@@ -402,6 +414,22 @@ export class Simulation {
     const { oreLeft } = this.state.veins.get(vein)!;
     if (veinRefusal(site.tier, oreLeft, player)) return;
     this.queuedActions.set(id, { vein });
+  }
+
+  /**
+   * Comes straight off the network, so anything but a recipe's item is ignored, as is an
+   * anvil pick with no hammer. Level and materials wait for arrival (spec §4).
+   */
+  queueMake(id: string, intent: { item: string; all: boolean }) {
+    const player = this.state.players.get(id);
+    const { item, all } = intent ?? {};
+    // A string first: an array of one would pass hasOwn by turning into its element.
+    if (!player || player.dead || typeof item !== "string") return;
+    if (!Object.hasOwn(RECIPES, item)) return;
+    const make = item as RecipeItem;
+    const { station } = RECIPES[make];
+    if (!this.stations[station] || stationRefusal(station, player)) return;
+    this.queuedActions.set(id, { make, all: all === true });
   }
 
   queueVisit(id: string) {
@@ -464,6 +492,7 @@ export class Simulation {
     this.advancePlayers();
     this.advancePicks();
     this.advanceMining();
+    this.advanceMaking();
     this.advanceVisits();
     this.advancePlayerSwings();
     this.advanceEnemies();
@@ -476,10 +505,19 @@ export class Simulation {
   private applyIntents() {
     for (const [id, action] of this.queuedActions) {
       const unsynced = this.unsyncedPlayers.get(id)!;
-      unsynced.bush = unsynced.vein = undefined;
+      unsynced.bush = unsynced.vein = unsynced.making = undefined;
       unsynced.visiting = false;
       if ("enemy" in action) {
         unsynced.enemy = action.enemy;
+      } else if ("make" in action) {
+        unsynced.enemy = undefined;
+        const path = pathNextTo(
+          this.tiles,
+          this.state.players.get(id)!,
+          this.stations[RECIPES[action.make].station]!,
+        );
+        unsynced.path = path ?? [];
+        if (path) unsynced.making = { item: action.make, all: action.all };
       } else if ("blacksmith" in action) {
         unsynced.enemy = undefined;
         const path = pathNextTo(
@@ -601,6 +639,66 @@ export class Simulation {
     }
   }
 
+  /** After the steps, so the first wait starts on the tick of arrival. */
+  private advanceMaking() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const { making } = unsynced;
+      if (!making || unsynced.path.length) continue;
+      if (making.doneTick !== undefined) {
+        if (this.state.tick < making.doneTick) continue;
+        if (!this.finishItem(id, making.item) || !making.all) {
+          unsynced.making = undefined;
+          continue;
+        }
+      }
+      const player = this.state.players.get(id)!;
+      const refusal = makeRefusal(making.item, player);
+      if (refusal) {
+        unsynced.making = undefined;
+        this.events.push({ type: "told", player: id, line: refusal });
+        continue;
+      }
+      const { station, ticks } = RECIPES[making.item];
+      making.doneTick = this.state.tick + ticks;
+      this.events.push({ type: "make", player: id, station, ticks });
+    }
+  }
+
+  /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
+  private finishItem(id: string, item: RecipeItem) {
+    const player = this.state.players.get(id)!;
+    const told = (line: string) => {
+      this.events.push({ type: "told", player: id, line });
+      return false;
+    };
+    // Discarding during the wait is allowed, so they may have gone.
+    const refusal = makeRefusal(item, player);
+    if (refusal) return told(refusal);
+    const inventory = [...player.inventory];
+    const inventoryCounts = [...player.inventoryCounts];
+    for (const [cost, count] of costsOf(item)) {
+      let left = count;
+      inventory.forEach((held, slot) => {
+        if (held !== cost || !left) return;
+        const taken = Math.min(left, inventoryCounts[slot]!);
+        left -= taken;
+        inventoryCounts[slot]! -= taken;
+        if (!inventoryCounts[slot]) inventory[slot] = EMPTY_SLOT;
+      });
+    }
+    // On the copy, so the last ore in a full inventory leaves room for its bar.
+    const slot = slotFor(item, { inventory, inventoryCounts });
+    if (slot < 0) return told("Your inventory is full.");
+    inventory[slot] = item;
+    inventoryCounts[slot]!++;
+    inventory.forEach((held, i) => {
+      player.inventory[i] = held;
+      player.inventoryCounts[i] = inventoryCounts[i]!;
+    });
+    player.smithingXp = addXp(player.smithingXp, RECIPES[item].xp);
+    return true;
+  }
+
   /** After the steps, so the tools come on the tick of arrival. */
   private advanceVisits() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
@@ -653,9 +751,11 @@ export class Simulation {
             ? "foraging"
             : unsynced.vein !== undefined
               ? "mining"
-              : unsynced.path.length
-                ? "walking"
-                : "";
+              : unsynced.making
+                ? "smithing"
+                : unsynced.path.length
+                  ? "walking"
+                  : "";
     }
   }
 

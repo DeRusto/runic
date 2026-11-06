@@ -41,6 +41,8 @@ const CLIP_PACKS = [
   "Rig_Medium_Tools",
 ];
 const PICKAXE = "pickaxe";
+// Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
+const HAMMER = "hammer in hand";
 
 /** Which character a player is follows from their name alone, so nothing about it is stored. */
 export function characterFor(name: string) {
@@ -78,6 +80,9 @@ export class Figure {
   /** On the mining action, so the pickaxe stays in hand between attempts. */
   mining = false;
   private pickaxe?: THREE.Object3D;
+  /** The station it's working at. It faces the tile between moves, and `hammer` stays in hand between items. */
+  work?: { tile: Tile; hammer: boolean };
+  private hammer?: THREE.Object3D;
 
   constructor(
     private tile: Tile,
@@ -90,6 +95,7 @@ export class Figure {
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
     this.pickaxe = model.getObjectByName(PICKAXE);
+    this.hammer = model.getObjectByName(HAMMER);
     this.mixer = new THREE.AnimationMixer(model);
     this.base = gait.idle;
     this.play(gait.idle);
@@ -223,6 +229,7 @@ export class Figure {
   /** Call once a frame, with the frame's timestamp in ms. */
   update(now: number) {
     const { tile, model, from, to, fightTile } = this;
+    const faces = fightTile ?? this.work?.tile;
     const dx = tile.x - to.x;
     const dz = tile.y - to.z;
     if (dx || dz) {
@@ -231,11 +238,11 @@ export class Figure {
       this.slideStart = now;
       this.yaw = Math.atan2(dx, dz);
     } else if (
-      fightTile &&
+      faces &&
       now - this.slideStart >= SLIDE_MS &&
-      (fightTile.x !== tile.x || fightTile.y !== tile.y)
+      (faces.x !== tile.x || faces.y !== tile.y)
     ) {
-      this.yaw = Math.atan2(fightTile.x - tile.x, fightTile.y - tile.y);
+      this.yaw = Math.atan2(faces.x - tile.x, faces.y - tile.y);
     }
     model.position.lerpVectors(
       from,
@@ -261,9 +268,12 @@ export class Figure {
     else if (baseChanged && !this.shot) this.playBase();
 
     // Off the clip too, since a success ends the action while its clip still plays.
+    const clip = this.shot?.getClip().name;
     if (this.pickaxe)
-      this.pickaxe.visible =
-        this.shot?.getClip().name === "Pickaxing" || (this.mining && !running);
+      this.pickaxe.visible = clip === "Pickaxing" || (this.mining && !running);
+    if (this.hammer)
+      this.hammer.visible =
+        clip === "Hammering" || (!!this.work?.hammer && !running);
 
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
@@ -367,21 +377,27 @@ const loadClips = () =>
 
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
-  const [knight, barbarian, pickaxe, clips] = await Promise.all([
+  const [knight, barbarian, pickaxe, hammer, clips] = await Promise.all([
     load("Knight"),
     load("Barbarian"),
     new GLTFLoader().loadAsync("/models/pickaxe.gltf"),
+    new GLTFLoader().loadAsync("/models/hammer.gltf"),
     loadClips(),
   ]);
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
-  pickaxe.scene.name = PICKAXE;
-  pickaxe.scene.visible = false;
-  pickaxe.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
-  // Every Figure's clone carries its own, and shows it only when mining.
-  Object.values(models).forEach((m) =>
-    m.getObjectByName("handslotr")!.add(pickaxe.scene.clone()),
-  );
+  // Every Figure's clone carries its own, and shows it only during the action.
+  for (const [tool, name] of [
+    [pickaxe, PICKAXE],
+    [hammer, HAMMER],
+  ] as const) {
+    tool.scene.name = name;
+    tool.scene.visible = false;
+    tool.scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+    Object.values(models).forEach((m) =>
+      m.getObjectByName("handslotr")!.add(tool.scene.clone()),
+    );
+  }
   return (tile: Tile, name: string) =>
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
 }

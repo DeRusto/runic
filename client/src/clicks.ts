@@ -2,6 +2,7 @@ import {
   bushRefusal,
   FORAGE_INTENT,
   MINE_INTENT,
+  stationRefusal,
   TARGET_INTENT,
   TICK_MS,
   veinRefusal,
@@ -16,17 +17,21 @@ import type { showBushes } from "./bushes.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
+import type { showSmithingPanel } from "./smithingPanel.ts";
+import type { addStations } from "./stations.ts";
 import type { showVeins } from "./veins.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, bush, vein or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
   enemyUnder: ReturnType<typeof showEnemies>,
   bushUnder: ReturnType<typeof showBushes>,
   veinUnder: ReturnType<typeof showVeins>,
+  stationUnder: ReturnType<typeof addStations>,
+  openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
@@ -81,6 +86,13 @@ export function walkOnClick(
         showMarker(vein.x, vein.y);
         room.send(MINE_INTENT, vein.id);
       }
+      return;
+    }
+    const station = stationUnder(raycaster);
+    if (station && me) {
+      const refusal = stationRefusal(station, me);
+      if (refusal) printChatLine(refusal);
+      else openSmithingPanel(station);
       return;
     }
     const blacksmith = blacksmithUnder(raycaster);

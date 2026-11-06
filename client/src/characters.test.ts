@@ -501,6 +501,78 @@ describe("Spider.glb", () => {
   });
 });
 
+describe("working at a station", () => {
+  const worker = (tile = { x: 1, y: 1 }) => {
+    const hammer = new THREE.Object3D();
+    hammer.name = "hammer in hand";
+    const model = new THREE.Object3D().add(hammer);
+    return { hammer, figure: new Figure(tile, model, CLIPS) };
+  };
+  const WORK_CLIPS = ["Hammering", "Working_A"];
+  WORK_CLIPS.forEach((name) =>
+    CLIPS.set(name, new THREE.AnimationClip(name, 2, [])),
+  );
+
+  test("faces the station between moves", () => {
+    const { figure } = worker();
+    figure.work = { tile: { x: 2, y: 1 }, hammer: false };
+    for (let now = 1000; now <= 1600; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(Math.PI / 2);
+  });
+
+  test("the hammer shows while Hammering plays, even once the action has ended", () => {
+    const { figure, hammer } = worker();
+    figure.update(1000);
+    expect(hammer.visible).toBe(false);
+    figure.onceWithin("Hammering", 3600);
+    figure.update(1010);
+    expect(hammer.visible).toBe(true);
+    figure.update(3500);
+    figure.update(3510);
+    expect(hammer.visible).toBe(false);
+  });
+
+  test("the hammer stays out between items at the anvil, but not on the walk there", () => {
+    const tile = { x: 1, y: 1 };
+    const { figure, hammer } = worker(tile);
+    figure.work = { tile: { x: 3, y: 1 }, hammer: true };
+    tile.x = 2;
+    figure.update(1000);
+    expect(hammer.visible).toBe(false);
+    figure.update(2000);
+    expect(hammer.visible).toBe(true);
+    figure.work = undefined;
+    figure.update(2010);
+    expect(hammer.visible).toBe(false);
+  });
+
+  test("the furnace keeps hands empty", () => {
+    const { figure, hammer } = worker();
+    figure.work = { tile: { x: 2, y: 1 }, hammer: false };
+    figure.onceWithin("Working_A", 1800);
+    figure.update(1000);
+    expect(hammer.visible).toBe(false);
+  });
+
+  test("a figure's own model of a hammer isn't the one that hides", () => {
+    const ownHammer = new THREE.Object3D();
+    ownHammer.name = "hammer";
+    const figure = new Figure(
+      { x: 1, y: 1 },
+      new THREE.Object3D().add(ownHammer),
+      CLIPS,
+    );
+    figure.update(1000);
+    expect(ownHammer.visible).toBe(true);
+  });
+
+  test("the committed clip pack has both clips", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
+    for (const name of WORK_CLIPS)
+      expect(glb.toString("latin1")).toContain(`"name":"${name}"`);
+  });
+});
+
 describe("the pickaxe in hand", () => {
   const miner = (tile = { x: 1, y: 1 }) => {
     const pickaxe = new THREE.Object3D();

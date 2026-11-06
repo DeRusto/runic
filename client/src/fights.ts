@@ -13,6 +13,7 @@ import {
 } from "./players.ts";
 import { ENEMY_CLIPS, enemyFigures, enemyOverheads } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
+import { stationTile } from "./stations.ts";
 
 // The moment each swing clip connects (spec §7). The server decided on the tick.
 const PLAYER_CONTACT_MS = 550;
@@ -120,6 +121,15 @@ export function showFights(room: WorldConnection) {
             );
           if (event.player === room.sessionId) revealPick();
         }, PICK_RESULT_AT * clipMs);
+      } else if (event.type === "make") {
+        const figure = playerFigures.get(event.player);
+        if (!figure) continue;
+        const hammer = event.station === "anvil";
+        figure.work = { tile: stationTile(event.station), hammer };
+        figure.onceWithin(
+          hammer ? "Hammering" : "Working_A",
+          event.ticks * TICK_MS,
+        );
       } else if (event.type === "eaten") {
         const figure = playerFigures.get(event.player);
         if (figure && !figure.moving) figure.once("Use_Item", EAT_CLIP_SPEED);
