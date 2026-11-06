@@ -4,24 +4,30 @@ import {
   MAKE_INTENT,
   makeRefusal,
   RECIPES,
+  tilesApart,
+  WALK_INTENT,
   type RecipeItem,
   type StationKind,
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import { itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
+import { stationTile } from "./stations.ts";
 
 const part = () => document.createElement("span");
 
 /**
- * The panel a click on a station opens, with no server involved until a pick. Returns how to
- * open it. Rows are only ever changed in place, or a patch landing between a press and its
+ * The panel a click on a station opens, once the player is next to it. Returns how to ask
+ * for it. Rows are only ever changed in place, or a patch landing between a press and its
  * release would lose the click.
  */
 export function showSmithingPanel(room: WorldConnection) {
   const panel = document.getElementById("smithing")!;
   const title = document.getElementById("smithing-title")!;
+  /** The station being walked to, whose panel opens on arrival. */
+  let walkingTo: StationKind | undefined;
   const close = () => {
+    walkingTo = undefined;
     panel.hidden = true;
   };
 
@@ -34,10 +40,7 @@ export function showSmithingPanel(room: WorldConnection) {
       const make = document.createElement("button");
       make.type = "button";
       make.textContent = label;
-      make.onclick = () => {
-        close();
-        room.send(MAKE_INTENT, { item, all });
-      };
+      make.onclick = () => room.send(MAKE_INTENT, { item, all });
       return make;
     };
     const buttons = [button("Make 1", false), button("Make all", true)];
@@ -63,12 +66,24 @@ export function showSmithingPanel(room: WorldConnection) {
     }
   };
 
+  const show = (station: StationKind, me: SyncedPlayer) => {
+    walkingTo = undefined;
+    title.textContent = itemName(station);
+    for (const { item, row } of rows)
+      row.hidden = RECIPES[item].station !== station;
+    draw(me);
+    panel.hidden = false;
+  };
+
   close();
+  document.getElementById("smithing-close")!.onclick = close;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
-    if (!me || panel.hidden) return;
+    if (!me) return;
     if (me.dead) close();
-    else draw(me);
+    else if (walkingTo && tilesApart(me, stationTile(walkingTo)) <= 1)
+      show(walkingTo, me);
+    else if (!panel.hidden) draw(me);
   });
 
   const onKey = (event: KeyboardEvent) => {
@@ -89,10 +104,11 @@ export function showSmithingPanel(room: WorldConnection) {
   return (station: StationKind) => {
     const me = room.state.players.get(room.sessionId);
     if (!me || me.dead) return;
-    title.textContent = itemName(station);
-    for (const { item, row } of rows)
-      row.hidden = RECIPES[item].station !== station;
-    draw(me);
-    panel.hidden = false;
+    const tile = stationTile(station);
+    if (tilesApart(me, tile) <= 1) return show(station, me);
+    close();
+    walkingTo = station;
+    // A plain walk, which stops next to a tile that blocks and leaves the player idle.
+    room.send(WALK_INTENT, tile);
   };
 }
