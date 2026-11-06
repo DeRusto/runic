@@ -17,7 +17,7 @@ import type { Overhead } from "./overhead.ts";
 // The moment each swing clip connects (spec §7). The server decided on the tick.
 const PLAYER_CONTACT_MS = 550;
 const ENEMY_CONTACT_MS = 450;
-/** How far through `PickUp` the result of a pick shows (spec §7). */
+/** How far through `PickUp` or `Pickaxing` the result shows (spec §7). */
 const PICK_RESULT_AT = 0.4;
 const EAT_CLIP_SPEED = 1.33;
 
@@ -98,17 +98,26 @@ export function showFights(room: WorldConnection) {
         playerFigures.get(event.player)?.respawn();
       } else if (event.type === "enemyReturned") {
         enemyFigures.get(event.enemy)!.reappear();
-      } else if (event.type === "pick") {
+      } else if (event.type === "pick" || event.type === "mine") {
+        const mining = event.type === "mine";
         const figure = playerFigures.get(event.player);
         const player = room.state.players.get(event.player);
         if (!figure || !player) continue;
         if (event.success && event.player === room.sessionId) holdPick();
-        const interval = pickIntervalTicks(levelFor(player.foragingXp));
-        const clipMs = figure.onceWithin("PickUp", interval * TICK_MS);
+        const interval = pickIntervalTicks(
+          levelFor(mining ? player.miningXp : player.foragingXp),
+        );
+        const clipMs = figure.onceWithin(
+          mining ? "Pickaxing" : "PickUp",
+          interval * TICK_MS,
+        );
         setTimeout(() => {
           playerOverheads
             .get(event.player)
-            ?.pop(event.success ? "Picked!" : "No luck", "pick");
+            ?.pop(
+              event.success ? (mining ? "Mined!" : "Picked!") : "No luck",
+              "pick",
+            );
           if (event.player === room.sessionId) revealPick();
         }, PICK_RESULT_AT * clipMs);
       } else if (event.type === "eaten") {

@@ -258,6 +258,16 @@ describe("a slot's stack count", () => {
   });
 });
 
+test("a left-click eats food, and does nothing on a material", () => {
+  room.onStateChange.invoke(stateHolding(["berry", 5], ["copperOre", 3]));
+  nextFrame();
+  room.send.mockClear();
+  slot(1).onclick!();
+  expect(room.send).not.toHaveBeenCalled();
+  slot(0).onclick!();
+  expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 0);
+});
+
 describe("the right-click menu", () => {
   beforeEach(() => {
     room.onStateChange.invoke(

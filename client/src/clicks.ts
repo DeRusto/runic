@@ -1,8 +1,10 @@
 import {
   bushRefusal,
   FORAGE_INTENT,
+  MINE_INTENT,
   TARGET_INTENT,
   TICK_MS,
+  veinRefusal,
   VISIT_INTENT,
   WALK_INTENT,
   type TileKind,
@@ -14,15 +16,17 @@ import type { showBushes } from "./bushes.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
+import type { showVeins } from "./veins.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, bush or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy, bush, vein or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
   enemyUnder: ReturnType<typeof showEnemies>,
   bushUnder: ReturnType<typeof showBushes>,
+  veinUnder: ReturnType<typeof showVeins>,
   blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
@@ -65,6 +69,17 @@ export function walkOnClick(
       } else {
         showMarker(bush.x, bush.y);
         room.send(FORAGE_INTENT, bush.id);
+      }
+      return;
+    }
+    const vein = veinUnder(raycaster);
+    if (vein && me) {
+      const refusal = veinRefusal(vein.tier, vein.oreLeft(), me);
+      if (refusal) {
+        printChatLine(refusal);
+      } else {
+        showMarker(vein.x, vein.y);
+        room.send(MINE_INTENT, vein.id);
       }
       return;
     }
