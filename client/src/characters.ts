@@ -7,6 +7,7 @@ import {
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
+import { GLOW_INTENSITY, TIER_LOOKS, type TierLook } from "./tierLooks.ts";
 
 const HEIGHT = 1.15;
 const CROSSFADE_S = 0.12;
@@ -49,13 +50,9 @@ const PICKAXE = "pickaxe";
 // Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
 const HAMMER = "hammer in hand";
 
-const COPPER = { tint: 0xf0935a };
-const IRON = { tint: 0xd5dde4 };
-const EMBERITE = { tint: 0x7a2a22, glow: 0xff4a10 };
-const GLOW_INTENSITY = 0.15;
-type GearLook = { tint: number; glow?: number };
+const { copper: COPPER, iron: IRON, emberite: EMBERITE } = TIER_LOOKS;
 /** Each tier's model and colour in hand, by item id (spec §7). */
-const GEAR_LOOKS: Record<string, GearLook & { file: string; hand: string }> = {
+const GEAR_LOOKS: Record<string, TierLook & { file: string; hand: string }> = {
   copperSword: { file: "sword_A", hand: "handslotr", ...COPPER },
   ironSword: { file: "sword_B", hand: "handslotr", ...IRON },
   emberiteSword: { file: "sword_C", hand: "handslotr", ...EMBERITE },
@@ -490,7 +487,7 @@ function greyVersion(map: THREE.Texture) {
 
 export function paintGear(
   model: THREE.Object3D,
-  { tint, glow }: GearLook,
+  { tint, glow }: TierLook,
   grey: THREE.Texture,
 ) {
   model.traverse((o) => {

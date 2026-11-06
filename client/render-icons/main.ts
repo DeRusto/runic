@@ -1,6 +1,7 @@
 // Renders the item icons from the owner's art packs, shown here to check before saving (spec §7).
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { GLOW_INTENSITY, TIER_LOOKS } from "../src/tierLooks.ts";
 
 const SIZE = 144;
 const RESOURCE = "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf";
@@ -9,9 +10,7 @@ const TOOLS = "/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf";
 const CRAFTPIX_SWORD = "/sword-rpg-game-icon-set/PNG/without background/21.png";
 
 // Tier looks, as worn (spec §7).
-const COPPER = { tint: 0xf0935a };
-const IRON = { tint: 0xd5dde4 };
-const EMBERITE = { tint: 0x7a2a22, glow: 0xff4a10 };
+const { copper: COPPER, iron: IRON, emberite: EMBERITE } = TIER_LOOKS;
 
 /** The model turned to face us: a slight three-quarter view, with long items leaning corner to corner. */
 const FLAT: Turn = [0.6, -0.5, 0];
@@ -115,7 +114,7 @@ function applyLook(model: THREE.Object3D, { tint, glow }: Look) {
     if (tint !== undefined) material.color.setHex(tint);
     if (glow !== undefined) {
       material.emissive.setHex(glow);
-      material.emissiveIntensity = 0.15;
+      material.emissiveIntensity = GLOW_INTENSITY;
     }
   });
 }
