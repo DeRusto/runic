@@ -26,6 +26,22 @@ _Avoid_: Wilderness, combat zone
 A spot in a thicket that can be foraged; it runs out after use and grows back over time. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Foraging level.
 _Avoid_: Node, resource, plant
 
+**Vein**:
+A spot in the world that can be mined for ore; it runs out after use and grows back over time. A vein is not a rock, which is a prop.
+_Avoid_: Ore rock, node, resource
+
+**Furnace**:
+A fixed spot where a player turns ore into bars.
+_Avoid_: Smelter, forge
+
+**Anvil**:
+A fixed spot where a player turns bars into gear.
+_Avoid_: Forge, workbench
+
+**Blacksmith**:
+A fixed character who gives players the tools they don't have yet, for free. Not an enemy, and the only such character.
+_Avoid_: NPC, shopkeeper, vendor
+
 **Prop**:
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
 _Avoid_: Decoration, doodad, object
@@ -72,6 +88,14 @@ _Avoid_: Armour, block, defence
 The skill trained by picking food from bushes; the food heals when eaten.
 _Avoid_: Gathering, herbalism
 
+**Mining**:
+The skill trained by taking ore from veins.
+_Avoid_: Gathering, quarrying
+
+**Smithing**:
+The skill trained by turning ore into bars and bars into gear.
+_Avoid_: Crafting, forging
+
 ### Players
 
 **Account**:
@@ -83,7 +107,7 @@ The one shared secret a friend must give to create an account.
 _Avoid_: Referral, key
 
 **Action**:
-The one thing a player is currently doing (walking, foraging or fighting); a new click replaces it.
+The one thing a player is currently doing (walking, foraging, mining, smithing or fighting); a new click replaces it.
 _Avoid_: Task, job, activity
 
 **Inventory**:
@@ -93,6 +117,30 @@ _Avoid_: Bag, backpack
 **Food**:
 An item that heals the player who eats it; berries and herbs are food.
 _Avoid_: Consumable, potion
+
+**Ore**:
+The raw metal a player takes from a vein.
+_Avoid_: Rock, stone
+
+**Bar**:
+Metal made from ore at a furnace, ready to become gear at an anvil.
+_Avoid_: Ingot
+
+**Gear**:
+What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which makes them harder to hit. It lasts forever.
+_Avoid_: Equipment, armour, loot
+
+**Tier**:
+One of the three metals, from lowest to highest: Copper, Iron and Emberite. A tier's ore, bars and gear all share its level gate.
+_Avoid_: Grade, rank
+
+**Tool**:
+What a player must own to do some work: a pickaxe for Mining, a hammer at an anvil. A tool is never lost and takes no inventory slot.
+_Avoid_: Gear, equipment
+
+**Toolbelt**:
+The tools a player owns. It has no limit and grows as tools are added, unlike the inventory.
+_Avoid_: Tool inventory, bag
 
 **Respawn**:
 Returning to the village with everything kept, after dying.
