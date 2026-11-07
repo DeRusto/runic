@@ -74,8 +74,9 @@ The counts live only in this test.
 ### Food and the healing pool
 
 - One click eats one food from the stack. The 4-tick wait between meals and the 4 ticks added to the next swing stay.
-- A berry adds 2 and a herb adds 5 to the **healing pool**. Every 4th tick the pool gives 1 health **[D1]**. Regeneration runs alongside it, and the combat lock doesn't pause the pool.
-- At full health, whatever remains in the pool is lost. Eating at full health is still allowed, heals nothing and uses the food.
+- Eating adds the food's healing ticks to the **healing pool**. A berry gives 1 health per healing tick and a herb gives 2, each for 4 healing ticks (4 and 8 in all). A healing tick is every 4th world tick **[D1]**, so a meal lasts about 4.8 s. Regeneration runs alongside it, and the combat lock doesn't pause the pool.
+- Food eaten while healing waits its turn: foods run in eating order, one food's ticks at a time, so more food heals for longer but not faster.
+- A heal that would pass max health gives only what fits. At full health, whatever remains in the pool is lost. Eating at full health is still allowed, heals nothing and uses the food.
 - Death empties the pool. It isn't saved, so logging out or a server restart loses it.
 
 ### Mining
@@ -88,7 +89,7 @@ The counts live only in this test.
 
 ### Making
 
-- Clicking a furnace or anvil opens the Smithing panel at any distance, with no server involved (§7). Clicking an anvil with no hammer is refused before the panel opens, with a chat-box line pointing to the Blacksmith. The furnace needs no tool.
+- Clicking a furnace or anvil walks the player next to it, replacing the action as any walking click does, and the Smithing panel opens on arrival (§7). If they're already next to it, it opens at once and the action carries on. Clicking anything else before arrival cancels the panel, and so does dying. Clicking an anvil with no hammer is refused at the click, with no walk and a chat-box line pointing to the Blacksmith. The furnace needs no tool.
 - Picking **Make 1** or **Make all** sends one intent, which walks the player next to the station and starts work.
 - **The wait:** each item takes N ticks from arrival. Materials leave and the item and experience arrive together, at the end of the wait, so stopping early costs only the progress on that item. Any new choice, including the same item, replaces the action and starts the wait over.
 - **What ends it:** running out of materials, having no room for the item, finishing a Make 1, or clicking something else. Eating, chat and discarding don't interrupt it. Running out or having no room prints one chat-box line.
@@ -141,11 +142,11 @@ Next to, pathfinding, the combat lock, respawning, disconnects, duplicate logins
 
 **Skills.** The experience curve doesn't change. Mining, Smithing and Blocking start at 0 experience, level 1.
 
-Pacing targets for the full loop of mining, smelting and smithing, as simulated: level 10 in about 1 h, level 20 in about 3 h, level 99 in 50 to 60 h. A first full Emberite set is a rough estimate of 6 to 8 h of play, not simulated.
+Pacing targets for the full loop of mining, smelting and smithing, as simulated: level 10 in about 1 h, level 20 in about 3 h, level 99 in 50 to 60 h. A first full Emberite set is a rough estimate of 6 to 8 h of play, not simulated. These targets predate smelting giving Mining experience: they have not been re-simulated, and Mining now levels faster than they assumed.
 
 | Skill | Experience |
 |---|---|
-| Mining | Per ore, by tier (below) |
+| Mining | Per ore, by tier (below), plus each bar's experience when it is smelted |
 | Smithing | Per item made, by tier (below) |
 | Blocking | 40 per block |
 | Defense | 6 per enemy swing at you, landed or missed or blocked, plus 4 per damage taken |
@@ -165,7 +166,9 @@ Attempts: one every 8 ticks, one fewer per 15 levels, down to 4 (`pickIntervalTi
 
 **Making**
 
-| Tier | Bar: 1 ore, 6 ticks | Sword: 3 bars, 12 ticks | Shield: 4 bars, 16 ticks |
+A bar's experience goes to Smithing and the same amount to Mining. Swords and shields give only Smithing. Experience arrives at the end of the wait, with the item.
+
+| Tier | Bar: 1 ore, 6 ticks (in Smithing and in Mining) | Sword: 3 bars, 12 ticks | Shield: 4 bars, 16 ticks |
 |---|---|---|---|
 | Copper | 4 experience | 18 | 24 |
 | Iron | 12 | 54 | 72 |
@@ -196,7 +199,7 @@ Attempts: one every 8 ticks, one fewer per 15 levels, down to 4 (`pickIntervalTi
 | Leash | 4 tiles, from where it noticed the player |
 | Emberbone chance | 1 in 4, per player who damaged it |
 
-**Everything else:** a stack holds 20; the healing pool gives 1 health every 4 ticks; 6 Skeletons; one furnace and one anvil; 6 pinned skills at most.
+**Everything else:** a stack holds 20; a healing tick every 4 ticks, with a berry giving 1 and a herb 2 for 4 healing ticks; 6 Skeletons; one furnace and one anvil; 6 pinned skills at most.
 
 All of these live in `shared/` as named constants, apart from the counts (region test only).
 
@@ -226,11 +229,12 @@ All of these live in `shared/` as named constants, apart from the counts (region
 |---|---|---|
 | `playerSwing`, `enemySwing` | As today, plus `blocked` on `enemySwing` | `damage: 0` alone still means a miss |
 | `mine` | player, success | As `pick` |
-| `make` | player, station | One at the start of each item's wait |
+| `make` | player, station, ticks | One at the start of each item's wait; `ticks` is N, so viewers can fit the clip to it |
 | `enemyDied`, `enemyReturned` | enemy | Renamed from the Spider events |
 | `told` | player, line | Tools given, Emberbone won or lost, making stopped |
+| `healed` | player, amount | One for each healing tick that restores health; `amount` is what it actually restored. Regeneration sends none |
 
-`eaten` drops `healed`, because food no longer heals at once.
+`eaten` drops its `healed` field, because food no longer heals at once.
 
 **Database.** One new migration on `players`. Every new column has a default, so existing rows need no conversion and keep working **[D9]**.
 
@@ -280,8 +284,10 @@ The prototype to copy from is [`client/prototype-sheet`](https://github.com/DeRu
 
 - One row per item: three at the furnace, six at the anvil. Each row has the item's name, its cost, how many of those materials the player has, the level it needs, and **Make 1** and **Make all**.
 - Every row always shows. One that can't be made yet is greyed out with the reason on it, such as "Needs Smithing 10", and its buttons do nothing.
-- It closes when the player picks an item, presses `Esc`, clicks anything else or dies. A click in the world still does what it normally does.
-- It uses the sheet's panel art, sits above the middle of the bar and scrolls inside itself **[D12]**. Rows carry no icons **[D12]**.
+- It opens only with the player next to the station (§4), and never later by surprise once something else has been clicked.
+- It stays open after a pick, and its rows follow the player's inventory and levels as items get made. A second pick replaces the action, as any new choice does.
+- It closes when the player presses `Esc`, clicks its X, clicks anywhere else or dies. A click in the world still does what it normally does.
+- It uses the sheet's panel art and close X, sits above the left end of the bar, clear of the world's centre, and its rows scroll inside it **[D12]**. Rows carry no icons **[D12]**.
 
 ### How gear shows
 
@@ -314,7 +320,7 @@ Tints go over a greyscale copy of the pack's atlas, because multiplying over the
 - **Which swing:** each viewer picks from a hash of the swinger's id and the tick, so every viewer sees the same clip with no new data sent, and it looks random **[D15]**.
 - **Sword or shield alone:** swings follow the weapon, so a shield with no sword punches **[D13]**.
 - **Making:** the player faces the station. Other players see the clip too. The item shows in its slot at the end of the wait, with experience shown the way foraging shows it. There is no progress bar and no chat-box line per item.
-- **Eating:** no green number, because the player sees only the health bar rising. The `Use_Item` clip stays.
+- **Eating:** the `Use_Item` clip stays, with no number of its own. Each `healed` event shows every viewer a green "+N" over that player, where damage numbers show. Regeneration shows no number.
 - **Skeleton:** `Skeleton_Warrior` with `Skeleton_Blade` in hand, about as tall as a player, using the players' armed swings, stance and contact moments. Otherwise it uses the players' clips for standing, moving, being hit, dying and returning **[D16]**.
 
 ### Assets
@@ -327,9 +333,9 @@ All new files are committed under `client/`, with a licence copy beside them. Th
 | Pickaxe, hammer, anvil | KayKit RPG Tools Bits 1.0 | CC0 |
 | Skeleton and blade | KayKit Skeletons 1.1 | CC0 |
 | `Rig_Medium_Tools.glb` (1.4 MB) | KayKit Character Animations 1.1 | CC0 |
-| Furnace | Kenney Hexagon Kit `building-smelter`, a stand-in **[D17]** | CC0 |
+| Furnace | KayKit Medieval Hexagon Pack `building_blacksmith_red`, a stand-in; it replaced Kenney Hexagon Kit `building-smelter`, as §15's fallback **[D17]** | CC0 |
 | Blacksmith | KayKit Adventurers `Ranger` (473 KB), hammer in hand, `Idle_A`, a nameplate reading "Blacksmith" **[D18]** | CC0 |
-| Veins | Our committed rock models tinted by tier, shrunk and greyed when run out as bushes are **[D19]** | CC0 |
+| Veins | Our committed rock models tinted by tier (linear multipliers: Copper `#ff8a3c` x 1.8, Iron `#4f8fd8` x 2.4, Emberite `#d42a1a` x 1.6), shrunk and greyed when run out as bushes are **[D19]** | CC0 |
 | Sheet and panel art | Kenney UI Pack - Adventure | CC0 |
 | Ashen ground | A new ground colour, no art | |
 
@@ -365,7 +371,7 @@ Each build ticket has its own tests. The slice as a whole is done when, on `runi
 3. A player gets from ore to a worn Copper sword and shield, using both Make 1 and Make all, and sees all three swing clips and the stance in a fight.
 4. Rows above the player's level are greyed with the reason, and so is gear they can't wear yet.
 5. Stacks hold 20, a full inventory refuses ore, and discarding clears a slot.
-6. Food heals gradually, the pool stops at full health, and death empties it.
+6. Food heals gradually with a green number on each healing tick, the pool stops at full health, and death empties it.
 7. A player with a shield sees "Blocked", and Blocking rises.
 8. An idle player swung at by a Spider or a Skeleton fights back. A walking one carries on.
 9. A Skeleton goes for a player in range, gives up at the leash and walks home, and can always be walked away from.
@@ -406,7 +412,7 @@ Each is a thin working slice that builds on those above it.
 | One 64×64 region | About 96×64 | [Where the harder content lives](https://github.com/DeRusto/runic/issues/41) |
 | Four skills | Seven | [What the gear loop is](https://github.com/DeRusto/runic/issues/37), [The second slice's numbers](https://github.com/DeRusto/runic/issues/43) |
 | One item per slot; eating is the only way to free a slot | Stacks of 20; Discard | [Carrying and storing items](https://github.com/DeRusto/runic/issues/42) |
-| Food heals at once, with a green number | The healing pool, with no number | [Carrying and storing items](https://github.com/DeRusto/runic/issues/42) |
+| Food heals at once, with a green number | The healing pool, with a green number each healing tick | [Carrying and storing items](https://github.com/DeRusto/runic/issues/42) |
 | Nothing retargets by itself | Idle players fight back | [What the harder enemy is](https://github.com/DeRusto/runic/issues/40) |
 | An enemy only fights back | The Skeleton attacks first | [What the harder enemy is](https://github.com/DeRusto/runic/issues/40) |
 | All skills on the bar | All on the sheet, up to six pinned on the bar | [The character sheet and bottom bar](https://github.com/DeRusto/runic/issues/46) |
@@ -425,7 +431,7 @@ These filled small gaps and were accepted in review.
 
 | | Default | Why |
 |---|---|---|
-| D1 | The pool gives health on every 4th world tick, not 4 ticks after eating | Same as regeneration; needs no timer |
+| D1 | A healing tick is every 4th world tick, not 4 ticks after eating | Same as regeneration; needs no timer |
 | D2 | Veins aren't saved | Same as bushes |
 | D3 | A player with every tool gets a line from the Blacksmith | Silence reads as a bug (first-slice D6) |
 | D4 | Changing gear doesn't touch the swing timer | Timers already stop it being abused |
@@ -436,14 +442,14 @@ These filled small gaps and were accepted in review.
 | D9 | Stack counts sit in a parallel column, with a missing count meaning 1 | Existing saves need no conversion, so the hard rule can't be broken by a bad data step |
 | D10 | Below 800 px wide, one line asks for a wider window | Touch and small windows are already out of scope; 800 was checked and fits |
 | D11 | The bar stays flat, and only the sheet and panel use the new art | The prototype's bar was flat, and whether the art fits it wasn't seen |
-| D12 | The panel's place and art, and no icons on its rows | No ticket placed it; the ticket's row list has no icon |
+| D12 | The panel's place and art, and no icons on its rows | No ticket placed it, and the owner's playtest moved it off the world's centre; the ticket's row list has no icon |
 | D13 | Holding only a sword, or only a shield, uses the `Melee_Blocking` stance; swings follow the weapon | One stance rule; neither case has been seen, so watch it in the build |
 | D14 | `Pickaxing` is the mining clip | It matches the `Hammering` and `Working_A` already chosen from the same pack, by name; nobody has watched it |
 | D15 | Swing clips come from a hash of id and tick | No new data, and everyone sees the same clip |
 | D16 | Skeletons use the players' clips | They share the rig |
-| D17 | `building-smelter` as the furnace | The nearest thing in the packs; see §15 |
+| D17 | `building_blacksmith_red` as the furnace, replacing `building-smelter` | `building-smelter` didn't read as a furnace at a tile's scale, so this is §15's first fallback |
 | D18 | `Ranger` as the Blacksmith | A model no player has, so they read apart; the owner can swap it |
-| D19 | Veins are tinted rock models | No new art, and the tier colours already exist |
+| D19 | Veins are tinted rock models, in their own tints rather than gear's | No new art, and in the playtest gear's tints left veins hard to tell from grey rock props |
 | D20 | `grapes` and `Plant_1` as the food icons | The research's first picks; the owner will revisit the icons |
 
 ## 15. Check while building

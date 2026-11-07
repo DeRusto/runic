@@ -46,6 +46,10 @@ _Avoid_: Smelter, forge
 A fixed spot where a player turns bars into gear.
 _Avoid_: Forge, workbench
 
+**Station**:
+A furnace or an anvil: a fixed spot where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
+_Avoid_: Workstation, crafting table
+
 **Blacksmith**:
 A fixed character who gives players the tools they don't have yet, for free. Not an enemy, and the only such character.
 _Avoid_: NPC, shopkeeper, vendor
@@ -59,7 +63,7 @@ A creature in a field that players fight to train Combat.
 _Avoid_: Mob, monster, NPC
 
 **Spider**:
-The one enemy type in the first playable slice: a large spider that fights back only when attacked.
+The weaker enemy: a large spider that fights back only when attacked, unlike a Skeleton.
 _Avoid_: Thornback (its old name)
 
 **Skeleton**:
@@ -112,6 +116,10 @@ _Avoid_: Gathering, herbalism
 The skill trained by taking ore from veins.
 _Avoid_: Gathering, quarrying
 
+**Gathering skill**:
+A skill trained by taking items from a **site**, a spot that runs out and grows back: Foraging from bushes, Mining from veins. It names the family, and is no other name for either skill.
+_Avoid_: Resource skill, harvesting
+
 **Smithing**:
 The skill trained by turning ore into bars and bars into gear.
 _Avoid_: Crafting, forging
@@ -147,7 +155,7 @@ An item that heals the player who eats it, over the next few ticks rather than a
 _Avoid_: Consumable, potion
 
 **Healing pool**:
-The health a player's eaten food has yet to give back. Eating adds to it, and it drains into health at a fixed speed, so more food heals for longer but not faster.
+The health a player's eaten food has yet to give back, as healing ticks waiting in eating order. Each food gives its own amount per healing tick, one food's ticks at a time, so more food heals for longer but not faster.
 _Avoid_: Heal over time, buff
 
 **Material**:

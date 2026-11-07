@@ -129,25 +129,31 @@ describe("Spiders", () => {
     new Simulation(parseRegion(rows.join("\n")), random);
 
   const spiderTile = (s: Simulation, id = "0") => {
-    const { x, y } = s.state.spiders.get(id)!;
+    const { x, y } = s.state.enemies.get(id)!;
     return { x, y };
   };
 
   test("one starts at each home, with full health, idle and no target", () => {
     const s = spiderSim(["TTTTTT", "TRS..T", "T...ST", "TTTTTT"]);
-    expect(s.state.spiders.size).toBe(2);
+    expect(s.state.enemies.size).toBe(2);
     expect(spiderTile(s, "0")).toEqual({ x: 2, y: 1 });
     expect(spiderTile(s, "1")).toEqual({ x: 4, y: 2 });
-    expect(s.state.spiders.get("0")).toMatchObject({
+    expect(s.state.enemies.get("0")).toMatchObject({
       health: 8,
       target: "",
       state: "idle",
     });
   });
 
+  test("each carries its kind", () => {
+    const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"]);
+    expect(s.state.enemies.get("0")!.kind).toBe("spider");
+  });
+
   test("the real region has a Spider on every home", () => {
     const s = new Simulation(parseRegion(REGION_GRID), NEVER_WANDER);
-    expect(s.state.spiders.size).toBe(8);
+    const kinds = [...s.state.enemies.values()].map(({ kind }) => kind);
+    expect(kinds.filter((kind) => kind === "spider")).toHaveLength(8);
   });
 
   test.each([
@@ -207,7 +213,7 @@ describe("Spiders", () => {
 
   test("a Spider that isn't idle doesn't wander", () => {
     const s = spiderSim(["TTTTT", "TRS.T", "TTTTT"], () => 0);
-    s.state.spiders.get("0")!.state = "fighting";
+    s.state.enemies.get("0")!.state = "fighting";
     s.tick();
     expect(spiderTile(s)).toEqual({ x: 2, y: 1 });
   });
@@ -229,10 +235,10 @@ describe("Spiders", () => {
       s.addPlayer("a");
       s.queueTarget("a", "0");
       for (let i = 0; i < 30; i++) s.tick();
-      Object.assign(s.state.spiders.get("0")!, { x: 2, y: 1 });
+      Object.assign(s.state.enemies.get("0")!, { x: 2, y: 1 });
       for (let i = 0; i < 30; i++) s.tick();
       const { x, y } = s.state.players.get("a")!;
-      const spider = s.state.spiders.get("0")!; // It chases back, so they meet between.
+      const spider = s.state.enemies.get("0")!; // It chases back, so they meet between.
       expect(x).toBeLessThan(6);
       expect(Math.max(Math.abs(x - spider.x), Math.abs(y - spider.y))).toBe(1);
     });
@@ -309,6 +315,7 @@ describe("Spiders", () => {
 });
 
 const EMPTY_INVENTORY = Array<string>(30).fill("");
+const EMPTY_COUNTS = Array<number>(30).fill(0);
 
 test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 10 health", () => {
   expect(sim.saveOf("a")).toEqual({
@@ -318,8 +325,23 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     defenseXp: 0,
     foragingXp: 0,
     hitpointsXp: 4050,
+    miningXp: 0,
+    smithingXp: 0,
+    blockingXp: 0,
+    pinnedSkills: [
+      "Combat",
+      "Defense",
+      "Foraging",
+      "Hitpoints",
+      "Mining",
+      "Smithing",
+    ],
     health: 10,
     inventory: EMPTY_INVENTORY,
+    inventoryCounts: EMPTY_COUNTS,
+    tools: [],
+    weapon: "",
+    shield: "",
   });
 });
 
@@ -330,8 +352,16 @@ const SAVED = {
   defenseXp: 2,
   foragingXp: 3,
   hitpointsXp: 4100,
+  miningXp: 4,
+  smithingXp: 5,
+  blockingXp: 6,
+  pinnedSkills: ["Mining", "Blocking"],
   health: 7,
   inventory: ["berry", ...EMPTY_INVENTORY.slice(1)],
+  inventoryCounts: [7, ...EMPTY_COUNTS.slice(1)],
+  tools: ["pickaxe"],
+  weapon: "copperSword",
+  shield: "copperShield",
 };
 
 test("a returning player comes back exactly as saved", () => {
@@ -409,13 +439,13 @@ describe("a player's synced action", () => {
 
   test("foraging from the click on, through the walk there, until the pick", () => {
     const unlucky = start();
-    unlucky.queueForage("a", "6,1");
+    unlucky.queueGather("a", "foraging", "6,1");
     for (let i = 0; i < 8; i++) {
       unlucky.tick();
       expect(action(unlucky)).toBe("foraging");
     }
     const lucky = start(0);
-    lucky.queueForage("a", "6,1");
+    lucky.queueGather("a", "foraging", "6,1");
     for (let i = 0; i < 8; i++) lucky.tick();
     expect(action(lucky)).toBe("");
   });

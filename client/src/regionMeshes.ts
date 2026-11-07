@@ -1,9 +1,11 @@
 import {
-  bushId,
+  siteId,
   tileHash,
   type BushKind,
   type GroundKind,
   type PropKind,
+  type StationKind,
+  type Tier,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -14,12 +16,25 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   grass: { color: 0x5d9e3c, top: 0 },
   thicket: { color: 0x3f7a35, top: -0.02 },
   path: { color: 0xa77b4f, top: -0.05 },
+  ashen: { color: 0x6e6862, top: -0.01 },
 };
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
+// Not gear's tints, which leave veins looking like plain or dark rock. Above 1 is fine, it's a float.
+const VEIN_TINT: Record<Tier, THREE.Color> = {
+  copper: new THREE.Color(0xff8a3c).multiplyScalar(1.8),
+  iron: new THREE.Color(0x4f8fd8).multiplyScalar(2.4),
+  emberite: new THREE.Color(0xd42a1a).multiplyScalar(1.6),
+};
+const STATIONS: Record<StationKind, { file: string; width: number }> = {
+  // Kenney's building-smelter didn't read as a furnace at a tile's scale, so this is spec §15's first fallback.
+  furnace: { file: "building_blacksmith_red.gltf", width: 1.1 },
+  anvil: { file: "anvil.gltf", width: 0.8 },
+};
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
+const VEIN_RUN_OUT_TINT = new THREE.Color(0xbbbbbb);
 
 const white = new THREE.Color(0xffffff);
 
@@ -40,14 +55,29 @@ async function loadModel(name: string) {
   return scene.children[0] as THREE.Mesh;
 }
 
-/** A slab per tile and the props and bushes on them, all fixed but for bushes: returns how to show one run out or not. */
+/** A station's model, scaled to its width. */
+async function loadStation({ file, width }: (typeof STATIONS)[StationKind]) {
+  const { scene } = await new GLTFLoader().loadAsync(`/models/${file}`);
+  scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  const { max, min } = new THREE.Box3().setFromObject(scene);
+  scene.scale.setScalar(width / Math.max(max.x - min.x, max.z - min.z));
+  return scene;
+}
+
+/** A slab per tile and the props, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one run out or not. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
-  const [berryBush, herbBush, ...propMeshes] = await Promise.all(
-    [
-      ...Object.values(BUSH_MODELS),
-      ...Object.values(PROP_MODELS).flatMap(({ models }) => models),
-    ].map(loadModel),
-  );
+  const [[berryBush, herbBush, ...propMeshes], furnace, anvil] =
+    await Promise.all([
+      Promise.all(
+        [
+          ...Object.values(BUSH_MODELS),
+          ...Object.values(PROP_MODELS).flatMap(({ models }) => models),
+        ].map(loadModel),
+      ),
+      loadStation(STATIONS.furnace),
+      loadStation(STATIONS.anvil),
+    ]);
+  const stations = { furnace, anvil };
   const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
   for (const [kind, { models }] of Object.entries(PROP_MODELS)) {
@@ -81,10 +111,10 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     return placements.get(geometry)!.push({ matrix, color }) - 1;
   };
 
-  /** Where each bush is drawn. */
-  const bushSlots = new Map<
+  /** Where each bush and vein is drawn, by its tile's id, and the tint it takes when run out. */
+  const runOutSlots = new Map<
     string,
-    { geometry: THREE.BufferGeometry; slot: number }
+    { geometry: THREE.BufferGeometry; slot: number; tint: THREE.Color }
   >();
 
   const matrix = new THREE.Matrix4();
@@ -104,8 +134,12 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
-      const { bush, prop } = tile;
-      if (!bush && !prop) return;
+      const { bush, prop, vein, station } = tile;
+      if (station) {
+        stations[station].position.set(x, top, y);
+        scene.add(stations[station]);
+      }
+      if (!bush && !prop && !vein) return;
       const rotation = new THREE.Quaternion().setFromAxisAngle(
         up,
         (((hash >>> 16) & 255) / 256) * Math.PI * 2,
@@ -122,12 +156,28 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           new THREE.Matrix4().compose(at, rotation, scale),
           new THREE.Color(BUSH_TINT[bush]),
         );
-        bushSlots.set(bushId({ x, y }), { geometry, slot });
-      } else if (prop) {
-        const options = propVariants[prop];
+        runOutSlots.set(siteId({ x, y }), {
+          geometry,
+          slot,
+          tint: RUN_OUT_TINT,
+        });
+      } else {
+        // A vein is one of the rock models, in its tier's tint.
+        const model = vein ? "rock" : prop!;
+        const options = propVariants[model];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const scale = new THREE.Vector3().setScalar(PROP_MODELS[prop].scale);
-        place(geometry, new THREE.Matrix4().compose(at, rotation, scale));
+        const scale = new THREE.Vector3().setScalar(PROP_MODELS[model].scale);
+        const slot = place(
+          geometry,
+          new THREE.Matrix4().compose(at, rotation, scale),
+          vein ? VEIN_TINT[vein] : white,
+        );
+        if (vein)
+          runOutSlots.set(siteId({ x, y }), {
+            geometry,
+            slot,
+            tint: VEIN_RUN_OUT_TINT,
+          });
       }
     }),
   );
@@ -146,15 +196,15 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   }
 
   return (id: string, runOut: boolean) => {
-    const { geometry, slot } = bushSlots.get(id)!;
-    const bushes = meshes.get(geometry)!;
+    const { geometry, slot, tint } = runOutSlots.get(id)!;
+    const instances = meshes.get(geometry)!;
     const { matrix, color } = placements.get(geometry)![slot]!;
-    bushes.setMatrixAt(
+    instances.setMatrixAt(
       slot,
       runOut ? matrix.clone().scale(RUN_OUT_SCALE) : matrix,
     );
-    bushes.setColorAt(slot, runOut ? RUN_OUT_TINT : color);
-    bushes.instanceMatrix.needsUpdate = true;
-    bushes.instanceColor!.needsUpdate = true;
+    instances.setColorAt(slot, runOut ? tint : color);
+    instances.instanceMatrix.needsUpdate = true;
+    instances.instanceColor!.needsUpdate = true;
   };
 }

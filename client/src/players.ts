@@ -38,8 +38,14 @@ export function showPlayers(
 
   const frame = (now: number) => {
     for (const [id, figure] of figures) {
-      const target = room.state.players.get(id)?.target;
-      figure.fightTile = target ? room.state.spiders.get(target) : undefined;
+      const player = room.state.players.get(id);
+      const target = player?.target;
+      figure.fightTile = target ? room.state.enemies.get(target) : undefined;
+      figure.weapon = player?.weapon ?? "";
+      figure.shield = player?.shield ?? "";
+      const action = player?.action;
+      figure.mining = action === "mining";
+      if (action !== "smithing") figure.work = undefined;
       figure.update(now);
     }
     const own = figures.get(room.sessionId)?.model.position;

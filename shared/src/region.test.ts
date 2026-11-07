@@ -13,79 +13,157 @@ const region = parseRegion(REGION_GRID);
 const blocks = (x: number, y: number) => region[y]![x]!.blocks;
 const key = (x: number, y: number) => `${x},${y}`;
 
-/** Every tile a player can walk to from (x, y): 8 ways, no cutting past blocked corners (spec §4). */
-function reachableFrom(startX: number, startY: number) {
-  const seen = new Set([key(startX, startY)]);
+/**
+ * The fewest steps to every tile a player can walk to from (x, y): 8 ways, no cutting
+ * past blocked corners (spec §4). A diagonal takes as long as a straight step.
+ */
+function stepsFrom(
+  [startX, startY]: readonly [number, number],
+  isBlocked = blocks,
+) {
+  const steps = new Map([[key(startX, startY), 0]]);
   const queue = [[startX, startY] as const];
   for (const [x, y] of queue) {
     for (const dx of [-1, 0, 1]) {
       for (const dy of [-1, 0, 1]) {
         const nx = x + dx;
         const ny = y + dy;
-        if (seen.has(key(nx, ny)) || blocks(nx, ny)) continue;
-        if (blocks(nx, y) || blocks(x, ny)) continue;
-        seen.add(key(nx, ny));
+        if (steps.has(key(nx, ny)) || isBlocked(nx, ny)) continue;
+        if (isBlocked(nx, y) || isBlocked(x, ny)) continue;
+        steps.set(key(nx, ny), steps.get(key(x, y))! + 1);
         queue.push([nx, ny]);
       }
     }
   }
-  return seen;
+  return steps;
 }
 
-function tilesOf(char: string) {
+function tilesOf(...chars: string[]) {
   return lines.flatMap((line, y) =>
-    [...line].flatMap((c, x) => (c === char ? [[x, y] as const] : [])),
+    [...line].flatMap((c, x) => (chars.includes(c) ? [[x, y] as const] : [])),
   );
 }
 
+/** The tiles one legal step from a tile that may itself block, with the same corner rule (spec §4, D1). */
+const tilesNextTo = ([x, y]: readonly [number, number]) =>
+  [-1, 0, 1].flatMap((dx) =>
+    [-1, 0, 1].flatMap((dy) =>
+      (dx || dy) &&
+      !blocks(x + dx, y + dy) &&
+      (!dx || !dy || (!blocks(x + dx, y) && !blocks(x, y + dy)))
+        ? [[x + dx, y + dy] as const]
+        : [],
+    ),
+  );
+
+const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
+const THICKET = [",", "t", "b", "h"];
+const VEINS = ["c", "i", "e"];
+const STATIONS_AND_BLACKSMITH = ["F", "N", "B"];
+
 describe("the region", () => {
-  it("is exactly 64×64", () => {
-    expect(lines.map((line) => line.length)).toEqual(Array(64).fill(64));
+  const respawn = tilesOf("R")[0]!;
+  const reachable = stepsFrom(respawn);
+
+  it("is exactly 96×64", () => {
+    expect(lines.map((line) => line.length)).toEqual(Array(64).fill(96));
   });
 
   it("uses only known characters", () => {
     expect([...lines.join("")].filter((c) => !(c in TILE_KINDS))).toEqual([]);
   });
 
-  it("has one respawn tile, 12 berry bushes, 6 herb bushes and 8 Spider homes", () => {
-    expect(tilesOf("R")).toHaveLength(1);
-    expect(tilesOf("b")).toHaveLength(12);
-    expect(tilesOf("h")).toHaveLength(6);
-    expect(tilesOf("S")).toHaveLength(8);
+  it.each([
+    ["R", 1],
+    ["b", 12],
+    ["h", 6],
+    ["S", 8],
+    ["c", 6],
+    ["i", 4],
+    ["e", 3],
+    ["K", 6],
+    ["F", 1],
+    ["N", 1],
+    ["B", 1],
+  ])("has the right number of %s", (char, count) => {
+    expect(tilesOf(char)).toHaveLength(count);
   });
 
   it("has an outer ring of blocks", () => {
-    for (let i = 0; i < 64; i++) {
-      expect([
-        blocks(i, 0),
-        blocks(i, 63),
-        blocks(0, i),
-        blocks(63, i),
-      ]).toEqual(Array(4).fill(true));
+    for (let x = 0; x < 96; x++) {
+      expect([blocks(x, 0), blocks(x, 63)]).toEqual([true, true]);
+    }
+    for (let y = 0; y < 64; y++) {
+      expect([blocks(0, y), blocks(95, y)]).toEqual([true, true]);
     }
   });
 
-  it("lets a player walk from the respawn tile to every Spider home and next to every bush", () => {
-    const [respawn] = tilesOf("R");
-    const reachable = reachableFrom(respawn![0], respawn![1]);
-
-    expect(tilesOf("S").filter(([x, y]) => !reachable.has(key(x, y)))).toEqual(
-      [],
-    );
-
-    // Next to means one legal step away, with the same corner rule (spec §4, D1).
-    const nextToReachable = ([x, y]: readonly [number, number]) =>
-      [-1, 0, 1].some((dx) =>
-        [-1, 0, 1].some((dy) => {
-          if (!reachable.has(key(x + dx, y + dy))) return false;
-          return !blocks(x + dx, y) && !blocks(x, y + dy);
-        }),
-      );
+  it("lets a player walk from the respawn tile to every enemy home", () => {
     expect(
-      [...tilesOf("b"), ...tilesOf("h")].filter(
-        (bush) => !nextToReachable(bush),
+      tilesOf("S", "K").filter(([x, y]) => !reachable.has(key(x, y))),
+    ).toEqual([]);
+  });
+
+  it("lets a player walk next to every bush, vein, station and the Blacksmith", () => {
+    expect(
+      tilesOf("b", "h", ...VEINS, ...STATIONS_AND_BLACKSMITH).filter(
+        (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
+  });
+
+  it("keeps every Skeleton's reach off everything a player must be safe at", () => {
+    const tooNear = (safe: string[], reach: number) =>
+      tilesOf("K").flatMap((home) =>
+        tilesOf(...safe).filter(
+          (tile) => tilesApart(asTile(home), asTile(tile)) <= reach,
+        ),
+      );
+    expect(
+      tooNear(["R", ...THICKET, ...VEINS, ...STATIONS_AND_BLACKSMITH], 10),
+    ).toEqual([]);
+    expect(tooNear(["S"], 15)).toEqual([]);
+  });
+
+  it("makes the Boneyard the only route to the Emberite veins", () => {
+    const withoutAshen = stepsFrom(
+      respawn,
+      (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
+    );
+    expect(
+      tilesOf("e").filter((tile) =>
+        tilesNextTo(tile).some(([x, y]) => withoutAshen.has(key(x, y))),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["Copper", "c", 8, 12],
+    ["Iron", "i", 22, 28],
+    ["Emberite", "e", 40, 50],
+  ])(
+    "puts %s veins the right walk from the Smithy",
+    (_, char, minSeconds, maxSeconds) => {
+      const fromSmithy = stepsFrom(tilesNextTo(tilesOf("F")[0]!)[0]!);
+      const seconds = tilesOf(char).map(
+        (vein) =>
+          Math.min(
+            ...tilesNextTo(vein).map(
+              ([x, y]) => fromSmithy.get(key(x, y)) ?? Infinity,
+            ),
+          ) * 0.6, // A tile takes 0.6 s (spec §3).
+      );
+      expect(Math.min(...seconds)).toBeGreaterThanOrEqual(minSeconds);
+      expect(Math.max(...seconds)).toBeLessThanOrEqual(maxSeconds);
+    },
+  );
+
+  it("stands the furnace, anvil and Blacksmith together at the village's edge", () => {
+    const smithy = tilesOf(...STATIONS_AND_BLACKSMITH).map(asTile);
+    for (const a of smithy) {
+      for (const b of smithy) expect(tilesApart(a, b)).toBeLessThanOrEqual(6);
+      expect(tilesApart(a, asTile(respawn))).toBeLessThanOrEqual(10);
+    }
   });
 });
 
@@ -105,6 +183,20 @@ describe("parseRegion", () => {
     });
     expect(tiles[1]![0]).not.toHaveProperty("prop");
     expect(tiles[1]![1]).toMatchObject({ ground: "path", blocks: false });
+  });
+
+  it.each([
+    ["a", { ground: "ashen", blocks: false }],
+    ["A", { ground: "ashen", prop: "tree", blocks: true }],
+    ["K", { ground: "ashen", enemy: "skeleton", blocks: false }],
+    ["c", { ground: "grass", vein: "copper", blocks: true }],
+    ["i", { ground: "grass", vein: "iron", blocks: true }],
+    ["e", { ground: "ashen", vein: "emberite", blocks: true }],
+    ["F", { ground: "grass", station: "furnace", blocks: true }],
+    ["N", { ground: "grass", station: "anvil", blocks: true }],
+    ["B", { ground: "grass", blacksmith: true, blocks: true }],
+  ])("reads %s from the spec's grid characters", (char, kind) => {
+    expect(parseRegion(char)[0]![0]).toEqual(kind);
   });
 
   it("refuses an unknown character", () => {

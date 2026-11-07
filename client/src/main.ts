@@ -6,31 +6,38 @@ import {
   respawnTile,
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
+import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
-import { showBushes } from "./bushes.ts";
-import { loadCharacters, loadSpiders } from "./characters.ts";
+import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
+import { showGatheringSites } from "./gatheringSites.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
-import { showSpiders } from "./spiders.ts";
+import { showSmithingPanel } from "./smithingPanel.ts";
+import { addStations } from "./stations.ts";
 
 const tiles = parseRegion(REGION_GRID);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, setBushRunOut] = await Promise.all([
-  loadCharacters(),
-  loadSpiders(),
-  addRegionMeshes(scene, tiles),
-]).catch((error) => {
-  document.getElementById("loading")!.textContent =
-    "Could not load the game. Reload to try again.";
-  throw error;
-});
+const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
+  await Promise.all([
+    loadCharacters(),
+    loadSpiders(),
+    loadSkeletons(),
+    addRegionMeshes(scene, tiles),
+    addBlacksmith(tiles),
+  ]).catch((error) => {
+    document.getElementById("loading")!.textContent =
+      "Could not load the game. Reload to try again.";
+    throw error;
+  });
 document.getElementById("loading")!.remove();
+const stationUnder = addStations(tiles);
 
 const status = document.getElementById("status")!;
 const logout = document.getElementById("logout")!;
@@ -43,8 +50,11 @@ function enterWorld(room: WorldConnection) {
   walkOnClick(
     room,
     tiles,
-    showSpiders(room, newSpider),
-    showBushes(room, tiles, setBushRunOut),
+    showEnemies(room, { spider: newSpider, skeleton: newSkeleton }),
+    showGatheringSites(room, tiles, setRunOut),
+    stationUnder,
+    showSmithingPanel(room),
+    blacksmithUnder,
   );
   showBottomBar(room, sayOverhead);
   showFights(room);
@@ -59,6 +69,8 @@ function enterWorld(room: WorldConnection) {
     logout.hidden = true;
     // Its controls would send to the room just left. A rejoin's showBottomBar brings it back.
     document.getElementById("bar")!.hidden = true;
+    document.getElementById("sheet")!.hidden = true;
+    document.onkeydown = null;
     if (code === CloseCode.CONSENTED) {
       forgetToken();
       location.reload();

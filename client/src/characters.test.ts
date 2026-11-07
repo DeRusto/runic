@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { describe, expect, it, test, vi } from "vitest";
@@ -7,7 +7,9 @@ import {
   characterFor,
   Figure,
   fitSpider,
+  paintGear,
   SPIDER_GAIT,
+  swingFor,
 } from "./characters.ts";
 
 const PICK_UP_S = 1.296;
@@ -21,6 +23,8 @@ CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
 const DEATH_S = 1.5;
 CLIPS.set("Death_A", new THREE.AnimationClip("Death_A", DEATH_S, []));
 CLIPS.set("Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, []));
+const PICKAXING_S = 3.733;
+CLIPS.set("Pickaxing", new THREE.AnimationClip("Pickaxing", PICKAXING_S, []));
 
 function figureAt(tile: { x: number; y: number }) {
   return new Figure(tile, new THREE.Object3D(), CLIPS);
@@ -497,4 +501,486 @@ describe("Spider.glb", () => {
     expect(Math.max(size.x, size.z)).toBeCloseTo(1.1);
     expect(box.min.y).toBeCloseTo(0);
   });
+});
+
+describe("working at a station", () => {
+  const worker = (tile = { x: 1, y: 1 }) => {
+    const hammer = new THREE.Object3D();
+    hammer.name = "hammer in hand";
+    const model = new THREE.Object3D().add(hammer);
+    return { hammer, figure: new Figure(tile, model, CLIPS) };
+  };
+  const WORK_CLIPS = ["Hammering", "Working_A"];
+  WORK_CLIPS.forEach((name) =>
+    CLIPS.set(name, new THREE.AnimationClip(name, 2, [])),
+  );
+
+  test("faces the station between moves", () => {
+    const { figure } = worker();
+    figure.work = { tile: { x: 2, y: 1 }, hammer: false };
+    for (let now = 1000; now <= 1600; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(Math.PI / 2);
+  });
+
+  test("the hammer shows while Hammering plays, even once the action has ended", () => {
+    const { figure, hammer } = worker();
+    figure.update(1000);
+    expect(hammer.visible).toBe(false);
+    figure.onceWithin("Hammering", 3600);
+    figure.update(1010);
+    expect(hammer.visible).toBe(true);
+    figure.update(3500);
+    figure.update(3510);
+    expect(hammer.visible).toBe(false);
+  });
+
+  test("the hammer stays out between items at the anvil, but not on the walk there", () => {
+    const tile = { x: 1, y: 1 };
+    const { figure, hammer } = worker(tile);
+    figure.work = { tile: { x: 3, y: 1 }, hammer: true };
+    tile.x = 2;
+    figure.update(1000);
+    expect(hammer.visible).toBe(false);
+    figure.update(2000);
+    expect(hammer.visible).toBe(true);
+    figure.work = undefined;
+    figure.update(2010);
+    expect(hammer.visible).toBe(false);
+  });
+
+  test("the furnace keeps hands empty", () => {
+    const { figure, hammer } = worker();
+    figure.work = { tile: { x: 2, y: 1 }, hammer: false };
+    figure.onceWithin("Working_A", 1800);
+    figure.update(1000);
+    expect(hammer.visible).toBe(false);
+  });
+
+  test("a figure's own model of a hammer isn't the one that hides", () => {
+    const ownHammer = new THREE.Object3D();
+    ownHammer.name = "hammer";
+    const figure = new Figure(
+      { x: 1, y: 1 },
+      new THREE.Object3D().add(ownHammer),
+      CLIPS,
+    );
+    figure.update(1000);
+    expect(ownHammer.visible).toBe(true);
+  });
+
+  test("the committed clip pack has both clips", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
+    for (const name of WORK_CLIPS)
+      expect(glb.toString("latin1")).toContain(`"name":"${name}"`);
+  });
+});
+
+describe("the pickaxe in hand", () => {
+  const miner = (tile = { x: 1, y: 1 }) => {
+    const pickaxe = new THREE.Object3D();
+    pickaxe.name = "pickaxe";
+    const model = new THREE.Object3D().add(pickaxe);
+    return { pickaxe, figure: new Figure(tile, model, CLIPS) };
+  };
+
+  test("shows only while Pickaxing plays, even once the action has ended", () => {
+    const { figure, pickaxe } = miner();
+    figure.update(1000);
+    expect(pickaxe.visible).toBe(false);
+    figure.onceWithin("Pickaxing", 2400);
+    figure.update(1010);
+    expect(pickaxe.visible).toBe(true);
+    figure.update(3500);
+    figure.update(3510);
+    expect(pickaxe.visible).toBe(false);
+  });
+
+  test("stays out between attempts on the mining action, but not on the walk there", () => {
+    const tile = { x: 1, y: 1 };
+    const { figure, pickaxe } = miner(tile);
+    figure.mining = true;
+    tile.x = 2;
+    figure.update(1000);
+    expect(pickaxe.visible).toBe(false);
+    figure.update(2000);
+    expect(pickaxe.visible).toBe(true);
+    figure.mining = false;
+    figure.update(2010);
+    expect(pickaxe.visible).toBe(false);
+  });
+
+  test("another clip puts it away", () => {
+    const { figure, pickaxe } = miner();
+    figure.onceWithin("Pickaxing", 2400);
+    figure.update(1000);
+    figure.once("PickUp");
+    figure.update(1010);
+    expect(pickaxe.visible).toBe(false);
+  });
+
+  test("a figure with no pickaxe is fine", () => {
+    const figure = figureAt({ x: 1, y: 1 });
+    figure.onceWithin("Pickaxing", 2400);
+    expect(() => figure.update(1000)).not.toThrow();
+  });
+
+  test("the clip is sped up to fit one attempt", () => {
+    expect(miner().figure.onceWithin("Pickaxing", 2400)).toBeCloseTo(2400);
+  });
+
+  test("the committed clip pack has Pickaxing", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
+    expect(glb.toString("latin1")).toContain('"name":"Pickaxing"');
+  });
+});
+
+describe("swingFor", () => {
+  const ARMED = {
+    Melee_1H_Attack_Chop: 580,
+    Melee_1H_Attack_Slice_Diagonal: 420,
+    Melee_1H_Attack_Stab: 380,
+  };
+
+  test("a sword picks one of the three armed clips, with that clip's contact", () => {
+    for (let tick = 0; tick < 50; tick++) {
+      const { clip, contactMs } = swingFor("copperSword", "a", tick);
+      expect(ARMED[clip as keyof typeof ARMED]).toBe(contactMs);
+    }
+  });
+
+  test("the same swinger on the same tick gets the same clip", () => {
+    expect(swingFor("ironSword", "someId", 408)).toEqual(
+      swingFor("ironSword", "someId", 408),
+    );
+  });
+
+  test("no sword punches at 550 ms", () => {
+    expect(swingFor("", "a", 8)).toEqual({
+      clip: "Melee_Unarmed_Attack_Punch_A",
+      contactMs: 550,
+    });
+  });
+
+  test("one fighter's swings, 8 ticks apart, mix all three clips about evenly", () => {
+    for (const id of ["a", "Xk3_pQ9zT", "lZ0mNv-w2"]) {
+      const counts = new Map<string, number>();
+      for (let swing = 0; swing < 300; swing++) {
+        const { clip } = swingFor("copperSword", id, 1000 + swing * 8);
+        counts.set(clip, (counts.get(clip) ?? 0) + 1);
+      }
+      expect(counts.size).toBe(3);
+      for (const count of counts.values()) expect(count).toBeGreaterThan(60);
+    }
+  });
+});
+
+describe("gear in hand", () => {
+  const GEAR_CLIPS = new Map(
+    [
+      "Idle_A",
+      "Running_A",
+      "Melee_Unarmed_Idle",
+      "Melee_Blocking",
+      "Melee_Unarmed_Attack_Punch_A",
+      "Melee_1H_Attack_Chop",
+      "Melee_Block_Hit",
+      "Pickaxing",
+      "Hammering",
+      "Death_A",
+    ].map((name) => [name, new THREE.AnimationClip(name, 1, [])]),
+  );
+  const named = (name: string) => {
+    const object = new THREE.Object3D();
+    object.name = name;
+    object.visible = false;
+    return object;
+  };
+  const wearer = (tile = { x: 0, y: 0 }) => {
+    const sword = named("copperSword");
+    const otherSword = named("ironSword");
+    const shield = named("copperShield");
+    const pickaxe = named("pickaxe");
+    const hammer = named("hammer in hand");
+    const model = new THREE.Object3D().add(
+      sword,
+      otherSword,
+      shield,
+      pickaxe,
+      hammer,
+    );
+    const figure = new Figure(tile, model, GEAR_CLIPS);
+    figure.update(1000);
+    return { figure, sword, otherSword, shield, pickaxe };
+  };
+  // An action never played still reports a weight of 1, so check it's running too.
+  const weight = (figure: Figure, name: string) => {
+    const action = figure.mixer.clipAction(GEAR_CLIPS.get(name)!);
+    return action.isRunning() ? action.getEffectiveWeight() : 0;
+  };
+  const FOE = { x: 1, y: 0 };
+
+  test("nothing shows out of a fight, worn or not", () => {
+    const { figure, sword, shield } = wearer();
+    figure.weapon = "copperSword";
+    figure.shield = "copperShield";
+    figure.update(1016);
+    expect(sword.visible).toBe(false);
+    expect(shield.visible).toBe(false);
+  });
+
+  test("in a fight only what's worn shows", () => {
+    const { figure, sword, otherSword, shield } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.update(1016);
+    expect(sword.visible).toBe(true);
+    expect(otherSword.visible).toBe(false);
+    expect(shield.visible).toBe(false);
+  });
+
+  test("taking it off mid-fight puts it away", () => {
+    const { figure, sword } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.weapon = "";
+    figure.update(1032);
+    expect(sword.visible).toBe(false);
+  });
+
+  test("a walk to the fight looks like any walk, until the swing on arrival", () => {
+    const tile = { x: 0, y: 0 };
+    const { figure, sword } = wearer(tile);
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    tile.x = -1;
+    figure.update(1100);
+    expect(sword.visible).toBe(false);
+    figure.once("Melee_1H_Attack_Chop");
+    figure.update(1116);
+    expect(sword.visible).toBe(true);
+  });
+
+  test("the killing swing stays in hand once the fight has ended", () => {
+    const { figure, sword } = wearer();
+    figure.weapon = "copperSword";
+    figure.once("Melee_1H_Attack_Chop");
+    figure.update(1016);
+    expect(sword.visible).toBe(true);
+    figure.update(2100);
+    figure.update(2116);
+    expect(sword.visible).toBe(false);
+  });
+
+  test("a punch with a shield worn keeps the shield up after the kill", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Melee_Unarmed_Attack_Punch_A");
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
+  test("a block shows the shield, even with no fight going on", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Melee_Block_Hit");
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
+  test("a tool in hand beats gear, even as a fight starts", () => {
+    const { figure, sword, pickaxe } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.onceWithin("Pickaxing", 2400);
+    figure.update(1016);
+    expect(pickaxe.visible).toBe(true);
+    expect(sword.visible).toBe(false);
+  });
+
+  test("death puts gear away", () => {
+    const { figure, sword } = wearer();
+    figure.weapon = "copperSword";
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.once("Death_A", 1, true);
+    figure.update(1032);
+    expect(sword.visible).toBe(false);
+  });
+
+  test.each([
+    ["a sword", { weapon: "copperSword" }],
+    ["a shield", { shield: "copperShield" }],
+    ["both", { weapon: "copperSword", shield: "copperShield" }],
+  ])("holding %s stands in Melee_Blocking", (_, worn) => {
+    const { figure } = wearer();
+    Object.assign(figure, worn);
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.update(1300);
+    expect(weight(figure, "Melee_Blocking")).toBe(1);
+  });
+
+  test("holding nothing stands in Melee_Unarmed_Idle, and a swap mid-fight changes stance", () => {
+    const { figure } = wearer();
+    figure.fightTile = FOE;
+    figure.update(1016);
+    figure.update(1300);
+    expect(weight(figure, "Melee_Unarmed_Idle")).toBe(1);
+    figure.shield = "copperShield";
+    figure.update(1316);
+    figure.update(1600);
+    expect(weight(figure, "Melee_Blocking")).toBe(1);
+  });
+
+  test("worn gear changes nothing when idle", () => {
+    const { figure } = wearer();
+    figure.weapon = "copperSword";
+    figure.update(1016);
+    figure.update(1300);
+    expect(weight(figure, "Idle_A")).toBe(1);
+  });
+
+  test("the committed clip packs have every swing, stance and block", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_CombatMelee.glb");
+    for (const name of [
+      "Melee_1H_Attack_Chop",
+      "Melee_1H_Attack_Slice_Diagonal",
+      "Melee_1H_Attack_Stab",
+      "Melee_Blocking",
+      "Melee_Block_Hit",
+    ])
+      expect(glb.toString("latin1")).toContain(`"name":"${name}"`);
+  });
+});
+
+describe("paintGear", () => {
+  const painted = (look: { tint: number; glow?: number }) => {
+    const material = new THREE.MeshStandardMaterial({
+      map: new THREE.Texture(),
+    });
+    const grey = new THREE.Texture();
+    paintGear(
+      new THREE.Group().add(new THREE.Mesh(undefined, material)),
+      look,
+      grey,
+    );
+    return { material, grey };
+  };
+
+  test("tints over the grey atlas", () => {
+    const { material, grey } = painted({ tint: 0xf0935a });
+    expect(material.map).toBe(grey);
+    expect(material.color.getHex()).toBe(0xf0935a);
+    expect(material.emissive.getHex()).toBe(0);
+  });
+
+  test("Emberite glows at 0.15", () => {
+    const { material } = painted({ tint: 0x7a2a22, glow: 0xff4a10 });
+    expect(material.emissive.getHex()).toBe(0xff4a10);
+    expect(material.emissiveIntensity).toBe(0.15);
+  });
+});
+
+describe("the Skeleton", () => {
+  /** The joint names in a GLB's JSON chunk, as its embedded texture won't load outside a browser. */
+  const jointsOf = (file: string) => {
+    const glb = readFileSync(`client/public/models/${file}.glb`);
+    const { nodes, skins } = JSON.parse(
+      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
+    );
+    return skins[0].joints.map((i: number) => nodes[i].name).sort();
+  };
+  const STANCE_CLIPS = new Map(
+    ["Idle_A", "Running_A", "Melee_Blocking", "Melee_1H_Attack_Chop"].map(
+      (name) => [name, new THREE.AnimationClip(name, 1, [])],
+    ),
+  );
+
+  it("is on the players' rig, with a right hand for the blade", () => {
+    const joints = jointsOf("Skeleton_Warrior");
+    expect(joints).toContain("handslot.r");
+    expect(joints).toEqual(jointsOf("Knight"));
+  });
+
+  it("holds its blade in a stance, walking and swinging, as it isn't worn gear", () => {
+    const blade = new THREE.Object3D();
+    blade.name = "Skeleton_Blade";
+    const tile = { x: 1, y: 1 };
+    const figure = new Figure(
+      tile,
+      new THREE.Object3D().add(blade),
+      STANCE_CLIPS,
+    );
+    figure.alwaysArmed = true;
+    figure.update(1000);
+    expect(blade.visible).toBe(true);
+    figure.fightTile = { x: 2, y: 1 };
+    figure.update(2000);
+    const stance = figure.mixer.clipAction(STANCE_CLIPS.get("Melee_Blocking")!);
+    expect(stance.isRunning()).toBe(true);
+    figure.once("Melee_1H_Attack_Chop");
+    figure.update(2100);
+    expect(blade.visible).toBe(true);
+    Object.assign(tile, { x: 2 });
+    figure.update(2200);
+    expect(blade.visible).toBe(true);
+  });
+
+  it("comes back visible from a respawn, having sunk out of sight", () => {
+    const figure = new Figure(
+      { x: 1, y: 1 },
+      new THREE.Object3D(),
+      new Map([
+        ...STANCE_CLIPS,
+        ["Death_A", new THREE.AnimationClip("Death_A", 1, [])],
+        ["Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, [])],
+      ]),
+    );
+    figure.alreadyGone("Death_A");
+    expect(figure.model.visible).toBe(false);
+    figure.respawn();
+    expect(figure.model.visible).toBe(true);
+    expect(figure.downed).toBe(false);
+  });
+
+  it("has its blade's files and its licence committed", () => {
+    const gltf = JSON.parse(
+      readFileSync("client/public/models/Skeleton_Blade.gltf", "utf8"),
+    );
+    expect(gltf.nodes[0].name).toBe("Skeleton_Blade");
+    for (const { uri } of [...gltf.buffers, ...gltf.images])
+      expect(existsSync(`client/public/models/${uri}`)).toBe(true);
+    expect(
+      readFileSync("client/public/models/LICENSE-KayKit-Skeletons.txt", "utf8"),
+    ).toContain("Creative Commons Zero");
+  });
+});
+
+test("every tier's model and its licence are committed", () => {
+  for (const file of [
+    "sword_A",
+    "sword_B",
+    "sword_C",
+    "shield_A",
+    "shield_B",
+    "shield_C",
+  ]) {
+    const gltf = JSON.parse(
+      readFileSync(`client/public/models/${file}.gltf`, "utf8"),
+    );
+    expect(existsSync(`client/public/models/${gltf.buffers[0].uri}`)).toBe(
+      true,
+    );
+    expect(gltf.images[0].uri).toBe("weapons_bits_texture.png");
+  }
+  expect(existsSync("client/public/models/weapons_bits_texture.png")).toBe(
+    true,
+  );
+  expect(
+    readFileSync(
+      "client/public/models/LICENSE-KayKit-Fantasy-Weapons-Bits.txt",
+      "utf8",
+    ),
+  ).toContain("Creative Commons Zero");
 });

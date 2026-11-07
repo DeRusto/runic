@@ -1,22 +1,23 @@
 import {
   CHAT,
+  DISCARD_INTENT,
   EAT_INTENT,
-  EMPTY_SLOT,
+  EQUIP_INTENT,
+  FOOD_HEALS,
+  GEAR,
+  gearRefusal,
   INVENTORY_SLOTS,
   levelFor,
   levelProgress,
   MAX_CHAT_LENGTH,
+  SKILLS,
   type ChatLine,
 } from "@runic/shared";
+import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
+import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 
 const MAX_CHAT_LINES = 200;
-const SKILLS = [
-  ["Combat", "combatXp"],
-  ["Defense", "defenseXp"],
-  ["Foraging", "foragingXp"],
-  ["Hitpoints", "hitpointsXp"],
-] as const;
 
 const chatLines = document.getElementById("chat-lines")!;
 
@@ -30,12 +31,16 @@ export function printChatLine(line: string) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
-let holdingPick = false;
+let holdingResult = false;
 let showHeld = () => {};
 
-/** A pick's food and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
-export function revealPick() {
-  holdingPick = false;
+/** A pick's or mine's item and XP arrive on the tick, but stay hidden until the clip shows the result (spec §7). */
+export function holdResult() {
+  holdingResult = true;
+}
+
+export function revealResult() {
+  holdingResult = false;
   showHeld();
 }
 
@@ -60,10 +65,60 @@ export function showBottomBar(
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
-    slot.onclick = () => room.send(EAT_INTENT, i);
+    const eat = () => room.send(EAT_INTENT, i);
+    const equip = () => room.send(EQUIP_INTENT, i);
+    // Only food and gear do anything on a left-click, so a material's slot sends nothing.
+    slot.onclick = () => {
+      const item = slot.dataset.item!;
+      if (FOOD_HEALS.has(item)) eat();
+      if (GEAR.has(item)) equip();
+    };
+    slot.oncontextmenu = (event) => {
+      event.preventDefault();
+      const item = slot.dataset.item;
+      if (!item) return;
+      openMenu(event, [
+        ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
+        ...(GEAR.has(item) ? ([["Equip", equip]] as const) : []),
+        ["Discard", () => room.send(DISCARD_INTENT, i)],
+      ]);
+    };
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
+
+  const menu = document.getElementById("slot-menu")!;
+  const openMenu: OpenMenu = (event, choices) => {
+    menu.replaceChildren(
+      ...choices.map(([label, choose]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("role", "menuitem");
+        button.textContent = label;
+        button.onclick = () => {
+          menu.hidden = true;
+          choose();
+        };
+        return button;
+      }),
+    );
+    menu.style.left = `${event.clientX}px`;
+    // The bar is at the bottom of the window, so the menu opens upwards.
+    menu.style.bottom = `${innerHeight - event.clientY}px`;
+    menu.hidden = false;
+    (menu.firstElementChild as HTMLElement).focus();
+  };
+  menu.hidden = true;
+  menu.oncontextmenu = (event) => event.preventDefault();
+  menu.onkeydown = (event) => {
+    if (event.key !== "Escape") return;
+    menu.hidden = true;
+    // Or the same Esc would shut the character sheet too.
+    event.stopPropagation();
+  };
+  document.onpointerdown = (event) => {
+    if (!menu.contains(event.target as Node)) menu.hidden = true;
+  };
 
   const skills = SKILLS.map(([name, field]) => {
     const row = document.createElement("label");
@@ -72,31 +127,47 @@ export function showBottomBar(
     row.append(text, bar);
     return { name, field, text, bar, row };
   });
+  const noPins = document.createElement("p");
+  noPins.textContent = "Pin skills from the sheet";
+  // One row per skill in the sheet's order, so the column follows it whatever order they were pinned in.
   document
     .getElementById("skills")!
-    .replaceChildren(...skills.map((skill) => skill.row));
+    .replaceChildren(...skills.map((skill) => skill.row), noPins);
+  const sheet = showCharacterSheet(room, openMenu);
 
   const health = document.getElementById("health")!;
   const bar = document.getElementById("bar")!;
   bar.hidden = false;
 
   // A room left mid-hold never reveals, and a rejoin comes back through here.
-  holdingPick = false;
+  holdingResult = false;
   // The pick events a drop lost never come, so what a reconnect's state brings shows at once.
-  room.onReconnect(() => room.onStateChange.once(revealPick));
-  let food: number | undefined;
+  room.onReconnect(() => room.onStateChange.once(revealResult));
+  let frame = 0;
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
-    // Food, not XP: XP stops rising at the cap. Only a pick adds food.
-    const foodNow = me.inventory.filter((item) => item !== EMPTY_SLOT).length;
-    if (food !== undefined && foodNow > food) holdingPick = true;
-    food = foodNow;
+    // Pins aren't a pick's result, so they never wait for its clip.
+    for (const { name, row } of skills)
+      row.hidden = !me.pinnedSkills.includes(name);
+    noPins.hidden = me.pinnedSkills.length > 0;
+    sheet.drawPins(me);
+    sheet.drawTools(me);
+    sheet.drawGear(me);
     showHeld = () => {
       slots.forEach((slot, i) => {
-        slot.textContent = me.inventory[i] ?? "";
-        slot.disabled = !slot.textContent;
+        const item = me.inventory[i] ?? "";
+        slot.dataset.item = item;
+        const refusal = gearRefusal(item, me);
+        slot.dataset.locked = String(!!refusal);
+        slot.title = refusal
+          ? `${itemName(item)}. ${refusal}`
+          : item && itemName(item);
+        slot.style.backgroundImage = item && `url("${iconUrl(item)}")`;
+        slot.disabled = !item;
+        const count = me.inventoryCounts[i] ?? 0;
+        slot.dataset.count = count > 1 ? String(count) : "";
       });
       for (const skill of skills) {
         const xp = me[skill.field];
@@ -104,7 +175,12 @@ export function showBottomBar(
         skill.bar.value = levelProgress(xp);
         skill.bar.title = `${xp} XP`;
       }
+      sheet.drawSkills(me);
     };
-    if (!holdingPick) showHeld();
+    // A tick's pick event comes right after its patch, so draw on the next frame, when it has had the chance to hold.
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      if (!holdingResult) showHeld();
+    });
   });
 }

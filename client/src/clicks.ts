@@ -1,26 +1,34 @@
 import {
-  bushRefusal,
-  FORAGE_INTENT,
+  GATHERING,
+  gatherRefusal,
+  stationRefusal,
   TARGET_INTENT,
   TICK_MS,
+  VISIT_INTENT,
   WALK_INTENT,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
+import type { addBlacksmith } from "./blacksmith.ts";
 import { printChatLine } from "./bottomBar.ts";
-import type { showBushes } from "./bushes.ts";
+import type { showGatheringSites } from "./gatheringSites.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
-import type { showSpiders } from "./spiders.ts";
+import type { showEnemies } from "./enemies.ts";
+import type { showSmithingPanel } from "./smithingPanel.ts";
+import { stationTile, type addStations } from "./stations.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live Spider or bush under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
-  spiderUnder: ReturnType<typeof showSpiders>,
-  bushUnder: ReturnType<typeof showBushes>,
+  enemyUnder: ReturnType<typeof showEnemies>,
+  siteUnder: ReturnType<typeof showGatheringSites>,
+  stationUnder: ReturnType<typeof addStations>,
+  openSmithingPanel: ReturnType<typeof showSmithingPanel>,
+  blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
   const raycaster = new THREE.Raycaster();
@@ -47,22 +55,40 @@ export function walkOnClick(
       -(event.clientY / innerHeight) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
-    const spider = spiderUnder(raycaster);
-    if (spider) {
-      showMarker(spider.tile.x, spider.tile.y);
-      room.send(TARGET_INTENT, spider.id);
+    const enemy = enemyUnder(raycaster);
+    if (enemy) {
+      showMarker(enemy.tile.x, enemy.tile.y);
+      room.send(TARGET_INTENT, enemy.id);
       return;
     }
-    const bush = bushUnder(raycaster);
+    const site = siteUnder(raycaster);
     const me = room.state.players.get(room.sessionId);
-    if (bush && me) {
-      const refusal = bushRefusal(bush.kind, bush.picksLeft(), me);
+    if (site && me) {
+      const refusal = gatherRefusal(site.skill, site.kind, site.left(), me);
       if (refusal) {
         printChatLine(refusal);
       } else {
-        showMarker(bush.x, bush.y);
-        room.send(FORAGE_INTENT, bush.id);
+        showMarker(site.x, site.y);
+        room.send(GATHERING[site.skill].intent, site.id);
       }
+      return;
+    }
+    const station = stationUnder(raycaster);
+    if (station && me) {
+      const refusal = stationRefusal(station, me);
+      if (refusal) {
+        printChatLine(refusal);
+      } else {
+        const { x, y } = stationTile(station);
+        showMarker(x, y);
+        openSmithingPanel(station);
+      }
+      return;
+    }
+    const blacksmith = blacksmithUnder(raycaster);
+    if (blacksmith) {
+      showMarker(blacksmith.x, blacksmith.y);
+      room.send(VISIT_INTENT);
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;

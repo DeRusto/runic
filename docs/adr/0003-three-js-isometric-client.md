@@ -5,7 +5,7 @@ The client draws the world in real 3D with three.js, through an isometric orthog
 ## Consequences
 
 - The UI (chat, inventory, skills) is HTML over the canvas, not drawn in the engine.
-- Tiles are 1 world unit; tile (x, y) sits at world (x, 0, y). A click's ray tests bushes and enemies first, then falls through everything else onto the ground plane to pick a tile, so props never catch clicks.
+- Tiles are 1 world unit; tile (x, y) sits at world (x, 0, y). A click's ray tests live enemies, bushes, veins, stations and the Blacksmith first, then falls through everything else onto the ground plane to pick a tile, so props never catch clicks.
 - Characters and props come from KayKit packs (Adventurers, Character Animations, Forest Nature): CC0, already rigged on one shared skeleton, with separate animation clips that play on any character as skinned animation in three.js. Making and animating our own with Meshy was dropped for them; Phaser AE's 3D tool was passed over earlier because it costs more and makes static meshes only.
 - KayKit has no creatures, so the slice's enemy, the Spider, comes from Quaternius's CC0 Easy Enemy Pack. That pack ships FBX, not glTF, so `Spider.fbx` is converted once to a GLB with `GLTFExporter`, with material opacity forced to 1, and the GLB is committed.
 - The server side (Colyseus, the tick, saving) is unchanged.

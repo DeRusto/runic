@@ -7,20 +7,28 @@ import {
 } from "@colyseus/core";
 import {
   CHAT,
+  DISCARD_INTENT,
   EAT_INTENT,
+  EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
   LOGOUT_INTENT,
+  MAKE_INTENT,
   MAX_CHAT_LENGTH,
+  MINE_INTENT,
   parseRegion,
+  PIN_INTENT,
   REGION_GRID,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
+  TAKE_OFF_INTENT,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
   TICK_MS,
+  VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
+  type GearSlot,
   type Tile,
 } from "@runic/shared";
 import { accountForToken } from "./accounts.ts";
@@ -41,12 +49,27 @@ export class WorldRoom extends Room {
   messages = {
     [WALK_INTENT]: (client: Client, to: Tile) =>
       this.sim.queueWalk(client.sessionId, to),
-    [TARGET_INTENT]: (client: Client, spider: string) =>
-      this.sim.queueTarget(client.sessionId, spider),
+    [TARGET_INTENT]: (client: Client, enemy: string) =>
+      this.sim.queueTarget(client.sessionId, enemy),
     [FORAGE_INTENT]: (client: Client, bush: string) =>
-      this.sim.queueForage(client.sessionId, bush),
+      this.sim.queueGather(client.sessionId, "foraging", bush),
+    [MINE_INTENT]: (client: Client, vein: string) =>
+      this.sim.queueGather(client.sessionId, "mining", vein),
+    [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
+      this.sim.queueMake(client.sessionId, intent),
+    [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
+    [DISCARD_INTENT]: (client: Client, slot: number) =>
+      this.sim.queueDiscard(client.sessionId, slot),
+    [EQUIP_INTENT]: (client: Client, slot: number) =>
+      this.sim.equip(client.sessionId, slot),
+    [TAKE_OFF_INTENT]: (client: Client, slot: GearSlot) =>
+      this.sim.takeOff(client.sessionId, slot),
+    [PIN_INTENT]: (
+      client: Client,
+      intent: { skill: string; pinned: boolean },
+    ) => this.sim.pinSkill(client.sessionId, intent),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {

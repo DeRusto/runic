@@ -6,6 +6,7 @@
   },
   "include": [
     "client/src",
+    "client/render-icons",
     "client/vite.config.ts",
     "server/src",
     "server/drizzle.config.ts",

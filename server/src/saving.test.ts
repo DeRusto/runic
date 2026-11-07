@@ -4,13 +4,18 @@ import { join } from "node:path";
 import { CloseCode, matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
+  EQUIP_INTENT,
+  EVENTS,
   LOGOUT_INTENT,
   parseRegion,
+  PIN_INTENT,
   REGION_GRID,
   respawnTile,
   SAVE_INTERVAL_TICKS,
+  TAKE_OFF_INTENT,
   TAKEN_OVER_CLOSE_CODE,
   TICK_MS,
+  VISIT_INTENT,
   WALK_INTENT,
   WORLD_ROOM,
 } from "@runic/shared";
@@ -111,6 +116,7 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   const player = world.sim.state.players.get(room.sessionId)!;
   player.foragingXp = 300;
   player.inventory[0] = "berry";
+  player.inventoryCounts[0] = 13;
 
   await server.gracefullyShutdown(false);
   server = await startServer(PORT);
@@ -120,4 +126,128 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   const saved = (back.state as any).players.get(back.sessionId);
   expect(saved.foragingXp).toBe(300);
   expect(saved.inventory[0]).toBe("berry");
+  expect(saved.inventoryCounts[0]).toBe(13);
+  expect(saved.inventoryCounts[1]).toBe(0);
+});
+
+test("pins survive logging out, follow the player to another device, and new skills sync", async () => {
+  const client = await clientFor("Pinner");
+  const room = await joined(client);
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  expect(synced(room).miningXp).toBe(0);
+  expect(synced(room).smithingXp).toBe(0);
+  expect(synced(room).blockingXp).toBe(0);
+  room.send(PIN_INTENT, { skill: "Combat", pinned: false });
+  room.send(PIN_INTENT, { skill: "Blocking", pinned: true });
+  const pinned = ["Defense", "Foraging", "Hitpoints", "Mining", "Smithing"];
+  await vi.waitFor(
+    () =>
+      expect([...synced(room).pinnedSkills]).toEqual([...pinned, "Blocking"]),
+    { timeout: TICK_MS * 3, interval: 20 },
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  // A fresh client, as another device would be, with only the account in common.
+  const device = new Client(`http://localhost:${PORT}`);
+  device.auth.token = client.auth.token!;
+  const back = await joined(device);
+  expect([...synced(back).pinnedSkills]).toEqual([...pinned, "Blocking"]);
+});
+
+test("a sword equipped over the network is synced, and worn again after logging back in", async () => {
+  const client = await clientFor("Swordsman");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  const me = world.sim.state.players.get(room.sessionId)!;
+  me.inventory[0] = "copperSword";
+  me.inventoryCounts[0] = 1;
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+
+  room.send(EQUIP_INTENT, 0);
+  await vi.waitFor(() => expect(synced(room).weapon).toBe("copperSword"), {
+    timeout: TICK_MS * 3,
+    interval: 20,
+  });
+  expect(synced(room).inventory[0]).toBe("");
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back).weapon).toBe("copperSword");
+
+  back.send(TAKE_OFF_INTENT, "weapon");
+  await vi.waitFor(
+    () => expect(synced(back).inventory[0]).toBe("copperSword"),
+    {
+      timeout: TICK_MS * 3,
+      interval: 20,
+    },
+  );
+  expect(synced(back).weapon).toBe("");
+});
+
+test("the Blacksmith's tools reach the client with a told line, and survive logging out", async () => {
+  const tiles = parseRegion(REGION_GRID);
+  const y = tiles.findIndex((row) => row.some((tile) => tile.blacksmith));
+  const x = tiles[y]!.findIndex((tile) => tile.blacksmith);
+  const client = await clientFor("Toolman");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  // Already beside the Blacksmith, so the test doesn't wait out the walk.
+  Object.assign(world.sim.state.players.get(room.sessionId)!, { x: x - 1, y });
+  const lines: unknown[] = [];
+  room.onMessage(EVENTS, (events: { type: string }[]) =>
+    lines.push(...events.filter(({ type }) => type === "told")),
+  );
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  const BOTH = ["pickaxe", "hammer"];
+
+  room.send(VISIT_INTENT);
+  await vi.waitFor(() => expect([...synced(room).tools]).toEqual(BOTH), {
+    timeout: TICK_MS * 4,
+    interval: 20,
+  });
+  await vi.waitFor(() =>
+    expect(lines).toEqual([
+      {
+        type: "told",
+        player: room.sessionId,
+        line: "The Blacksmith gives you a pickaxe and a hammer.",
+      },
+    ]),
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect([...synced(back).tools]).toEqual(BOTH);
+});
+
+test("stack counts survive logging out, and clients see them change", async () => {
+  const client = await clientFor("Stacker");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  const player = world.sim.state.players.get(room.sessionId)!;
+  player.inventory[2] = "herb";
+  player.inventoryCounts[2] = 5;
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  await vi.waitFor(() => expect(synced(room).inventoryCounts[2]).toBe(5), {
+    timeout: TICK_MS * 3,
+    interval: 20,
+  });
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back).inventory[2]).toBe("herb");
+  expect(synced(back).inventoryCounts[2]).toBe(5);
 });
