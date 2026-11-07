@@ -1,11 +1,12 @@
 import { Client, CloseCode } from "@colyseus/sdk";
 import {
+  loadRegion,
   LOGOUT_INTENT,
-  parseRegion,
-  REGION_GRID,
   respawnTile,
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
+import regionMap from "../../maps/region.tmj?raw";
+import regionTileset from "../../maps/region.tsj?raw";
 import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
@@ -21,7 +22,7 @@ import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 import { addStations } from "./stations.ts";
 
-const tiles = parseRegion(REGION_GRID);
+const tiles = loadRegion(regionMap, regionTileset);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
 const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =

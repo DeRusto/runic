@@ -15,11 +15,12 @@ export type TileKind = {
   blacksmith?: true;
   house?: "wall" | "door";
   enemy?: EnemyKind;
+  respawn?: true;
   blocks: boolean;
 };
 export type Tile = { x: number; y: number };
 
-/** What each character of the text grid means (spec §3). Look a tile up here to ask what it is. */
+/** Shorthand for writing small regions in tests: what each character means. The world itself is in maps/. */
 export const TILE_KINDS = {
   ".": { ground: "grass", blocks: false },
   ",": { ground: "thicket", blocks: false },
@@ -31,7 +32,7 @@ export const TILE_KINDS = {
   b: { ground: "thicket", bush: "berryBush", blocks: true },
   h: { ground: "thicket", bush: "herbBush", blocks: true },
   S: { ground: "grass", enemy: "spider", blocks: false },
-  R: { ground: "path", blocks: false },
+  R: { ground: "path", respawn: true, blocks: false },
   a: { ground: "ashen", blocks: false },
   A: { ground: "ashen", prop: "tree", blocks: true },
   K: { ground: "ashen", enemy: "skeleton", blocks: false },
@@ -64,8 +65,8 @@ export function parseRegion(grid: string): TileKind[][] {
 }
 
 export function respawnTile(tiles: TileKind[][]): Tile {
-  const y = tiles.findIndex((row) => row.includes(TILE_KINDS.R));
-  return { x: tiles[y]!.indexOf(TILE_KINDS.R), y };
+  const y = tiles.findIndex((row) => row.some((tile) => tile.respawn));
+  return { x: tiles[y]!.findIndex((tile) => tile.respawn), y };
 }
 
 /** Distance in 8-way tiles. */
@@ -94,71 +95,3 @@ export function tileHash(x: number, y: number): number {
   h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
   return (h ^ (h >>> 15)) >>> 0;
 }
-
-/** First draft: village south-west with the Smithy, thicket north-east, field south-east, joined by paths; the road runs on east to the Boneyard's gap, and the Emberite pocket is behind it. */
-export const REGION_GRID = `
-TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-TTT.TT".T.TT.TT..T..........."..T....T.........................T.........T..T....T...T.."....."T
-TTTTT...T"...T....T.........".."..".........."..........T.T."..TT......T..T...."..........".T..T
-T.T..T....TT.TT.TTT.."..................T"..."..T....T.....""..T......"T......................"T
-T.T....TT....T"..T.T............................T.o."..........T.....""..........o.............T
-TT..TT....T.T...TT.T.........."..........,t,,,,,,,,,....o."....T..................."...........T
-T.T.T...TTT..T..T.TT...................t,,,,,,,,t,,,,,o...T....TTo............T.........T......T
-TTTT..TTT..T.TT..T.TT.................,,t,b,,,,,,,t,,,,....."..T...T.........T.".TT...........TT
-TT.T.......T.ToTT..........T"....T..,,,,t,,,,,,b,,,,,,,,,..i.i.T...o...T..............o..To.T..T
-T.TT.T.T.TT".T....TT...T...........T,,b,,,,t,,,,,,,,,,h,t......T...."T..oT..."..T..T...T.......T
-TT.T.T..T.T."T...T.........o.......,,,,,,,,,,,,,,,,,,,,,,t..i..T...............T.o...".........T
-TTTTT.TT.....T.T.."T......."......tt,,,b,,,,b,,,,b,,b,,,,,,....T............T.............T...TT
-TTT.TT...T..TT..T.To..............,t,t,,,,,,,,t,,,,,,,,,,,,..i.T..."....TT.....................T
-TTT.TT.T..".TT..T.T.........T.....,,,,,,,t,,,,,,,,,,,,,h,,,...TT......T..T..T...".........T....T
-TTTTT...TTTTTT............o.....T==============,tt,,,,,,,t,....T...T.....T....................TT
-T...T.T....TT..T...To........."."==============,,,,,,,,,,,,To..T.....T....................T....T
-TT.TTT.."T.TTTTTT...o...T....T.T.==,,,,tt,,,,,,t,,t,,,,,,t,....TT.T................"".T...T....T
-ToT."...TTT.....".T...T..T".....T==,,,,,,,,tt,,,,,t,,h,,,,,....T."..................T..........T
-T.T.T..TTT.T"..o............".T.T==,,,,,,,,,,,,t,,,,,,,,h,,.T..T...................T..".....".TT
-T"...TT..TTTT........o........T..==,,b,,,b,,,,,t,b,,,,,,,,t....T...T..T..T.T......"............T
-T.........T.c.c"o.c.T".c."T......==,,,,,,,,,,b,,,,,,,,,,,,...."T.......o...T......TT...........T
-T.o................cT...c.T......==.,,,,,,,,,,,,,,,,,,,t,......T...T......".........T..........T
-T..........".....o...".."......".==.,,,,,,,,,,,t,,,h,,,,t......T.T.......TT..".................T
-To........."....."....T..""......==...,,,,b,,,,,,,,,,,t..."....T............".......T..........T
-T......."........."".............==."..,,,,,,,,h,,,,,,.......".T....To........T.....o".........T
-T.T...................o..........==.T....t,t,,,,,,,,.......T...T.....T....o..o...............".T
-T.......o............."..........==......................."....T....T..."..o.."..............T.T
-T...............TT...............==...o".......................T.""...............T............T
-T...T....T.T.........."....."."".==....o."...."..""............TT.............".......T..T."...T
-T...o..........T......T"T...T....==.T.."........"T.........".T.T......AAAAAAAAAAAAAAAAAAAAAAAAAA
-T".......".".........."..........==......."..".................T......AaaaaaaaaaaaaaaaaaAaaaaaaA
-T................".........".....==..............T.............T......AaaaaaaaaaaaaaaaAaAaaaaaaA
-T......"".......".........T......==.........."....T..........."T..."TTAaaaaaaaaaaaaaaaaaaaaaaAaA
-T................................==....."....T.."....".....T...T......AaaaaaaAaaaaaaaaAaaaaaaaaA
-T..............................".==............"..T.T".........T.....TAaaaaaaaaaKaaaaaaaAaaaaaaA
-T......".........................==......T..................T..T..."..AaaAaaaaaaaaaaaaaaAaaaaaaA
-T..T.....".."..............".....==.."....".................""oT......AaaaaaaaaaaaaaaaaaAaaaeaaA
-T....T............F.N.B."....."..=="....."......"......".......T......AaaaKaaaaaaaaaaaAaAaaaaaaA
-T........"...................T.T.==.........S.............o....T..TT..AaaaaaaaaaaaaaaaaaAaaaaaaA
-T.....T..HHHHr.=======..HHHH.....==............................T......AaaaaaaaaaaaaaaaaaAaaaaeaA
-T........HDHHr.=W=====.rHDHH.....==".....o..".....S............T......AAaaaaaaaaaaaaaaaaAaaaaaaA
-T...."....=.."l=======l..=.T."T..==................"..."S......T......AaaaaaaaaaaaaaaaaaAaaeaaaA
-T.".==============R====================================================aaaaaaaaaaaaaaaaaAaaaaaaA
-T...===================================================================aaaaaaKaaKaaaaaaaAaAaaaaA
-T.oT......=...l=======l..=."..TT."........"............o.......T......AaaaaaaaaaaaaaaaaaAaaaaaaA
-T..."...xHDH...=======..HDHxT".T...............................T.oT...AaaaaaaaaaaaaaaaaaAAaaaaaA
-T.......xHHH......==..."HHHr..o.T............."........"......TT......AaaaaaaaaaaAaaaaaaAaaaaaaA
-T.........."......==.........T.....".......................".."T.o....AaaaaaaaaaaaaaaaaaAaaaaaaA
-T..o.....".....HH.==.HH.."..............S............".......o.T..T..oAaaaKaaaaaaaaaaaaaAaaaaaaA
-T.....T..".....HD====DH....."........"........"......".........T....."AaaaaaaaaaaaaaaaaaAaaaaaAA
-T.T....TT......HHr==xHH........."."....."............S.........T......AaaaaaaaaaaaaaaaaaAaaaaaaA
-TTTT.TT..T........==...."..o.T.o................."...."......"oT......AaaaaaaaaaaAaaaaaaAaaaaaAA
-TT..T.TTTTT.T.....==......".."...."...o......."".....".".......TT."...AaaaaaaaaaKaaaaaaaAaaaaaaA
-T.TT....TT........==."..........T.T...........S............".T.TT.....AaaaaaaaaaaaaaaAaaAaAaaaaA
-TT.TT...T...TTT...==...T..TT..."..................."......S....T......AaaaAaaaaaaaaaaaaaAaaaaaaA
-TT.TT..TTTT...T...==...."..........T...........................T......AaaaaaAaaaaaaaaaaaAaaaaaaA
-T.TTT..TT..TT"..".==............"..............o...............T......AAAAAAAAAAAAAAAAAAAAAAAAAA
-T....TTT.TT.T...."........"..............S....................oT........T............o.......T.T
-T.......T.TT.T......."..............................o..........T........T........""............T
-T.TTT.oT.T..TT."...............T.............................".TT..TT........................".T
-T.T.T...TTT...T.o..T..............."...........................T........................T..".."T
-T.T.T"T.TTTTTTT.T.............T........."............."........TT.....T........."...T.........TT
-T..T.TTT.T.T..............................o".................".T.o.T.T.........ToT.T...........T
-TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-`;

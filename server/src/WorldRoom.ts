@@ -16,9 +16,7 @@ import {
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
   MINE_INTENT,
-  parseRegion,
   PIN_INTENT,
-  REGION_GRID,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
   TAKE_OFF_INTENT,
@@ -35,10 +33,11 @@ import { accountForToken } from "./accounts.ts";
 import { readSave, writeSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
 import { tickStepper } from "./tickStepper.ts";
+import { loadWorldRegion } from "./worldRegion.ts";
 
 export class WorldRoom extends Room {
   autoDispose = false;
-  sim = new Simulation(parseRegion(REGION_GRID), Math.random);
+  sim = new Simulation(loadWorldRegion(), Math.random);
   state = this.sim.state;
   /** Players whose connection is gone but whose lock still holds them here. */
   private dropped = new Map<

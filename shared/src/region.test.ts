@@ -1,15 +1,17 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  loadRegion,
   neighbours,
   parseRegion,
-  REGION_GRID,
   tileHash,
-  TILE_KINDS,
   tilesApart,
+  type TileKind,
 } from "./index.ts";
 
-const lines = REGION_GRID.trim().split("\n");
-const region = parseRegion(REGION_GRID);
+const read = (name: string) =>
+  readFileSync(new URL(`../../maps/${name}`, import.meta.url), "utf8");
+const region = loadRegion(read("region.tmj"), read("region.tsj"));
 const blocks = (x: number, y: number) => region[y]![x]!.blocks;
 const key = (x: number, y: number) => `${x},${y}`;
 
@@ -38,11 +40,31 @@ function stepsFrom(
   return steps;
 }
 
-function tilesOf(...chars: string[]) {
-  return lines.flatMap((line, y) =>
-    [...line].flatMap((c, x) => (chars.includes(c) ? [[x, y] as const] : [])),
+/** The kinds of tile these tests ask about. */
+const IS = {
+  respawn: (tile) => !!tile.respawn,
+  thicket: (tile) => tile.ground === "thicket",
+  berryBush: (tile) => tile.bush === "berryBush",
+  herbBush: (tile) => tile.bush === "herbBush",
+  spider: (tile) => tile.enemy === "spider",
+  skeleton: (tile) => tile.enemy === "skeleton",
+  copper: (tile) => tile.vein === "copper",
+  iron: (tile) => tile.vein === "iron",
+  emberite: (tile) => tile.vein === "emberite",
+  furnace: (tile) => tile.station === "furnace",
+  anvil: (tile) => tile.station === "anvil",
+  blacksmith: (tile) => !!tile.blacksmith,
+  house: (tile) => !!tile.house,
+} satisfies Record<string, (tile: TileKind) => boolean>;
+
+function tilesOf(...kinds: (keyof typeof IS)[]) {
+  return region.flatMap((row, y) =>
+    row.flatMap((tile, x) =>
+      kinds.some((kind) => IS[kind](tile)) ? [[x, y] as const] : [],
+    ),
   );
 }
+const isHouse = (x: number, y: number) => !!region[y]?.[x]?.house;
 
 /** The tiles one legal step from a tile that may itself block, with the same corner rule (spec §4, D1). */
 const tilesNextTo = ([x, y]: readonly [number, number]) =>
@@ -57,36 +79,32 @@ const tilesNextTo = ([x, y]: readonly [number, number]) =>
   );
 
 const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
-const THICKET = [",", "t", "b", "h"];
-const VEINS = ["c", "i", "e"];
-const STATIONS_AND_BLACKSMITH = ["F", "N", "B"];
+const VEINS = ["copper", "iron", "emberite"] as const;
+const BUSHES = ["berryBush", "herbBush"] as const;
+const STATIONS_AND_BLACKSMITH = ["furnace", "anvil", "blacksmith"] as const;
 
 describe("the region", () => {
-  const respawn = tilesOf("R")[0]!;
+  const respawn = tilesOf("respawn")[0]!;
   const reachable = stepsFrom(respawn);
 
   it("is exactly 96×64", () => {
-    expect(lines.map((line) => line.length)).toEqual(Array(64).fill(96));
-  });
-
-  it("uses only known characters", () => {
-    expect([...lines.join("")].filter((c) => !(c in TILE_KINDS))).toEqual([]);
+    expect(region.map((row) => row.length)).toEqual(Array(64).fill(96));
   });
 
   it.each([
-    ["R", 1],
-    ["b", 12],
-    ["h", 6],
-    ["S", 8],
-    ["c", 6],
-    ["i", 4],
-    ["e", 3],
-    ["K", 6],
-    ["F", 1],
-    ["N", 1],
-    ["B", 1],
-  ])("has the right number of %s", (char, count) => {
-    expect(tilesOf(char)).toHaveLength(count);
+    ["respawn", 1],
+    ["berryBush", 12],
+    ["herbBush", 6],
+    ["spider", 8],
+    ["copper", 6],
+    ["iron", 4],
+    ["emberite", 3],
+    ["skeleton", 6],
+    ["furnace", 1],
+    ["anvil", 1],
+    ["blacksmith", 1],
+  ] as const)("has the right number of %s", (kind, count) => {
+    expect(tilesOf(kind)).toHaveLength(count);
   });
 
   it("has an outer ring of blocks", () => {
@@ -100,13 +118,15 @@ describe("the region", () => {
 
   it("lets a player walk from the respawn tile to every enemy home", () => {
     expect(
-      tilesOf("S", "K").filter(([x, y]) => !reachable.has(key(x, y))),
+      tilesOf("spider", "skeleton").filter(
+        ([x, y]) => !reachable.has(key(x, y)),
+      ),
     ).toEqual([]);
   });
 
   it("lets a player walk next to every bush, vein, station and the Blacksmith", () => {
     expect(
-      tilesOf("b", "h", ...VEINS, ...STATIONS_AND_BLACKSMITH).filter(
+      tilesOf(...BUSHES, ...VEINS, ...STATIONS_AND_BLACKSMITH).filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
@@ -114,7 +134,7 @@ describe("the region", () => {
 
   describe("houses", () => {
     const seen = new Set<string>();
-    const houses = tilesOf("H", "D").flatMap(([x, y]) => {
+    const houses = tilesOf("house").flatMap(([x, y]) => {
       if (seen.has(key(x, y))) return [];
       const tiles: [number, number][] = [[x, y]];
       seen.add(key(x, y));
@@ -125,8 +145,7 @@ describe("the region", () => {
           [tx, ty + 1],
           [tx, ty - 1],
         ] as const) {
-          if (!"HD".includes(lines[ny]![nx]!) || seen.has(key(nx, ny)))
-            continue;
+          if (!isHouse(nx, ny) || seen.has(key(nx, ny))) continue;
           seen.add(key(nx, ny));
           tiles.push([nx, ny]);
         }
@@ -146,7 +165,7 @@ describe("the region", () => {
 
     it("each have one door, off the corners, that a player can walk up to", () => {
       for (const tiles of houses) {
-        const doors = tiles.filter(([x, y]) => lines[y]![x] === "D");
+        const doors = tiles.filter(([x, y]) => region[y]![x]!.house === "door");
         expect(doors).toHaveLength(1);
         const [x, y] = doors[0]!;
         const outside = [
@@ -154,7 +173,7 @@ describe("the region", () => {
           [x - 1, y],
           [x, y + 1],
           [x, y - 1],
-        ].filter(([nx, ny]) => !"HD".includes(lines[ny!]![nx!]!));
+        ].filter(([nx, ny]) => !isHouse(nx!, ny!));
         expect(outside).toHaveLength(1);
         expect(reachable.has(key(outside[0]![0]!, outside[0]![1]!))).toBe(true);
       }
@@ -162,16 +181,16 @@ describe("the region", () => {
   });
 
   it("keeps every Skeleton's reach off everything a player must be safe at", () => {
-    const tooNear = (safe: string[], reach: number) =>
-      tilesOf("K").flatMap((home) =>
+    const tooNear = (safe: (keyof typeof IS)[], reach: number) =>
+      tilesOf("skeleton").flatMap((home) =>
         tilesOf(...safe).filter(
           (tile) => tilesApart(asTile(home), asTile(tile)) <= reach,
         ),
       );
     expect(
-      tooNear(["R", ...THICKET, ...VEINS, ...STATIONS_AND_BLACKSMITH], 10),
+      tooNear(["respawn", "thicket", ...VEINS, ...STATIONS_AND_BLACKSMITH], 10),
     ).toEqual([]);
-    expect(tooNear(["S"], 15)).toEqual([]);
+    expect(tooNear(["spider"], 15)).toEqual([]);
   });
 
   it("makes the Boneyard the only route to the Emberite veins", () => {
@@ -180,21 +199,21 @@ describe("the region", () => {
       (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
     );
     expect(
-      tilesOf("e").filter((tile) =>
+      tilesOf("emberite").filter((tile) =>
         tilesNextTo(tile).some(([x, y]) => withoutAshen.has(key(x, y))),
       ),
     ).toEqual([]);
   });
 
   it.each([
-    ["Copper", "c", 8, 12],
-    ["Iron", "i", 22, 28],
-    ["Emberite", "e", 40, 50],
-  ])(
+    ["Copper", "copper", 8, 12],
+    ["Iron", "iron", 22, 28],
+    ["Emberite", "emberite", 40, 50],
+  ] as const)(
     "puts %s veins the right walk from the Smithy",
-    (_, char, minSeconds, maxSeconds) => {
-      const fromSmithy = stepsFrom(tilesNextTo(tilesOf("F")[0]!)[0]!);
-      const seconds = tilesOf(char).map(
+    (_, vein, minSeconds, maxSeconds) => {
+      const fromSmithy = stepsFrom(tilesNextTo(tilesOf("furnace")[0]!)[0]!);
+      const seconds = tilesOf(vein).map(
         (vein) =>
           Math.min(
             ...tilesNextTo(vein).map(

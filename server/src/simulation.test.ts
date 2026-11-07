@@ -1,6 +1,7 @@
-import { parseRegion, REGION_GRID } from "@runic/shared";
+import { parseRegion } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
+import { loadWorldRegion } from "./worldRegion.ts";
 
 // The respawn tile is (1,1); a wall splits off the tile at (5,1).
 const TILES = parseRegion(
@@ -151,7 +152,7 @@ describe("Spiders", () => {
   });
 
   test("the real region has a Spider on every home", () => {
-    const s = new Simulation(parseRegion(REGION_GRID), NEVER_WANDER);
+    const s = new Simulation(loadWorldRegion(), NEVER_WANDER);
     const kinds = [...s.state.enemies.values()].map(({ kind }) => kind);
     expect(kinds.filter((kind) => kind === "spider")).toHaveLength(8);
   });
