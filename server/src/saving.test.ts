@@ -137,6 +137,7 @@ test("pins survive logging out, follow the player to another device, and new ski
   expect(synced(room).miningXp).toBe(0);
   expect(synced(room).smithingXp).toBe(0);
   expect(synced(room).blockingXp).toBe(0);
+  expect(synced(room).masteryXp).toBe(0);
   room.send(PIN_INTENT, { skill: "Combat", pinned: false });
   room.send(PIN_INTENT, { skill: "Blocking", pinned: true });
   const pinned = ["Defense", "Foraging", "Hitpoints", "Mining", "Smithing"];

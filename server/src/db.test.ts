@@ -21,16 +21,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-const LATEST_COLUMNS = [
-  "mining_xp",
-  "smithing_xp",
-  "blocking_xp",
-  "inventory_counts",
-  "weapon",
-  "shield",
-  "tools",
-  "pinned_skills",
-];
+const LATEST_COLUMNS = ["mastery_xp", "mastery_hundredths"];
 
 /** Makes the newest migration pending again, as if this build had just added it. */
 function unapplyLatest() {
@@ -48,7 +39,7 @@ function hasLatestMigration(file: string) {
   const sqlite = new DatabaseSync(file);
   const row = sqlite
     .prepare(
-      "SELECT 1 FROM pragma_table_info('players') WHERE name = 'pinned_skills'",
+      "SELECT 1 FROM pragma_table_info('players') WHERE name = 'mastery_xp'",
     )
     .get();
   sqlite.close();
@@ -114,7 +105,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     return openDatabase();
   }
 
-  test("the migration adds every new column with its default and changes nothing else", async () => {
+  test("the migration backfills Mastery with 7% of the experience held and changes nothing else", async () => {
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
@@ -129,6 +120,9 @@ describe("a save from the first slice, written before the stacks migration", () 
       miningXp: 0,
       smithingXp: 0,
       blockingXp: 0,
+      // 7% of 7,191.
+      masteryXp: 503,
+      masteryHundredths: 37,
       inventoryCounts: [],
       weapon: "",
       shield: "",
@@ -141,6 +135,16 @@ describe("a save from the first slice, written before the stacks migration", () 
         "Mining",
         "Smithing",
       ],
+    });
+    await database.shutdown();
+  });
+
+  test("the backfill doesn't apply again on the next boot", async () => {
+    await (await migratedFromOldRow()).shutdown();
+    const database = await openDatabase();
+    expect(readSave(7)).toMatchObject({
+      masteryXp: 503,
+      masteryHundredths: 37,
     });
     await database.shutdown();
   });

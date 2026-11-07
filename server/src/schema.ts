@@ -31,6 +31,9 @@ export const players = sqliteTable("players", {
   miningXp: integer("mining_xp").notNull().default(0),
   smithingXp: integer("smithing_xp").notNull().default(0),
   blockingXp: integer("blocking_xp").notNull().default(0),
+  masteryXp: integer("mastery_xp").notNull().default(0),
+  /** The fraction of a point of Mastery not yet earned, so small gains add up. */
+  masteryHundredths: integer("mastery_hundredths").notNull().default(0),
   /** Parallel to `inventory`. A filled slot with no count is a stack of 1. */
   inventoryCounts: text("inventory_counts", { mode: "json" })
     .notNull()

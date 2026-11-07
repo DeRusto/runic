@@ -25,6 +25,7 @@ import {
   INVENTORY_SLOTS,
   levelFor,
   makeRefusal,
+  MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
@@ -60,6 +61,7 @@ import {
   type Tile,
   type TileKind,
   type WorldEvent,
+  type XpField,
 } from "@runic/shared";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
@@ -79,6 +81,9 @@ export const Player = schema(
     miningXp: t.uint32().default(0),
     smithingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
+    masteryXp: t.uint32().default(0),
+    /** The fraction of a point of Mastery not yet earned, so small gains add up. */
+    masteryHundredths: t.uint8().default(0),
     /** In any order; the sheet's order decides how they show. */
     pinnedSkills: t.array("string"),
     health: t.uint8(),
@@ -318,6 +323,8 @@ export class Simulation {
       miningXp,
       smithingXp,
       blockingXp,
+      masteryXp,
+      masteryHundredths,
       health,
       weapon,
       shield,
@@ -332,6 +339,8 @@ export class Simulation {
       miningXp,
       smithingXp,
       blockingXp,
+      masteryXp,
+      masteryHundredths,
       health,
       weapon,
       shield,
@@ -658,7 +667,7 @@ export class Simulation {
       const success = this.random() < attemptChance(source.level, level);
       this.events.push({ type: verb, player: id, success });
       if (!success) continue;
-      player[xpField] = addXp(player[xpField], source.xp);
+      this.earnXp(player, xpField, source.xp);
       this.addToSlot(player, slotFor(source.item, player), source.item);
       if (--site.synced[leftField]! === 0)
         site.regrowTick = this.state.tick + source.regrowTicks;
@@ -723,8 +732,23 @@ export class Simulation {
       player.inventoryCounts[i] = inventoryCounts[i]!;
     });
     for (const [field, gained] of xpOf(item))
-      player[field] = addXp(player[field], gained);
+      this.earnXp(player, field, gained);
     return true;
+  }
+
+  /** Mastery's share is of what lands, so experience lost to the cap earns none. */
+  private earnXp(
+    player: InstanceType<typeof Player>,
+    field: XpField,
+    gained: number,
+  ) {
+    const before = player[field];
+    player[field] = addXp(before, gained);
+    const hundredths =
+      player.masteryHundredths +
+      (player[field] - before) * MASTERY_SHARE_PERCENT;
+    player.masteryXp = addXp(player.masteryXp, Math.floor(hundredths / 100));
+    player.masteryHundredths = hundredths % 100;
   }
 
   /** After the steps, so the tools come on the tick of arrival. */
@@ -810,8 +834,8 @@ export class Simulation {
       enemy.health, // No XP for overkill.
     );
     const xp = damage * XP_PER_DAMAGE_DEALT;
-    player.combatXp = addXp(player.combatXp, xp);
-    player.hitpointsXp = addXp(player.hitpointsXp, xp);
+    this.earnXp(player, "combatXp", xp);
+    this.earnXp(player, "hitpointsXp", xp);
     player.maxHealth = levelFor(player.hitpointsXp);
     this.events.push({
       type: "playerSwing",
@@ -943,11 +967,11 @@ export class Simulation {
     );
     const blocked = rolled > 0 && this.rollBlock(player);
     const damage = blocked ? 0 : rolled;
-    if (blocked)
-      player.blockingXp = addXp(player.blockingXp, BLOCKING_XP_PER_BLOCK);
+    if (blocked) this.earnXp(player, "blockingXp", BLOCKING_XP_PER_BLOCK);
     player.health -= damage;
-    player.defenseXp = addXp(
-      player.defenseXp,
+    this.earnXp(
+      player,
+      "defenseXp",
       DEFENSE_XP_PER_ENEMY_SWING + damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
     );
     this.events.push({

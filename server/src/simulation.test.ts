@@ -328,6 +328,8 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     miningXp: 0,
     smithingXp: 0,
     blockingXp: 0,
+    masteryXp: 0,
+    masteryHundredths: 0,
     pinnedSkills: [
       "Combat",
       "Defense",
@@ -355,6 +357,8 @@ const SAVED = {
   miningXp: 4,
   smithingXp: 5,
   blockingXp: 6,
+  masteryXp: 7,
+  masteryHundredths: 8,
   pinnedSkills: ["Mining", "Blocking"],
   health: 7,
   inventory: ["berry", ...EMPTY_INVENTORY.slice(1)],
