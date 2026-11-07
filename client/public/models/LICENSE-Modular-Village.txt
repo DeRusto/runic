@@ -1,0 +1,7 @@
+Modular Village
+
+License: Creative Commons Zero, CC0
+http://creativecommons.org/publicdomain/zero/1.0/
+
+The pack ships without a licence file and doesn't name its author. Its owner in
+this project checked online on 2026-11-06 that it is CC0.

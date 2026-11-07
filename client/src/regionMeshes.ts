@@ -10,6 +10,10 @@ import {
 } from "@runic/shared";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { HOUSE_MODELS, houseParts } from "./houseParts.ts";
 
 const SLAB_HEIGHT = 0.2;
 const GROUND: Record<GroundKind, { color: number; top: number }> = {
@@ -44,10 +48,21 @@ const BUSH_MODELS: Record<BushKind, string> = {
   berryBush: "Bush_2_B",
   herbBush: "Bush_4_B",
 };
-const PROP_MODELS: Record<PropKind, { scale: number; models: string[] }> = {
+const KAYKIT_PROPS = {
   tree: { scale: 0.45, models: ["Tree_1_A", "Tree_2_A", "Tree_4_A"] },
   rock: { scale: 0.65, models: ["Rock_1_E", "Rock_2_C"] },
   tuft: { scale: 0.5, models: ["Grass_1_B", "Grass_2_B"] },
+};
+// One Modular Village unit is a tile; a house's door already fits a character, so only the crate is cut down.
+const VILLAGE_PROPS = {
+  well: { scale: 1, models: ["Prop_Well_1"] },
+  lamp: { scale: 1, models: ["Prop_Lamp_Street"] },
+  barrel: { scale: 1, models: ["Prop_Barrel_1"] },
+  crate: { scale: 0.6, models: ["Prop_Crate_1"] },
+};
+const PROP_MODELS: Record<PropKind, { scale: number; models: string[] }> = {
+  ...KAYKIT_PROPS,
+  ...VILLAGE_PROPS,
 };
 
 async function loadModel(name: string) {
@@ -55,6 +70,45 @@ async function loadModel(name: string) {
     `/models/${name}_Color1.gltf`,
   );
   return scene.children[0] as THREE.Mesh;
+}
+
+/** A loaded OBJ as one geometry with its materials' colours baked into its vertices, so the model takes one draw call. */
+function bakeColours(model: THREE.Group) {
+  const parts = (model.children as THREE.Mesh[]).map((mesh) => {
+    const materials = [mesh.material].flat() as THREE.MeshPhongMaterial[];
+    const geometry = mesh.geometry.deleteAttribute("uv");
+    const { count } = geometry.getAttribute("position");
+    const colours = new THREE.BufferAttribute(new Float32Array(count * 3), 3);
+    const groups = geometry.groups.length
+      ? geometry.groups
+      : [{ start: 0, count, materialIndex: 0 }];
+    for (const { start, count, materialIndex } of groups) {
+      const { r, g, b } = materials[materialIndex!]!.color;
+      for (let i = start; i < start + count; i++) colours.setXYZ(i, r, g, b);
+    }
+    return geometry.setAttribute("color", colours);
+  });
+  return mergeGeometries(parts);
+}
+
+/** Modular Village's models by name. */
+async function loadVillageModels(names: string[]) {
+  const colours = await new MTLLoader().loadAsync(
+    "/models/Materials_Modular_Village.mtl",
+  );
+  colours.preload();
+  const loader = new OBJLoader().setMaterials(colours);
+  return new Map(
+    await Promise.all(
+      names.map(
+        async (name) =>
+          [
+            name,
+            bakeColours(await loader.loadAsync(`/models/${name}.obj`)),
+          ] as const,
+      ),
+    ),
+  );
 }
 
 /** A station's model, scaled to its width. */
@@ -74,35 +128,47 @@ export function oreParts(ore: THREE.Object3D) {
   };
 }
 
-/** A slab per tile and the props, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one run out or not. */
+/** A slab per tile and the props, houses, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one run out or not. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
-  const [[berryBush, herbBush, ...propMeshes], furnace, anvil, oreModel] =
-    await Promise.all([
-      Promise.all(
-        [
-          ...Object.values(BUSH_MODELS),
-          ...Object.values(PROP_MODELS).flatMap(({ models }) => models),
-        ].map(loadModel),
-      ),
-      loadStation(STATIONS.furnace),
-      loadStation(STATIONS.anvil),
-      new GLTFLoader().loadAsync("/models/ore.glb"),
-    ]);
+  const [
+    [berryBush, herbBush, ...propMeshes],
+    furnace,
+    anvil,
+    oreModel,
+    village,
+  ] = await Promise.all([
+    Promise.all(
+      [
+        ...Object.values(BUSH_MODELS),
+        ...Object.values(KAYKIT_PROPS).flatMap(({ models }) => models),
+      ].map(loadModel),
+    ),
+    loadStation(STATIONS.furnace),
+    loadStation(STATIONS.anvil),
+    new GLTFLoader().loadAsync("/models/ore.glb"),
+    loadVillageModels([
+      ...Object.values(HOUSE_MODELS),
+      ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
+    ]),
+  ]);
   const stations = { furnace, anvil };
   const ore = oreParts(oreModel.scene);
   const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
-  for (const [kind, { models }] of Object.entries(PROP_MODELS)) {
+  for (const [kind, { models }] of Object.entries(KAYKIT_PROPS)) {
     propVariants[kind as PropKind] = propMeshes
       .splice(0, models.length)
       .map((mesh) => mesh.geometry);
+  }
+  for (const [kind, { models }] of Object.entries(VILLAGE_PROPS)) {
+    propVariants[kind as PropKind] = models.map((name) => village.get(name)!);
   }
   // The whole pack paints from one texture, so one material covers every model.
   const material = new THREE.MeshLambertMaterial({
     map: (berryBush!.material as THREE.MeshStandardMaterial).map,
   });
   // The ore has no texture. Lambert can't shine, and metal needs an environment map to reflect, so the vein is Phong.
-  const oreMaterials = new Map<THREE.BufferGeometry, THREE.Material>([
+  const ownMaterials = new Map<THREE.BufferGeometry, THREE.Material>([
     [
       ore.rock.geometry,
       new THREE.MeshLambertMaterial({
@@ -118,6 +184,11 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       }),
     ],
   ]);
+
+  const villageMaterial = new THREE.MeshLambertMaterial({ vertexColors: true });
+  for (const geometry of village.values()) {
+    ownMaterials.set(geometry, villageMaterial);
+  }
 
   const slabs = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, SLAB_HEIGHT, 1),
@@ -163,10 +234,22 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
-      const { bush, prop, vein, station } = tile;
+      const { bush, prop, vein, station, house } = tile;
       if (station) {
         stations[station].position.set(x, top, y);
         scene.add(stations[station]);
+      }
+      if (house) {
+        for (const { part, angle, height } of houseParts(tiles, x, y)) {
+          place(
+            village.get(HOUSE_MODELS[part])!,
+            new THREE.Matrix4().compose(
+              new THREE.Vector3(x, top + height, y),
+              new THREE.Quaternion().setFromAxisAngle(up, angle),
+              new THREE.Vector3(1, 1, 1),
+            ),
+          );
+        }
       }
       if (!bush && !prop && !vein) return;
       const rotation = new THREE.Quaternion().setFromAxisAngle(
@@ -220,7 +303,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   for (const [geometry, list] of placements) {
     const mesh = new THREE.InstancedMesh(
       geometry,
-      oreMaterials.get(geometry) ?? material,
+      ownMaterials.get(geometry) ?? material,
       list.length,
     );
     list.forEach((item, i) => {

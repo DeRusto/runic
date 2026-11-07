@@ -2,7 +2,8 @@ import type { EnemyKind } from "./enemies.ts";
 import type { BushKind } from "./foraging.ts";
 
 export type GroundKind = "grass" | "thicket" | "path" | "ashen";
-export type PropKind = "tree" | "rock" | "tuft";
+export type PropKind =
+  "tree" | "rock" | "tuft" | "well" | "lamp" | "barrel" | "crate";
 export type Tier = "copper" | "iron" | "emberite";
 export type StationKind = "furnace" | "anvil";
 export type TileKind = {
@@ -12,6 +13,7 @@ export type TileKind = {
   vein?: Tier;
   station?: StationKind;
   blacksmith?: true;
+  house?: "wall" | "door";
   enemy?: EnemyKind;
   blocks: boolean;
 };
@@ -39,6 +41,12 @@ export const TILE_KINDS = {
   F: { ground: "grass", station: "furnace", blocks: true },
   N: { ground: "grass", station: "anvil", blocks: true },
   B: { ground: "grass", blacksmith: true, blocks: true },
+  H: { ground: "grass", house: "wall", blocks: true },
+  D: { ground: "grass", house: "door", blocks: true },
+  W: { ground: "path", prop: "well", blocks: true },
+  l: { ground: "grass", prop: "lamp", blocks: true },
+  r: { ground: "grass", prop: "barrel", blocks: true },
+  x: { ground: "grass", prop: "crate", blocks: true },
 } as const satisfies Record<string, TileKind>;
 
 /** The region's tiles, indexed [y][x]. Each is the very object in TILE_KINDS. */
@@ -128,18 +136,18 @@ T......".........................==......T..................T..T..."..AaaAaaaaaa
 T..T.....".."..............".....==.."....".................""oT......AaaaaaaaaaaaaaaaaaAaaaeaaA
 T....T............F.N.B."....."..=="....."......"......".......T......AaaaKaaaaaaaaaaaAaAaaaaaaA
 T........"...................T.T.==.........S.............o....T..TT..AaaaaaaaaaaaaaaaaaAaaaaaaA
-T.....T........=======...........==............................T......AaaaaaaaaaaaaaaaaaAaaaaeaA
-T..............=======...........==".....o..".....S............T......AAaaaaaaaaaaaaaaaaAaaaaaaA
-T....".......".=======.....T."T..==................"..."S......T......AaaaaaaaaaaaaaaaaaAaaeaaaA
+T.....T..HHHHr.=======..HHHH.....==............................T......AaaaaaaaaaaaaaaaaaAaaaaeaA
+T........HDHHr.=W=====.rHDHH.....==".....o..".....S............T......AAaaaaaaaaaaaaaaaaAaaaaaaA
+T...."....=.."l=======l..=.T."T..==................"..."S......T......AaaaaaaaaaaaaaaaaaAaaeaaaA
 T.".==============R====================================================aaaaaaaaaaaaaaaaaAaaaaaaA
 T...===================================================================aaaaaaKaaKaaaaaaaAaAaaaaA
-T.oT...........=======....."..TT."........"............o.......T......AaaaaaaaaaaaaaaaaaAaaaaaaA
-T..."..........=======......T".T...............................T.oT...AaaaaaaaaaaaaaaaaaAAaaaaaA
-T.................==..."......o.T............."........"......TT......AaaaaaaaaaaAaaaaaaAaaaaaaA
+T.oT......=...l=======l..=."..TT."........"............o.......T......AaaaaaaaaaaaaaaaaaAaaaaaaA
+T..."...xHDH...=======..HDHxT".T...............................T.oT...AaaaaaaaaaaaaaaaaaAAaaaaaA
+T.......xHHH......==..."HHHr..o.T............."........"......TT......AaaaaaaaaaaAaaaaaaAaaaaaaA
 T.........."......==.........T.....".......................".."T.o....AaaaaaaaaaaaaaaaaaAaaaaaaA
-T..o....."........==....."..............S............".......o.T..T..oAaaaKaaaaaaaaaaaaaAaaaaaaA
-T.....T.."........==........"........"........"......".........T....."AaaaaaaaaaaaaaaaaaAaaaaaAA
-T.T....TT.........==............"."....."............S.........T......AaaaaaaaaaaaaaaaaaAaaaaaaA
+T..o.....".....HH.==.HH.."..............S............".......o.T..T..oAaaaKaaaaaaaaaaaaaAaaaaaaA
+T.....T..".....HD====DH....."........"........"......".........T....."AaaaaaaaaaaaaaaaaaAaaaaaAA
+T.T....TT......HHr==xHH........."."....."............S.........T......AaaaaaaaaaaaaaaaaaAaaaaaaA
 TTTT.TT..T........==...."..o.T.o................."...."......"oT......AaaaaaaaaaaAaaaaaaAaaaaaAA
 TT..T.TTTTT.T.....==......".."...."...o......."".....".".......TT."...AaaaaaaaaaKaaaaaaaAaaaaaaA
 T.TT....TT........==."..........T.T...........S............".T.TT.....AaaaaaaaaaaaaaaAaaAaAaaaaA

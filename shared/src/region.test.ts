@@ -112,6 +112,55 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
+  describe("houses", () => {
+    const seen = new Set<string>();
+    const houses = tilesOf("H", "D").flatMap(([x, y]) => {
+      if (seen.has(key(x, y))) return [];
+      const tiles: [number, number][] = [[x, y]];
+      seen.add(key(x, y));
+      for (const [tx, ty] of tiles) {
+        for (const [nx, ny] of [
+          [tx + 1, ty],
+          [tx - 1, ty],
+          [tx, ty + 1],
+          [tx, ty - 1],
+        ] as const) {
+          if (!"HD".includes(lines[ny]![nx]!) || seen.has(key(nx, ny)))
+            continue;
+          seen.add(key(nx, ny));
+          tiles.push([nx, ny]);
+        }
+      }
+      return [tiles];
+    });
+
+    it("are rectangles 2 tiles deep, as houseParts draws them", () => {
+      expect(houses.length).toBeGreaterThan(0);
+      for (const tiles of houses) {
+        const xs = new Set(tiles.map(([x]) => x)).size;
+        const ys = new Set(tiles.map(([, y]) => y)).size;
+        expect(tiles).toHaveLength(xs * ys);
+        expect(Math.min(xs, ys)).toBe(2);
+      }
+    });
+
+    it("each have one door, off the corners, that a player can walk up to", () => {
+      for (const tiles of houses) {
+        const doors = tiles.filter(([x, y]) => lines[y]![x] === "D");
+        expect(doors).toHaveLength(1);
+        const [x, y] = doors[0]!;
+        const outside = [
+          [x + 1, y],
+          [x - 1, y],
+          [x, y + 1],
+          [x, y - 1],
+        ].filter(([nx, ny]) => !"HD".includes(lines[ny!]![nx!]!));
+        expect(outside).toHaveLength(1);
+        expect(reachable.has(key(outside[0]![0]!, outside[0]![1]!))).toBe(true);
+      }
+    });
+  });
+
   it("keeps every Skeleton's reach off everything a player must be safe at", () => {
     const tooNear = (safe: string[], reach: number) =>
       tilesOf("K").flatMap((home) =>
@@ -195,6 +244,12 @@ describe("parseRegion", () => {
     ["F", { ground: "grass", station: "furnace", blocks: true }],
     ["N", { ground: "grass", station: "anvil", blocks: true }],
     ["B", { ground: "grass", blacksmith: true, blocks: true }],
+    ["H", { ground: "grass", house: "wall", blocks: true }],
+    ["D", { ground: "grass", house: "door", blocks: true }],
+    ["W", { ground: "path", prop: "well", blocks: true }],
+    ["l", { ground: "grass", prop: "lamp", blocks: true }],
+    ["r", { ground: "grass", prop: "barrel", blocks: true }],
+    ["x", { ground: "grass", prop: "crate", blocks: true }],
   ])("reads %s from the spec's grid characters", (char, kind) => {
     expect(parseRegion(char)[0]![0]).toEqual(kind);
   });
