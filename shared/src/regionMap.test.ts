@@ -88,6 +88,29 @@ describe("loadRegion", () => {
       "one tileset",
     ],
     [
+      "two layers with one name",
+      mapWith({ layers: [...mapWith().layers, mapWith().layers[1]] }),
+      'exactly one "features"',
+    ],
+    [
+      "a moved tile layer",
+      mapWith({
+        layers: mapWith().layers.map((l) =>
+          l.name === "features" ? { ...l, offsetx: 16 } : l,
+        ),
+      }),
+      "offset",
+    ],
+    [
+      "a moved object layer",
+      mapWith({
+        layers: mapWith().layers.map((l) =>
+          l.name === "placements" ? { ...l, offsety: 16 } : l,
+        ),
+      }),
+      "offset",
+    ],
+    [
       "a missing layer",
       mapWith({ layers: mapWith().layers.slice(1) }),
       "ground",
@@ -186,6 +209,33 @@ describe("loadRegion", () => {
       "an unknown prop",
       { tiles: [{ id: 0, properties: [property("prop", "statue")] }] },
       "statue",
+    ],
+    [
+      "a tile that's two kinds of thing",
+      {
+        tiles: [
+          {
+            id: 0,
+            properties: [
+              property("bush", "berryBush"),
+              property("vein", "copper"),
+            ],
+          },
+        ],
+      },
+      "more than one kind",
+    ],
+    [
+      "a ground tile that blocks",
+      {
+        tiles: [
+          {
+            id: 0,
+            properties: [property("ground", "grass"), property("blocks", true)],
+          },
+        ],
+      },
+      "can't block",
     ],
     [
       "a blocks that isn't a yes or no",

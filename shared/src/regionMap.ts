@@ -11,7 +11,13 @@ type TiledObject = {
   y: number;
   properties?: TiledProperty[];
 };
-type TiledLayer = { name: string; data?: unknown; objects?: TiledObject[] };
+type TiledLayer = {
+  name: string;
+  data?: unknown;
+  objects?: TiledObject[];
+  offsetx?: number;
+  offsety?: number;
+};
 type TiledMap = {
   width: number;
   height: number;
@@ -78,6 +84,10 @@ function readTiles(tileset: TiledTileset) {
       if (values && !Object.hasOwn(values, String(value)))
         fail(`tile ${tile.id} has an unknown ${name} "${String(value)}"`);
     }
+    if (Object.keys(properties).filter((n) => n !== "blocks").length > 1)
+      fail(`tile ${tile.id} is more than one kind of thing`);
+    if ("ground" in properties && "blocks" in properties)
+      fail(`ground tile ${tile.id} can't block; put a feature on it`);
     tiles.set(tile.id, properties);
   }
   return tiles;
@@ -123,8 +133,13 @@ function place(tile: TileKind, object: TiledObject) {
 export function loadRegion(mapText: string, tilesetText: string): TileKind[][] {
   const map = JSON.parse(mapText) as TiledMap;
   if (map.tilesets.length !== 1) fail("needs exactly one tileset");
-  for (const { name } of map.layers)
+  for (const { name, offsetx, offsety } of map.layers) {
     if (!LAYERS.includes(name)) fail(`unknown layer "${name}"`);
+    if (offsetx || offsety) fail(`layer "${name}" has an offset`);
+  }
+  for (const name of LAYERS)
+    if (map.layers.filter((l) => l.name === name).length !== 1)
+      fail(`needs exactly one "${name}" layer`);
 
   const properties = readTiles(JSON.parse(tilesetText) as TiledTileset);
   const ids = new Set(properties.keys());
