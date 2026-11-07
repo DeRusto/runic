@@ -22,6 +22,8 @@ Out of scope: more than one server process; quests, trading, banking, economy; m
 
 ## 3. The region
 
+> The text grid below was how this slice stored the region. The world is now a Tiled map in `maps/` (#74, `maps/README.md`), and the grid survives only as shorthand for test fixtures.
+
 - One region, exactly 64×64 tiles. Tile (x, y) sits at world (x, 0, y), and a tile is 1 world unit.
 - It is stored as a **text grid** in a TypeScript string in `shared/`: 64 lines of 64 characters. Client and server import the grid, its parser and the kind table from there.
 

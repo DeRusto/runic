@@ -4,7 +4,6 @@ import {
   loadRegion,
   neighbours,
   parseRegion,
-  REGION_GRID,
   tileHash,
   tilesApart,
   type TileKind,
@@ -233,13 +232,6 @@ describe("the region", () => {
       for (const b of smithy) expect(tilesApart(a, b)).toBeLessThanOrEqual(6);
       expect(tilesApart(a, asTile(respawn))).toBeLessThanOrEqual(10);
     }
-  });
-});
-
-describe("migration proof", () => {
-  it("loads the Tiled map as exactly the old grid", () => {
-    expect(region).toEqual(parseRegion(REGION_GRID));
-    expect(region.flat()).toHaveLength(96 * 64);
   });
 });
 
