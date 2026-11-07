@@ -288,6 +288,14 @@ describe("the Skills tab", () => {
     expect(row("Mining").bar.title).toBe("75 XP");
   });
 
+  test("shows the combat level, and updates it as experience lands", () => {
+    const [combat] = el("sheet-skills").children;
+    sheet.drawSkills(me(TODAY));
+    expect(combat.textContent).toBe("Combat level 3");
+    sheet.drawSkills(me(TODAY, { combatXp: 50 }));
+    expect(combat.textContent).toBe("Combat level 4");
+  });
+
   test("at six pins the other pins are disabled, and pinned ones still work", () => {
     sheet.drawPins(me(TODAY));
     expect(row("Blocking").pin.disabled).toBe(true);

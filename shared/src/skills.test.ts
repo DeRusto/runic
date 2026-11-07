@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  combatLevel,
   levelFor,
   levelProgress,
   MAX_XP,
@@ -87,4 +88,71 @@ test("total level tops out at 2,277", () => {
     SKILL_REGISTRY.map(([, field]) => [field, MAX_XP]),
   );
   expect(totalLevel(maxed)).toBe(2277);
+});
+
+const FRESH = { hitpointsXp: xpForLevel(10) };
+
+test("a fresh player is combat level 3", () => {
+  expect(combatLevel(FRESH)).toBe(3);
+});
+
+test("a player maxed in everything trainable is 138 by hand", () => {
+  // 0.25 × (99 + 99 + 99 + 0) + 0.325 × (99 + 99) = 74.25 + 64.35
+  expect(
+    combatLevel({
+      combatXp: MAX_XP,
+      defenseXp: MAX_XP,
+      blockingXp: MAX_XP,
+      hitpointsXp: MAX_XP,
+    }),
+  ).toBe(138);
+});
+
+test("a player maxed in all of it is 150 by hand", () => {
+  // 0.25 × (99 + 99 + 99 + 49) + 0.325 × (99 + 99) = 86.5 + 64.35
+  const maxed = Object.fromEntries(
+    SKILL_REGISTRY.map(([, field]) => [field, MAX_XP]),
+  );
+  expect(combatLevel(maxed)).toBe(150);
+});
+
+test("Combat counts twice, for Attack and for Strength", () => {
+  // 3 + 0.325 × (2 + 2) = 4.3
+  expect(combatLevel({ ...FRESH, combatXp: xpForLevel(2) })).toBe(4);
+});
+
+test("Defense, Blocking and Hitpoints each count a quarter", () => {
+  // 0.25 × 15 + 0.65 = 4.4
+  expect(combatLevel({ ...FRESH, defenseXp: xpForLevel(4) })).toBe(4);
+  expect(combatLevel({ ...FRESH, blockingXp: xpForLevel(4) })).toBe(4);
+  expect(combatLevel({ hitpointsXp: xpForLevel(13) })).toBe(4);
+  // 0.25 × 14 + 0.65 = 4.15, then 3.9 one level short
+  expect(combatLevel({ ...FRESH, defenseXp: xpForLevel(3) })).toBe(4);
+  expect(combatLevel({ ...FRESH, defenseXp: xpForLevel(2) })).toBe(3);
+});
+
+test("Mastery and Foraging don't count", () => {
+  expect(combatLevel({ ...FRESH, masteryXp: MAX_XP, foragingXp: MAX_XP })).toBe(
+    3,
+  );
+});
+
+test("the best style is the one that counts, and Prayer counts half", () => {
+  // 3 + 0.325 × 148 = 51.1
+  expect(combatLevel({ ...FRESH, rangedXp: MAX_XP })).toBe(51);
+  expect(combatLevel({ ...FRESH, magicXp: MAX_XP })).toBe(51);
+  // 0.25 × (12 + 49) + 0.65 = 15.9
+  expect(combatLevel({ ...FRESH, prayerXp: MAX_XP })).toBe(15);
+});
+
+test("real Attack and Strength replace Combat once they exist", () => {
+  // 3 + 0.325 × (99 + 1) = 35.5, and Combat would have made it 67
+  expect(
+    combatLevel({
+      ...FRESH,
+      combatXp: MAX_XP,
+      attackXp: MAX_XP,
+      strengthXp: 0,
+    }),
+  ).toBe(35);
 });
