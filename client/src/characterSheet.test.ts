@@ -57,6 +57,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
     miningXp: 0,
     smithingXp: 0,
     blockingXp: 0,
+    masteryXp: 0,
     pinnedSkills,
     ...xp,
   }) as unknown as SyncedPlayer;
@@ -280,6 +281,7 @@ describe("the Skills tab", () => {
       "Mining 2",
       "Smithing 1",
       "Blocking 1",
+      "Mastery 1",
     ]);
     // Level 2 runs from 50 to 200 experience.
     expect(row("Mining").bar.value).toBeCloseTo(25 / 150);

@@ -92,6 +92,9 @@ _Avoid_: Stat, attribute, profession
 The sum of a player's levels across the 23 registered skills, at most 2,277. Combat and Foraging don't count: they are replaced when they split.
 _Avoid_: Overall level, combat level
 
+**Mastery**:
+A skill with no activity of its own: it gains a 7% share of the experience that lands in every other skill, counted separately for each. Quest experience and experience moved by a split earn no share.
+
 **Combat**:
 The skill that raises how often and how hard a player hits; trained by dealing damage to enemies.
 _Avoid_: Melee, fighting, attack

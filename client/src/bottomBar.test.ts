@@ -94,6 +94,7 @@ const stateHolding = (...stacks: [string, number][]) => ({
         miningXp: 0,
         smithingXp: 0,
         blockingXp: 0,
+        masteryXp: 0,
         pinnedSkills: TODAY,
         tools: [],
         weapon: "",

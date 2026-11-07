@@ -9,8 +9,13 @@ export const SKILLS = [
   ["Mining", "miningXp"],
   ["Smithing", "smithingXp"],
   ["Blocking", "blockingXp"],
+  ["Mastery", "masteryXp"],
 ] as const;
-export type XpField = (typeof SKILLS)[number][1];
+/** Where experience is paid. Mastery isn't paid any: it only gets its share of the rest. */
+export type XpField = Exclude<(typeof SKILLS)[number][1], "masteryXp">;
+
+/** Of the experience that lands in any other skill. The migration that backfilled Mastery has its own copy. */
+export const MASTERY_SHARE_PERCENT = 7;
 
 /** Moves up to `SKILLS`, with its column and synced field, when its content lands. Until then its experience is 0. */
 const UPCOMING_SKILLS = [
@@ -30,7 +35,6 @@ const UPCOMING_SKILLS = [
   ["Jewelsmithing", "jewelsmithingXp"],
   ["Leatherworking", "leatherworkingXp"],
   ["Fletching", "fletchingXp"],
-  ["Mastery", "masteryXp"],
   ["Runecrafting", "runecraftingXp"],
 ] as const;
 
