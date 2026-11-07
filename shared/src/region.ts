@@ -15,6 +15,7 @@ export type TileKind = {
   blacksmith?: true;
   house?: "wall" | "door";
   enemy?: EnemyKind;
+  respawn?: true;
   blocks: boolean;
 };
 export type Tile = { x: number; y: number };
@@ -31,7 +32,7 @@ export const TILE_KINDS = {
   b: { ground: "thicket", bush: "berryBush", blocks: true },
   h: { ground: "thicket", bush: "herbBush", blocks: true },
   S: { ground: "grass", enemy: "spider", blocks: false },
-  R: { ground: "path", blocks: false },
+  R: { ground: "path", respawn: true, blocks: false },
   a: { ground: "ashen", blocks: false },
   A: { ground: "ashen", prop: "tree", blocks: true },
   K: { ground: "ashen", enemy: "skeleton", blocks: false },
@@ -64,8 +65,8 @@ export function parseRegion(grid: string): TileKind[][] {
 }
 
 export function respawnTile(tiles: TileKind[][]): Tile {
-  const y = tiles.findIndex((row) => row.includes(TILE_KINDS.R));
-  return { x: tiles[y]!.indexOf(TILE_KINDS.R), y };
+  const y = tiles.findIndex((row) => row.some((tile) => tile.respawn));
+  return { x: tiles[y]!.findIndex((tile) => tile.respawn), y };
 }
 
 /** Distance in 8-way tiles. */

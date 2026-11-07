@@ -1,7 +1,8 @@
-import { parseRegion, REGION_GRID, type WorldEvent } from "@runic/shared";
+import { parseRegion, type WorldEvent } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 import type { PlayerSave } from "./saves.ts";
+import { loadWorldRegion } from "./worldRegion.ts";
 
 const MISS = 0.99;
 // The two rolls of one wander: whether it does, and which legal step, the first being east.
@@ -57,7 +58,7 @@ const CORRIDOR = [
 ];
 
 test("6 Skeletons start from the region's K homes, at full health", () => {
-  const s = new Simulation(parseRegion(REGION_GRID), () => MISS);
+  const s = new Simulation(loadWorldRegion(), () => MISS);
   const skeletons = [...s.state.enemies.values()].filter(
     (enemy) => enemy.kind === "skeleton",
   );

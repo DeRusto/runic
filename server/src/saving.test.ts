@@ -7,9 +7,7 @@ import {
   EQUIP_INTENT,
   EVENTS,
   LOGOUT_INTENT,
-  parseRegion,
   PIN_INTENT,
-  REGION_GRID,
   respawnTile,
   SAVE_INTERVAL_TICKS,
   TAKE_OFF_INTENT,
@@ -24,9 +22,10 @@ import { readSave } from "./saves.ts";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
+import { loadWorldRegion } from "./worldRegion.ts";
 
 const PORT = 30000 + (process.pid % 5000);
-const respawn = respawnTile(parseRegion(REGION_GRID));
+const respawn = respawnTile(loadWorldRegion());
 const folder = mkdtempSync(join(tmpdir(), "runic-saving-"));
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -193,7 +192,7 @@ test("a sword equipped over the network is synced, and worn again after logging 
 });
 
 test("the Blacksmith's tools reach the client with a told line, and survive logging out", async () => {
-  const tiles = parseRegion(REGION_GRID);
+  const tiles = loadWorldRegion();
   const y = tiles.findIndex((row) => row.some((tile) => tile.blacksmith));
   const x = tiles[y]!.findIndex((tile) => tile.blacksmith);
   const client = await clientFor("Toolman");

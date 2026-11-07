@@ -105,4 +105,5 @@ export * from "./items.ts";
 export * from "./making.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
+export * from "./regionMap.ts";
 export * from "./skills.ts";

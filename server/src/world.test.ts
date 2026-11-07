@@ -3,8 +3,6 @@ import { Client } from "@colyseus/sdk";
 import { matchMaker } from "@colyseus/core";
 import {
   EVENTS,
-  parseRegion,
-  REGION_GRID,
   respawnTile,
   TARGET_INTENT,
   TICK_MS,
@@ -16,6 +14,7 @@ import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
+import { loadWorldRegion } from "./worldRegion.ts";
 
 // per-process so parallel worktrees don't collide
 const PORT = 25000 + (process.pid % 5000);
@@ -52,7 +51,7 @@ test("a walk intent moves the player on the server, and others see it", async ()
   const other = new Client(`http://localhost:${PORT}`);
   other.auth.token = await testToken(PORT, "Watcher");
   const watcher = await other.join(WORLD_ROOM);
-  const { x, y } = respawnTile(parseRegion(REGION_GRID));
+  const { x, y } = respawnTile(loadWorldRegion());
 
   walker.send(WALK_INTENT, { x: x + 2, y });
 
