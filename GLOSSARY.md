@@ -107,7 +107,7 @@ The skill that sets a player's maximum health; trained by dealing damage. Player
 _Avoid_: HP skill, vitality, constitution
 
 **Health**:
-How much damage a player can still take before dying; at most their Hitpoints level.
+How much damage a player can still take before dying; at most 100 for each Hitpoints level.
 _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
@@ -189,11 +189,15 @@ A drop from a Skeleton, needed to make Emberite gear. Each player who damaged th
 _Avoid_: Loot, trophy, token
 
 **Gear**:
-What a player equips to fight better: a weapon, which raises how hard they hit, or a shield, which gives them a chance to block. It never wears out.
-_Avoid_: Equipment, armour, loot
+What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
+_Avoid_: Equipment, loot
+
+**Armour**:
+Gear worn on the body that reduces the damage of hits that land, by a percentage. It doesn't make a hit less likely to land: that's Defense.
+_Avoid_: Protection, plate
 
 **Gear slot**:
-Where a piece of gear goes when it is equipped, out of the inventory. A player has one for a weapon and one for a shield.
+Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
 _Avoid_: Equipment slot
 
 **Character sheet**:
