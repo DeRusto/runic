@@ -58,6 +58,10 @@ _Avoid_: NPC, shopkeeper, vendor
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
 _Avoid_: Decoration, doodad, object
 
+**House**:
+A building in the village, drawn from the tiles it stands on. It blocks walking and players can't go inside.
+_Avoid_: Building, home
+
 **Enemy**:
 A creature in a field that players fight to train Combat.
 _Avoid_: Mob, monster, NPC
