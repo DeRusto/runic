@@ -20,12 +20,13 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
 };
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
-// Not gear's tints, which leave veins looking like plain or dark rock. Above 1 is fine, it's a float.
+// Not gear's tints, which leave veins looking like plain or dark rock. They multiply the ore's near-white vein.
 const VEIN_TINT: Record<Tier, THREE.Color> = {
-  copper: new THREE.Color(0xff8a3c).multiplyScalar(1.8),
-  iron: new THREE.Color(0x4f8fd8).multiplyScalar(2.4),
-  emberite: new THREE.Color(0xd42a1a).multiplyScalar(1.6),
+  copper: new THREE.Color(0xff8a3c),
+  iron: new THREE.Color(0x4f8fd8),
+  emberite: new THREE.Color(0xd42a1a),
 };
+export const ORE_SCALE = 0.45;
 const STATIONS: Record<StationKind, { file: string; width: number }> = {
   // Kenney's building-smelter didn't read as a furnace at a tile's scale, so this is spec §15's first fallback.
   furnace: { file: "building_blacksmith_red.gltf", width: 1.1 },
@@ -34,7 +35,8 @@ const STATIONS: Record<StationKind, { file: string; width: number }> = {
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
-const VEIN_RUN_OUT_TINT = new THREE.Color(0xbbbbbb);
+// The ore's rock colour, so a run-out vein reads as plain rock.
+const VEIN_RUN_OUT_TINT = new THREE.Color(0x6b6665);
 
 const white = new THREE.Color(0xffffff);
 
@@ -64,9 +66,17 @@ async function loadStation({ file, width }: (typeof STATIONS)[StationKind]) {
   return scene;
 }
 
+/** The ore model's two meshes, apart so that only the vein takes a tier's tint. */
+export function oreParts(ore: THREE.Object3D) {
+  return {
+    rock: ore.getObjectByName("rock") as THREE.Mesh,
+    vein: ore.getObjectByName("ore_vein") as THREE.Mesh,
+  };
+}
+
 /** A slab per tile and the props, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one run out or not. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
-  const [[berryBush, herbBush, ...propMeshes], furnace, anvil] =
+  const [[berryBush, herbBush, ...propMeshes], furnace, anvil, oreModel] =
     await Promise.all([
       Promise.all(
         [
@@ -76,8 +86,10 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       ),
       loadStation(STATIONS.furnace),
       loadStation(STATIONS.anvil),
+      new GLTFLoader().loadAsync("/models/ore.glb"),
     ]);
   const stations = { furnace, anvil };
+  const ore = oreParts(oreModel.scene);
   const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
   for (const [kind, { models }] of Object.entries(PROP_MODELS)) {
@@ -89,6 +101,23 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const material = new THREE.MeshLambertMaterial({
     map: (berryBush!.material as THREE.MeshStandardMaterial).map,
   });
+  // The ore has no texture. Lambert can't shine, and metal needs an environment map to reflect, so the vein is Phong.
+  const oreMaterials = new Map<THREE.BufferGeometry, THREE.Material>([
+    [
+      ore.rock.geometry,
+      new THREE.MeshLambertMaterial({
+        color: (ore.rock.material as THREE.MeshStandardMaterial).color,
+      }),
+    ],
+    [
+      ore.vein.geometry,
+      new THREE.MeshPhongMaterial({
+        color: (ore.vein.material as THREE.MeshStandardMaterial).color,
+        specular: 0x666666,
+        shininess: 60,
+      }),
+    ],
+  ]);
 
   const slabs = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, SLAB_HEIGHT, 1),
@@ -111,10 +140,10 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     return placements.get(geometry)!.push({ matrix, color }) - 1;
   };
 
-  /** Where each bush and vein is drawn, by its tile's id, and the tint it takes when run out. */
+  /** Where each part of a bush or vein is drawn, by its tile's id, and the tint it takes when run out. */
   const runOutSlots = new Map<
     string,
-    { geometry: THREE.BufferGeometry; slot: number; tint: THREE.Color }
+    { geometry: THREE.BufferGeometry; slot: number; tint: THREE.Color }[]
   >();
 
   const matrix = new THREE.Matrix4();
@@ -156,28 +185,32 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           new THREE.Matrix4().compose(at, rotation, scale),
           new THREE.Color(BUSH_TINT[bush]),
         );
-        runOutSlots.set(siteId({ x, y }), {
-          geometry,
-          slot,
-          tint: RUN_OUT_TINT,
-        });
-      } else {
-        // A vein is one of the rock models, in its tier's tint.
-        const model = vein ? "rock" : prop!;
-        const options = propVariants[model];
-        const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const scale = new THREE.Vector3().setScalar(PROP_MODELS[model].scale);
-        const slot = place(
-          geometry,
-          new THREE.Matrix4().compose(at, rotation, scale),
-          vein ? VEIN_TINT[vein] : white,
+        runOutSlots.set(siteId({ x, y }), [
+          { geometry, slot, tint: RUN_OUT_TINT },
+        ]);
+      } else if (vein) {
+        const placed = new THREE.Matrix4().compose(
+          at,
+          rotation,
+          new THREE.Vector3().setScalar(ORE_SCALE),
         );
-        if (vein)
-          runOutSlots.set(siteId({ x, y }), {
-            geometry,
-            slot,
+        runOutSlots.set(siteId({ x, y }), [
+          {
+            geometry: ore.rock.geometry,
+            slot: place(ore.rock.geometry, placed),
+            tint: white,
+          },
+          {
+            geometry: ore.vein.geometry,
+            slot: place(ore.vein.geometry, placed, VEIN_TINT[vein]),
             tint: VEIN_RUN_OUT_TINT,
-          });
+          },
+        ]);
+      } else {
+        const options = propVariants[prop!];
+        const geometry = options[((hash >>> 8) & 255) % options.length]!;
+        const scale = new THREE.Vector3().setScalar(PROP_MODELS[prop!].scale);
+        place(geometry, new THREE.Matrix4().compose(at, rotation, scale));
       }
     }),
   );
@@ -185,7 +218,11 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
   for (const [geometry, list] of placements) {
-    const mesh = new THREE.InstancedMesh(geometry, material, list.length);
+    const mesh = new THREE.InstancedMesh(
+      geometry,
+      oreMaterials.get(geometry) ?? material,
+      list.length,
+    );
     list.forEach((item, i) => {
       mesh.setMatrixAt(i, item.matrix);
       mesh.setColorAt(i, item.color);
@@ -196,15 +233,16 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   }
 
   return (id: string, runOut: boolean) => {
-    const { geometry, slot, tint } = runOutSlots.get(id)!;
-    const instances = meshes.get(geometry)!;
-    const { matrix, color } = placements.get(geometry)![slot]!;
-    instances.setMatrixAt(
-      slot,
-      runOut ? matrix.clone().scale(RUN_OUT_SCALE) : matrix,
-    );
-    instances.setColorAt(slot, runOut ? tint : color);
-    instances.instanceMatrix.needsUpdate = true;
-    instances.instanceColor!.needsUpdate = true;
+    for (const { geometry, slot, tint } of runOutSlots.get(id)!) {
+      const instances = meshes.get(geometry)!;
+      const { matrix, color } = placements.get(geometry)![slot]!;
+      instances.setMatrixAt(
+        slot,
+        runOut ? matrix.clone().scale(RUN_OUT_SCALE) : matrix,
+      );
+      instances.setColorAt(slot, runOut ? tint : color);
+      instances.instanceMatrix.needsUpdate = true;
+      instances.instanceColor!.needsUpdate = true;
+    }
   };
 }
