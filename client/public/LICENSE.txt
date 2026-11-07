@@ -1,0 +1,24 @@
+The MIT License in the root of this repository does not cover this folder.
+
+Everything under client/public/ is third-party art or game art, and stays under
+its own terms. Most of it is CC0, but not all of it: if you reuse a file, check
+its terms first, and don't assume that anything here is yours to redistribute.
+
+Where the terms are recorded:
+
+icons/
+    icons/LICENSE.txt. emberiteSword.png is a Craftpix file and is NOT CC0.
+
+models/
+    The LICENSE-*.txt files beside the models, one per pack.
+    Bush_*, Grass_*, Rock_*, forest_texture.png
+        KayKit Forest Nature, by Kay Lousberg (www.kaylousberg.com), recorded as
+        CC0 in docs/adr/0003-three-js-isometric-client.md.
+    Spider.glb
+        Converted from Quaternius's Easy Enemy Pack (quaternius.com), recorded as
+        CC0 in docs/adr/0003-three-js-isometric-client.md.
+    ore.glb
+        Made for Runic by DeRusto. No licence is granted for it here.
+
+ui/
+    ui/LICENSE-Kenney-UI-Pack-Adventure.txt.
