@@ -1,6 +1,6 @@
 export const MAX_LEVEL = 99;
 
-/** Every skill and its synced experience field, in the character sheet's order. */
+/** Every skill a player can train and its synced experience field, in the character sheet's order. */
 export const SKILLS = [
   ["Combat", "combatXp"],
   ["Defense", "defenseXp"],
@@ -11,6 +11,33 @@ export const SKILLS = [
   ["Blocking", "blockingXp"],
 ] as const;
 export type XpField = (typeof SKILLS)[number][1];
+
+/** Moves up to `SKILLS`, with its column and synced field, when its content lands. Until then its experience is 0. */
+const UPCOMING_SKILLS = [
+  ["Attack", "attackXp"],
+  ["Strength", "strengthXp"],
+  ["Ranged", "rangedXp"],
+  ["Prayer", "prayerXp"],
+  ["Magic", "magicXp"],
+  ["Cooking", "cookingXp"],
+  ["Woodcutting", "woodcuttingXp"],
+  ["Fishing", "fishingXp"],
+  ["Firemaking", "firemakingXp"],
+  ["Crafting", "craftingXp"],
+  ["Herblaw", "herblawXp"],
+  ["Agility", "agilityXp"],
+  ["Thieving", "thievingXp"],
+  ["Jewelsmithing", "jewelsmithingXp"],
+  ["Leatherworking", "leatherworkingXp"],
+  ["Fletching", "fletchingXp"],
+  ["Mastery", "masteryXp"],
+  ["Runecrafting", "runecraftingXp"],
+] as const;
+
+/** The 23 skills total level counts. Combat and Foraging aren't among them: their splits replace them. */
+export const SKILL_REGISTRY = [...SKILLS, ...UPCOMING_SKILLS].filter(
+  ([skill]) => skill !== "Combat" && skill !== "Foraging",
+);
 
 /** What the bottom bar's skills column fits: two across, three down. */
 export const MAX_PINNED_SKILLS = 6;
@@ -38,6 +65,15 @@ export const addXp = (xp: number, gained: number) =>
 /** Only experience is stored; level is always worked out from it. */
 export const levelFor = (xp: number) =>
   Math.min(Math.floor(Math.sqrt(xp / 50)) + 1, MAX_LEVEL);
+
+/** The sum of every registered skill's level; a skill with no experience yet is level 1. */
+export const totalLevel = (
+  xp: Partial<Record<(typeof SKILL_REGISTRY)[number][1], number>>,
+) =>
+  SKILL_REGISTRY.reduce(
+    (total, [, field]) => total + levelFor(xp[field] ?? 0),
+    0,
+  );
 
 /** How far through the current level, from 0 to 1; 1 at the top level. */
 export function levelProgress(xp: number) {

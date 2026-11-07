@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { levelFor, levelProgress, MAX_XP, xpForLevel } from "./skills.ts";
+import {
+  levelFor,
+  levelProgress,
+  MAX_XP,
+  SKILL_REGISTRY,
+  SKILLS,
+  totalLevel,
+  xpForLevel,
+} from "./skills.ts";
 
 test("total experience for a level is 50·(L−1)²", () => {
   expect(xpForLevel(1)).toBe(0);
@@ -37,4 +45,45 @@ test("progress is how far through the current level", () => {
   expect(levelProgress(50)).toBe(0);
   expect(levelProgress(125)).toBe(0.5);
   expect(levelProgress(480200)).toBe(1);
+});
+
+test("the registry holds 23 different skills, without the two that split", () => {
+  const names = SKILL_REGISTRY.map(([skill]) => skill);
+  expect(new Set(names).size).toBe(23);
+  expect(names).not.toContain("Combat");
+  expect(names).not.toContain("Foraging");
+});
+
+test("only the skills that can be trained reach the sheet, the bar and pinning", () => {
+  expect(SKILLS.map(([skill]) => skill)).toEqual([
+    "Combat",
+    "Defense",
+    "Foraging",
+    "Hitpoints",
+    "Mining",
+    "Smithing",
+    "Blocking",
+  ]);
+});
+
+test("a new player's total level is Hitpoints 10 and 22 skills at 1", () => {
+  expect(totalLevel({ hitpointsXp: 4050 })).toBe(32);
+});
+
+test("total level counts experience held, but not Combat or Foraging", () => {
+  expect(
+    totalLevel({
+      hitpointsXp: 4050,
+      miningXp: 50,
+      combatXp: MAX_XP,
+      foragingXp: MAX_XP,
+    }),
+  ).toBe(33);
+});
+
+test("total level tops out at 2,277", () => {
+  const maxed = Object.fromEntries(
+    SKILL_REGISTRY.map(([, field]) => [field, MAX_XP]),
+  );
+  expect(totalLevel(maxed)).toBe(2277);
 });

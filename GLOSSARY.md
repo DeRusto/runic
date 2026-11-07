@@ -88,6 +88,10 @@ _Avoid_: Frame, turn, cycle
 A trainable ability with its own experience and level, raised by doing the matching activity.
 _Avoid_: Stat, attribute, profession
 
+**Total level**:
+The sum of a player's levels across the 23 registered skills, at most 2,277. Combat and Foraging don't count: they are replaced when they split.
+_Avoid_: Overall level, combat level
+
 **Combat**:
 The skill that raises how often and how hard a player hits; trained by dealing damage to enemies.
 _Avoid_: Melee, fighting, attack
