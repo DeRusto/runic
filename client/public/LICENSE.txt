@@ -15,8 +15,8 @@ models/
         KayKit Forest Nature, by Kay Lousberg (www.kaylousberg.com), recorded as
         CC0 in docs/adr/0003-three-js-isometric-client.md.
     Spider.glb
-        Converted from Quaternius's Easy Enemy Pack (quaternius.com), recorded as
-        CC0 in docs/adr/0003-three-js-isometric-client.md.
+        Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
+        models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.
     ore.glb
         Made for Runic by DeRusto. No licence is granted for it here.
 

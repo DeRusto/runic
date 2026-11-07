@@ -374,5 +374,5 @@ Nobody has tested these. Each sits with the ticket that hits it first.
 | Coolify stops the old container before starting the new one | 11 | Must be fixed before friends play: it risks lost progress |
 | Coolify's backup can archive the folder and keep 14 days | 12 | Upload to R2 from the nightly job, or the brief-stop fallback |
 | 50 players at once: patch sizes and many skinned models on screen | 13 | Unchecked by design; the slice's goal is a few friends |
-| Quaternius licence: the zip has no licence file, so CC0 rests on ADR 0003 | 9 | Confirm on the pack's page before anything public |
+| Quaternius licence: **settled 2026-11-07.** The pack's `License.txt` and its page both say CC0; the copy is at `client/public/models/LICENSE-Quaternius-Easy-Enemy-Pack.txt` | 9 | None needed |
 | Login is open to the internet with no rate limit, since sign-up abuse protection is out of scope | 5 | Accepted for friends; scrypt makes guessing slow but makes floods costly |
