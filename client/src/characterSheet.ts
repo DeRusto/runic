@@ -1,4 +1,5 @@
 import {
+  combatLevel,
   GEAR,
   GEAR_SLOTS,
   levelFor,
@@ -89,6 +90,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const wornIcons = document.getElementById("worn-gear")!;
   let gearDrawn: string | undefined;
 
+  const combat = document.createElement("p");
   const note = document.createElement("p");
   const rows = SKILLS.map(([skill, field]) => {
     const row = document.createElement("div");
@@ -104,7 +106,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   });
   document
     .getElementById("sheet-skills")!
-    .replaceChildren(note, ...rows.map(({ row }) => row));
+    .replaceChildren(combat, note, ...rows.map(({ row }) => row));
 
   return {
     /** Only redraws when the tools change, or each patch would lose a showing tooltip. */
@@ -161,6 +163,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       }
     },
     drawSkills(me: SyncedPlayer) {
+      combat.textContent = `Combat level ${combatLevel(me)}`;
       for (const { skill, field, name, bar } of rows) {
         const xp = me[field];
         name.textContent = `${skill} ${levelFor(xp)}`;
