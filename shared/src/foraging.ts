@@ -6,6 +6,6 @@ export const BUSHES = {
 export type BushKind = keyof typeof BUSHES;
 /** What an item gives per healing tick, and for how many, when eaten; anything else isn't food. */
 export const FOOD_HEALS = new Map([
-  ["berry", { perTick: 1, ticks: 4 }],
-  ["herb", { perTick: 2, ticks: 4 }],
+  ["berry", { perTick: 100, ticks: 4 }],
+  ["herb", { perTick: 200, ticks: 4 }],
 ]);

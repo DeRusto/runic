@@ -21,16 +21,18 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
+// The newest migrations: Mastery's columns, then the health rescale, which adds none.
 const LATEST_COLUMNS = ["mastery_xp", "mastery_hundredths"];
+const LATEST_MIGRATIONS = 2;
 
-/** Makes the newest migration pending again, as if this build had just added it. */
+/** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
   for (const column of LATEST_COLUMNS) {
     sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
   }
   sqlite.exec(
-    "DELETE FROM __drizzle_migrations WHERE id = (SELECT max(id) FROM __drizzle_migrations)",
+    `DELETE FROM __drizzle_migrations WHERE id IN (SELECT id FROM __drizzle_migrations ORDER BY id DESC LIMIT ${LATEST_MIGRATIONS})`,
   );
   sqlite.close();
 }
@@ -105,7 +107,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     return openDatabase();
   }
 
-  test("the migration backfills Mastery with 7% of the experience held and changes nothing else", async () => {
+  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100 and change nothing else", async () => {
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
@@ -115,7 +117,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       hitpointsXp: 4500,
       x: 4,
       y: 1,
-      health: 6,
+      health: 600, // 6 before the rescale.
       inventory: INVENTORY,
       miningXp: 0,
       smithingXp: 0,
@@ -139,12 +141,13 @@ describe("a save from the first slice, written before the stacks migration", () 
     await database.shutdown();
   });
 
-  test("the backfill doesn't apply again on the next boot", async () => {
+  test("the backfill and the rescale don't apply again on the next boot", async () => {
     await (await migratedFromOldRow()).shutdown();
     const database = await openDatabase();
     expect(readSave(7)).toMatchObject({
       masteryXp: 503,
       masteryHundredths: 37,
+      health: 600,
     });
     await database.shutdown();
   });
@@ -162,7 +165,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       hitpointsXp: 4500,
       x: 4,
       y: 1,
-      health: 6,
+      health: 600, // 6 before the rescale.
     });
     expect([...player.inventory]).toEqual(INVENTORY);
     expect([...player.inventoryCounts]).toEqual(

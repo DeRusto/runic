@@ -28,10 +28,11 @@ function atContact(
   damage: number,
   contactMs: number,
   onHit: () => void,
+  critical = false,
 ) {
   overhead?.holdBlow(damage);
   setTimeout(() => {
-    overhead?.showBlow(damage);
+    overhead?.showBlow(damage, critical);
     if (damage) onHit();
   }, contactMs);
 }
@@ -100,6 +101,7 @@ export function showFights(room: WorldConnection) {
             const { hit } = clipsOf(event.enemy);
             if (hit && !enemy.playingOnce) enemy.once(hit);
           },
+          event.critical,
         );
       } else if (event.type === "enemySwing") {
         const { clip, contactMs } = clipsOf(event.enemy).swing(

@@ -110,7 +110,7 @@ describe("the Gear tab", () => {
     wearing("ironSword");
     expect(el("gear-weapon-name").textContent).toBe("Iron sword");
     expect(el("gear-weapon-does").textContent).toBe(
-      "Adds 2 to your minimum and maximum hit",
+      "Adds 200 to your minimum and maximum hit",
     );
     expect(box().disabled).toBe(false);
     expect(box().dataset.item).toBe("ironSword");

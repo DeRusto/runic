@@ -89,8 +89,8 @@ test("everyone sees a player's username and what the bottom bar reads", async ()
     const seen = (listener.state as any).players.get(speaker.sessionId);
     expect(seen.username).toBe("Speaker");
     expect(seen.hitpointsXp).toBe(4050);
-    expect(seen.health).toBe(10);
-    expect(seen.maxHealth).toBe(10);
+    expect(seen.health).toBe(1000);
+    expect(seen.maxHealth).toBe(1000);
     expect(seen.inventory).toHaveLength(30);
   });
 });

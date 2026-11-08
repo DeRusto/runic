@@ -85,8 +85,8 @@ const stateHolding = (...stacks: [string, number][]) => ({
     [
       "me",
       {
-        health: 10,
-        maxHealth: 10,
+        health: 1000,
+        maxHealth: 1000,
         combatXp: 0,
         defenseXp: 0,
         foragingXp: 0,

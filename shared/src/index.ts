@@ -39,7 +39,9 @@ export const INVENTORY_SLOTS = 30;
 export const EMPTY_SLOT = "";
 /** Level 10; every other skill starts at 0 XP, level 1 (spec §5). */
 export const STARTING_HITPOINTS_XP = 4050;
-export const STARTING_HEALTH = 10;
+/** Health and damage are in hundredths of a Hitpoints level, so armour percentages leave whole numbers. Also the smallest hit. */
+export const HEALTH_PER_HITPOINTS_LEVEL = 100;
+export const STARTING_HEALTH = 1000;
 
 export const TICK_MS = 300;
 /** How often the server checks whether a tick is due; ticks land within this of on time. */
@@ -61,12 +63,17 @@ export const SAVE_INTERVAL_TICKS = 100;
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
 export const PLAYER_HIT_CHANCE = 0.4;
 export const PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL = 0.005;
-export const PLAYER_BASE_DAMAGE = 2;
+export const PLAYER_BASE_DAMAGE = 200;
+/** Each this many Combat levels adds 100 to the maximum hit. */
 export const COMBAT_LEVELS_PER_DAMAGE = 20;
+// Experience per 100 damage; each swing's rounds to the nearest whole number.
 export const XP_PER_DAMAGE_DEALT = 6;
 export const DEFENSE_XP_PER_ENEMY_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
 export const BLOCKING_XP_PER_BLOCK = 40;
+/** A player's landed hit, sword bonus included, is critical this often, for this many times its damage. Enemies never crit. */
+export const PLAYER_CRIT_CHANCE = 0.1;
+export const PLAYER_CRIT_MULTIPLIER = 1.5;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
@@ -76,7 +83,13 @@ export type PlayerAction =
 export const EVENTS = "events";
 /** A `damage` of 0 is a miss, unless `blocked` says a shield stopped it. */
 export type WorldEvent =
-  | { type: "playerSwing"; player: string; enemy: string; damage: number }
+  | {
+      type: "playerSwing";
+      player: string;
+      enemy: string;
+      damage: number;
+      critical: boolean;
+    }
   | {
       type: "enemySwing";
       enemy: string;

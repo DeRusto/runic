@@ -3,10 +3,10 @@ import { GEAR, gearRefusal } from "./gear.ts";
 
 const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
 
-test("swords add 1, 2 and 3 by tier", () => {
-  expect(GEAR.get("copperSword")?.hitBonus).toBe(1);
-  expect(GEAR.get("ironSword")?.hitBonus).toBe(2);
-  expect(GEAR.get("emberiteSword")?.hitBonus).toBe(3);
+test("swords add 100, 200 and 300 by tier", () => {
+  expect(GEAR.get("copperSword")?.hitBonus).toBe(100);
+  expect(GEAR.get("ironSword")?.hitBonus).toBe(200);
+  expect(GEAR.get("emberiteSword")?.hitBonus).toBe(300);
 });
 
 test("each tier's sword is gated at its Combat level", () => {
@@ -55,6 +55,6 @@ test("what isn't gear is never refused", () => {
 test("a sword goes in the weapon slot and says what it does", () => {
   expect(GEAR.get("ironSword")).toMatchObject({
     slot: "weapon",
-    does: "Adds 2 to your minimum and maximum hit",
+    does: "Adds 200 to your minimum and maximum hit",
   });
 });

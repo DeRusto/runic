@@ -38,9 +38,10 @@ export class Overhead {
     this.pendingDamage += damage;
   }
 
-  showBlow(damage: number) {
+  showBlow(damage: number, critical = false) {
     this.pendingDamage -= damage;
-    this.pop(damage ? String(damage) : "miss", damage ? "damage" : "miss");
+    if (critical) this.pop(`${damage}!`, "damage critical");
+    else this.pop(damage ? String(damage) : "miss", damage ? "damage" : "miss");
   }
 
   /** A number that floats up from here and fades; its look comes from `kind`'s CSS class. */

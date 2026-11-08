@@ -40,9 +40,9 @@ export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
 
 /** Spec §5, by item id. Anything in here can be equipped. */
 export const GEAR = new Map<string, Gear>([
-  ["copperSword", sword(1, 1)],
-  ["ironSword", sword(10, 2)],
-  ["emberiteSword", sword(20, 3)],
+  ["copperSword", sword(1, 100)],
+  ["ironSword", sword(10, 200)],
+  ["emberiteSword", sword(20, 300)],
   ["copperShield", shield(1, 10)],
   ["ironShield", shield(10, 20)],
   ["emberiteShield", shield(20, 30)],

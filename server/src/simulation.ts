@@ -22,6 +22,7 @@ import {
   GEAR_SLOTS,
   gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
+  HEALTH_PER_HITPOINTS_LEVEL,
   INVENTORY_SLOTS,
   levelFor,
   makeRefusal,
@@ -29,6 +30,8 @@ import {
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
   PLAYER_BASE_DAMAGE,
+  PLAYER_CRIT_CHANCE,
+  PLAYER_CRIT_MULTIPLIER,
   PLAYER_DEAD_TICKS,
   PLAYER_HIT_CHANCE,
   PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
@@ -86,8 +89,8 @@ export const Player = schema(
     masteryHundredths: t.uint8().default(0),
     /** In any order; the sheet's order decides how they show. */
     pinnedSkills: t.array("string"),
-    health: t.uint8(),
-    maxHealth: t.uint8(),
+    health: t.uint16(),
+    maxHealth: t.uint16(),
     inventory: t.array("string"),
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint8"),
@@ -108,7 +111,7 @@ export const Enemy = schema(
     x: t.uint8(),
     y: t.uint8(),
     kind: t.string<EnemyKind>(),
-    health: t.uint8(),
+    health: t.uint16(),
     target: t.string().default(""),
     state: t.string<EnemyState>().default("idle"),
   },
@@ -266,7 +269,7 @@ export class Simulation {
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: levelFor(fields.hitpointsXp),
+      maxHealth: levelFor(fields.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL,
     });
     player.pinnedSkills = new ArraySchema(...pinnedSkills);
     player.tools = new ArraySchema(...tools);
@@ -811,8 +814,9 @@ export class Simulation {
 
   /** The damage of one swing, 0 for a miss. */
   private rollDamage(hitChance: number, maxDamage: number) {
+    const min = HEALTH_PER_HITPOINTS_LEVEL;
     return this.random() < hitChance
-      ? 1 + Math.floor(this.random() * maxDamage)
+      ? min + Math.floor(this.random() * (maxDamage - min + 1))
       : 0;
   }
 
@@ -826,22 +830,30 @@ export class Simulation {
     const combat = levelFor(player.combatXp);
     const rolled = this.rollDamage(
       PLAYER_HIT_CHANCE + PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1),
-      PLAYER_BASE_DAMAGE + Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
+      PLAYER_BASE_DAMAGE +
+        HEALTH_PER_HITPOINTS_LEVEL *
+          Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
     );
+    // Only on a hit, as 0 means a miss.
+    const hit = rolled && rolled + (GEAR.get(player.weapon)?.hitBonus ?? 0);
+    const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
-      // Only on a hit, as 0 means a miss.
-      rolled && rolled + (GEAR.get(player.weapon)?.hitBonus ?? 0),
+      critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
       enemy.health, // No XP for overkill.
     );
-    const xp = damage * XP_PER_DAMAGE_DEALT;
+    const xp = Math.round(
+      (damage * XP_PER_DAMAGE_DEALT) / HEALTH_PER_HITPOINTS_LEVEL,
+    );
     this.earnXp(player, "combatXp", xp);
     this.earnXp(player, "hitpointsXp", xp);
-    player.maxHealth = levelFor(player.hitpointsXp);
+    player.maxHealth =
+      levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL;
     this.events.push({
       type: "playerSwing",
       player: id,
       enemy: enemyId,
       damage,
+      critical,
     });
 
     const unsyncedEnemy = this.unsyncedEnemies.get(enemyId)!;
@@ -972,7 +984,10 @@ export class Simulation {
     this.earnXp(
       player,
       "defenseXp",
-      DEFENSE_XP_PER_ENEMY_SWING + damage * DEFENSE_XP_PER_DAMAGE_TAKEN,
+      Math.round(
+        DEFENSE_XP_PER_ENEMY_SWING +
+          (damage * DEFENSE_XP_PER_DAMAGE_TAKEN) / HEALTH_PER_HITPOINTS_LEVEL,
+      ),
     );
     this.events.push({
       type: "enemySwing",

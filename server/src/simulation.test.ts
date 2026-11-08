@@ -140,7 +140,7 @@ describe("Spiders", () => {
     expect(spiderTile(s, "0")).toEqual({ x: 2, y: 1 });
     expect(spiderTile(s, "1")).toEqual({ x: 4, y: 2 });
     expect(s.state.enemies.get("0")).toMatchObject({
-      health: 8,
+      health: 800,
       target: "",
       state: "idle",
     });
@@ -318,7 +318,7 @@ describe("Spiders", () => {
 const EMPTY_INVENTORY = Array<string>(30).fill("");
 const EMPTY_COUNTS = Array<number>(30).fill(0);
 
-test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 10 health", () => {
+test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 1,000 health", () => {
   expect(sim.saveOf("a")).toEqual({
     x: 1,
     y: 1,
@@ -339,7 +339,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
       "Mining",
       "Smithing",
     ],
-    health: 10,
+    health: 1000,
     inventory: EMPTY_INVENTORY,
     inventoryCounts: EMPTY_COUNTS,
     tools: [],
@@ -385,12 +385,12 @@ test.each([
   },
 );
 
-test("max health is the Hitpoints level, whatever the health left", () => {
+test("max health is 100 per Hitpoints level, whatever the health left", () => {
   sim.addPlayer("b", { ...SAVED, hitpointsXp: 7200, health: 3 });
   const player = sim.state.players.get("b")!;
-  expect(player.maxHealth).toBe(13);
+  expect(player.maxHealth).toBe(1300);
   expect(player.health).toBe(3);
-  expect(sim.state.players.get("a")!.maxHealth).toBe(10);
+  expect(sim.state.players.get("a")!.maxHealth).toBe(1000);
 });
 
 test("a save has the tile the player walked to", () => {
