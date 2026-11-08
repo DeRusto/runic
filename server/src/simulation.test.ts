@@ -345,6 +345,14 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     tools: [],
     weapon: "",
     shield: "",
+    head: "",
+    body: "",
+    legs: "",
+    hands: "",
+    feet: "",
+    cape: "",
+    neck: "",
+    ring: "",
   });
 });
 
@@ -367,6 +375,14 @@ const SAVED = {
   tools: ["pickaxe"],
   weapon: "copperSword",
   shield: "copperShield",
+  head: "copperHelmet",
+  body: "copperChestplate",
+  legs: "copperLeggings",
+  hands: "",
+  feet: "",
+  cape: "",
+  neck: "",
+  ring: "",
 };
 
 test("a returning player comes back exactly as saved", () => {

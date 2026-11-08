@@ -27,9 +27,9 @@ describe("ITEMS", () => {
     expect(ITEMS.emberiteShield.stack).toBe(1);
   });
 
-  test("every tier has its ore, bar, sword and shield", () => {
-    // Food 2, Emberbone 1, then four per tier.
-    expect(Object.keys(ITEMS)).toHaveLength(15);
+  test("every tier has its ore, bar, sword, shield, helmet, chestplate and leggings", () => {
+    // Food 2, Emberbone 1, then seven per tier.
+    expect(Object.keys(ITEMS)).toHaveLength(24);
   });
 });
 

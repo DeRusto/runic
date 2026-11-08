@@ -92,7 +92,7 @@ test("starts closed, and opens at a station with that station's rows", () => {
   expect(shownRows()).toHaveLength(3);
   open("anvil");
   expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-  expect(shownRows()).toHaveLength(6);
+  expect(shownRows()).toHaveLength(15);
 });
 
 test("the Emberite rows show both materials, greyed until the player qualifies", () => {
@@ -102,7 +102,7 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   ];
   patch(me(held, { smithingXp: xpForLevel(19) }));
   open("anvil");
-  const sword = shownRows()[4];
+  const sword = shownRows()[10];
   expect(texts(sword).slice(0, 2)).toEqual([
     "Emberite sword",
     "3 Emberite bar (have 3), 2 Emberbone (have 1)",
@@ -116,7 +116,7 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   patch(me([held[0]!, ["emberbone", 2]], { smithingXp: xpForLevel(20) }));
   expect(sword.className).toBe("");
   expect(buttons(sword).every((b: any) => !b.disabled)).toBe(true);
-  expect(shownRows()[5].className).toBe("cant");
+  expect(shownRows()[11].className).toBe("cant");
 });
 
 test("a row shows the name, cost, materials held and level", () => {
@@ -144,7 +144,7 @@ test("a row shows the name, cost, materials held and level", () => {
 test("a row that can't be made is greyed with the reason, and its buttons are off", () => {
   patch(me([["ironBar", 20]], { smithingXp: xpForLevel(9) }));
   open("anvil");
-  const iron = shownRows()[2];
+  const iron = shownRows()[5];
   expect(iron.className).toBe("cant");
   expect(texts(iron)).toContain("Needs Smithing 10");
   expect(buttons(iron).every((b: any) => b.disabled)).toBe(true);
@@ -214,7 +214,7 @@ test("the row greys itself as a pick uses up the materials, with the panel still
 test("a level gained while it's open lifts that row's level reason", () => {
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(9) }));
   open("anvil");
-  const iron = shownRows()[2];
+  const iron = shownRows()[5];
   expect(texts(iron)).toContain("Needs Smithing 10");
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(10) }));
   expect(iron.className).toBe("");
@@ -244,7 +244,7 @@ describe("clicking a station from afar", () => {
     patch(me([], { x: 7, y: 2 }));
     expect(panel().hidden).toBe(false);
     expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-    expect(shownRows()).toHaveLength(6);
+    expect(shownRows()).toHaveLength(15);
   });
 
   test("already next to it, opens at once and leaves the action alone", () => {

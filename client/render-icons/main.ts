@@ -7,6 +7,7 @@ const SIZE = 144;
 const RESOURCE = "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf";
 const WEAPONS = "/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf";
 const TOOLS = "/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf";
+const KNIGHT = "/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb";
 const CRAFTPIX_SWORD = "/sword-rpg-game-icon-set/PNG/without background/21.png";
 
 // Tier looks, as worn (spec §7).
@@ -16,6 +17,7 @@ const { copper: COPPER, iron: IRON, emberite: EMBERITE } = TIER_LOOKS;
 const FLAT: Turn = [0.6, -0.5, 0];
 const LEAN: Turn = [0.2, -0.4, -Math.PI / 4];
 const SHIELD: Turn = [0.15, -0.5, 0];
+const WORN: Turn = [0.25, -0.5, 0];
 type Turn = [x: number, y: number, z: number];
 type Look = { tint?: number; glow?: number };
 type Icon = { id: string; url: string; turn: Turn; look?: Look };
@@ -75,6 +77,13 @@ const ICONS: Icon[] = [
     turn: [0.3, 0, 0],
   },
 ];
+
+/** Each armour piece is the Knight's meshes for it, as no pack has armour on its own (spec §7). */
+const ARMOUR = {
+  Helmet: ["Knight_Helmet", "Knight_HelmetVisor"],
+  Chestplate: ["Knight_Body"],
+  Leggings: ["Knight_LegLeft", "Knight_LegRight"],
+};
 
 const renderer = new THREE.WebGLRenderer({
   alpha: true,
@@ -185,6 +194,21 @@ for (const { id, url, turn, look } of ICONS) {
   if (look) applyLook(model, look);
   draw(model, turn);
   pngs.set(id, await toPng(renderer.domElement));
+}
+for (const [piece, meshes] of Object.entries(ARMOUR)) {
+  for (const [tier, look] of Object.entries(TIER_LOOKS)) {
+    // A fresh load each time, as the look changes the model's own materials.
+    const { scene: knight } = await loader.loadAsync(KNIGHT);
+    const others: THREE.Object3D[] = [];
+    knight.traverse((object) => {
+      if (object instanceof THREE.Mesh && !meshes.includes(object.name))
+        others.push(object);
+    });
+    for (const other of others) other.removeFromParent();
+    applyLook(knight, look);
+    draw(knight, WORN);
+    pngs.set(`${tier}${piece}`, await toPng(renderer.domElement));
+  }
 }
 const bone = emberbone();
 applyLook(bone, EMBERITE);

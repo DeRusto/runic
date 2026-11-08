@@ -17,15 +17,18 @@ const LEVEL_10_XP = 4050;
 const LEVEL_20_XP = 18050;
 const MISS = 0.99;
 
-type Start = Partial<PlayerSave> & { held?: string[] };
+type Start = Partial<PlayerSave> & {
+  held?: string[];
+  tiles?: ReturnType<typeof parseRegion>;
+};
 
 let sim: Simulation;
 /** Rolls come in order, and then everything misses (and nothing wanders). */
 let rolls: number[];
 const me = () => sim.state.players.get("a")!;
-const start = ({ held = [], ...fields }: Start = {}) => {
+const start = ({ held = [], tiles = TILES, ...fields }: Start = {}) => {
   rolls = [];
-  sim = new Simulation(TILES, () => rolls.shift() ?? MISS);
+  sim = new Simulation(tiles, () => rolls.shift() ?? MISS);
   sim.addPlayer("a", {
     x: 1,
     y: 1,
@@ -378,6 +381,134 @@ describe("blocking", () => {
     expect(sim.saveOf("a")).toMatchObject({ blockingXp: 40 });
     start({ blockingXp: 40 });
     expect(me().blockingXp).toBe(40);
+  });
+});
+
+describe("armour", () => {
+  // As the Spider's region, with a Skeleton in its place.
+  const SKELETON_TILES = parseRegion(
+    ["TTTTTTT", "TRK...T", "T.....T", "TTTTTTT"].join("\n"),
+  );
+  const HIT = 0;
+  // 100 + floor(0.5 * 401) = 300 on a Skeleton's 100..500.
+  const HIT_300 = 0.5;
+  const FULL_EMBERITE = {
+    head: "emberiteHelmet",
+    body: "emberiteChestplate",
+    legs: "emberiteLeggings",
+  };
+  // The player's own swing on tick 1 misses, and the Skeleton's first swing comes on tick 5.
+  const skeletonSwing = (fields: Start, ...swingRolls: number[]) => {
+    start({ health: 1000, tiles: SKELETON_TILES, ...fields });
+    rolls = [MISS, ...swingRolls];
+    sim.queueTarget("a", "0");
+    ticks(5);
+    return sim.events.find((event) => event.type === "enemySwing")!;
+  };
+
+  test.each([
+    ["iron", 10, LEVEL_10_XP],
+    ["emberite", 20, LEVEL_20_XP],
+  ])("%s armour needs Defense %i", (tier, level, xp) => {
+    for (const piece of ["Helmet", "Chestplate", "Leggings"]) {
+      start({ held: [tier + piece], defenseXp: xp - 1 });
+      sim.equip("a", 0);
+      expect(told()).toEqual([`You need Defense ${level} to equip this.`]);
+      start({ held: [tier + piece], defenseXp: xp });
+      sim.equip("a", 0);
+      expect(me().inventory[0]).toBe(EMPTY_SLOT);
+    }
+  });
+
+  test("head, body and legs go in their own slots, and come off again", () => {
+    start({
+      held: ["copperHelmet", "copperChestplate", "copperLeggings"],
+    });
+    for (const slot of [0, 1, 2]) sim.equip("a", slot);
+    expect([me().head, me().body, me().legs]).toEqual([
+      "copperHelmet",
+      "copperChestplate",
+      "copperLeggings",
+    ]);
+    sim.takeOff("a", "body");
+    expect(me().body).toBe("");
+    expect(me().inventory[0]).toBe("copperChestplate");
+  });
+
+  test("full Emberite turns a Skeleton hit of 300 into 228", () => {
+    const swing = skeletonSwing(FULL_EMBERITE, HIT, HIT_300);
+    expect(swing).toMatchObject({ damage: 228, blocked: false });
+    expect(me().health).toBe(772);
+  });
+
+  test.each([
+    ["copper", 276],
+    ["iron", 252],
+    ["emberite", 228],
+  ])("a full %s set takes its table's percentage off", (tier, damage) => {
+    const fields = {
+      head: `${tier}Helmet`,
+      body: `${tier}Chestplate`,
+      legs: `${tier}Leggings`,
+    };
+    expect(skeletonSwing(fields, HIT, HIT_300)).toMatchObject({ damage });
+  });
+
+  test("pieces add together, and round to the nearest whole number", () => {
+    // 300 less 12% + 4% = 252.
+    const mixed = { body: "emberiteChestplate", head: "ironHelmet" };
+    expect(skeletonSwing(mixed, HIT, HIT_300)).toMatchObject({ damage: 252 });
+    // 101 less 2% is 98.98.
+    const helmet = { head: "copperHelmet" };
+    expect(skeletonSwing(helmet, HIT, 1 / 401)).toMatchObject({ damage: 99 });
+  });
+
+  test("a blocked hit still does nothing", () => {
+    const fields = { ...FULL_EMBERITE, shield: "copperShield" };
+    const swing = skeletonSwing(fields, HIT, HIT_300, 0);
+    expect(swing).toMatchObject({ damage: 0, blocked: true });
+    expect(me().health).toBe(1000);
+  });
+
+  test("a hit that lands is never reduced to 0", () => {
+    // The smallest hit, 100, through the most armour.
+    expect(skeletonSwing(FULL_EMBERITE, HIT, 0)).toMatchObject({ damage: 76 });
+  });
+
+  test("the health cap comes after armour, so a big enough hit still kills", () => {
+    const swing = skeletonSwing(
+      { ...FULL_EMBERITE, health: 228 },
+      HIT,
+      HIT_300,
+    );
+    expect(swing).toMatchObject({ damage: 228 });
+    expect(me().dead).toBe(true);
+    const survives = skeletonSwing(
+      { ...FULL_EMBERITE, health: 229 },
+      HIT,
+      HIT_300,
+    );
+    expect(survives).toMatchObject({ damage: 228 });
+    expect(me().health).toBe(1);
+  });
+
+  test("armour on or off gives the same Defense experience for the same hit", () => {
+    skeletonSwing({}, HIT, HIT_300);
+    const bare = me().defenseXp;
+    skeletonSwing(FULL_EMBERITE, HIT, HIT_300);
+    expect(me().defenseXp).toBe(bare);
+    // 6 for the swing, and 4 per 100 of the 300 hit.
+    expect(bare).toBe(18);
+  });
+
+  test("armour is saved, loaded and kept on death", () => {
+    skeletonSwing({ ...FULL_EMBERITE, health: 1 }, HIT, HIT_300);
+    expect(me().dead).toBe(true);
+    ticks(6);
+    expect(me().dead).toBe(false);
+    expect(sim.saveOf("a")).toMatchObject(FULL_EMBERITE);
+    start(FULL_EMBERITE);
+    expect(me()).toMatchObject(FULL_EMBERITE);
   });
 });
 
