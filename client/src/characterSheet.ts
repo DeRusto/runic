@@ -8,6 +8,7 @@ import {
   PIN_INTENT,
   SKILLS,
   TAKE_OFF_INTENT,
+  type GearSlot,
 } from "@runic/shared";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
@@ -70,23 +71,47 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   toolbelt.oncontextmenu = (event) => event.preventDefault();
   let toolsDrawn = "";
 
+  // Laid out as a body by the grid's areas; each box is only an icon, and the line below says what it holds.
+  const details = document.getElementById("gear-details")!;
+  let worn: Partial<Record<GearSlot, string>> = {};
+  let pointedAt: GearSlot | undefined;
+  const describe = (gearSlot: GearSlot) => {
+    const item = worn[gearSlot] ?? "";
+    const does = GEAR.get(item)?.does;
+    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}`;
+  };
+  const showDetails = () => {
+    details.textContent = pointedAt
+      ? describe(pointedAt)
+      : "Point at a slot to see what's in it.";
+  };
   const gearSlots = GEAR_SLOTS.map((gearSlot) => {
-    const box = document.getElementById(
-      `gear-${gearSlot}`,
-    ) as HTMLButtonElement;
+    // Not disabled when empty, or it couldn't be pointed at to read "Empty".
+    const box = document.createElement("button");
+    box.type = "button";
+    box.className = "gear-slot";
+    box.style.gridArea = gearSlot;
     const takeOff = () => room.send(TAKE_OFF_INTENT, gearSlot);
-    box.onclick = takeOff;
+    box.onclick = () => {
+      if (worn[gearSlot]) takeOff();
+    };
     box.oncontextmenu = (event) => {
       event.preventDefault();
-      openMenu(event, [["Take off", takeOff]]);
+      if (worn[gearSlot]) openMenu(event, [["Take off", takeOff]]);
     };
-    return {
-      gearSlot,
-      box,
-      name: document.getElementById(`gear-${gearSlot}-name`)!,
-      does: document.getElementById(`gear-${gearSlot}-does`)!,
+    box.onmouseenter = box.onfocus = () => {
+      pointedAt = gearSlot;
+      showDetails();
     };
+    box.onmouseleave = box.onblur = () => {
+      pointedAt = undefined;
+      showDetails();
+    };
+    return { gearSlot, box };
   });
+  document
+    .getElementById("gear-slots")!
+    .replaceChildren(...gearSlots.map(({ box }) => box));
   const wornIcons = document.getElementById("worn-gear")!;
   let gearDrawn: string | undefined;
 
@@ -125,20 +150,22 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     },
     /** Only redraws when the gear changes, as with the tools. */
     drawGear(me: SyncedPlayer) {
-      const worn = GEAR_SLOTS.map((gearSlot) => me[gearSlot]);
-      if (worn.join() === gearDrawn) return;
-      gearDrawn = worn.join();
-      for (const { gearSlot, box, name, does } of gearSlots) {
+      const items = GEAR_SLOTS.map((gearSlot) => me[gearSlot]);
+      if (items.join() === gearDrawn) return;
+      gearDrawn = items.join();
+      worn = Object.fromEntries(GEAR_SLOTS.map((slot, i) => [slot, items[i]]));
+      for (const { gearSlot, box } of gearSlots) {
         const item = me[gearSlot];
         box.dataset.item = item;
-        box.disabled = !item;
+        box.setAttribute("aria-disabled", String(!item));
+        box.setAttribute("aria-label", describe(gearSlot));
         box.title = item && `Take off ${itemName(item)}`;
         box.style.backgroundImage = item && `url("${iconUrl(item)}")`;
-        name.textContent = item ? itemName(item) : "Empty";
-        does.textContent = GEAR.get(item)?.does ?? "";
+        box.textContent = item ? "" : itemName(gearSlot);
       }
+      showDetails();
       wornIcons.replaceChildren(
-        ...worn.filter(Boolean).map((item) => {
+        ...items.filter(Boolean).map((item) => {
           const icon = document.createElement("img");
           icon.src = iconUrl(item);
           icon.alt = itemName(item);

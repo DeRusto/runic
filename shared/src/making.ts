@@ -49,6 +49,27 @@ export const RECIPES = {
     ticks: 16,
     xp: { smithingXp: 24 },
   },
+  copperHelmet: {
+    station: "anvil",
+    level: 1,
+    costs: { copperBar: 2 },
+    ticks: 8,
+    xp: { smithingXp: 12 },
+  },
+  copperChestplate: {
+    station: "anvil",
+    level: 1,
+    costs: { copperBar: 5 },
+    ticks: 20,
+    xp: { smithingXp: 30 },
+  },
+  copperLeggings: {
+    station: "anvil",
+    level: 1,
+    costs: { copperBar: 3 },
+    ticks: 12,
+    xp: { smithingXp: 18 },
+  },
   ironSword: {
     station: "anvil",
     level: 10,
@@ -63,6 +84,27 @@ export const RECIPES = {
     ticks: 16,
     xp: { smithingXp: 72 },
   },
+  ironHelmet: {
+    station: "anvil",
+    level: 10,
+    costs: { ironBar: 2 },
+    ticks: 8,
+    xp: { smithingXp: 36 },
+  },
+  ironChestplate: {
+    station: "anvil",
+    level: 10,
+    costs: { ironBar: 5 },
+    ticks: 20,
+    xp: { smithingXp: 90 },
+  },
+  ironLeggings: {
+    station: "anvil",
+    level: 10,
+    costs: { ironBar: 3 },
+    ticks: 12,
+    xp: { smithingXp: 54 },
+  },
   emberiteSword: {
     station: "anvil",
     level: 20,
@@ -76,6 +118,27 @@ export const RECIPES = {
     costs: { emberiteBar: 4, emberbone: 3 },
     ticks: 16,
     xp: { smithingXp: 144 },
+  },
+  emberiteHelmet: {
+    station: "anvil",
+    level: 20,
+    costs: { emberiteBar: 2, emberbone: 1 },
+    ticks: 8,
+    xp: { smithingXp: 72 },
+  },
+  emberiteChestplate: {
+    station: "anvil",
+    level: 20,
+    costs: { emberiteBar: 5, emberbone: 4 },
+    ticks: 20,
+    xp: { smithingXp: 180 },
+  },
+  emberiteLeggings: {
+    station: "anvil",
+    level: 20,
+    costs: { emberiteBar: 3, emberbone: 2 },
+    ticks: 12,
+    xp: { smithingXp: 108 },
   },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;

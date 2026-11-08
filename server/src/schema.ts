@@ -41,6 +41,14 @@ export const players = sqliteTable("players", {
     .default([]),
   weapon: text().notNull().default(""),
   shield: text().notNull().default(""),
+  head: text().notNull().default(""),
+  body: text().notNull().default(""),
+  legs: text().notNull().default(""),
+  hands: text().notNull().default(""),
+  feet: text().notNull().default(""),
+  cape: text().notNull().default(""),
+  neck: text().notNull().default(""),
+  ring: text().notNull().default(""),
   tools: text({ mode: "json" }).notNull().$type<string[]>().default([]),
   pinnedSkills: text("pinned_skills", { mode: "json" })
     .notNull()

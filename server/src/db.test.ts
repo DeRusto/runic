@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { parseRegion } from "@runic/shared";
+import { GEAR_SLOTS, parseRegion } from "@runic/shared";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { db, openDatabase } from "./db.ts";
 import { readSave, writeSave } from "./saves.ts";
@@ -21,9 +21,13 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, then the health rescale, which adds none.
-const LATEST_COLUMNS = ["mastery_xp", "mastery_hundredths"];
-const LATEST_MIGRATIONS = 2;
+// The newest migrations: Mastery's columns, the health rescale, which adds none, and the eight new gear slots.
+const LATEST_COLUMNS = [
+  "mastery_xp",
+  "mastery_hundredths",
+  ...GEAR_SLOTS.slice(2),
+];
+const LATEST_MIGRATIONS = 3;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
@@ -107,7 +111,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     return openDatabase();
   }
 
-  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100 and change nothing else", async () => {
+  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots and change nothing else", async () => {
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
@@ -128,6 +132,14 @@ describe("a save from the first slice, written before the stacks migration", () 
       inventoryCounts: [],
       weapon: "",
       shield: "",
+      head: "",
+      body: "",
+      legs: "",
+      hands: "",
+      feet: "",
+      cape: "",
+      neck: "",
+      ring: "",
       tools: [],
       pinnedSkills: [
         "Combat",

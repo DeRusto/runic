@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { GEAR, gearRefusal } from "./gear.ts";
+import { armourPercentOf, GEAR, gearRefusal } from "./gear.ts";
 
 const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
 
@@ -57,4 +57,32 @@ test("a sword goes in the weapon slot and says what it does", () => {
     slot: "weapon",
     does: "Adds 200 to your minimum and maximum hit",
   });
+});
+
+test("armour takes 2/4/2%, 4/8/4% and 6/12/6% by tier, for 8%, 16% and 24% a set", () => {
+  const set = (tier: string) => ({
+    head: `${tier}Helmet`,
+    body: `${tier}Chestplate`,
+    legs: `${tier}Leggings`,
+  });
+  expect(armourPercentOf(set("copper"))).toBe(8);
+  expect(armourPercentOf(set("iron"))).toBe(16);
+  expect(armourPercentOf(set("emberite"))).toBe(24);
+  expect(GEAR.get("ironChestplate")).toMatchObject({
+    slot: "body",
+    level: 10,
+    does: "Takes 8% off each hit you take",
+  });
+});
+
+test("each tier's armour is gated at its Defense level", () => {
+  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+  expect(gearRefusal("copperHelmet", defense(0))).toBeUndefined();
+  expect(gearRefusal("ironLeggings", defense(4049))).toBe(
+    "You need Defense 10 to equip this.",
+  );
+  expect(gearRefusal("emberiteChestplate", defense(18049))).toBe(
+    "You need Defense 20 to equip this.",
+  );
+  expect(gearRefusal("emberiteChestplate", defense(18050))).toBeUndefined();
 });

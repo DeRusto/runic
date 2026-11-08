@@ -1,6 +1,7 @@
 import { ArraySchema, schema, t } from "@colyseus/schema";
 import {
   addXp,
+  armourPercentOf,
   attemptChance,
   BLOCK_CHANCE_PER_BLOCKING_LEVEL,
   BLOCKING_XP_PER_BLOCK,
@@ -98,6 +99,14 @@ export const Player = schema(
     /** The item id worn in each gear slot, or "". */
     weapon: t.string().default(""),
     shield: t.string().default(""),
+    head: t.string().default(""),
+    body: t.string().default(""),
+    legs: t.string().default(""),
+    hands: t.string().default(""),
+    feet: t.string().default(""),
+    cape: t.string().default(""),
+    neck: t.string().default(""),
+    ring: t.string().default(""),
     /** The id of the enemy this player is after, or "". */
     target: t.string().default(""),
     action: t.string<PlayerAction>().default(""),
@@ -331,6 +340,14 @@ export class Simulation {
       health,
       weapon,
       shield,
+      head,
+      body,
+      legs,
+      hands,
+      feet,
+      cape,
+      neck,
+      ring,
     } = player;
     return {
       x,
@@ -347,6 +364,14 @@ export class Simulation {
       health,
       weapon,
       shield,
+      head,
+      body,
+      legs,
+      hands,
+      feet,
+      cape,
+      neck,
+      ring,
       pinnedSkills: [...player.pinnedSkills],
       inventory: [...player.inventory],
       inventoryCounts: [...player.inventoryCounts],
@@ -970,23 +995,28 @@ export class Simulation {
     unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
     const defense = levelFor(player.defenseXp);
-    const rolled = Math.min(
-      this.rollDamage(
-        hitChance + hitChancePerDefenseLevel * (defense - 1),
-        maxDamage,
-      ),
-      player.health,
+    const rolled = this.rollDamage(
+      hitChance + hitChancePerDefenseLevel * (defense - 1),
+      maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
-    const damage = blocked ? 0 : rolled;
+    const landed = blocked ? 0 : rolled;
+    // Armour never turns a landed hit into 0, and the health cap comes after it, or a big hit could leave the player alive.
+    const armoured =
+      landed &&
+      Math.max(1, Math.round((landed * (100 - armourPercentOf(player))) / 100));
+    const damage = Math.min(armoured, player.health);
     if (blocked) this.earnXp(player, "blockingXp", BLOCKING_XP_PER_BLOCK);
+    // From the hit before armour, so better armour doesn't slow Defense training.
+    const defenseXpDamage = Math.min(landed, player.health);
     player.health -= damage;
     this.earnXp(
       player,
       "defenseXp",
       Math.round(
         DEFENSE_XP_PER_ENEMY_SWING +
-          (damage * DEFENSE_XP_PER_DAMAGE_TAKEN) / HEALTH_PER_HITPOINTS_LEVEL,
+          (defenseXpDamage * DEFENSE_XP_PER_DAMAGE_TAKEN) /
+            HEALTH_PER_HITPOINTS_LEVEL,
       ),
     );
     this.events.push({

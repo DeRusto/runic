@@ -14,14 +14,23 @@ export const ITEMS = {
   copperBar: STACKS,
   copperSword: SINGLE,
   copperShield: SINGLE,
+  copperHelmet: SINGLE,
+  copperChestplate: SINGLE,
+  copperLeggings: SINGLE,
   ironOre: STACKS,
   ironBar: STACKS,
   ironSword: SINGLE,
   ironShield: SINGLE,
+  ironHelmet: SINGLE,
+  ironChestplate: SINGLE,
+  ironLeggings: SINGLE,
   emberiteOre: STACKS,
   emberiteBar: STACKS,
   emberiteSword: SINGLE,
   emberiteShield: SINGLE,
+  emberiteHelmet: SINGLE,
+  emberiteChestplate: SINGLE,
+  emberiteLeggings: SINGLE,
 } as const;
 export type ItemId = keyof typeof ITEMS;
 

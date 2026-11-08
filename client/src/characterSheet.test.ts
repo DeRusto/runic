@@ -1,4 +1,4 @@
-import { PIN_INTENT, TAKE_OFF_INTENT } from "@runic/shared";
+import { GEAR_SLOTS, PIN_INTENT, TAKE_OFF_INTENT } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi, type Mock } from "vitest";
 import {
   showCharacterSheet,
@@ -93,43 +93,73 @@ beforeEach(() => {
 });
 
 describe("the Gear tab", () => {
-  const wearing = (weapon: string, shield = "") =>
-    sheet.drawGear({ weapon, shield } as unknown as SyncedPlayer);
-  const box = () => el("gear-weapon") as any;
+  const wearing = (weapon: string, shield = "", more = {}) =>
+    sheet.drawGear({ weapon, shield, ...more } as unknown as SyncedPlayer);
+  const box = (gearSlot = "weapon") =>
+    el("gear-slots").children.find(
+      (child: any) => child.style.gridArea === gearSlot,
+    );
+  const details = () => el("gear-details").textContent;
 
-  test("an empty gear slot says so, and can't be clicked", () => {
+  test("lays out all ten slots as a body", () => {
+    expect(el("gear-slots").children.map((b: any) => b.style.gridArea)).toEqual(
+      GEAR_SLOTS,
+    );
+  });
+
+  test("an empty gear slot shows its name, says Empty when pointed at, and can't be clicked", () => {
     wearing("");
-    expect(el("gear-weapon-name").textContent).toBe("Empty");
-    expect(el("gear-weapon-does").textContent).toBe("");
-    expect(box().disabled).toBe(true);
+    expect(box().textContent).toBe("Weapon");
+    expect(box().attributes["aria-disabled"]).toBe("true");
+    expect(box().attributes["aria-label"]).toBe("Weapon: Empty");
     expect(box().dataset.item).toBe("");
     expect(box().style.backgroundImage).toBe("");
+    box().onclick();
+    box().oncontextmenu({ preventDefault: vi.fn() });
+    expect(room.send).not.toHaveBeenCalled();
+    expect(openMenu).not.toHaveBeenCalled();
+    box("ring").onmouseenter();
+    expect(details()).toBe("Ring: Empty");
   });
 
-  test("a worn sword shows its icon, name and what it does", () => {
+  test("a worn sword shows its icon, and pointing at it gives its name and what it does", () => {
     wearing("ironSword");
-    expect(el("gear-weapon-name").textContent).toBe("Iron sword");
-    expect(el("gear-weapon-does").textContent).toBe(
-      "Adds 200 to your minimum and maximum hit",
-    );
-    expect(box().disabled).toBe(false);
+    expect(box().textContent).toBe("");
+    expect(box().attributes["aria-disabled"]).toBe("false");
     expect(box().dataset.item).toBe("ironSword");
     expect(box().style.backgroundImage).toBe('url("/icons/ironSword.png")');
-    expect(el("gear-shield-name").textContent).toBe("Empty");
+    expect(details()).toBe("Point at a slot to see what's in it.");
+    box().onfocus();
+    expect(details()).toBe(
+      "Weapon: Iron sword. Adds 200 to your minimum and maximum hit",
+    );
+    box().onblur();
+    expect(details()).toBe("Point at a slot to see what's in it.");
   });
 
-  test("a worn shield shows its name and what it does", () => {
-    wearing("", "emberiteShield");
-    expect(el("gear-shield-name").textContent).toBe("Emberite shield");
-    expect(el("gear-shield-does").textContent).toBe(
-      "Starts at a 30% chance to block a hit",
+  test("worn armour says what it takes off", () => {
+    wearing("", "", { body: "emberiteChestplate" });
+    expect(box("body").attributes["aria-label"]).toBe(
+      "Body: Emberite chestplate. Takes 12% off each hit you take",
     );
+  });
+
+  test("the line follows the gear while it's pointed at", () => {
+    wearing("", "emberiteShield");
+    box("shield").onmouseenter();
+    expect(details()).toBe(
+      "Shield: Emberite shield. Starts at a 30% chance to block a hit",
+    );
+    wearing("");
+    expect(details()).toBe("Shield: Empty");
+    box("shield").onmouseleave();
+    expect(details()).toBe("Point at a slot to see what's in it.");
   });
 
   test("taking it off empties the slot again", () => {
     wearing("ironSword");
     wearing("");
-    expect(el("gear-weapon-name").textContent).toBe("Empty");
+    expect(box().textContent).toBe("Weapon");
     expect(el("worn-gear").children).toEqual([]);
   });
 
@@ -140,15 +170,15 @@ describe("the Gear tab", () => {
   });
 
   test("a right-click offers Take off", () => {
-    wearing("ironSword");
+    wearing("", "", { legs: "copperLeggings" });
     const event = { preventDefault: vi.fn() };
-    box().oncontextmenu(event);
+    box("legs").oncontextmenu(event);
     expect(event.preventDefault).toHaveBeenCalled();
     const [[shown, choices]] = openMenu.mock.calls as any;
     expect(shown).toBe(event);
     expect(choices.map(([label]: [string]) => label)).toEqual(["Take off"]);
     choices[0][1]();
-    expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "weapon");
+    expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "legs");
   });
 
   test("the Character button shows small icons of the worn gear", () => {
