@@ -226,6 +226,10 @@
         height: 16px;
         vertical-align: text-bottom;
       }
+      /* Overlapped, so a sword, shield and full armour take little more room than two used to. */
+      #worn-gear img + img {
+        margin-left: -10px;
+      }
       /*
        * Hidden by visibility, not display, on the window and its panes: a box that goes away
        * can lose its scroll position, and each tab keeps its own (spec §7).
