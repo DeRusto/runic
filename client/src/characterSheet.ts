@@ -8,6 +8,7 @@ import {
   PIN_INTENT,
   SKILLS,
   TAKE_OFF_INTENT,
+  totalLevel,
   type GearSlot,
 } from "@runic/shared";
 import { iconUrl, itemName } from "./itemIcons.ts";
@@ -190,7 +191,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       }
     },
     drawSkills(me: SyncedPlayer) {
-      combat.textContent = `Combat level ${combatLevel(me)}`;
+      combat.textContent = `Combat level ${combatLevel(me)} · Total level ${totalLevel(me)}`;
       for (const { skill, field, name, bar } of rows) {
         const xp = me[field];
         name.textContent = `${skill} ${levelFor(xp)}`;
