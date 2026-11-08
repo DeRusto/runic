@@ -4,6 +4,8 @@ import type { PlayerSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
 
 const MISS = 0.99;
+/** As a damage roll, the top of the range. */
+const TOP = 0.999;
 
 // The respawn tile is (1,1), with the Spider's home at (2,1), next to it.
 const NEXT_TO = ["TTTTTTT", "TRS...T", "T.....T", "TTTTTTT"];
@@ -25,7 +27,7 @@ const SAVE: PlayerSave = {
   defenseXp: 0,
   foragingXp: 0,
   hitpointsXp: 4050,
-  health: 10,
+  health: 1000,
   inventory: [],
 };
 
@@ -210,7 +212,7 @@ describe("the leash", () => {
 
   test("it walks home at a tile per 2 ticks, recovers on arrival, and takes no swings", () => {
     const s = fought();
-    spider(s).health = 3;
+    spider(s).health = 300;
     standAt(s, 5);
     run(s, 5);
     expect(spider(s).x).toBe(4);
@@ -222,25 +224,25 @@ describe("the leash", () => {
       xs.push({ x: spider(s).x, health: spider(s).health, state: spider(s).state }); // prettier-ignore
     }
     expect(xs).toEqual([
-      { x: 3, health: 3, state: "going home" },
-      { x: 3, health: 3, state: "going home" },
-      { x: 2, health: 8, state: "idle" },
-      { x: 2, health: 8, state: "idle" },
+      { x: 3, health: 300, state: "going home" },
+      { x: 3, health: 300, state: "going home" },
+      { x: 2, health: 800, state: "idle" },
+      { x: 2, health: 800, state: "idle" },
     ]);
     expect(swingTicks(events, "enemySwing")).toEqual([]);
   });
 
   test("a Spider giving up on its home tile recovers there and then", () => {
     const s = fought();
-    spider(s).health = 3;
+    spider(s).health = 300;
     s.removePlayer("a");
     run(s, 1);
-    expect(spider(s)).toMatchObject({ x: 2, health: 8, state: "idle" });
+    expect(spider(s)).toMatchObject({ x: 2, health: 800, state: "idle" });
   });
 
   test("a swing on the way home starts a new fight from where it stands, with its health as it was", () => {
     const s = fought();
-    spider(s).health = 3;
+    spider(s).health = 300;
     standAt(s, 5);
     run(s, 5); // Chased to (4,1).
     s.addPlayer("b", { ...SAVE, x: 5 });
@@ -253,7 +255,7 @@ describe("the leash", () => {
     expect(swingTicks(events, "playerSwing")).toHaveLength(1);
     expect(spider(s)).toMatchObject({
       x: 3,
-      health: 3,
+      health: 300,
       state: "fighting",
       target: "b",
     });
@@ -281,15 +283,16 @@ describe("the player's swing", () => {
       s.addPlayer("a", { ...SAVE, combatXp });
       s.queueTarget("a", "0");
       run(s, 1);
-      expect(spider(s).health).toBe(hits ? 7 : 8);
+      expect(spider(s).health).toBe(hits ? 700 : 800);
     },
   );
 
   test.each([
-    { combatXp: 0, roll: 0, damage: 1 },
-    { combatXp: 0, roll: 0.99, damage: 2 },
-    { combatXp: 16200, roll: 0.99, damage: 2 }, // Level 19.
-    { combatXp: 18050, roll: 0.99, damage: 3 }, // Level 20.
+    { combatXp: 0, roll: 0, damage: 100 },
+    { combatXp: 0, roll: 0.5, damage: 150 }, // Any whole number in range.
+    { combatXp: 0, roll: TOP, damage: 200 },
+    { combatXp: 16200, roll: TOP, damage: 200 }, // Level 19.
+    { combatXp: 18050, roll: TOP, damage: 300 }, // Level 20.
   ])(
     "with $combatXp Combat XP, a damage roll of $roll deals $damage",
     ({ combatXp, roll, damage }) => {
@@ -297,12 +300,47 @@ describe("the player's swing", () => {
       s.addPlayer("a", { ...SAVE, combatXp });
       s.queueTarget("a", "0");
       run(s, 1);
-      expect(spider(s).health).toBe(8 - damage);
+      expect(spider(s).health).toBe(800 - damage);
     },
   );
 
-  test("Combat and Hitpoints give 6 XP per damage, and a miss gives none", () => {
-    const s = fight(NEXT_TO, 0, 0.99);
+  test.each([
+    { roll: 0.0999, critical: true, damage: 225 },
+    { roll: 0.1, critical: false, damage: 150 },
+  ])(
+    "a crit roll of $roll on a landed hit of 150 is critical: $critical, dealing $damage",
+    ({ roll, critical, damage }) => {
+      const s = fight(NEXT_TO, 0, 0.5, roll);
+      s.addPlayer("a");
+      s.queueTarget("a", "0");
+      expect(run(s, 1)[0]).toMatchObject({ damage, critical });
+      expect(player(s).combatXp).toBe(Math.round((damage * 6) / 100));
+    },
+  );
+
+  test("a miss draws no crit roll", () => {
+    const rolls = [MISS, 0];
+    const s = new Simulation(
+      parseRegion(NEXT_TO.join("\n")),
+      () => rolls.shift() ?? MISS,
+    );
+    s.addPlayer("a");
+    s.queueTarget("a", "0");
+    run(s, 1);
+    expect(rolls).toEqual([0]);
+  });
+
+  test("a crit's overkill gives no XP", () => {
+    const s = fight(NEXT_TO, 0, TOP, 0);
+    s.addPlayer("a");
+    spider(s).health = 250;
+    s.queueTarget("a", "0");
+    expect(run(s, 1)[0]).toMatchObject({ damage: 250, critical: true });
+    expect(player(s).combatXp).toBe(15);
+  });
+
+  test("Combat and Hitpoints give 6 XP per 100 damage, and a miss gives none", () => {
+    const s = fight(NEXT_TO, 0, TOP);
     s.addPlayer("a");
     s.queueTarget("a", "0");
     run(s, 1);
@@ -311,17 +349,26 @@ describe("the player's swing", () => {
     expect(player(s)).toMatchObject({ combatXp: 12, hitpointsXp: 4062 });
   });
 
-  test("overkill gives no XP", () => {
-    const s = fight(NEXT_TO, 0, 0.99);
+  test("each swing's XP rounds to the nearest whole number", () => {
+    const s = fight(NEXT_TO, 0, 0.5);
     s.addPlayer("a");
-    spider(s).health = 1;
+    spider(s).health = 109; // So the swing deals 109: 6.54 XP, rounding to 7.
+    s.queueTarget("a", "0");
+    run(s, 1);
+    expect(player(s)).toMatchObject({ combatXp: 7, hitpointsXp: 4057 });
+  });
+
+  test("overkill gives no XP", () => {
+    const s = fight(NEXT_TO, 0, TOP);
+    s.addPlayer("a");
+    spider(s).health = 100;
     s.queueTarget("a", "0");
     run(s, 1);
     expect(player(s)).toMatchObject({ combatXp: 6, hitpointsXp: 4056 });
   });
 
   test("XP stops at the cap", () => {
-    const s = fight(NEXT_TO, 0, 0.99);
+    const s = fight(NEXT_TO, 0, TOP);
     s.addPlayer("a", { ...SAVE, combatXp: MAX_XP - 1, hitpointsXp: MAX_XP });
     s.queueTarget("a", "0");
     run(s, 1);
@@ -330,11 +377,11 @@ describe("the player's swing", () => {
 
   test("a Hitpoints level-up raises max health, not health", () => {
     const s = fight(NEXT_TO, 0, 0);
-    s.addPlayer("a", { ...SAVE, hitpointsXp: 4045, health: 5 }); // 5 XP short of level 10.
-    expect(player(s).maxHealth).toBe(9);
+    s.addPlayer("a", { ...SAVE, hitpointsXp: 4045, health: 500 }); // 5 XP short of level 10.
+    expect(player(s).maxHealth).toBe(900);
     s.queueTarget("a", "0");
     run(s, 1);
-    expect(player(s)).toMatchObject({ maxHealth: 10, health: 5 });
+    expect(player(s)).toMatchObject({ maxHealth: 1000, health: 500 });
   });
 });
 
@@ -357,24 +404,35 @@ describe("the Spider's swing", () => {
     "with $defenseXp Defense XP, a roll of $roll hits: $hits",
     ({ defenseXp, roll, hits }) => {
       expect(spiderSwingWith({ defenseXp }, roll, 0).health).toBe(
-        hits ? 9 : 10,
+        hits ? 900 : 1000,
       );
     },
   );
 
   test.each([
-    { roll: 0, damage: 1 },
-    { roll: 0.99, damage: 2 },
+    { roll: 0, damage: 100 },
+    { roll: 0.5, damage: 150 },
+    { roll: TOP, damage: 200 },
   ])("a damage roll of $roll deals $damage", ({ roll, damage }) => {
-    expect(spiderSwingWith({}, 0, roll).health).toBe(10 - damage);
+    expect(spiderSwingWith({}, 0, roll).health).toBe(1000 - damage);
+  });
+
+  test("over 1,000 evenly spread damage rolls, a hit averages today's ×100, and Defense today's XP", () => {
+    const hit = Array.from({ length: 1000 }, (_, i) =>
+      spiderSwingWith({}, 0, (i + 0.5) / 1000),
+    );
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    expect(mean(hit.map((one) => 1000 - one.health))).toBeCloseTo(150, 0);
+    expect(mean(hit.map((one) => one.defenseXp))).toBeCloseTo(12, 1);
   });
 
   test("Defense gives 6 XP for a miss", () => {
     expect(spiderSwingWith({}, MISS).defenseXp).toBe(6);
   });
 
-  test("Defense gives 6 XP for a hit plus 4 per damage taken", () => {
-    expect(spiderSwingWith({}, 0, 0.99).defenseXp).toBe(14);
+  test("Defense gives 6 XP for a hit plus 4 per 100 damage taken, rounded", () => {
+    expect(spiderSwingWith({}, 0, TOP).defenseXp).toBe(14);
+    expect(spiderSwingWith({}, 0, 0.5).defenseXp).toBe(12); // 150 damage.
   });
 
   test("Defense XP stops at the cap", () => {
@@ -386,15 +444,15 @@ describe("the Spider's swing", () => {
 
 describe("dying", () => {
   // Saved at (3,1), next to the Spider's home and away from the respawn tile (1,1).
-  // The player misses on tick 1, and the Spider's hit on tick 5 rolls 2 damage.
+  // The player misses on tick 1, and the Spider's hit on tick 5 rolls 200 damage.
   const dying = (saved: Partial<PlayerSave> = {}) => {
-    const s = fight(NEXT_TO, MISS, 0, 0.99);
-    s.addPlayer("a", { ...SAVE, x: 3, health: 1, ...saved });
+    const s = fight(NEXT_TO, MISS, 0, TOP);
+    s.addPlayer("a", { ...SAVE, x: 3, health: 100, ...saved });
     s.queueTarget("a", "0");
     return s;
   };
 
-  test("a hit at 1 health kills, counting as a hit for 1, and the Spider gives up at once", () => {
+  test("a hit at 100 health kills, counting as a hit for 100, and the Spider gives up at once", () => {
     const s = dying();
     const events = run(s, 5);
     expect(player(s)).toMatchObject({
@@ -404,7 +462,7 @@ describe("dying", () => {
       defenseXp: 10,
     });
     expect(events.slice(-2)).toMatchObject([
-      { type: "enemySwing", damage: 1 },
+      { type: "enemySwing", damage: 100 },
       { type: "playerDied", player: "a" },
     ]);
     // Already on its home tile, so giving up is over at once.
@@ -432,7 +490,7 @@ describe("dying", () => {
     expect(player(s)).toMatchObject({
       x: 1,
       y: 1,
-      health: 10,
+      health: 1000,
       dead: false,
       combatXp: 200,
       defenseXp: 10,
@@ -476,7 +534,7 @@ describe("dying", () => {
     expect(s.saveOf("a")).toMatchObject({
       x: 1,
       y: 1,
-      health: 10,
+      health: 1000,
       combatXp: 200,
       defenseXp: 10,
     });
@@ -487,20 +545,20 @@ describe("dying", () => {
 describe("regeneration", () => {
   test("heals on every 20th tick, with no event, and stops at the maximum", () => {
     const s = fight();
-    s.addPlayer("a", { ...SAVE, health: 8 });
+    s.addPlayer("a", { ...SAVE, health: 880 });
     expect(run(s, 19)).toEqual([]);
-    expect(player(s).health).toBe(8);
+    expect(player(s).health).toBe(880);
     expect(run(s, 1)).toEqual([]);
-    expect(player(s).health).toBe(9);
-    run(s, 40);
-    expect(player(s).health).toBe(10);
+    expect(player(s).health).toBe(930);
+    run(s, 60);
+    expect(player(s).health).toBe(1000);
   });
 
   test.each([
-    { hitpointsXp: 4050, heals: 1 }, // Level 10.
-    { hitpointsXp: 18050, heals: 1 }, // Level 20.
-    { hitpointsXp: 20000, heals: 2 }, // Level 21.
-    { hitpointsXp: MAX_XP, heals: 5 }, // Level 99.
+    { hitpointsXp: 4050, heals: 50 }, // Level 10.
+    { hitpointsXp: 18050, heals: 100 }, // Level 20.
+    { hitpointsXp: 20000, heals: 105 }, // Level 21.
+    { hitpointsXp: MAX_XP, heals: 495 }, // Level 99.
   ])(
     "with $hitpointsXp Hitpoints XP it heals $heals, 5% rounded up",
     ({ hitpointsXp, heals }) => {
@@ -514,12 +572,12 @@ describe("regeneration", () => {
   test("pauses while a combat lock runs", () => {
     const s = fight(NEXT_TO, 0, 0);
     spider(s).health = 1; // Dies on tick 1, the last swing, so the lock ends on tick 35.
-    s.addPlayer("a", { ...SAVE, health: 5 });
+    s.addPlayer("a", { ...SAVE, health: 500 });
     s.queueTarget("a", "0");
     run(s, 39);
-    expect(player(s).health).toBe(5);
+    expect(player(s).health).toBe(500);
     run(s, 1);
-    expect(player(s).health).toBe(6);
+    expect(player(s).health).toBe(550);
   });
 });
 
@@ -629,7 +687,7 @@ describe("a dropped player", () => {
   test("can still be hit", () => {
     const s = dropped(0, 0);
     expect(swingTicks(run(s, 10), "enemySwing").length).toBeGreaterThan(0);
-    expect(player(s).health).toBe(9);
+    expect(player(s).health).toBe(900);
   });
 
   test("has a lock that counts down and isn't refreshed by the Spider's swings", () => {
@@ -836,7 +894,7 @@ describe("a dead Spider", () => {
     expect(spider(s)).toMatchObject({
       x: 2,
       y: 1,
-      health: 8,
+      health: 800,
       state: "idle",
       target: "",
     });
@@ -864,11 +922,18 @@ describe("a dead Spider", () => {
 });
 
 test("a swing's event says who, at whom, and the damage; a miss is 0", () => {
-  const s = fight(NEXT_TO, 0, 0.99);
+  const s = fight(NEXT_TO, 0, TOP);
   s.addPlayer("a");
   s.queueTarget("a", "0");
   expect(run(s, 5)).toEqual([
-    { type: "playerSwing", player: "a", enemy: "0", damage: 2, tick: 1 },
+    {
+      type: "playerSwing",
+      player: "a",
+      enemy: "0",
+      damage: 200,
+      critical: false,
+      tick: 1,
+    },
     {
       type: "enemySwing",
       enemy: "0",

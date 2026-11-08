@@ -3,10 +3,10 @@ import { ENEMIES } from "./enemies.ts";
 
 test("a Spider's numbers are the first slice's", () => {
   expect(ENEMIES.spider).toEqual({
-    health: 8,
+    health: 800,
     hitChance: 0.35,
     hitChancePerDefenseLevel: -0.002,
-    maxDamage: 2,
+    maxDamage: 200,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
@@ -18,10 +18,10 @@ test("a Spider's numbers are the first slice's", () => {
 
 test("a Skeleton's numbers are spec §5's, and otherwise a Spider's", () => {
   expect(ENEMIES.skeleton).toEqual({
-    health: 24,
+    health: 2400,
     hitChance: 0.55,
     hitChancePerDefenseLevel: -0.003,
-    maxDamage: 5,
+    maxDamage: 500,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 200,

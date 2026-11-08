@@ -24,7 +24,7 @@ const SAVE: PlayerSave = {
   defenseXp: 0,
   foragingXp: 0,
   hitpointsXp: 4050,
-  health: 10,
+  health: 1000,
   inventory: [],
 };
 
@@ -63,7 +63,7 @@ test("6 Skeletons start from the region's K homes, at full health", () => {
     (enemy) => enemy.kind === "skeleton",
   );
   expect(skeletons).toHaveLength(6);
-  for (const one of skeletons) expect(one.health).toBe(24);
+  for (const one of skeletons) expect(one.health).toBe(2400);
 });
 
 describe("noticing", () => {
@@ -241,7 +241,7 @@ describe("giving up", () => {
 
   test("walks home at player speed and recovers there", () => {
     const s = givenUp();
-    skeleton(s).health = 5;
+    skeleton(s).health = 500;
     const xs = [];
     for (let i = 0; i < 8; i++) {
       run(s, 1);
@@ -249,7 +249,7 @@ describe("giving up", () => {
     }
     // Stepped on the tick it gave up, so 11 is already behind it.
     expect(xs).toEqual([11, 10, 10, 9, 9, 8, 8, 8]);
-    expect(skeleton(s)).toMatchObject({ state: "idle", health: 24 });
+    expect(skeleton(s)).toMatchObject({ state: "idle", health: 2400 });
   });
 
   test("ignores players it walks past", () => {
@@ -356,5 +356,5 @@ test("a killed Skeleton returns 200 ticks later at home with full health", () =>
   expect(skeleton(s).state).toBe("dead");
   expect(swingTicks(run(s, 200), "enemyReturned")).toEqual([201]);
   // Back, and the player beside it is a player it can notice on the next tick.
-  expect(skeleton(s)).toMatchObject({ x: 8, health: 24 });
+  expect(skeleton(s)).toMatchObject({ x: 8, health: 2400 });
 });

@@ -7,8 +7,8 @@ const HIT = 0;
 const MISS = 0.99;
 const WIN = 0.2499;
 const LOSE = 0.25;
-/** The hit roll and the damage roll of a swing doing 1 damage. */
-const SWING = [HIT, HIT];
+/** The hit roll, the damage roll and the crit roll of a swing doing 100 damage. */
+const SWING = [HIT, HIT, MISS];
 
 // The Skeleton's home is (8,1), with players either side of it.
 const CORRIDOR = [
@@ -25,7 +25,7 @@ const SAVE: PlayerSave = {
   defenseXp: 0,
   foragingXp: 0,
   hitpointsXp: 4050,
-  health: 10,
+  health: 1000,
   inventory: Array<string>(30).fill(""),
 };
 
@@ -60,7 +60,7 @@ const toldTo = (events: WorldEvent[], id: string) =>
 function killedByTwo(rolls: number[], s: Simulation, ...bones: number[]) {
   s.addPlayer("a", SAVE);
   s.addPlayer("b", { ...SAVE, x: 9 });
-  enemy(s).health = 2;
+  enemy(s).health = 200;
   rolls.push(...SWING, ...SWING, ...bones);
   s.queueTarget("a", "0");
   s.queueTarget("b", "0");
@@ -96,7 +96,7 @@ test("a dead player still rolls", () => {
   const { s, rolls } = world(CORRIDOR);
   s.addPlayer("a", SAVE);
   s.addPlayer("b", { ...SAVE, x: 9 });
-  enemy(s).health = 2;
+  enemy(s).health = 200;
   rolls.push(...SWING);
   s.queueTarget("a", "0");
   run(s);
@@ -114,7 +114,7 @@ test("a player who has left doesn't roll", () => {
   const { s, rolls } = world(CORRIDOR);
   s.addPlayer("a", SAVE);
   s.addPlayer("b", { ...SAVE, x: 9 });
-  enemy(s).health = 2;
+  enemy(s).health = 200;
   rolls.push(...SWING);
   s.queueTarget("a", "0");
   run(s);
@@ -162,7 +162,7 @@ test("recovering forgets who damaged it", () => {
   const { s, rolls } = world(CORRIDOR);
   s.addPlayer("a", SAVE);
   s.addPlayer("b", { ...SAVE, x: 18 });
-  enemy(s).health = 2;
+  enemy(s).health = 200;
   rolls.push(...SWING);
   s.queueTarget("a", "0");
   run(s);
@@ -170,7 +170,7 @@ test("recovering forgets who damaged it", () => {
   Object.assign(s.state.players.get("a")!, { x: 1 });
   s.queueWalk("a", { x: 1, y: 1 });
   run(s, 5);
-  expect(enemy(s)).toMatchObject({ state: "idle", health: 24 });
+  expect(enemy(s)).toMatchObject({ state: "idle", health: 2400 });
   // "b" comes back and kills it alone, so "a"'s old hit gets no roll.
   enemy(s).health = 1;
   Object.assign(s.state.players.get("b")!, { x: 9 });

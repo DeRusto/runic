@@ -151,6 +151,7 @@ describe("the playerSwing event", () => {
     player: "a",
     enemy: "0",
     damage,
+    critical: false,
   });
 
   beforeEach(() => {
@@ -169,6 +170,14 @@ describe("the playerSwing event", () => {
     expect(enemy.flash).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(enemy.flash).toHaveBeenCalledOnce();
+  });
+
+  test("a critical hit shows as one at contact", () => {
+    const showBlow = vi.fn();
+    enemyOverheads.set("0", { holdBlow: vi.fn(), showBlow });
+    send([{ ...swing(300), critical: true } as WorldEvent], "");
+    vi.advanceTimersByTime(550);
+    expect(showBlow).toHaveBeenCalledWith(300, true);
   });
 
   test("with no sword, punches and lands at 550 ms", () => {
@@ -277,6 +286,7 @@ describe("an enemy's swing", () => {
       player: "a",
       enemy: "0",
       damage: 1,
+      critical: false,
     };
     send("skeleton", [hit]);
     vi.advanceTimersByTime(550);
@@ -290,7 +300,13 @@ describe("an enemy's swing", () => {
 
   test("a player's landed hit doesn't play a clip on a Spider", () => {
     send("spider", [
-      { type: "playerSwing", player: "a", enemy: "0", damage: 1 },
+      {
+        type: "playerSwing",
+        player: "a",
+        enemy: "0",
+        damage: 1,
+        critical: false,
+      },
     ]);
     vi.advanceTimersByTime(550);
     expect(enemy.once).not.toHaveBeenCalled();
@@ -298,7 +314,13 @@ describe("an enemy's swing", () => {
 
   test("a Skeleton dies on Death_A and returns rising, a Spider scaling up", () => {
     const kill: WorldEvent[] = [
-      { type: "playerSwing", player: "a", enemy: "0", damage: 1 },
+      {
+        type: "playerSwing",
+        player: "a",
+        enemy: "0",
+        damage: 1,
+        critical: false,
+      },
       { type: "enemyDied", enemy: "0" },
     ];
     send("skeleton", kill);
@@ -385,14 +407,14 @@ describe("the enemySwing event", () => {
   test("damage 0 alone is still a miss", () => {
     send(0, false);
     vi.advanceTimersByTime(450);
-    expect(showBlow).toHaveBeenCalledWith(0);
+    expect(showBlow).toHaveBeenCalledWith(0, false);
     expect(figure.once).not.toHaveBeenCalled();
   });
 
   test("a landed hit plays Hit_A", () => {
     send(2, false);
     vi.advanceTimersByTime(450);
-    expect(showBlow).toHaveBeenCalledWith(2);
+    expect(showBlow).toHaveBeenCalledWith(2, false);
     expect(figure.once).toHaveBeenCalledWith("Hit_A");
   });
 });
@@ -404,6 +426,7 @@ describe("a block during the player's own swing", () => {
     player: "a",
     enemy: "0",
     damage: 1,
+    critical: false,
   };
   const blockedSwing: WorldEvent = {
     type: "enemySwing",

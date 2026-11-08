@@ -33,7 +33,7 @@ const start = ({ held = [], ...fields }: Start = {}) => {
     defenseXp: 0,
     foragingXp: 0,
     hitpointsXp: LEVEL_10_XP,
-    health: 10,
+    health: 1000,
     inventory: [
       ...held,
       ...Array<string>(INVENTORY_SLOTS - held.length).fill(EMPTY_SLOT),
@@ -206,9 +206,9 @@ describe("what lasts", () => {
   });
 });
 
-describe("damage on a hit is (1 + bonus)..(2 + floor(Combat / 20) + bonus)", () => {
+describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Combat levels + bonus)", () => {
   const LOWEST = 0;
-  const HIGHEST = 0.99;
+  const HIGHEST = 0.999;
   const swing = (roll: number, fields: Start) => {
     start(fields);
     rolls = [0, roll];
@@ -218,13 +218,41 @@ describe("damage on a hit is (1 + bonus)..(2 + floor(Combat / 20) + bonus)", () 
   };
 
   test.each([
-    ["", 0, 1, 2],
-    ["copperSword", 0, 2, 3],
-    ["ironSword", LEVEL_10_XP, 3, 4],
-    ["emberiteSword", LEVEL_20_XP, 4, 6],
+    ["", 0, 100, 200],
+    ["copperSword", 0, 200, 300],
+    ["ironSword", LEVEL_10_XP, 300, 400],
+    ["emberiteSword", LEVEL_20_XP, 400, 600],
   ])("%j at %i experience", (weapon, combatXp, low, high) => {
     expect(swing(LOWEST, { weapon, combatXp })).toBe(low);
     expect(swing(HIGHEST, { weapon, combatXp })).toBe(high);
+  });
+
+  // 1,000 evenly spread damage rolls stand in for many swings.
+  test.each([
+    ["", 0, 150, 9],
+    ["copperSword", 0, 250, 15],
+    ["ironSword", LEVEL_10_XP, 350, 21],
+    ["emberiteSword", LEVEL_20_XP, 500, 30],
+  ])(
+    "%j at %i experience averages today's hit ×100, and today's experience",
+    (weapon, combatXp, hit, xp) => {
+      const swung = Array.from({ length: 1000 }, (_, i) => {
+        const damage = swing((i + 0.5) / 1000, { weapon, combatXp });
+        return { damage, xp: me().combatXp - combatXp };
+      });
+      const mean = (of: (one: (typeof swung)[number]) => number) =>
+        swung.reduce((total, one) => total + of(one), 0) / swung.length;
+      expect(mean((one) => one.damage)).toBeCloseTo(hit, 0);
+      expect(mean((one) => one.xp)).toBeCloseTo(xp, 1);
+    },
+  );
+
+  test("a crit multiplies the hit with its sword bonus", () => {
+    start({ weapon: "emberiteSword", combatXp: LEVEL_20_XP });
+    rolls = [0, LOWEST, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([600]); // 400 × 1.5.
   });
 
   test("a miss is still a miss with a sword", () => {
@@ -235,16 +263,16 @@ describe("damage on a hit is (1 + bonus)..(2 + floor(Combat / 20) + bonus)", () 
   });
 
   test("a shield adds nothing to a hit", () => {
-    expect(swing(LOWEST, { shield: "emberiteShield" })).toBe(1);
+    expect(swing(LOWEST, { shield: "emberiteShield" })).toBe(100);
   });
 
   test("the bonus earns experience, but not for overkill", () => {
     start({ weapon: "copperSword" });
-    sim.state.enemies.get("0")!.health = 1;
+    sim.state.enemies.get("0")!.health = 100;
     rolls = [0, HIGHEST];
     sim.queueTarget("a", "0");
     sim.tick();
-    expect(swings()).toEqual([1]);
+    expect(swings()).toEqual([100]);
     expect(me().combatXp).toBe(6);
   });
 });
@@ -286,28 +314,28 @@ describe("blocking", () => {
   const HIT = 0;
   // The player's own swing on tick 1 misses, and the Spider's first swing comes on tick 5.
   const spiderSwing = (fields: Start, ...swingRolls: number[]) => {
-    start({ health: 10, ...fields });
+    start({ health: 1000, ...fields });
     rolls = [MISS, ...swingRolls];
     sim.queueTarget("a", "0");
     ticks(5);
     return sim.events.find((event) => event.type === "enemySwing")!;
   };
-  // Hit, damage 1, then the block roll.
+  // Hit, damage 100, then the block roll.
   const blockRolled = (roll: number, fields: Start) =>
     spiderSwing(fields, HIT, 0, roll);
 
   test("a block does no damage, gives 40 Blocking, and Defense still gets its 6", () => {
     const swing = blockRolled(0, { shield: "copperShield" });
     expect(swing).toMatchObject({ damage: 0, blocked: true });
-    expect(me().health).toBe(10);
+    expect(me().health).toBe(1000);
     expect(me().blockingXp).toBe(40);
     expect(me().defenseXp).toBe(6);
   });
 
   test("a hit that isn't blocked lands as usual and trains no Blocking", () => {
     const swing = blockRolled(0.1, { shield: "copperShield" });
-    expect(swing).toMatchObject({ damage: 1, blocked: false });
-    expect(me().health).toBe(9);
+    expect(swing).toMatchObject({ damage: 100, blocked: false });
+    expect(me().health).toBe(900);
     expect(me().blockingXp).toBe(0);
     expect(me().defenseXp).toBe(10);
   });
@@ -322,7 +350,7 @@ describe("blocking", () => {
 
   test("with no shield there is no block roll", () => {
     const swing = spiderSwing({}, HIT, 0, 0);
-    expect(swing).toMatchObject({ damage: 1, blocked: false });
+    expect(swing).toMatchObject({ damage: 100, blocked: false });
     expect(rolls).toEqual([0]);
   });
 

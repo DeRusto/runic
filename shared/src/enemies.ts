@@ -1,7 +1,7 @@
 export type EnemyKind = "spider" | "skeleton";
 export type EnemyState = "idle" | "fighting" | "going home" | "dead";
 
-/** Hit chances are 0..1, per Defense level above 1. Damage on a hit is 1..maxDamage. */
+/** Hit chances are 0..1, per Defense level above 1. Damage on a hit is any whole number from 100 to maxDamage. */
 type EnemyStats = {
   health: number;
   hitChance: number;
@@ -22,10 +22,10 @@ type EnemyStats = {
 /** Spec §5. */
 export const ENEMIES: Record<EnemyKind, EnemyStats> = {
   spider: {
-    health: 8,
+    health: 800,
     hitChance: 0.35,
     hitChancePerDefenseLevel: -0.002,
-    maxDamage: 2,
+    maxDamage: 200,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
@@ -34,10 +34,10 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     leashTiles: 4,
   },
   skeleton: {
-    health: 24,
+    health: 2400,
     hitChance: 0.55,
     hitChancePerDefenseLevel: -0.003,
-    maxDamage: 5,
+    maxDamage: 500,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 200,
