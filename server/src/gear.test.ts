@@ -94,13 +94,13 @@ describe("equipping", () => {
     expect(me().weapon).toBe("emberiteSword");
   });
 
-  test("a discard waiting on that slot doesn't destroy the sword traded into it", () => {
+  test("a drop waiting on that slot doesn't drop the sword traded into it", () => {
     start({
       held: ["ironSword"],
       combatXp: LEVEL_10_XP,
       weapon: "copperSword",
     });
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("a", 0);
     sim.equip("a", 0);
     sim.tick();
     expect(me().inventory[0]).toBe("copperSword");
@@ -199,10 +199,10 @@ describe("what lasts", () => {
     expect(me().weapon).toBe("copperSword");
   });
 
-  test("worn gear can't be discarded, as no slot holds it", () => {
+  test("worn gear can't be dropped, as no slot holds it", () => {
     start({ weapon: "copperSword" });
     for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
-      sim.queueDiscard("a", slot);
+      sim.queueDrop("a", slot);
       sim.tick();
     }
     expect(me().weapon).toBe("copperSword");
@@ -548,7 +548,7 @@ describe("anything invalid off the network is ignored", () => {
     expect(sim.events).toEqual([]);
   });
 
-  test("a dead player, as for eating and discarding", () => {
+  test("a dead player, as for eating and dropping", () => {
     start({ held: ["copperSword"], weapon: "copperSword" });
     me().dead = true;
     sim.equip("a", 0);

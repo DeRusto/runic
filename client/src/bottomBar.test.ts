@@ -1,5 +1,5 @@
 import {
-  DISCARD_INTENT,
+  DROP_INTENT,
   EAT_INTENT,
   EMPTY_SLOT,
   EQUIP_INTENT,
@@ -286,9 +286,9 @@ describe("gear in the bar", () => {
     expect(room.send).toHaveBeenCalledWith(EQUIP_INTENT, 0);
   });
 
-  test("a right-click offers Equip and Discard", () => {
+  test("a right-click offers Equip and Drop", () => {
     rightClick(0);
-    expect(menuChoices()).toEqual(["Equip", "Discard"]);
+    expect(menuChoices()).toEqual(["Equip", "Drop"]);
     menu.children[0].onclick!();
     expect(room.send).toHaveBeenCalledWith(EQUIP_INTENT, 0);
   });
@@ -315,17 +315,17 @@ describe("the right-click menu", () => {
     nextFrame();
   });
 
-  test("offers Eat and Discard on food", () => {
+  test("offers Eat and Drop on food", () => {
     rightClick(0);
     expect(menu.hidden).toBe(false);
-    expect(menuChoices()).toEqual(["Eat", "Discard"]);
+    expect(menuChoices()).toEqual(["Eat", "Drop"]);
   });
 
-  test("offers only Discard on a material, whose slot can still catch the click", () => {
+  test("offers only Drop on a material, whose slot can still catch the click", () => {
     expect((slot(1) as unknown as { disabled: boolean }).disabled).toBe(false);
     rightClick(1);
     expect(menu.hidden).toBe(false);
-    expect(menuChoices()).toEqual(["Discard"]);
+    expect(menuChoices()).toEqual(["Drop"]);
   });
 
   test("opens nothing on an empty slot", () => {
@@ -341,10 +341,10 @@ describe("the right-click menu", () => {
     expect(menu.hidden).toBe(true);
   });
 
-  test("Discard discards the slot clicked, and closes", () => {
+  test("Drop drops the slot clicked, and closes", () => {
     rightClick(1);
     menu.children[0]!.onclick!();
-    expect(room.send).toHaveBeenCalledWith(DISCARD_INTENT, 1);
+    expect(room.send).toHaveBeenCalledWith(DROP_INTENT, 1);
     expect(menu.hidden).toBe(true);
   });
 

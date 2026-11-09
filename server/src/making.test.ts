@@ -214,11 +214,11 @@ test("too low a level on arrival ends it, whatever is held", () => {
   expect(player("b").smithingXp).toBe(xpForLevel(10) + 12);
 });
 
-test("materials discarded during the wait end it with a line, and nothing is made", () => {
+test("materials dropped during the wait end it with a line, and nothing is made", () => {
   add([["copperOre", 1]]);
   sim.queueMake("a", { item: "copperBar", all: false });
   run(3);
-  sim.queueDiscard("a", 0);
+  sim.queueDrop("a", 0);
   run(1);
   expect(player().action).toBe("smithing");
   run(10);
@@ -287,7 +287,7 @@ test("gear takes a slot each", () => {
   ]);
 });
 
-test("eating and discarding don't interrupt it", () => {
+test("eating and dropping don't interrupt it", () => {
   add([
     ["copperOre", 1],
     ["herb", 2],
@@ -296,7 +296,7 @@ test("eating and discarding don't interrupt it", () => {
   sim.queueMake("a", { item: "copperBar", all: false });
   run(2);
   sim.queueEat("a", 1);
-  sim.queueDiscard("a", 2);
+  sim.queueDrop("a", 2);
   run(5);
   expect(items()).toEqual([
     ["copperBar", 1],

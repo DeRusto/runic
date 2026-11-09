@@ -14,6 +14,7 @@ import { walkOnClick } from "./clicks.ts";
 import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
+import { showGroundItems } from "./groundItemSacks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
@@ -59,6 +60,7 @@ function enterWorld(room: WorldConnection) {
   );
   showBottomBar(room, sayOverhead);
   showFights(room);
+  showGroundItems(room);
 
   logout.hidden = false;
   logout.onclick = () => room.send(LOGOUT_INTENT);

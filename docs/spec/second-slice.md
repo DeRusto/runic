@@ -69,7 +69,7 @@ The counts live only in this test.
 
 - A slot holds up to 20 of one material or food, and each item stacks separately. Gear takes a whole slot each.
 - A new item tops up the first stack of that item with room, then takes the first empty slot. **Full** means no room in a matching stack and no empty slot. This also replaces the bush refusal's "no empty slot" check.
-- **Discard** destroys the whole slot, including a stack of 20. It works at any time, including mid-fight, and doesn't interrupt the action. Tools can't be discarded, and worn gear must be taken off first.
+- **Discard** destroys the whole slot, including a stack of 20. It works at any time, including mid-fight, and doesn't interrupt the action. Tools can't be discarded, and worn gear must be taken off first. Phase 3 replaced Discard with Drop, which puts the slot on the ground as a ground item instead ([Drop puts items on the ground](https://github.com/DeRusto/runic/issues/117)).
 
 ### Food and the healing pool
 

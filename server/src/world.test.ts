@@ -2,7 +2,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { Client } from "@colyseus/sdk";
 import { matchMaker } from "@colyseus/core";
 import {
+  DROP_INTENT,
   EVENTS,
+  GROUND_ITEM_OWNER_TICKS,
   respawnTile,
   TARGET_INTENT,
   TICK_MS,
@@ -107,6 +109,44 @@ test("a tick's events arrive once, right after its patch", async () => {
   // A swing's tick is the one the patch before it brought, 4 ticks between the two swings.
   expect(swings[1]!.tick - swings[0]!.tick).toBe(4);
   expect(new Set(received.map(({ tick }) => tick)).size).toBe(received.length);
+});
+
+test("a ground item reaches only its owner until its owner minute ends", async () => {
+  const owner = new Client(`http://localhost:${PORT}`);
+  owner.auth.token = await testToken(PORT, "Dropper");
+  const dropper = await owner.join(WORLD_ROOM);
+  const other = new Client(`http://localhost:${PORT}`);
+  other.auth.token = await testToken(PORT, "Passerby");
+  const passerby = await other.join(WORLD_ROOM);
+  const { sim } = matchMaker.getLocalRoomById(dropper.roomId) as WorldRoom;
+  await vi.waitFor(() =>
+    expect(sim.state.players.has(dropper.sessionId)).toBe(true),
+  );
+  const held = sim.state.players.get(dropper.sessionId)!;
+  held.inventory[0] = "berry";
+  held.inventoryCounts[0] = 3;
+
+  dropper.send(DROP_INTENT, 0);
+  await vi.waitFor(() => expect(dropper.state.groundItems.size).toBe(1), {
+    timeout: TICK_MS * 6,
+    interval: 50,
+  });
+  const [dropped] = dropper.state.groundItems.values();
+  expect({ item: dropped.item, count: dropped.count }).toEqual({
+    item: "berry",
+    count: 3,
+  });
+  await sleep(TICK_MS * 3);
+  // A view-tagged map reaches a client only once something in it does.
+  expect(passerby.state.groundItems?.size ?? 0).toBe(0);
+
+  sim.state.tick += GROUND_ITEM_OWNER_TICKS;
+  await vi.waitFor(() => expect(passerby.state.groundItems?.size).toBe(1), {
+    timeout: TICK_MS * 6,
+    interval: 50,
+  });
+  await dropper.leave();
+  await passerby.leave();
 });
 
 test("the world room exists at start and survives everyone leaving", async () => {

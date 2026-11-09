@@ -22,6 +22,15 @@
         color: #eee;
         font: 12px system-ui;
       }
+      #ground-label {
+        position: fixed;
+        pointer-events: none;
+        color: #fff;
+        font: 12px system-ui;
+        text-shadow: 0 0 3px #000;
+        white-space: pre;
+        transform: translate(-50%, -100%);
+      }
       #overheads {
         position: fixed;
         inset: 0;
@@ -510,6 +519,7 @@
   <body>
     <p id="status">Connecting…</p>
     <div id="overheads"></div>
+    <div id="ground-label" role="tooltip" hidden></div>
     <!-- Before the bar, so the bar's right-click menu shows above it. -->
     <section id="sheet" role="dialog" aria-label="Character" hidden>
       <h2>

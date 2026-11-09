@@ -14,8 +14,8 @@ export const MAKE_INTENT = "make";
 export const VISIT_INTENT = "visit";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
-/** The discard intent's message type; its payload is the inventory slot's index. */
-export const DISCARD_INTENT = "discard";
+/** The drop intent's message type; its payload is the inventory slot's index. */
+export const DROP_INTENT = "drop";
 /** The equip intent's message type; its payload is the inventory slot's index. */
 export const EQUIP_INTENT = "equip";
 /** The take off intent's message type; its payload is the `GearSlot`. */
@@ -59,6 +59,10 @@ export const REGEN_INTERVAL_TICKS = 20;
 export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const HEALING_POOL_INTERVAL_TICKS = 4;
 export const SAVE_INTERVAL_TICKS = 100;
+/** How long after its drop only its owner can see a ground item: one minute (#71). */
+export const GROUND_ITEM_OWNER_TICKS = 200;
+/** How long after its drop a ground item vanishes: three minutes (#71). */
+export const GROUND_ITEM_DESPAWN_TICKS = 600;
 
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
 export const PLAYER_HIT_CHANCE = 0.4;

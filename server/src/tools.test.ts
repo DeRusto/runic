@@ -192,11 +192,11 @@ test("tools are kept through dying", () => {
   expect(tools()).toEqual(BOTH);
 });
 
-test("discarding every slot leaves tools alone", () => {
+test("dropping every slot leaves tools alone", () => {
   sim.queueVisit("a");
   arrive();
   for (let slot = 0; slot < 30; slot++) {
-    sim.queueDiscard("a", slot);
+    sim.queueDrop("a", slot);
     ticks(1);
   }
   expect(tools()).toEqual(BOTH);

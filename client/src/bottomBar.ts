@@ -1,6 +1,6 @@
 import {
   CHAT,
-  DISCARD_INTENT,
+  DROP_INTENT,
   EAT_INTENT,
   EQUIP_INTENT,
   FOOD_HEALS,
@@ -80,7 +80,7 @@ export function showBottomBar(
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(GEAR.has(item) ? ([["Equip", equip]] as const) : []),
-        ["Discard", () => room.send(DISCARD_INTENT, i)],
+        ["Drop", () => room.send(DROP_INTENT, i)],
       ]);
     };
     return slot;

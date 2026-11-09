@@ -67,6 +67,7 @@ import {
   type WorldEvent,
   type XpField,
 } from "@runic/shared";
+import { GroundItem, GroundItems } from "./groundItems.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
@@ -140,6 +141,8 @@ export const WorldState = schema(
     enemies: t.map(Enemy),
     bushes: t.map(Bush),
     veins: t.map(Vein),
+    /** Tagged for views: the room adds each one to the views of the players who can see it. */
+    groundItems: t.map(GroundItem).view(),
   },
   "WorldState",
 );
@@ -193,8 +196,8 @@ export class Simulation {
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
   private queuedEats = new Map<string, number>();
-  /** Apart from the action too, which discarding doesn't replace (spec §4). */
-  private queuedDiscards = new Map<string, number>();
+  /** Apart from the action too, which dropping doesn't replace (spec §4). */
+  private queuedDrops = new Map<string, number>();
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
@@ -220,6 +223,7 @@ export class Simulation {
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
+  private readonly groundItems = new GroundItems(this.state.groundItems);
   /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
   readonly events: WorldEvent[] = [];
 
@@ -397,7 +401,7 @@ export class Simulation {
     this.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
-    this.queuedDiscards.delete(id);
+    this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
     // A leaver has no inventory to fill (spec D8).
     for (const enemy of this.unsyncedEnemies.values())
@@ -410,7 +414,7 @@ export class Simulation {
     this.unsyncedPlayers.get(id)!.dropped = true;
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
-    this.queuedDiscards.delete(id);
+    this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
   }
 
@@ -501,10 +505,10 @@ export class Simulation {
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
-  queueDiscard(id: string, slot: number) {
+  queueDrop(id: string, slot: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
-    this.queuedDiscards.set(id, slot);
+    this.queuedDrops.set(id, slot);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
@@ -556,12 +560,12 @@ export class Simulation {
     player[gearSlot] = "";
   }
 
-  /** Puts gear, or "", in a slot. A discard waiting on the slot meant what was there, not this. */
+  /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
   private placeGear(id: string, slot: number, item: string) {
     const player = this.state.players.get(id)!;
     player.inventory[slot] = item;
     player.inventoryCounts[slot] = item ? 1 : 0;
-    if (this.queuedDiscards.get(id) === slot) this.queuedDiscards.delete(id);
+    if (this.queuedDrops.get(id) === slot) this.queuedDrops.delete(id);
   }
 
   /** Adds one `item` to the slot `slotFor` chose. */
@@ -574,9 +578,13 @@ export class Simulation {
     player.inventoryCounts[slot]!++;
   }
 
-  private discard(id: string, slot: number) {
+  private drop(id: string, slot: number) {
     const player = this.state.players.get(id)!;
-    if (!player.inventory[slot]) return;
+    const item = player.inventory[slot]!;
+    if (!item) return;
+    const count = player.inventoryCounts[slot]!;
+    const { username } = player;
+    this.groundItems.spawn(player, item, count, username, this.state.tick);
     player.inventory[slot] = EMPTY_SLOT;
     player.inventoryCounts[slot] = 0;
   }
@@ -601,6 +609,15 @@ export class Simulation {
     this.events.push({ type: "eaten", player: id });
   }
 
+  /** Whether this player can see the ground item with this id; the room sends them only those. */
+  canSee(id: string, groundItem: string) {
+    const player = this.state.players.get(id);
+    return (
+      player !== undefined &&
+      this.groundItems.canSee(player.username, groundItem)
+    );
+  }
+
   /** One tick, in the order of spec §6. */
   tick() {
     this.state.tick++;
@@ -614,6 +631,7 @@ export class Simulation {
     this.advancePlayerTimers();
     this.advanceSites();
     this.advanceEnemyReturns();
+    this.groundItems.advance(this.state.tick);
   }
 
   private applyIntents() {
@@ -649,8 +667,8 @@ export class Simulation {
     this.queuedActions.clear();
     for (const [id, slot] of this.queuedEats) this.eat(id, slot);
     this.queuedEats.clear();
-    for (const [id, slot] of this.queuedDiscards) this.discard(id, slot);
-    this.queuedDiscards.clear();
+    for (const [id, slot] of this.queuedDrops) this.drop(id, slot);
+    this.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       if (this.state.tick >= this.unsyncedPlayers.get(id)!.lockEndTick) {
         this.loggedOut.push(id);
@@ -735,7 +753,7 @@ export class Simulation {
       this.events.push({ type: "told", player: id, line });
       return false;
     };
-    // Discarding during the wait is allowed, so they may have gone.
+    // Dropping during the wait is allowed, so they may have gone.
     const refusal = makeRefusal(item, player);
     if (refusal) return told(refusal);
     const inventory = [...player.inventory];
