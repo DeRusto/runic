@@ -7,6 +7,7 @@ import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 
 const HOVER_SCALE = 1.15;
+const SACK_HIT_HEIGHT = 0.4;
 
 // shortcut: a sphere with a cone neck stands in for a sack, until a proper sack model is found.
 const sackMaterial = new THREE.MeshStandardMaterial({
@@ -109,7 +110,9 @@ export function showGroundItems(room: WorldConnection) {
     );
     sack.position.set(x, 0, y);
     const hitBox = newHitBox();
-    hitBox.position.set(x, HIT_BOX_HEIGHT / 2, y);
+    // Only as tall as the sack, so it doesn't cover a vein, bush or station behind it.
+    hitBox.scale.y = SACK_HIT_HEIGHT / HIT_BOX_HEIGHT;
+    hitBox.position.set(x, SACK_HIT_HEIGHT / 2, y);
     scene.add(sack);
     tiles.set(key, { sack, hitBox, items, ids, x, y });
   };

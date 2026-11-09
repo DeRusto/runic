@@ -268,3 +268,24 @@ test("when two players take the same ground item on the same tick, only one gets
   expect(swords).toEqual([["copperSword", 1]]);
   expect(groundItems(sim)).toEqual([]);
 });
+
+test("when the first of two same-tick takers leaves part of a stack, the second still gets none", () => {
+  const sim = world();
+  sim.queueDrop("a", 0);
+  sim.tick();
+  ticks(sim, 200);
+  hold(sim, "a", [["copperOre", 15]], ["herb", 1]);
+  sim.state.players.get("b")!.x = 1;
+  sim.queueTake("a", onlyGroundItem(sim));
+  sim.queueTake("b", onlyGroundItem(sim));
+  sim.tick();
+  const ore = (id: string) =>
+    held(sim, id)
+      .filter(([item]) => item === "copperOre")
+      .reduce((sum, [, count]) => sum + count, 0);
+  expect(ore("a") + ore("b")).toBe(20);
+  expect(Math.min(ore("a") - 15, ore("b"))).toBe(0);
+  expect(groundItems(sim)).toEqual([
+    { x: 1, y: 1, item: "copperOre", count: 7 },
+  ]);
+});

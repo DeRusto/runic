@@ -821,9 +821,10 @@ export class Simulation {
 
   /**
    * After the steps, so the take lands on the tick of arrival. Visibility is checked again, and
-   * the first player to arrive takes what fits, so a second on the same tick finds less or none.
+   * the first player to arrive takes what fits; a second on the same tick gets none, even of a remainder.
    */
   private advanceTakes() {
+    const takenThisTick = new Set<string>();
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action } = unsynced;
       if (action?.kind !== "taking" || unsynced.path.length) continue;
@@ -831,6 +832,7 @@ export class Simulation {
       const player = this.state.players.get(id)!;
       const groundItem = this.state.groundItems.get(action.groundItem);
       if (!groundItem || !this.canSee(id, action.groundItem)) continue;
+      if (takenThisTick.has(action.groundItem)) continue;
       // With no way there, the path ran out short of the tile.
       if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
       const item = groundItem.item as ItemId;
@@ -845,6 +847,7 @@ export class Simulation {
         taken++;
       }
       this.groundItems.take(action.groundItem, taken);
+      takenThisTick.add(action.groundItem);
     }
   }
 
