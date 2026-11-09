@@ -106,7 +106,7 @@ The counts live only in this test.
 
 - Equipping moves gear from the inventory to its gear slot, freeing the slot. If one is already worn, the two trade places, so swapping always works.
 - Equipping gear above the player's level is refused with a chat-box line, and so is taking off gear with no empty slot.
-- Gear can be changed at any time, including mid-fight, and doesn't touch the swing timer **[D4]**. Gear never wears out and is kept on death.
+- Gear can be changed at any time, including mid-fight, and doesn't touch the swing timer **[D4]**. Gear never wears out. Phase 3 drops worn gear on death, with the inventory, as ground items on the tile where the player died; only the Toolbelt is kept ([Drop on death](https://github.com/DeRusto/runic/issues/119)).
 - **Sword:** adds its bonus to both minimum and maximum hit.
 - **Shield:** an enemy swing rolls to hit using Defense, as today. If it hits and a shield is worn, it then rolls to **block**, and a block does 0 damage. See §5 for the chance and experience. It works against every enemy.
 
@@ -131,7 +131,7 @@ Wandering, walking speed, return after dying, experience rules, shared fights an
 ### Emberbones
 
 - When a Skeleton dies, each player who damaged it since it last recovered or returned rolls their own chance. A swing that missed doesn't count. Dead players count, and players who have left the room don't **[D8]**.
-- An Emberbone goes straight into the inventory, with a chat-box line **[D8]**. If the inventory is full it is lost, with a different line.
+- A won Emberbone lands on the ground under the Skeleton as a ground item owned by the winner, with a chat-box line **[D8]**. Only the winner can see it for the first minute, and a full inventory no longer loses it ([Loot on the ground](https://github.com/DeRusto/runic/issues/120)).
 - Spiders still give nothing.
 
 ### Unchanged rules worth repeating
@@ -231,7 +231,7 @@ All of these live in `shared/` as named constants, apart from the counts (region
 | `mine` | player, success | As `pick` |
 | `make` | player, station, ticks | One at the start of each item's wait; `ticks` is N, so viewers can fit the clip to it |
 | `enemyDied`, `enemyReturned` | enemy | Renamed from the Spider events |
-| `told` | player, line | Tools given, Emberbone won or lost, making stopped |
+| `told` | player, line | Tools given, Emberbone won, making stopped |
 | `healed` | player, amount | One for each healing tick that restores health; `amount` is what it actually restored. Regeneration sends none |
 
 `eaten` drops its `healed` field, because food no longer heals at once.
@@ -375,7 +375,7 @@ Each build ticket has its own tests. The slice as a whole is done when, on `runi
 7. A player with a shield sees "Blocked", and Blocking rises.
 8. An idle player swung at by a Spider or a Skeleton fights back. A walking one carries on.
 9. A Skeleton goes for a player in range, gives up at the leash and walks home, and can always be walked away from.
-10. Two players who both damaged a Skeleton each get their own chance at an Emberbone. A player with a full inventory loses theirs, with a line.
+10. Two players who both damaged a Skeleton each get their own chance at an Emberbone. A won Emberbone lands on the ground, seen only by its winner for the first minute.
 11. A player makes and wears Emberite gear.
 12. Pins survive logging out and work on another device.
 13. Experience, stacks, gear, tools and pins survive logout and a Deploy.

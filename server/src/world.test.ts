@@ -4,6 +4,7 @@ import { matchMaker } from "@colyseus/core";
 import {
   DROP_INTENT,
   EVENTS,
+  GROUND_ITEM_DESPAWN_TICKS,
   GROUND_ITEM_OWNER_TICKS,
   respawnTile,
   TAKE_INTENT,
@@ -175,6 +176,57 @@ test("a take intent moves a ground item back into the inventory", async () => {
   const me = taker.state.players.get(taker.sessionId)!;
   expect([me.inventory[0], me.inventoryCounts[0]]).toEqual(["berry", 3]);
   await taker.leave();
+});
+
+test("a public ground item leaves another viewer's state when taken and when it despawns", async () => {
+  const owner = new Client(`http://localhost:${PORT}`);
+  owner.auth.token = await testToken(PORT, "Giver");
+  const giver = await owner.join(WORLD_ROOM);
+  const other = new Client(`http://localhost:${PORT}`);
+  other.auth.token = await testToken(PORT, "Onlooker");
+  const onlooker = await other.join(WORLD_ROOM);
+  const { sim } = matchMaker.getLocalRoomById(giver.roomId) as WorldRoom;
+  await vi.waitFor(() =>
+    expect(sim.state.players.has(giver.sessionId)).toBe(true),
+  );
+  const held = sim.state.players.get(giver.sessionId)!;
+  const waitFor = { timeout: TICK_MS * 6, interval: 50 };
+
+  /** Drops three berries, makes every ground item public, and waits for the onlooker to see this one. */
+  const dropPublic = async () => {
+    held.inventory[0] = "berry";
+    held.inventoryCounts[0] = 3;
+    giver.send(DROP_INTENT, 0);
+    let id: string | undefined;
+    await vi.waitFor(() => {
+      id = [...sim.state.groundItems.entries()].find(
+        ([, { owner }]) => owner === "Giver",
+      )?.[0];
+      expect(id).toBeDefined();
+    }, waitFor);
+    sim.state.tick += GROUND_ITEM_OWNER_TICKS;
+    await vi.waitFor(
+      () => expect(onlooker.state.groundItems?.has(id!)).toBe(true),
+      waitFor,
+    );
+    return id!;
+  };
+
+  const taken = await dropPublic();
+  giver.send(TAKE_INTENT, taken);
+  await vi.waitFor(
+    () => expect(onlooker.state.groundItems.has(taken)).toBe(false),
+    waitFor,
+  );
+
+  const despawned = await dropPublic();
+  sim.state.tick += GROUND_ITEM_DESPAWN_TICKS;
+  await vi.waitFor(
+    () => expect(onlooker.state.groundItems.has(despawned)).toBe(false),
+    waitFor,
+  );
+  await giver.leave();
+  await onlooker.leave();
 });
 
 test("the world room exists at start and survives everyone leaving", async () => {

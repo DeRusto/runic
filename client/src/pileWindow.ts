@@ -1,8 +1,6 @@
-import { TAKE_INTENT, WALK_INTENT } from "@runic/shared";
+import { TAKE_INTENT, WALK_INTENT, type Tile } from "@runic/shared";
 import { groundItemLine } from "./groundItems.ts";
 import type { WorldConnection } from "./players.ts";
-
-type Tile = { x: number; y: number };
 
 /**
  * The window a click on a pile opens, once the player stands on its tile. It lists only the
@@ -18,6 +16,8 @@ export function showPileWindow(room: WorldConnection) {
   let open: Tile | undefined;
   /** The pile being walked to, whose window opens on arrival. */
   let walkingTo: Tile | undefined;
+  /** Whether the walk to `walkingTo` has begun, so its end short of the tile can be told from its start. */
+  let walked = false;
   const on = (me: Tile, tile: Tile) => me.x === tile.x && me.y === tile.y;
 
   const close = () => {
@@ -65,6 +65,9 @@ export function showPileWindow(room: WorldConnection) {
     if (!me) return;
     if (me.dead) close();
     else if (walkingTo && on(me, walkingTo)) show(walkingTo);
+    // A walk that ends short forgets the pile, or standing there later would open it unasked.
+    else if (walkingTo && me.action === "walking") walked = true;
+    else if (walkingTo && walked) walkingTo = undefined;
     else if (open && !on(me, open)) close();
     else if (open) draw(open);
   });
@@ -90,6 +93,7 @@ export function showPileWindow(room: WorldConnection) {
     if (on(me, { x, y })) return show({ x, y });
     close();
     walkingTo = { x, y };
+    walked = false;
     room.send(WALK_INTENT, { x, y });
   };
 }

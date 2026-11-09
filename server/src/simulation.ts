@@ -43,6 +43,7 @@ import {
   siteId,
   SKILLS,
   slotFor,
+  takeRefusal,
   STARTING_PINNED_SKILLS,
   stationRefusal,
   tilesApart,
@@ -502,6 +503,7 @@ export class Simulation {
 
   /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
   queueTake(id: string, groundItem: string) {
+    if (typeof groundItem !== "string") return;
     if (!this.alive(id) || !this.canSee(id, groundItem)) return;
     this.queuedActions.set(id, { take: groundItem });
   }
@@ -832,16 +834,15 @@ export class Simulation {
       // With no way there, the path ran out short of the tile.
       if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
       const item = groundItem.item as ItemId;
-      let taken = 0;
-      for (let slot; taken < groundItem.count; taken++) {
-        slot = slotFor(item, player);
-        if (slot < 0) break;
-        this.addToSlot(player, slot, item);
-      }
-      if (!taken) {
-        const line = "Your inventory is full.";
+      const line = takeRefusal(item, player);
+      if (line) {
         this.events.push({ type: "told", player: id, line });
         continue;
+      }
+      let taken = 0;
+      while (taken < groundItem.count && !takeRefusal(item, player)) {
+        this.addToSlot(player, slotFor(item, player), item);
+        taken++;
       }
       this.groundItems.take(action.groundItem, taken);
     }

@@ -178,6 +178,15 @@ test("a press elsewhere on the way cancels it, so it never opens on arrival", ()
   expect(pile().hidden).toBe(true);
 });
 
+test("a walk that stops short forgets the pile, so standing on it later doesn't open it", () => {
+  patch(6, { o: ore, s: sword });
+  open({ x: 3, y: 1 });
+  patch(5, { o: ore, s: sword }, { action: "walking" });
+  patch(5, { o: ore, s: sword }, { action: "" });
+  patch(3, { o: ore, s: sword });
+  expect(pile().hidden).toBe(true);
+});
+
 test("leaving the room closes it and lets go of the page", () => {
   open({ x: 3, y: 1 });
   leave();

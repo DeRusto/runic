@@ -165,7 +165,10 @@ export class WorldRoom extends Room {
     this.saveAndRemove(client);
   }
 
-  /** Visibility only grows until a ground item goes, and going takes it out of every view. */
+  /**
+   * Visibility only grows until a ground item goes. No view.remove is needed then: a view
+   * keeps no list of what it holds, and leaving the map clears the item's view bits.
+   */
   private showGroundItems() {
     for (const client of this.clients) {
       for (const [id, groundItem] of this.sim.state.groundItems) {

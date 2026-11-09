@@ -240,6 +240,19 @@ test("a take intent for a ground item the player can't see is ignored", () => {
   expect(groundItems(sim)).toHaveLength(1);
 });
 
+test("a take intent whose payload isn't a ground item's id string is ignored", () => {
+  const sim = world();
+  sim.queueDrop("a", 0);
+  sim.tick();
+  sim.queueWalk("a", { x: 4, y: 1 });
+  ticks(sim, 20);
+  for (const payload of [0, [onlyGroundItem(sim)], { id: "0" }, null])
+    sim.queueTake("a", payload as unknown as string);
+  ticks(sim, 20);
+  expect(sim.state.players.get("a")!.x).toBe(4);
+  expect(groundItems(sim)).toHaveLength(1);
+});
+
 test("when two players take the same ground item on the same tick, only one gets it", () => {
   const sim = world();
   sim.queueDrop("a", 1);
