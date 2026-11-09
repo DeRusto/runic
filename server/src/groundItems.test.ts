@@ -23,7 +23,8 @@ function world() {
     inventoryCounts,
   };
   sim.addPlayer("a", save, "alice");
-  sim.addPlayer("b", { ...save, x: 3, inventory: [] }, "bob");
+  const empty = { inventory: Array<string>(INVENTORY_SLOTS).fill("") };
+  sim.addPlayer("b", { ...save, ...empty, x: 3, inventoryCounts: [] }, "bob");
   return sim;
 }
 
@@ -136,4 +137,121 @@ test("a player who isn't here, or a ground item that isn't, sees nothing", () =>
   ticks(sim, 200);
   expect(seenBy(sim, "nobody")).toEqual([]);
   expect(sim.canSee("a", "nothing")).toBe(false);
+});
+
+/** Fills every slot of a player's inventory from `slots`, then with `fill`. */
+function hold(
+  sim: Simulation,
+  id: string,
+  slots: [string, number][],
+  fill: [string, number] = ["", 0],
+) {
+  const player = sim.state.players.get(id)!;
+  for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
+    const [item, count] = slots[slot] ?? fill;
+    player.inventory[slot] = item;
+    player.inventoryCounts[slot] = count;
+  }
+}
+
+const held = (sim: Simulation, id: string) => {
+  const { inventory, inventoryCounts } = sim.state.players.get(id)!;
+  return [...inventory]
+    .map((item, slot) => [item, inventoryCounts[slot]] as const)
+    .filter(([item]) => item);
+};
+
+const onlyGroundItem = (sim: Simulation) =>
+  [...sim.state.groundItems.keys()][0]!;
+
+test("taking a lone ground item from afar walks onto its tile, then moves it into the inventory", () => {
+  const sim = world();
+  sim.queueDrop("a", 0);
+  sim.tick();
+  sim.queueWalk("a", { x: 4, y: 1 });
+  ticks(sim, 20);
+  const alice = sim.state.players.get("a")!;
+  expect(alice.x).toBe(4);
+
+  sim.queueTake("a", onlyGroundItem(sim));
+  ticks(sim, 20);
+  expect({ x: alice.x, y: alice.y }).toEqual({ x: 1, y: 1 });
+  expect(held(sim, "a")).toEqual([
+    ["copperOre", 12],
+    ["copperSword", 1],
+  ]);
+  expect(groundItems(sim)).toEqual([]);
+});
+
+test("a taken stack joins a matching stack first, and what doesn't fit stays with its timers", () => {
+  const sim = world();
+  sim.queueDrop("a", 0);
+  sim.tick();
+  ticks(sim, 200);
+  hold(
+    sim,
+    "b",
+    [
+      ["herb", 1],
+      ["copperOre", 15],
+    ],
+    ["herb", 1],
+  );
+  sim.queueTake("b", onlyGroundItem(sim));
+  ticks(sim, 20);
+  expect(held(sim, "b")[1]).toEqual(["copperOre", 20]);
+  expect(groundItems(sim)).toEqual([
+    { x: 1, y: 1, item: "copperOre", count: 7 },
+  ]);
+  // Dropped on tick 1, so it still vanishes on tick 601.
+  ticks(sim, 600 - sim.state.tick);
+  expect(groundItems(sim)).toHaveLength(1);
+  sim.tick();
+  expect(groundItems(sim)).toEqual([]);
+});
+
+test("taking gear with no free slot is refused with a chat line, and the item stays", () => {
+  const sim = world();
+  sim.queueDrop("a", 1);
+  sim.tick();
+  hold(sim, "a", [], ["herb", 1]);
+  sim.events.length = 0;
+  sim.queueTake("a", onlyGroundItem(sim));
+  sim.tick();
+  expect(sim.events).toContainEqual({
+    type: "told",
+    player: "a",
+    line: "Your inventory is full.",
+  });
+  expect(groundItems(sim)).toEqual([
+    { x: 1, y: 1, item: "copperSword", count: 1 },
+  ]);
+});
+
+test("a take intent for a ground item the player can't see is ignored", () => {
+  const sim = world();
+  sim.queueDrop("a", 0);
+  sim.tick();
+  sim.queueTake("b", onlyGroundItem(sim));
+  sim.queueTake("b", "nothing");
+  ticks(sim, 20);
+  expect(sim.state.players.get("b")!.x).toBe(3);
+  expect(held(sim, "b")).toEqual([]);
+  expect(groundItems(sim)).toHaveLength(1);
+});
+
+test("when two players take the same ground item on the same tick, only one gets it", () => {
+  const sim = world();
+  sim.queueDrop("a", 1);
+  sim.tick();
+  ticks(sim, 200);
+  sim.state.players.get("b")!.x = 1;
+  sim.queueTake("a", onlyGroundItem(sim));
+  sim.queueTake("b", onlyGroundItem(sim));
+  sim.tick();
+  const swords = [...held(sim, "a"), ...held(sim, "b")].filter(
+    ([item]) => item === "copperSword",
+  );
+  expect(swords).toEqual([["copperSword", 1]]);
+  expect(groundItems(sim)).toEqual([]);
 });

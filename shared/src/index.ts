@@ -16,6 +16,8 @@ export const VISIT_INTENT = "visit";
 export const EAT_INTENT = "eat";
 /** The drop intent's message type; its payload is the inventory slot's index. */
 export const DROP_INTENT = "drop";
+/** The take intent's message type; its payload is the ground item's id. */
+export const TAKE_INTENT = "take";
 /** The equip intent's message type; its payload is the inventory slot's index. */
 export const EQUIP_INTENT = "equip";
 /** The take off intent's message type; its payload is the `GearSlot`. */

@@ -6,6 +6,7 @@ import {
   EVENTS,
   GROUND_ITEM_OWNER_TICKS,
   respawnTile,
+  TAKE_INTENT,
   TARGET_INTENT,
   TICK_MS,
   WALK_INTENT,
@@ -147,6 +148,33 @@ test("a ground item reaches only its owner until its owner minute ends", async (
   });
   await dropper.leave();
   await passerby.leave();
+});
+
+test("a take intent moves a ground item back into the inventory", async () => {
+  const owner = new Client(`http://localhost:${PORT}`);
+  owner.auth.token = await testToken(PORT, "Taker");
+  const taker = await owner.join(WORLD_ROOM);
+  const { sim } = matchMaker.getLocalRoomById(taker.roomId) as WorldRoom;
+  await vi.waitFor(() =>
+    expect(sim.state.players.has(taker.sessionId)).toBe(true),
+  );
+  const held = sim.state.players.get(taker.sessionId)!;
+  held.inventory[0] = "berry";
+  held.inventoryCounts[0] = 3;
+  const waitFor = { timeout: TICK_MS * 6, interval: 50 };
+
+  // The room outlives each test, so an earlier test's ground items may be here too.
+  const mine = () =>
+    [...(taker.state.groundItems?.entries() ?? [])].find(
+      ([, { owner }]) => owner,
+    )?.[0];
+  taker.send(DROP_INTENT, 0);
+  await vi.waitFor(() => expect(mine()).toBeDefined(), waitFor);
+  taker.send(TAKE_INTENT, mine());
+  await vi.waitFor(() => expect(mine()).toBeUndefined(), waitFor);
+  const me = taker.state.players.get(taker.sessionId)!;
+  expect([me.inventory[0], me.inventoryCounts[0]]).toEqual(["berry", 3]);
+  await taker.leave();
 });
 
 test("the world room exists at start and survives everyone leaving", async () => {

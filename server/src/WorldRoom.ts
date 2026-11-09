@@ -20,6 +20,7 @@ import {
   PIN_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
+  TAKE_INTENT,
   TAKE_OFF_INTENT,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
@@ -62,6 +63,8 @@ export class WorldRoom extends Room {
       this.sim.queueEat(client.sessionId, slot),
     [DROP_INTENT]: (client: Client, slot: number) =>
       this.sim.queueDrop(client.sessionId, slot),
+    [TAKE_INTENT]: (client: Client, groundItem: string) =>
+      this.sim.queueTake(client.sessionId, groundItem),
     [EQUIP_INTENT]: (client: Client, slot: number) =>
       this.sim.equip(client.sessionId, slot),
     [TAKE_OFF_INTENT]: (client: Client, slot: GearSlot) =>

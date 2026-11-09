@@ -59,6 +59,7 @@ import {
   type EnemyKind,
   type EnemyState,
   type GearSlot,
+  type ItemId,
   type RecipeItem,
   type StationKind,
   XP_PER_DAMAGE_DEALT,
@@ -160,6 +161,7 @@ type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
   | { kind: "visiting" }
+  | { kind: "taking"; groundItem: string }
   /** `doneTick` stays unset until arrival starts the first wait. */
   | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
 
@@ -174,6 +176,7 @@ export class Simulation {
     | { gather: GatheringSkill; site: string }
     | { blacksmith: Tile }
     | { make: RecipeItem; all: boolean }
+    | { take: string }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -497,6 +500,12 @@ export class Simulation {
       this.queuedActions.set(id, { blacksmith: this.blacksmith });
   }
 
+  /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
+  queueTake(id: string, groundItem: string) {
+    if (!this.alive(id) || !this.canSee(id, groundItem)) return;
+    this.queuedActions.set(id, { take: groundItem });
+  }
+
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
     if (!this.alive(id)) return;
@@ -626,6 +635,7 @@ export class Simulation {
     for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
     this.advanceMaking();
     this.advanceVisits();
+    this.advanceTakes();
     this.advancePlayerSwings();
     this.advanceEnemies();
     this.advancePlayerTimers();
@@ -654,6 +664,16 @@ export class Simulation {
         });
       } else if ("blacksmith" in intent) {
         goNextTo(intent.blacksmith, { kind: "visiting" });
+      } else if ("take" in intent) {
+        // Onto its tile, not next to it. It may have gone since the intent arrived.
+        const groundItem = this.state.groundItems.get(intent.take);
+        unsynced.path = groundItem
+          ? findPath(this.tiles, player, groundItem)
+          : [];
+        unsynced.action = groundItem && {
+          kind: "taking",
+          groundItem: intent.take,
+        };
       } else if ("gather" in intent) {
         goNextTo(this.sites.get(intent.site)!, {
           kind: intent.gather,
@@ -797,6 +817,36 @@ export class Simulation {
     player.masteryHundredths = hundredths % 100;
   }
 
+  /**
+   * After the steps, so the take lands on the tick of arrival. Visibility is checked again, and
+   * the first player to arrive takes what fits, so a second on the same tick finds less or none.
+   */
+  private advanceTakes() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const { action } = unsynced;
+      if (action?.kind !== "taking" || unsynced.path.length) continue;
+      unsynced.action = undefined;
+      const player = this.state.players.get(id)!;
+      const groundItem = this.state.groundItems.get(action.groundItem);
+      if (!groundItem || !this.canSee(id, action.groundItem)) continue;
+      // With no way there, the path ran out short of the tile.
+      if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
+      const item = groundItem.item as ItemId;
+      let taken = 0;
+      for (let slot; taken < groundItem.count; taken++) {
+        slot = slotFor(item, player);
+        if (slot < 0) break;
+        this.addToSlot(player, slot, item);
+      }
+      if (!taken) {
+        const line = "Your inventory is full.";
+        this.events.push({ type: "told", player: id, line });
+        continue;
+      }
+      this.groundItems.take(action.groundItem, taken);
+    }
+  }
+
   /** After the steps, so the tools come on the tick of arrival. */
   private advanceVisits() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
@@ -839,7 +889,7 @@ export class Simulation {
       const player = this.state.players.get(id)!;
       player.target = action?.kind === "fighting" ? action.enemy : "";
       player.action =
-        action && action.kind !== "visiting"
+        action && action.kind !== "visiting" && action.kind !== "taking"
           ? action.kind
           : path.length
             ? "walking"

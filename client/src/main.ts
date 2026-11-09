@@ -57,10 +57,10 @@ function enterWorld(room: WorldConnection) {
     stationUnder,
     showSmithingPanel(room),
     blacksmithUnder,
+    showGroundItems(room),
   );
   showBottomBar(room, sayOverhead);
   showFights(room);
-  showGroundItems(room);
 
   logout.hidden = false;
   logout.onclick = () => room.send(LOGOUT_INTENT);

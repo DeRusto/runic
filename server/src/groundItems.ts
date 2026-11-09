@@ -54,6 +54,15 @@ export class GroundItems {
     );
   }
 
+  /** Takes `count` from the ground item with this id; what is left keeps its timers. */
+  take(id: string, count: number) {
+    const groundItem = this.synced.get(id)!;
+    groundItem.count -= count;
+    if (groundItem.count) return;
+    this.synced.delete(id);
+    this.dropTicks.delete(id);
+  }
+
   /** Runs every ground item's timers up to `tick`. */
   advance(tick: number) {
     for (const [id, dropTick] of this.dropTicks) {

@@ -68,14 +68,22 @@ function sackFor(items: SeenGroundItem[], mine: boolean) {
 
 /**
  * Draws one sack on each tile with ground items this player can see (the server sends no
- * others), and labels the tile under the pointer.
+ * others), and labels the tile under the pointer. Returns what finds the lone ground item
+ * under a click's ray.
  */
 export function showGroundItems(room: WorldConnection) {
   const callbacks = Callbacks.get(room);
   const label = document.getElementById("ground-label")!;
   const tiles = new Map<
     string,
-    { sack: THREE.Group; hitBox: THREE.Mesh; items: SeenGroundItem[] }
+    {
+      sack: THREE.Group;
+      hitBox: THREE.Mesh;
+      items: SeenGroundItem[];
+      ids: string[];
+      x: number;
+      y: number;
+    }
   >();
   /** Kept apart from state, where a removed one may still be on its way out. */
   const seen = new Map<string, SeenGroundItem & { x: number; y: number }>();
@@ -86,10 +94,10 @@ export function showGroundItems(room: WorldConnection) {
     const old = tiles.get(key);
     if (old) scene.remove(old.sack, old.hitBox);
     tiles.delete(key);
-    const items = [...seen.values()].filter(
-      (item) => item.x === x && item.y === y,
-    );
-    if (!items.length) return;
+    const here = [...seen].filter(([, item]) => item.x === x && item.y === y);
+    if (!here.length) return;
+    const items = here.map(([, item]) => item);
+    const ids = here.map(([id]) => id);
     const sack = sackFor(
       items,
       items.some(({ owner }) => owner && owner === me()),
@@ -98,7 +106,7 @@ export function showGroundItems(room: WorldConnection) {
     const hitBox = newHitBox();
     hitBox.position.set(x, HIT_BOX_HEIGHT / 2, y);
     scene.add(sack);
-    tiles.set(key, { sack, hitBox, items });
+    tiles.set(key, { sack, hitBox, items, ids, x, y });
   };
 
   callbacks.onAdd("groundItems", (groundItem, id) => {
@@ -113,6 +121,12 @@ export function showGroundItems(room: WorldConnection) {
     redraw(x, y);
   });
 
+  const tileUnder = (raycaster: THREE.Raycaster) => {
+    const hitBoxes = [...tiles.values()].map(({ hitBox }) => hitBox);
+    const hit = raycaster.intersectObjects(hitBoxes)[0];
+    return [...tiles.values()].find(({ hitBox }) => hitBox === hit?.object);
+  };
+
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   let hovered: THREE.Group | undefined;
@@ -122,11 +136,7 @@ export function showGroundItems(room: WorldConnection) {
       -(event.clientY / innerHeight) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
-    const hitBoxes = [...tiles.values()].map(({ hitBox }) => hitBox);
-    const hit = raycaster.intersectObjects(hitBoxes)[0];
-    const tile = [...tiles.values()].find(
-      ({ hitBox }) => hitBox === hit?.object,
-    );
+    const tile = tileUnder(raycaster);
     hovered?.scale.setScalar(1);
     hovered = tile?.sack;
     hovered?.scale.setScalar(HOVER_SCALE);
@@ -144,4 +154,11 @@ export function showGroundItems(room: WorldConnection) {
     tiles.clear();
     label.hidden = true;
   });
+
+  // shortcut: a pile does nothing yet, so its click walks to the tile, until the pile window (#118).
+  return (raycaster: THREE.Raycaster) => {
+    const tile = tileUnder(raycaster);
+    if (tile?.ids.length !== 1) return undefined;
+    return { id: tile.ids[0]!, x: tile.x, y: tile.y };
+  };
 }
