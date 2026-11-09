@@ -15,3 +15,8 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 ### Coding standards
 
 Follow `docs/coding-standards.md` when writing or reviewing code.
+
+<!-- BEGIN agent-style v0.9.0 -->
+
+@.agent-style/claude-code.md
+<!-- END agent-style -->

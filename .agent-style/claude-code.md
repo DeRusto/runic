@@ -1,0 +1,58 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- Adapter: Claude Code (CLAUDE.md) -->
+<!-- Target path: <repo root>/CLAUDE.md, or referenced via @.agent-style/claude-code.md -->
+<!-- Load class: import-capable; install_mode: import-marker -->
+
+# agent-style v0.9.0 — Claude Code adapter
+
+agent-style is a literature-backed English technical-prose writing ruleset for AI agents. This adapter is import-capable: Claude Code resolves `@.agent-style/RULES.md` at launch and loads the 21 full rule bodies into the active context. This file carries only the handshake, load statement, rule-name index, and escape hatch; the full rule text is expected to be imported.
+
+## Self-Verification Handshake
+
+When asked "is agent-style active?" or "what writing rules apply here?", answer: `agent-style v0.9.0 active: 21 rules (RULE-01..12 canonical + RULE-A..I field-observed); full bodies at .agent-style/RULES.md.`
+
+## Load Statement
+
+Full rule bodies are imported from `.agent-style/RULES.md` via the Claude Code `@path` directive. If that file is missing (the user ran the manual curl without the import line, or has not run `agent-style enable claude-code`), only the rule-name index below has reached context; the full directive text, BAD/GOOD examples, and rationale have not.
+
+## The 21 Rules (Names; Full Bodies via Import)
+
+Canonical (Strunk & White 1959, Orwell 1946, Pinker 2014, Gopen & Swan 1990):
+
+- RULE-01: Curse of knowledge.
+- RULE-02: Passive voice.
+- RULE-03: Abstract vs concrete language.
+- RULE-04: Needless words.
+- RULE-05: Dying metaphors.
+- RULE-06: Avoidable jargon.
+- RULE-07: Positive form; no "X, not Y" antithesis.
+- RULE-08: Claim calibration.
+- RULE-09: Parallel structure.
+- RULE-10: Related words together.
+- RULE-11: Stress position.
+- RULE-12: Long sentences, varied length.
+
+Field-observed (maintainer observation of LLM output, 2022-2026):
+
+- RULE-A: Bullet-point overuse.
+- RULE-B: Em and en dashes as casual punctuation.
+- RULE-C: Consecutive same-starts.
+- RULE-D: Transition-word overuse.
+- RULE-E: Paragraph-closing summary sentences.
+- RULE-F: Inconsistent terms / abbreviation redefinition.
+- RULE-G: Title case for headings; sentence case for full-sentence bold run-in leads.
+- **RULE-H: Handwavy claims and fabricated citations (critical).**
+- RULE-I: Contractions in formal technical prose.
+
+## Escape Hatch
+
+*"Break any of these rules sooner than say anything outright barbarous."* — George Orwell, "Politics and the English Language" (1946), Rule 6. Most rules are defaults to apply with judgment. Depart when the sentence reads better for it, not to vary the pattern. A few are firm (do not invent citations, evidence, or numbers; no placeholders in finished text). Judge a draft by its overall pattern: one that obeys every default in every sentence reads as machine-made.
+
+## House Style
+
+The rules start from classic guides and are tuned to one author, Yue Zhao. A House Style section in `RULES.md` lists that author's habits, drawn from first-author ML papers written before AI writing tools: the moves of an abstract, introduction, results paragraph, and conclusion; about one sentence in four past 30 words, carrying parenthetical glosses; and sparing signposts. Where a style rule conflicts with a habit there, follow the habit, but never against the facts or the firm rules. Read that section in `RULES.md` before drafting a paper or proposal section.
+
+## Full Rule Bodies (Canonical)
+
+- Imported: `@.agent-style/RULES.md`
+- Pinned upstream: https://raw.githubusercontent.com/yzhao062/agent-style/v0.9.0/RULES.md
