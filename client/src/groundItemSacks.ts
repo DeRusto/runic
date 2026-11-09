@@ -68,8 +68,8 @@ function sackFor(items: SeenGroundItem[], mine: boolean) {
 
 /**
  * Draws one sack on each tile with ground items this player can see (the server sends no
- * others), and labels the tile under the pointer. Returns what finds the lone ground item
- * under a click's ray.
+ * others), and labels the tile under the pointer. Returns what finds the tile of ground items
+ * under a click's ray, with their ids.
  */
 export function showGroundItems(room: WorldConnection) {
   const callbacks = Callbacks.get(room);
@@ -155,10 +155,8 @@ export function showGroundItems(room: WorldConnection) {
     label.hidden = true;
   });
 
-  // shortcut: a pile does nothing yet, so its click walks to the tile, until the pile window (#118).
   return (raycaster: THREE.Raycaster) => {
     const tile = tileUnder(raycaster);
-    if (tile?.ids.length !== 1) return undefined;
-    return { id: tile.ids[0]!, x: tile.x, y: tile.y };
+    return tile && { ids: tile.ids, x: tile.x, y: tile.y };
   };
 }

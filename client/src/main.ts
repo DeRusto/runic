@@ -16,6 +16,7 @@ import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
 import { showGroundItems } from "./groundItemSacks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
+import { showPileWindow } from "./pileWindow.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
@@ -58,6 +59,7 @@ function enterWorld(room: WorldConnection) {
     showSmithingPanel(room),
     blacksmithUnder,
     showGroundItems(room),
+    showPileWindow(room),
   );
   showBottomBar(room, sayOverhead);
   showFights(room);
