@@ -1084,6 +1084,14 @@ export class Simulation {
   private die(id: string, player: InstanceType<typeof Player>) {
     player.dead = true;
     this.clearAction(id);
+    // Drop on death (#119): the Toolbelt stays.
+    player.inventory.forEach((_, slot) => this.drop(id, slot));
+    for (const gearSlot of GEAR_SLOTS) {
+      const worn = player[gearSlot];
+      if (!worn) continue;
+      this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
+      player[gearSlot] = "";
+    }
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;

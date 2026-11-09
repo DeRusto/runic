@@ -447,7 +447,7 @@ describe("dying", () => {
   // The player misses on tick 1, and the Spider's hit on tick 5 rolls 200 damage.
   const dying = (saved: Partial<PlayerSave> = {}) => {
     const s = fight(NEXT_TO, MISS, 0, TOP);
-    s.addPlayer("a", { ...SAVE, x: 3, health: 100, ...saved });
+    s.addPlayer("a", { ...SAVE, x: 3, health: 100, ...saved }, "alice");
     s.queueTarget("a", "0");
     return s;
   };
@@ -479,10 +479,8 @@ describe("dying", () => {
     expect(player(s).x).toBe(4);
   });
 
-  test("they stay on their tile for 5 ticks, then respawn at full health with everything kept", () => {
-    const inventory = Array<string>(30).fill("");
-    inventory[3] = "berry";
-    const s = dying({ combatXp: 200, inventory });
+  test("they stay on their tile for 5 ticks, then respawn at full health with their XP kept", () => {
+    const s = dying({ combatXp: 200 });
     run(s, 5);
     expect(run(s, 4)).toEqual([]);
     expect(player(s)).toMatchObject({ x: 3, y: 1, health: 0, dead: true });
@@ -495,7 +493,75 @@ describe("dying", () => {
       combatXp: 200,
       defenseXp: 10,
     });
-    expect(player(s).inventory[3]).toBe("berry");
+  });
+
+  describe("drops everything but the Toolbelt", () => {
+    const carrying = () => {
+      const inventory = Array<string>(30).fill("");
+      inventory.splice(0, 3, "copperOre", "", "berry");
+      const inventoryCounts = Array<number>(30).fill(0);
+      inventoryCounts.splice(0, 3, 12, 0, 3);
+      return dying({
+        inventory,
+        inventoryCounts,
+        tools: ["pickaxe", "hammer"],
+        weapon: "copperSword",
+        head: "copperHelmet",
+      });
+    };
+    const groundItems = (s: Simulation) =>
+      [...s.state.groundItems.values()].map(({ x, y, item, count, owner }) => ({
+        x,
+        y,
+        item,
+        count,
+        owner,
+      }));
+
+    test("each slot and worn piece lies on the death tile, owned by the dead player", () => {
+      const s = carrying();
+      run(s, 5);
+      const owned = { x: 3, y: 1, owner: "alice" };
+      expect(groundItems(s)).toEqual([
+        { ...owned, item: "copperOre", count: 12 },
+        { ...owned, item: "berry", count: 3 },
+        { ...owned, item: "copperSword", count: 1 },
+        { ...owned, item: "copperHelmet", count: 1 },
+      ]);
+    });
+
+    test("the inventory and gear slots are empty, and the Toolbelt is unchanged", () => {
+      const s = carrying();
+      run(s, 5);
+      expect([...player(s).inventory].every((item) => item === "")).toBe(true);
+      expect([...player(s).inventoryCounts].every((n) => n === 0)).toBe(true);
+      expect(player(s)).toMatchObject({ weapon: "", head: "" });
+      expect([...player(s).tools]).toEqual(["pickaxe", "hammer"]);
+    });
+
+    test("others can't see the drops until the owner minute ends", () => {
+      const s = carrying();
+      s.addPlayer("b", { ...SAVE, x: 5 }, "bob");
+      run(s, 5);
+      const seenBy = (id: string) =>
+        [...s.state.groundItems.keys()].filter((item) => s.canSee(id, item));
+      expect(seenBy("a")).toHaveLength(4);
+      expect(seenBy("b")).toEqual([]);
+      run(s, 200);
+      expect(seenBy("b")).toHaveLength(4);
+    });
+
+    test("the save after respawn holds nothing but the Toolbelt", () => {
+      const s = carrying();
+      run(s, 10);
+      const save = s.saveOf("a")!;
+      expect(save.inventory.every((item) => item === "")).toBe(true);
+      expect(save).toMatchObject({
+        weapon: "",
+        head: "",
+        tools: ["pickaxe", "hammer"],
+      });
+    });
   });
 
   test("the fight doesn't resume after the respawn", () => {
@@ -505,10 +571,11 @@ describe("dying", () => {
   });
 
   test("a dead player's walk, target and eat intents are ignored", () => {
-    const inventory = Array<string>(30).fill("");
-    inventory[0] = "berry";
-    const s = dying({ inventory });
+    const s = dying();
     run(s, 5);
+    // Dying drops the inventory, so a berry is handed over after.
+    player(s).inventory[0] = "berry";
+    player(s).inventoryCounts[0] = 1;
     s.queueWalk("a", { x: 5, y: 1 });
     s.queueEat("a", 0);
     s.queueTarget("a", "0");

@@ -355,7 +355,11 @@ test("dying stops the work", () => {
   expect(player().dead).toBe(true);
   expect(player().action).toBe("");
   run(5);
-  expect(items()).toEqual([["copperOre", 1]]);
+  // Dropped on death as it was, never made into a bar.
+  const dropped = [...sim.state.groundItems.values()];
+  expect(dropped.map(({ item, count }) => [item, count])).toEqual([
+    ["copperOre", 1],
+  ]);
   expect(player().smithingXp).toBe(0);
 });
 
