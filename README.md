@@ -56,6 +56,7 @@ docker run -p 2567:2567 -v runic-data:/data -e JWT_SECRET=<a long random secret>
 - [`GLOSSARY.md`](GLOSSARY.md): what the game's terms mean
 - [`docs/adr/`](docs/adr/): the decisions behind the architecture
 - [`docs/spec/`](docs/spec/): the spec for each slice of the game
+- [`docs/coding-standards.md`](docs/coding-standards.md): how the code is written
 
 Work is tracked in [GitHub Issues](https://github.com/DeRusto/runic/issues).
 
