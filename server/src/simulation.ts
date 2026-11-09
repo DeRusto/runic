@@ -965,7 +965,7 @@ export class Simulation {
     unsyncedEnemy.returnTick =
       this.state.tick + ENEMIES[enemy.kind].returnTicks;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    this.rollEmberbones(enemy.kind, unsyncedEnemy.damagers);
+    this.rollEmberbones(enemy, unsyncedEnemy.damagers);
     for (const unsynced of this.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
@@ -975,17 +975,16 @@ export class Simulation {
   }
 
   /** Each damager's own chance, and then it starts over, as it can't be damaged until it returns. */
-  private rollEmberbones(kind: EnemyKind, damagers: Set<string>) {
-    const { emberboneChance = 0 } = ENEMIES[kind];
+  private rollEmberbones(
+    enemy: InstanceType<typeof Enemy>,
+    damagers: Set<string>,
+  ) {
+    const { emberboneChance = 0 } = ENEMIES[enemy.kind];
     for (const id of emberboneChance ? damagers : []) {
       if (this.random() >= emberboneChance) continue;
-      const player = this.state.players.get(id)!;
-      const slot = slotFor("emberbone", player);
-      if (slot >= 0) this.addToSlot(player, slot, "emberbone");
-      const line =
-        slot >= 0
-          ? "You find an Emberbone."
-          : "You find an Emberbone, but your inventory is full, so it is lost.";
+      const { username } = this.state.players.get(id)!;
+      this.groundItems.spawn(enemy, "emberbone", 1, username, this.state.tick);
+      const line = "You find an Emberbone. It is on the ground.";
       this.events.push({ type: "told", player: id, line });
     }
     damagers.clear();
@@ -1134,6 +1133,14 @@ export class Simulation {
   private die(id: string, player: InstanceType<typeof Player>) {
     player.dead = true;
     this.clearAction(id);
+    // Drop on death (#119): the Toolbelt stays.
+    player.inventory.forEach((_, slot) => this.drop(id, slot));
+    for (const gearSlot of GEAR_SLOTS) {
+      const worn = player[gearSlot];
+      if (!worn) continue;
+      this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
+      player[gearSlot] = "";
+    }
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
