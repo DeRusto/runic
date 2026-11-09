@@ -16,6 +16,10 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 Follow `docs/coding-standards.md` when writing or reviewing code.
 
+### Writing style
+
+Only the agent-style rule names load at startup. Before writing prose (docs, ADRs, glossary entries, PR bodies, issues, commit messages), read the relevant rules in `.agent-style/RULES.md`.
+
 <!-- BEGIN agent-style v0.9.0 -->
 
 @.agent-style/claude-code.md
