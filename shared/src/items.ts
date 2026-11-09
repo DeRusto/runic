@@ -52,3 +52,7 @@ export function slotFor(item: ItemId, player: HasInventory) {
   );
   return stack >= 0 ? stack : items.indexOf(EMPTY_SLOT);
 }
+
+/** Why a take of `item` from the ground, or any gain of one, is refused, or undefined if one fits. The rest of a stack that does not fit stays where it is. */
+export const takeRefusal = (item: ItemId, player: HasInventory) =>
+  slotFor(item, player) < 0 ? "Your inventory is full." : undefined;

@@ -1,5 +1,5 @@
 import { BUSHES } from "./foraging.ts";
-import { slotFor, type HasInventory, type ItemId } from "./items.ts";
+import { takeRefusal, type HasInventory, type ItemId } from "./items.ts";
 import { VEINS } from "./mining.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";
@@ -94,7 +94,5 @@ export function gatherRefusal(
     return `You need a ${row.tool}. The Blacksmith will give you one.`;
   if (levelFor(player[row.xpField]) < level)
     return `You need ${row.skill} ${level} to ${row.verb} this.`;
-  if (runOut) return runOut;
-  if (slotFor(item, player) < 0) return "Your inventory is full.";
-  return undefined;
+  return runOut ?? takeRefusal(item, player);
 }

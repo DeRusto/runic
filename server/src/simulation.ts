@@ -43,6 +43,7 @@ import {
   siteId,
   SKILLS,
   slotFor,
+  takeRefusal,
   STARTING_PINNED_SKILLS,
   stationRefusal,
   tilesApart,
@@ -59,6 +60,7 @@ import {
   type EnemyKind,
   type EnemyState,
   type GearSlot,
+  type ItemId,
   type RecipeItem,
   type StationKind,
   XP_PER_DAMAGE_DEALT,
@@ -67,6 +69,7 @@ import {
   type WorldEvent,
   type XpField,
 } from "@runic/shared";
+import { GroundItem, GroundItems } from "./groundItems.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
@@ -140,6 +143,8 @@ export const WorldState = schema(
     enemies: t.map(Enemy),
     bushes: t.map(Bush),
     veins: t.map(Vein),
+    /** Tagged for views: the room adds each one to the views of the players who can see it. */
+    groundItems: t.map(GroundItem).view(),
   },
   "WorldState",
 );
@@ -157,6 +162,7 @@ type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
   | { kind: "visiting" }
+  | { kind: "taking"; groundItem: string }
   /** `doneTick` stays unset until arrival starts the first wait. */
   | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
 
@@ -171,6 +177,7 @@ export class Simulation {
     | { gather: GatheringSkill; site: string }
     | { blacksmith: Tile }
     | { make: RecipeItem; all: boolean }
+    | { take: string }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -193,8 +200,8 @@ export class Simulation {
   >();
   /** Apart from the action, which eating doesn't replace (spec §4). */
   private queuedEats = new Map<string, number>();
-  /** Apart from the action too, which discarding doesn't replace (spec §4). */
-  private queuedDiscards = new Map<string, number>();
+  /** Apart from the action too, which dropping doesn't replace (spec §4). */
+  private queuedDrops = new Map<string, number>();
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
@@ -220,6 +227,7 @@ export class Simulation {
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
+  private readonly groundItems = new GroundItems(this.state.groundItems);
   /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
   readonly events: WorldEvent[] = [];
 
@@ -397,7 +405,7 @@ export class Simulation {
     this.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
-    this.queuedDiscards.delete(id);
+    this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
     // A leaver has no inventory to fill (spec D8).
     for (const enemy of this.unsyncedEnemies.values())
@@ -410,7 +418,7 @@ export class Simulation {
     this.unsyncedPlayers.get(id)!.dropped = true;
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
-    this.queuedDiscards.delete(id);
+    this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
   }
 
@@ -493,6 +501,13 @@ export class Simulation {
       this.queuedActions.set(id, { blacksmith: this.blacksmith });
   }
 
+  /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
+  queueTake(id: string, groundItem: string) {
+    if (typeof groundItem !== "string") return;
+    if (!this.alive(id) || !this.canSee(id, groundItem)) return;
+    this.queuedActions.set(id, { take: groundItem });
+  }
+
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
     if (!this.alive(id)) return;
@@ -501,10 +516,10 @@ export class Simulation {
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
-  queueDiscard(id: string, slot: number) {
+  queueDrop(id: string, slot: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
-    this.queuedDiscards.set(id, slot);
+    this.queuedDrops.set(id, slot);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
@@ -556,12 +571,12 @@ export class Simulation {
     player[gearSlot] = "";
   }
 
-  /** Puts gear, or "", in a slot. A discard waiting on the slot meant what was there, not this. */
+  /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
   private placeGear(id: string, slot: number, item: string) {
     const player = this.state.players.get(id)!;
     player.inventory[slot] = item;
     player.inventoryCounts[slot] = item ? 1 : 0;
-    if (this.queuedDiscards.get(id) === slot) this.queuedDiscards.delete(id);
+    if (this.queuedDrops.get(id) === slot) this.queuedDrops.delete(id);
   }
 
   /** Adds one `item` to the slot `slotFor` chose. */
@@ -574,9 +589,13 @@ export class Simulation {
     player.inventoryCounts[slot]!++;
   }
 
-  private discard(id: string, slot: number) {
+  private drop(id: string, slot: number) {
     const player = this.state.players.get(id)!;
-    if (!player.inventory[slot]) return;
+    const item = player.inventory[slot]!;
+    if (!item) return;
+    const count = player.inventoryCounts[slot]!;
+    const { username } = player;
+    this.groundItems.spawn(player, item, count, username, this.state.tick);
     player.inventory[slot] = EMPTY_SLOT;
     player.inventoryCounts[slot] = 0;
   }
@@ -601,6 +620,15 @@ export class Simulation {
     this.events.push({ type: "eaten", player: id });
   }
 
+  /** Whether this player can see the ground item with this id; the room sends them only those. */
+  canSee(id: string, groundItem: string) {
+    const player = this.state.players.get(id);
+    return (
+      player !== undefined &&
+      this.groundItems.canSee(player.username, groundItem)
+    );
+  }
+
   /** One tick, in the order of spec §6. */
   tick() {
     this.state.tick++;
@@ -609,11 +637,13 @@ export class Simulation {
     for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
     this.advanceMaking();
     this.advanceVisits();
+    this.advanceTakes();
     this.advancePlayerSwings();
     this.advanceEnemies();
     this.advancePlayerTimers();
     this.advanceSites();
     this.advanceEnemyReturns();
+    this.groundItems.advance(this.state.tick);
   }
 
   private applyIntents() {
@@ -636,6 +666,16 @@ export class Simulation {
         });
       } else if ("blacksmith" in intent) {
         goNextTo(intent.blacksmith, { kind: "visiting" });
+      } else if ("take" in intent) {
+        // Onto its tile, not next to it. It may have gone since the intent arrived.
+        const groundItem = this.state.groundItems.get(intent.take);
+        unsynced.path = groundItem
+          ? findPath(this.tiles, player, groundItem)
+          : [];
+        unsynced.action = groundItem && {
+          kind: "taking",
+          groundItem: intent.take,
+        };
       } else if ("gather" in intent) {
         goNextTo(this.sites.get(intent.site)!, {
           kind: intent.gather,
@@ -649,8 +689,8 @@ export class Simulation {
     this.queuedActions.clear();
     for (const [id, slot] of this.queuedEats) this.eat(id, slot);
     this.queuedEats.clear();
-    for (const [id, slot] of this.queuedDiscards) this.discard(id, slot);
-    this.queuedDiscards.clear();
+    for (const [id, slot] of this.queuedDrops) this.drop(id, slot);
+    this.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       if (this.state.tick >= this.unsyncedPlayers.get(id)!.lockEndTick) {
         this.loggedOut.push(id);
@@ -735,7 +775,7 @@ export class Simulation {
       this.events.push({ type: "told", player: id, line });
       return false;
     };
-    // Discarding during the wait is allowed, so they may have gone.
+    // Dropping during the wait is allowed, so they may have gone.
     const refusal = makeRefusal(item, player);
     if (refusal) return told(refusal);
     const inventory = [...player.inventory];
@@ -777,6 +817,38 @@ export class Simulation {
       (player[field] - before) * MASTERY_SHARE_PERCENT;
     player.masteryXp = addXp(player.masteryXp, Math.floor(hundredths / 100));
     player.masteryHundredths = hundredths % 100;
+  }
+
+  /**
+   * After the steps, so the take lands on the tick of arrival. Visibility is checked again, and
+   * the first player to arrive takes what fits; a second on the same tick gets none, even of a remainder.
+   */
+  private advanceTakes() {
+    const takenThisTick = new Set<string>();
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const { action } = unsynced;
+      if (action?.kind !== "taking" || unsynced.path.length) continue;
+      unsynced.action = undefined;
+      const player = this.state.players.get(id)!;
+      const groundItem = this.state.groundItems.get(action.groundItem);
+      if (!groundItem || !this.canSee(id, action.groundItem)) continue;
+      if (takenThisTick.has(action.groundItem)) continue;
+      // With no way there, the path ran out short of the tile.
+      if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
+      const item = groundItem.item as ItemId;
+      const line = takeRefusal(item, player);
+      if (line) {
+        this.events.push({ type: "told", player: id, line });
+        continue;
+      }
+      let taken = 0;
+      while (taken < groundItem.count && !takeRefusal(item, player)) {
+        this.addToSlot(player, slotFor(item, player), item);
+        taken++;
+      }
+      this.groundItems.take(action.groundItem, taken);
+      takenThisTick.add(action.groundItem);
+    }
   }
 
   /** After the steps, so the tools come on the tick of arrival. */
@@ -821,7 +893,7 @@ export class Simulation {
       const player = this.state.players.get(id)!;
       player.target = action?.kind === "fighting" ? action.enemy : "";
       player.action =
-        action && action.kind !== "visiting"
+        action && action.kind !== "visiting" && action.kind !== "taking"
           ? action.kind
           : path.length
             ? "walking"
@@ -897,7 +969,7 @@ export class Simulation {
     unsyncedEnemy.returnTick =
       this.state.tick + ENEMIES[enemy.kind].returnTicks;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    this.rollEmberbones(enemy.kind, unsyncedEnemy.damagers);
+    this.rollEmberbones(enemy, unsyncedEnemy.damagers);
     for (const unsynced of this.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
@@ -907,17 +979,16 @@ export class Simulation {
   }
 
   /** Each damager's own chance, and then it starts over, as it can't be damaged until it returns. */
-  private rollEmberbones(kind: EnemyKind, damagers: Set<string>) {
-    const { emberboneChance = 0 } = ENEMIES[kind];
+  private rollEmberbones(
+    enemy: InstanceType<typeof Enemy>,
+    damagers: Set<string>,
+  ) {
+    const { emberboneChance = 0 } = ENEMIES[enemy.kind];
     for (const id of emberboneChance ? damagers : []) {
       if (this.random() >= emberboneChance) continue;
-      const player = this.state.players.get(id)!;
-      const slot = slotFor("emberbone", player);
-      if (slot >= 0) this.addToSlot(player, slot, "emberbone");
-      const line =
-        slot >= 0
-          ? "You find an Emberbone."
-          : "You find an Emberbone, but your inventory is full, so it is lost.";
+      const { username } = this.state.players.get(id)!;
+      this.groundItems.spawn(enemy, "emberbone", 1, username, this.state.tick);
+      const line = "You find an Emberbone. It is on the ground.";
       this.events.push({ type: "told", player: id, line });
     }
     damagers.clear();
@@ -1066,6 +1137,14 @@ export class Simulation {
   private die(id: string, player: InstanceType<typeof Player>) {
     player.dead = true;
     this.clearAction(id);
+    // Drop on death (#119): the Toolbelt stays.
+    player.inventory.forEach((_, slot) => this.drop(id, slot));
+    for (const gearSlot of GEAR_SLOTS) {
+      const worn = player[gearSlot];
+      if (!worn) continue;
+      this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
+      player[gearSlot] = "";
+    }
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;

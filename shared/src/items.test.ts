@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { EMPTY_SLOT, INVENTORY_SLOTS } from "./index.ts";
-import { ITEMS, slotFor } from "./items.ts";
+import { ITEMS, slotFor, takeRefusal } from "./items.ts";
 
 /** A whole inventory from the first slots given, as [item, count] pairs. */
 function holding(...stacks: [string, number][]) {
@@ -73,5 +73,19 @@ describe("slotFor", () => {
     stacks[7] = ["herb", 19];
     expect(slotFor("herb", holding(...stacks))).toBe(7);
     expect(slotFor("berry", holding(...stacks))).toBe(-1);
+  });
+});
+
+describe("takeRefusal", () => {
+  test("a ground item is refused only when not even one of it fits", () => {
+    const stacks = Array.from(
+      { length: INVENTORY_SLOTS },
+      () => ["berry", 20] as [string, number],
+    );
+    expect(takeRefusal("berry", holding(...stacks))).toBe(
+      "Your inventory is full.",
+    );
+    stacks[3] = ["berry", 19];
+    expect(takeRefusal("berry", holding(...stacks))).toBeUndefined();
   });
 });

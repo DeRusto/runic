@@ -2,6 +2,7 @@ import {
   GATHERING,
   gatherRefusal,
   stationRefusal,
+  TAKE_INTENT,
   TARGET_INTENT,
   TICK_MS,
   VISIT_INTENT,
@@ -12,6 +13,8 @@ import * as THREE from "three";
 import type { addBlacksmith } from "./blacksmith.ts";
 import { printChatLine } from "./bottomBar.ts";
 import type { showGatheringSites } from "./gatheringSites.ts";
+import type { showGroundItems } from "./groundItemSacks.ts";
+import type { showPileWindow } from "./pileWindow.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
@@ -20,7 +23,7 @@ import { stationTile, type addStations } from "./stations.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -29,6 +32,8 @@ export function walkOnClick(
   stationUnder: ReturnType<typeof addStations>,
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
+  groundItemUnder: ReturnType<typeof showGroundItems>,
+  openPileWindow: ReturnType<typeof showPileWindow>,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
   const raycaster = new THREE.Raycaster();
@@ -59,6 +64,13 @@ export function walkOnClick(
     if (enemy) {
       showMarker(enemy.tile.x, enemy.tile.y);
       room.send(TARGET_INTENT, enemy.id);
+      return;
+    }
+    const groundItem = groundItemUnder(raycaster);
+    if (groundItem) {
+      showMarker(groundItem.x, groundItem.y);
+      if (groundItem.ids.length > 1) openPileWindow(groundItem);
+      else room.send(TAKE_INTENT, groundItem.ids[0]);
       return;
     }
     const site = siteUnder(raycaster);

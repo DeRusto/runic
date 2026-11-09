@@ -94,13 +94,13 @@ describe("equipping", () => {
     expect(me().weapon).toBe("emberiteSword");
   });
 
-  test("a discard waiting on that slot doesn't destroy the sword traded into it", () => {
+  test("a drop waiting on that slot doesn't drop the sword traded into it", () => {
     start({
       held: ["ironSword"],
       combatXp: LEVEL_10_XP,
       weapon: "copperSword",
     });
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("a", 0);
     sim.equip("a", 0);
     sim.tick();
     expect(me().inventory[0]).toBe("copperSword");
@@ -186,23 +186,10 @@ describe("what lasts", () => {
     expect(me().weapon).toBe("");
   });
 
-  test("gear is kept on death", () => {
-    start({ weapon: "copperSword", health: 1 });
-    // The player misses on tick 1, and the Spider's hit on tick 5 kills.
-    rolls = [MISS, 0, 0];
-    sim.queueTarget("a", "0");
-    ticks(5);
-    expect(me().dead).toBe(true);
-    expect(me().weapon).toBe("copperSword");
-    ticks(6);
-    expect(me().dead).toBe(false);
-    expect(me().weapon).toBe("copperSword");
-  });
-
-  test("worn gear can't be discarded, as no slot holds it", () => {
+  test("worn gear can't be dropped, as no slot holds it", () => {
     start({ weapon: "copperSword" });
     for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
-      sim.queueDiscard("a", slot);
+      sim.queueDrop("a", slot);
       sim.tick();
     }
     expect(me().weapon).toBe("copperSword");
@@ -501,11 +488,8 @@ describe("armour", () => {
     expect(bare).toBe(18);
   });
 
-  test("armour is saved, loaded and kept on death", () => {
-    skeletonSwing({ ...FULL_EMBERITE, health: 1 }, HIT, HIT_300);
-    expect(me().dead).toBe(true);
-    ticks(6);
-    expect(me().dead).toBe(false);
+  test("armour is saved and loaded", () => {
+    start(FULL_EMBERITE);
     expect(sim.saveOf("a")).toMatchObject(FULL_EMBERITE);
     start(FULL_EMBERITE);
     expect(me()).toMatchObject(FULL_EMBERITE);
@@ -548,7 +532,7 @@ describe("anything invalid off the network is ignored", () => {
     expect(sim.events).toEqual([]);
   });
 
-  test("a dead player, as for eating and discarding", () => {
+  test("a dead player, as for eating and dropping", () => {
     start({ held: ["copperSword"], weapon: "copperSword" });
     me().dead = true;
     sim.equip("a", 0);

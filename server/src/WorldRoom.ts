@@ -5,9 +5,10 @@ import {
   type Client,
   type Deferred,
 } from "@colyseus/core";
+import { StateView } from "@colyseus/schema";
 import {
   CHAT,
-  DISCARD_INTENT,
+  DROP_INTENT,
   EAT_INTENT,
   EQUIP_INTENT,
   EVENTS,
@@ -19,6 +20,7 @@ import {
   PIN_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
+  TAKE_INTENT,
   TAKE_OFF_INTENT,
   TAKEN_OVER_CLOSE_CODE,
   TICK_DRIVER_MS,
@@ -59,8 +61,10 @@ export class WorldRoom extends Room {
     [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
-    [DISCARD_INTENT]: (client: Client, slot: number) =>
-      this.sim.queueDiscard(client.sessionId, slot),
+    [DROP_INTENT]: (client: Client, slot: number) =>
+      this.sim.queueDrop(client.sessionId, slot),
+    [TAKE_INTENT]: (client: Client, groundItem: string) =>
+      this.sim.queueTake(client.sessionId, groundItem),
     [EQUIP_INTENT]: (client: Client, slot: number) =>
       this.sim.equip(client.sessionId, slot),
     [TAKE_OFF_INTENT]: (client: Client, slot: GearSlot) =>
@@ -102,6 +106,7 @@ export class WorldRoom extends Room {
         }
         if (this.sim.state.tick % SAVE_INTERVAL_TICKS === 0)
           this.saveEveryone();
+        this.showGroundItems();
         this.broadcastPatch();
         const events = this.sim.events.splice(0);
         if (events.length) this.broadcast(EVENTS, events);
@@ -114,6 +119,8 @@ export class WorldRoom extends Room {
   }
 
   async onJoin(client: Client) {
+    // Before any wait, so no patch reaches this client before its view filters ground items.
+    client.view = new StateView();
     // A login still waiting below has no player yet, and this newer one replaces it.
     for (const other of this.sameAccount(client)) {
       if (!this.sim.state.players.has(other.sessionId))
@@ -156,6 +163,24 @@ export class WorldRoom extends Room {
   onLeave(client: Client) {
     this.dropped.delete(client.sessionId);
     this.saveAndRemove(client);
+  }
+
+  /**
+   * Visibility only grows until a ground item goes. No view.remove is needed then: a view
+   * keeps no list of what it holds, and leaving the map clears the item's view bits.
+   */
+  private showGroundItems() {
+    for (const client of this.clients) {
+      for (const [id, groundItem] of this.sim.state.groundItems) {
+        const { view } = client;
+        if (
+          view &&
+          !view.has(groundItem) &&
+          this.sim.canSee(client.sessionId, id)
+        )
+          view.add(groundItem);
+      }
+    }
   }
 
   private online() {

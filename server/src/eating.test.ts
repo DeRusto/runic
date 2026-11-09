@@ -259,7 +259,7 @@ describe("eating from a stack", () => {
   });
 });
 
-describe("discarding", () => {
+describe("dropping", () => {
   const twenty = () => {
     const sim = eater(5, "berry", "herb");
     const saved = sim.saveOf("a")!;
@@ -269,9 +269,9 @@ describe("discarding", () => {
     return sim;
   };
 
-  test("destroys the whole slot, including a stack of 20", () => {
+  test("empties the whole slot, including a stack of 20", () => {
     const sim = twenty();
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("a", 0);
     sim.tick();
     expect(player(sim).inventory[0]).toBe("");
     expect(player(sim).inventoryCounts[0]).toBe(0);
@@ -290,7 +290,7 @@ describe("discarding", () => {
     saved.inventoryCounts![0] = 20;
     sim.removePlayer("a");
     sim.addPlayer("a", saved);
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("a", 0);
     sim.queueGather("a", "foraging", "2,1");
     sim.tick();
     expect(player(sim).inventory[0]).toBe("berry");
@@ -301,7 +301,7 @@ describe("discarding", () => {
     const sim = twenty();
     sim.queueTarget("a", "0");
     expect(
-      ticksOf(sim, "playerSwing", 17, { 3: () => sim.queueDiscard("a", 0) }),
+      ticksOf(sim, "playerSwing", 17, { 3: () => sim.queueDrop("a", 0) }),
     ).toEqual([1, 9, 17]);
     expect(player(sim).target).toBe("0");
     expect(player(sim).inventory[0]).toBe("");
@@ -310,7 +310,7 @@ describe("discarding", () => {
   test("doesn't stop a walk", () => {
     const sim = twenty();
     sim.queueWalk("a", { x: 5, y: 2 });
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("a", 0);
     for (let i = 0; i < 10; i++) sim.tick();
     expect({ x: player(sim).x, y: player(sim).y }).toEqual({ x: 5, y: 2 });
     expect(player(sim).inventory[0]).toBe("");
@@ -327,7 +327,7 @@ describe("discarding", () => {
     [{}],
   ])("a slot of %j is ignored", (slot) => {
     const sim = twenty();
-    sim.queueDiscard("a", slot as number);
+    sim.queueDrop("a", slot as number);
     sim.tick();
     expect([...player(sim).inventory].slice(0, 2)).toEqual(["berry", "herb"]);
     expect(player(sim).inventoryCounts[0]).toBe(20);
@@ -336,23 +336,23 @@ describe("discarding", () => {
 
   test("an empty slot is ignored", () => {
     const sim = twenty();
-    sim.queueDiscard("a", 5);
+    sim.queueDrop("a", 5);
     sim.tick();
     expect(player(sim).inventory[5]).toBe("");
     expect(player(sim).inventoryCounts[5]).toBe(0);
   });
 
-  test("a player who isn't here, or who left with a discard queued", () => {
+  test("a player who isn't here, or who left with a drop queued", () => {
     const sim = twenty();
-    sim.queueDiscard("nobody", 0);
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("nobody", 0);
+    sim.queueDrop("a", 0);
     sim.removePlayer("a");
     expect(() => sim.tick()).not.toThrow();
   });
 
-  test("a discard queued before a drop is forgotten", () => {
+  test("a drop queued before the connection drops is forgotten", () => {
     const sim = twenty();
-    sim.queueDiscard("a", 0);
+    sim.queueDrop("a", 0);
     sim.dropPlayer("a");
     sim.tick();
     expect(player(sim).inventory[0]).toBe("berry");

@@ -22,6 +22,15 @@
         color: #eee;
         font: 12px system-ui;
       }
+      #ground-label {
+        position: fixed;
+        pointer-events: none;
+        color: #fff;
+        font: 12px system-ui;
+        text-shadow: 0 0 3px #000;
+        white-space: pre;
+        transform: translate(-50%, -100%);
+      }
       #overheads {
         position: fixed;
         inset: 0;
@@ -254,7 +263,8 @@
         visibility: hidden;
       }
       #sheet h2,
-      #smithing h2 {
+      #smithing h2,
+      #pile h2 {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -262,7 +272,8 @@
         font-size: 14px;
       }
       #sheet-close,
-      #smithing-close {
+      #smithing-close,
+      #pile-close {
         width: 24px;
         height: 24px;
         padding: 0;
@@ -402,7 +413,8 @@
         opacity: 0.35;
       }
       /* Narrow enough to stay clear of the player at the world's centre, even at 800 px. */
-      #smithing {
+      #smithing,
+      #pile {
         position: fixed;
         left: 8px;
         bottom: 140px;
@@ -417,8 +429,31 @@
         color: #4a3018;
         font: 12px system-ui;
       }
-      #smithing[hidden] {
+      #smithing[hidden],
+      #pile[hidden] {
         display: none;
+      }
+      #pile {
+        width: 220px;
+      }
+      #pile-rows {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      #pile-rows button {
+        padding: 4px;
+        border: 0;
+        border-top: 1px solid #a26a35;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+      }
+      #pile-rows button:hover,
+      #pile-rows button:focus-visible {
+        background: #e8d3ae;
       }
       /* Only the rows scroll, so the X stays in reach in a short window. */
       #smithing-rows {
@@ -510,6 +545,7 @@
   <body>
     <p id="status">Connecting…</p>
     <div id="overheads"></div>
+    <div id="ground-label" role="tooltip" hidden></div>
     <!-- Before the bar, so the bar's right-click menu shows above it. -->
     <section id="sheet" role="dialog" aria-label="Character" hidden>
       <h2>
@@ -555,6 +591,13 @@
         <button id="smithing-close" type="button" aria-label="Close"></button>
       </h2>
       <div id="smithing-rows"></div>
+    </section>
+    <section id="pile" role="dialog" aria-labelledby="pile-title" hidden>
+      <h2>
+        <span id="pile-title">Pile</span>
+        <button id="pile-close" type="button" aria-label="Close"></button>
+      </h2>
+      <div id="pile-rows"></div>
     </section>
     <section id="bar" hidden>
       <div id="chat">
