@@ -1,3 +1,5 @@
 docs/
 server/drizzle/
 client/public/models/
+.agent-style/
+.claude/skills/style-review/

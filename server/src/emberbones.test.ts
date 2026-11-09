@@ -40,9 +40,11 @@ function world(rows: string[]) {
 }
 
 const enemy = (s: Simulation) => s.state.enemies.get("0")!;
+/** Emberbones on the ground owned by the player with this username, who is also its id here. */
 const bones = (s: Simulation, id: string) =>
-  [...s.state.players.get(id)!.inventory].filter((item) => item === "emberbone")
-    .length;
+  [...s.state.groundItems.values()].filter(
+    ({ item, owner }) => item === "emberbone" && owner === id,
+  ).length;
 
 function run(s: Simulation, ticks = 1) {
   const seen: WorldEvent[] = [];
@@ -58,8 +60,8 @@ const toldTo = (events: WorldEvent[], id: string) =>
 
 /** "a" swings once and "b" lands the killing blow, each doing 1 damage. */
 function killedByTwo(rolls: number[], s: Simulation, ...bones: number[]) {
-  s.addPlayer("a", SAVE);
-  s.addPlayer("b", { ...SAVE, x: 9 });
+  s.addPlayer("a", SAVE, "a");
+  s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 200;
   rolls.push(...SWING, ...SWING, ...bones);
   s.queueTarget("a", "0");
@@ -74,13 +76,36 @@ test("each player who damaged it rolls their own 1 in 4", () => {
   expect(bones(s, "a")).toBe(0);
   expect(bones(s, "b")).toBe(1);
   expect(toldTo(events, "a")).toEqual([]);
-  expect(toldTo(events, "b")).toEqual(["You find an Emberbone."]);
+  expect(toldTo(events, "b")).toEqual([
+    "You find an Emberbone. It is on the ground.",
+  ]);
+});
+
+test("a win lands on the Skeleton's tile, not in the inventory", () => {
+  const { s, rolls } = world(CORRIDOR);
+  killedByTwo(rolls, s, LOSE, WIN);
+  run(s);
+  expect([...s.state.groundItems.values()]).toEqual([
+    expect.objectContaining({ x: 8, y: 1, item: "emberbone", count: 1 }),
+  ]);
+  expect(s.state.players.get("b")!.inventory).not.toContain("emberbone");
+});
+
+test("two winners each get their own, seen only by its owner at first", () => {
+  const { s, rolls } = world(CORRIDOR);
+  killedByTwo(rolls, s, WIN, WIN);
+  run(s);
+  const seenBy = (id: string) =>
+    [...s.state.groundItems.keys()].filter((g) => s.canSee(id, g));
+  expect(seenBy("a")).toHaveLength(1);
+  expect(seenBy("b")).toHaveLength(1);
+  expect(seenBy("a")).not.toEqual(seenBy("b"));
 });
 
 test("a swing that missed doesn't count", () => {
   const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", SAVE);
-  s.addPlayer("b", { ...SAVE, x: 9 });
+  s.addPlayer("a", SAVE, "a");
+  s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 1;
   // "a" misses, "b" kills, and the only roll left would win for anyone.
   rolls.push(MISS, ...SWING, WIN, WIN);
@@ -94,8 +119,8 @@ test("a swing that missed doesn't count", () => {
 
 test("a dead player still rolls", () => {
   const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", SAVE);
-  s.addPlayer("b", { ...SAVE, x: 9 });
+  s.addPlayer("a", SAVE, "a");
+  s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 200;
   rolls.push(...SWING);
   s.queueTarget("a", "0");
@@ -112,8 +137,8 @@ test("a dead player still rolls", () => {
 
 test("a player who has left doesn't roll", () => {
   const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", SAVE);
-  s.addPlayer("b", { ...SAVE, x: 9 });
+  s.addPlayer("a", SAVE, "a");
+  s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 200;
   rolls.push(...SWING);
   s.queueTarget("a", "0");
@@ -128,40 +153,27 @@ test("a player who has left doesn't roll", () => {
   expect(toldTo(events, "a")).toEqual([]);
 });
 
-test("a full inventory loses it, with a different line", () => {
+test("a full inventory still gets it on the ground, with the same line", () => {
   const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", {
-    ...SAVE,
-    inventory: Array<string>(30).fill("copperSword"),
-  });
+  s.addPlayer(
+    "a",
+    { ...SAVE, inventory: Array<string>(30).fill("copperSword") },
+    "a",
+  );
   enemy(s).health = 1;
   rolls.push(...SWING, WIN);
   s.queueTarget("a", "0");
   const events = run(s);
-  expect(bones(s, "a")).toBe(0);
+  expect(bones(s, "a")).toBe(1);
   expect(toldTo(events, "a")).toEqual([
-    "You find an Emberbone, but your inventory is full, so it is lost.",
+    "You find an Emberbone. It is on the ground.",
   ]);
-});
-
-test("a full inventory with room on a stack of Emberbones still takes it", () => {
-  const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", {
-    ...SAVE,
-    inventory: ["emberbone", ...Array<string>(29).fill("copperSword")],
-    inventoryCounts: [19, ...Array<number>(29).fill(1)],
-  });
-  enemy(s).health = 1;
-  rolls.push(...SWING, WIN);
-  s.queueTarget("a", "0");
-  run(s);
-  expect(s.state.players.get("a")!.inventoryCounts[0]).toBe(20);
 });
 
 test("recovering forgets who damaged it", () => {
   const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", SAVE);
-  s.addPlayer("b", { ...SAVE, x: 18 });
+  s.addPlayer("a", SAVE, "a");
+  s.addPlayer("b", { ...SAVE, x: 18 }, "b");
   enemy(s).health = 200;
   rolls.push(...SWING);
   s.queueTarget("a", "0");
@@ -184,13 +196,13 @@ test("recovering forgets who damaged it", () => {
 
 test("returning forgets who damaged it", () => {
   const { s, rolls } = world(CORRIDOR);
-  s.addPlayer("a", SAVE);
+  s.addPlayer("a", SAVE, "a");
   enemy(s).health = 1;
   rolls.push(...SWING, LOSE);
   s.queueTarget("a", "0");
   run(s);
   expect(enemy(s).state).toBe("dead");
-  s.addPlayer("b", { ...SAVE, x: 9 });
+  s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   run(s, 200);
   expect(enemy(s).state).not.toBe("dead");
   // "a" stands next to it, but only "b" hits it this time.
@@ -206,7 +218,7 @@ test("returning forgets who damaged it", () => {
 
 test("Spiders still give nothing, and draw no roll", () => {
   const { s, rolls } = world(SPIDER);
-  s.addPlayer("a", SAVE);
+  s.addPlayer("a", SAVE, "a");
   enemy(s).health = 1;
   rolls.push(...SWING, WIN);
   s.queueTarget("a", "0");
@@ -219,6 +231,6 @@ test("Spiders still give nothing, and draw no roll", () => {
 
 test("who damaged what isn't in the save", () => {
   const { s } = world(CORRIDOR);
-  s.addPlayer("a", SAVE);
+  s.addPlayer("a", SAVE, "a");
   expect(Object.keys(s.saveOf("a")!).join()).not.toMatch(/damag/i);
 });
