@@ -39,6 +39,12 @@ const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
   });
 document.getElementById("loading")!.remove();
 const stationUnder = addStations(tiles);
+// PROTOTYPE, throwaway: ground item looks.
+if (
+  import.meta.env.DEV &&
+  new URLSearchParams(location.search).has("groundItems")
+)
+  (await import("./groundItemsPrototype.ts")).showGroundItemsPrototype(respawn);
 
 const status = document.getElementById("status")!;
 const logout = document.getElementById("logout")!;
