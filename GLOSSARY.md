@@ -160,9 +160,21 @@ _Avoid_: Bag, backpack
 Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
 _Avoid_: Pile, bundle
 
-**Discard**:
-Destroying what is in an inventory slot. Nothing lands on the ground.
-_Avoid_: Drop (that's what a Skeleton gives), delete
+**Drop**:
+Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
+_Avoid_: Discard, destroy, delete
+
+**Ground item**:
+One item or stack lying on a tile, from a single drop. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. Ground items never merge, but a stack taken into an inventory joins a matching stack there.
+_Avoid_: Floor item
+
+**Loot**:
+What an enemy leaves when it dies: a ground item on the enemy's tile for each player who won it, belonging to that player for the first minute.
+_Avoid_: Drop, reward
+
+**Pile**:
+All the ground items on one tile. A tile holds any number of them.
+_Avoid_: Heap, stack
 
 **Food**:
 An item that heals the player who eats it, over the next few ticks rather than all at once; berries and herbs are food.
@@ -185,12 +197,12 @@ Metal made from ore at a furnace, ready to become gear at an anvil.
 _Avoid_: Ingot
 
 **Emberbone**:
-A drop from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one, and it goes straight into their inventory, or is lost if the inventory is full.
-_Avoid_: Loot, trophy, token
+Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.
+_Avoid_: Trophy, token
 
 **Gear**:
 What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
-_Avoid_: Equipment, loot
+_Avoid_: Equipment
 
 **Armour**:
 Gear worn on the body that reduces the damage of hits that land, by a percentage. It doesn't make a hit less likely to land: that's Defense.
