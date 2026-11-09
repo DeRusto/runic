@@ -17,6 +17,14 @@ const neckMaterial = new THREE.MeshStandardMaterial({
   color: 0x4a3420,
   roughness: 1,
 });
+// Built once and shared by every sack, so redrawing a tile allocates no new geometry.
+const sackShape = (size: number) => ({
+  size,
+  body: new THREE.SphereGeometry(size, 16, 12),
+  neck: new THREE.ConeGeometry(size * 0.45, size * 0.7, 10),
+});
+const loneShape = sackShape(0.22);
+const pileShape = sackShape(0.3);
 const ringShape = new THREE.RingGeometry(0.36, 0.44, 32).rotateX(-Math.PI / 2);
 const ringMaterial = new THREE.MeshBasicMaterial({
   color: 0xffd34d,
@@ -38,18 +46,13 @@ const iconOf = (item: string) => {
 /** One sack for a tile's ground items: bigger for a pile, with the item's icon above it for one. A gold ring marks `mine`. */
 function sackFor(items: SeenGroundItem[], mine: boolean) {
   const group = new THREE.Group();
-  const size = items.length > 1 ? 0.3 : 0.22;
-  const body = new THREE.Mesh(
-    new THREE.SphereGeometry(size, 16, 12),
-    sackMaterial,
-  );
+  const shape = items.length > 1 ? pileShape : loneShape;
+  const { size } = shape;
+  const body = new THREE.Mesh(shape.body, sackMaterial);
   body.scale.y = 0.8;
   body.position.y = size * 0.75;
   body.castShadow = true;
-  const neck = new THREE.Mesh(
-    new THREE.ConeGeometry(size * 0.45, size * 0.7, 10),
-    neckMaterial,
-  );
+  const neck = new THREE.Mesh(shape.neck, neckMaterial);
   neck.position.y = size * 1.55;
   group.add(body, neck);
   if (items.length === 1) {
@@ -88,6 +91,8 @@ export function showGroundItems(room: WorldConnection) {
   /** Kept apart from state, where a removed one may still be on its way out. */
   const seen = new Map<string, SeenGroundItem & { x: number; y: number }>();
   const me = () => room.state.players.get(room.sessionId)?.username ?? "";
+  let hovered: THREE.Group | undefined;
+  let lastPointer: PointerEvent | undefined;
 
   const redraw = (x: number, y: number) => {
     const key = `${x},${y}`;
@@ -108,17 +113,22 @@ export function showGroundItems(room: WorldConnection) {
     scene.add(sack);
     tiles.set(key, { sack, hitBox, items, ids, x, y });
   };
+  /** Redraws a tile, then the hover, which may have been on what just changed. */
+  const update = (x: number, y: number) => {
+    redraw(x, y);
+    if (lastPointer) onPointerMove(lastPointer);
+  };
 
   callbacks.onAdd("groundItems", (groundItem, id) => {
     const { x, y } = groundItem;
     seen.set(id, groundItem);
-    redraw(x, y);
+    update(x, y);
     // Its owner minute ending takes its ring away.
-    callbacks.listen(groundItem, "owner", () => redraw(x, y), false);
+    callbacks.listen(groundItem, "owner", () => update(x, y), false);
   });
   callbacks.onRemove("groundItems", ({ x, y }, id) => {
     seen.delete(id);
-    redraw(x, y);
+    update(x, y);
   });
 
   const tileUnder = (raycaster: THREE.Raycaster) => {
@@ -129,8 +139,8 @@ export function showGroundItems(room: WorldConnection) {
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
-  let hovered: THREE.Group | undefined;
   const onPointerMove = (event: PointerEvent) => {
+    lastPointer = event;
     pointer.set(
       (event.clientX / innerWidth) * 2 - 1,
       -(event.clientY / innerHeight) * 2 + 1,

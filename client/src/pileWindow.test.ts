@@ -13,8 +13,10 @@ const element = () => ({
   remove() {
     removed.push(this);
   },
-  contains(other: unknown) {
-    return other === this;
+  contains(other: unknown): boolean {
+    return (
+      other === this || this.children.some((child) => child.contains?.(other))
+    );
   },
   children: [] as any[],
   hidden: false,
@@ -92,7 +94,7 @@ test("on the pile's tile, opens at once listing only that tile's ground items", 
   expect(pile().hidden).toBe(true);
   open({ x: 3, y: 1 });
   expect(pile().hidden).toBe(false);
-  expect(texts()).toEqual(["Copper ore (12)", "Copper sword"]);
+  expect(texts()).toEqual(["Copper ore (12)", "Copper sword (1)"]);
   expect(send).not.toHaveBeenCalled();
 });
 
@@ -105,7 +107,7 @@ test("from afar, walks onto the tile and opens on arrival", () => {
   expect(pile().hidden).toBe(true);
   patch(3, { o: ore, s: sword });
   expect(pile().hidden).toBe(false);
-  expect(texts()).toEqual(["Copper ore (12)", "Copper sword"]);
+  expect(texts()).toEqual(["Copper ore (12)", "Copper sword (1)"]);
 });
 
 test("clicking a row takes exactly that ground item and leaves the window open", () => {
@@ -126,11 +128,11 @@ test("rows follow the patches in place: taken ones vanish, counts shrink, new on
   expect(rows()[0]).toBe(oreRow);
   expect(texts()).toEqual([
     "Copper ore (5)",
-    "Copper sword",
+    "Copper sword (1)",
     "Copper ore (12) · yours for now",
   ]);
   patch(3, { s: sword });
-  expect(texts()).toEqual(["Copper sword"]);
+  expect(texts()).toEqual(["Copper sword (1)"]);
   expect(pile().hidden).toBe(false);
 });
 
@@ -167,6 +169,14 @@ test.each([
 test("a press inside doesn't close it", () => {
   open({ x: 3, y: 1 });
   listeners.get("pointerdown")!({ target: pile() });
+  expect(pile().hidden).toBe(false);
+});
+
+test("pressing a row doesn't close it", () => {
+  open({ x: 3, y: 1 });
+  // In the page, the row list sits inside the window.
+  pile().children.push(byId.get("pile-rows")!);
+  listeners.get("pointerdown")!({ target: rows()[0] });
   expect(pile().hidden).toBe(false);
 });
 

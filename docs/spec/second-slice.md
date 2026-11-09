@@ -16,6 +16,8 @@ Done means §10 passes on `runicrpg.com`.
 
 Out of scope: trading; dropping items on the ground and picking them up; a bank; death penalties; player-versus-player combat; quests, and non-player characters other than the Blacksmith; sound; going public (email, self-serve password resets, sign-up abuse protection, anti-cheat, chat filtering); more than one server process; moving between regions.
 
+This spec records the slice as built. Phase 3 later replaced Discard with Drop everywhere it appears below (the intent, the right-click menu and the §10 checks), and added ground items, pickup and drop on death; see [Map: Phase 3](https://github.com/DeRusto/runic/issues/83).
+
 ## 2. A session
 
 1. A returning friend appears on their saved tile with everything they had, plus Mining, Smithing and Blocking at level 1. A new friend starts as before.
@@ -131,7 +133,7 @@ Wandering, walking speed, return after dying, experience rules, shared fights an
 ### Emberbones
 
 - When a Skeleton dies, each player who damaged it since it last recovered or returned rolls their own chance. A swing that missed doesn't count. Dead players count, and players who have left the room don't **[D8]**.
-- A won Emberbone lands on the ground under the Skeleton as a ground item owned by the winner, with a chat-box line **[D8]**. Only the winner can see it for the first minute, and a full inventory no longer loses it ([Loot on the ground](https://github.com/DeRusto/runic/issues/120)).
+- A won Emberbone lands on the ground under the Skeleton as a ground item owned by the winner, with a chat-box line **[D8]**. Only the winner can see it for the first minute (200 ticks), then everyone can, and it vanishes at 3 minutes (600 ticks). A full inventory no longer loses it ([Loot on the ground](https://github.com/DeRusto/runic/issues/120)).
 - Spiders still give nothing.
 
 ### Unchanged rules worth repeating
@@ -375,7 +377,7 @@ Each build ticket has its own tests. The slice as a whole is done when, on `runi
 7. A player with a shield sees "Blocked", and Blocking rises.
 8. An idle player swung at by a Spider or a Skeleton fights back. A walking one carries on.
 9. A Skeleton goes for a player in range, gives up at the leash and walks home, and can always be walked away from.
-10. Two players who both damaged a Skeleton each get their own chance at an Emberbone. A won Emberbone lands on the ground, seen only by its winner for the first minute.
+10. Two players who both damaged a Skeleton each get their own chance at an Emberbone. A won Emberbone lands on the ground, seen only by its winner for the first 200 ticks, then by everyone, and gone at 600 ticks.
 11. A player makes and wears Emberite gear.
 12. Pins survive logging out and work on another device.
 13. Experience, stacks, gear, tools and pins survive logout and a Deploy.
