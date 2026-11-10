@@ -4,13 +4,13 @@
 
 This spec describes only what changes. It revises the Mining and Making rules in §4 and the numbers in §5 of the [second slice spec](second-slice.md), and where the two disagree this one wins. Everything else there still holds.
 
-All timers are whole **ticks** of 300 ms. The numbers were tuned in `scripts/pacing.ts` (run `node scripts/pacing.ts`), but nobody has played them yet, so they are first values to tune in play.
+All timers are whole **ticks** of 300 ms. The numbers were tuned in `scripts/pacing.ts` (run `node --experimental-strip-types scripts/pacing.ts`; the flag is needed before Node 22.18), but nobody has played them yet, so they are first values to tune in play.
 
 ## 1. What changes
 
 Players get more steps between tiers. A successful mine can give 2 ore, veins sometimes give a **find** (tin, coal or a gem), and two new metals sit between the old ones: **Bronze** at level 5 and **Steel** at 15, each with a full set of gear. Smelting moves into Mining, so the furnace is gated on Mining and pays only Mining, and the anvil is all of Smithing.
 
-**Existing progress survives.** Nobody's experience, items or gear changes. The gates for Iron (10) and Emberite (20) don't move, so no player loses gear they can use today. Players level faster or slower from here on, but what they earned stays.
+**Existing progress survives.** Nobody's experience, items or gear changes. The gates for Iron (10) and Emberite (20) don't move, so no player loses gear they can use today. Smelting's gate moves from Smithing to Mining at the same levels, so a player whose Mining is below their Smithing can lose smelting a tier until Mining catches up. That's accepted, with no migration: mining your own ore has always paid Mining more than smelting and smithing paid Smithing, so only a player who smelted ore picked up from the ground can hit it, and they keep all their gear. Players level faster or slower from here on, but what they earned stays.
 
 Out of scope: new kinds of vein (they come with new areas); any use for gems (Jewelsmithing, [Map: Phase 6](https://github.com/DeRusto/runic/issues/86)); progression from level 20 to 99; charcoal from Woodcutting; improved items ([Map: Improved items](https://github.com/DeRusto/runic/issues/143)); how many veins are active ([Site pools](https://github.com/DeRusto/runic/issues/106)).
 
@@ -95,7 +95,7 @@ Bronze and Steel sit at the midpoints between their neighbours.
 
 **Pace**
 
-The targets stay: level 10 in about 1 h, 20 in about 3 h and 99 in 50 to 60 h, for one player mining alone. Simulated, as mean hours over 5 seeds:
+The targets stay: level 10 in about 1 h, 20 in about 3 h and 99 in 50 to 60 h, for one player mining alone. Simulated, as mean hours over 5 seeds (level 99 lands just under 50 h, which is accepted as on target):
 
 | Players | Skill | Level 10 | Level 20 | Level 99 |
 |---|---|---|---|---|

@@ -221,7 +221,7 @@ The raw metal a player takes from a vein. A successful mine gives 1 or 2.
 _Avoid_: Rock, stone
 
 **Find**:
-A material a vein sometimes gives along with its ore on a successful mine: tin and coal, from Copper and Iron veins, and gems, from Emberite veins. A find is always 1.
+A material a vein sometimes gives along with its ore on a successful mine: tin from Copper and Iron veins, coal from Iron veins, and gems from Emberite veins. A find is always 1.
 _Avoid_: Drop, extra, byproduct, bonus
 
 **Gem**:
