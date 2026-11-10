@@ -13,14 +13,14 @@ import {
   EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
-  FRIENDS,
-  IGNORES,
+  LIST_FRIENDS_INTENT,
+  LIST_IGNORES_INTENT,
   LOGOUT_INTENT,
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
+  MAX_CHAT_LINE_LENGTH,
   MINE_INTENT,
   PIN_INTENT,
-  PRIVATE_LINE,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
   TAKE_INTENT,
@@ -31,21 +31,19 @@ import {
   VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
-  type Friend,
   type GearSlot,
   type Tile,
 } from "@runic/shared";
-import { accountForToken, accountNamed } from "./accounts.ts";
-import { addFriend, friendedBy, friendsOf, removeFriend } from "./friends.ts";
-import {
-  addIgnore,
-  ignoredBy,
-  ignoresOf,
-  isIgnoring,
-  removeIgnore,
-} from "./ignores.ts";
+import { accountForToken } from "./accounts.ts";
 import { readSave, writeSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
+import {
+  ignoredBy,
+  runCommand,
+  sendFriends,
+  sendIgnores,
+  tellFriendedBy,
+} from "./social.ts";
 import { tickStepper } from "./tickStepper.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -87,14 +85,16 @@ export class WorldRoom extends Room {
     ) => this.sim.pinSkill(client.sessionId, intent),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Asked for by the client once it listens, since a message sent during the join would arrive first.
-    [FRIENDS]: (client: Client) => this.sendFriends(client),
-    [IGNORES]: (client: Client) =>
-      client.send(IGNORES, ignoresOf(client.auth.id)),
+    [LIST_FRIENDS_INTENT]: (client: Client) => sendFriends(this, client),
+    [LIST_IGNORES_INTENT]: (client: Client) => sendIgnores(client),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {
       const text = typeof line === "string" ? line.trim() : "";
-      if (!text || text.length > MAX_CHAT_LENGTH) return;
-      if (text.startsWith("/")) return this.runCommand(client, text.slice(1));
+      // A command limits its own message; this only bounds the line.
+      if (text.startsWith("/") && text.length <= MAX_CHAT_LINE_LENGTH)
+        return runCommand(this, client, text.slice(1));
+      if (!text || text.startsWith("/") || text.length > MAX_CHAT_LENGTH)
+        return;
       const { id, username } = client.auth;
       const ignoring = ignoredBy(id);
       // Dropped here, not hidden by the client, so an ignored player's words never reach you.
@@ -103,116 +103,6 @@ export class WorldRoom extends Room {
         { id: client.sessionId, username, text } satisfies ChatLine,
         { except: this.clients.filter((other) => ignoring.has(other.auth.id)) },
       );
-    },
-  };
-
-  /** Chat commands by lower-cased name; each gets the trimmed text after the name. */
-  private commands: Record<string, (client: Client, args: string) => void> = {
-    pm: (client, args) => {
-      const [, name, message] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
-      if (!name) return this.tell(client, "Usage: /pm <name> <message>");
-      const to = this.onlineNamed(name);
-      if (!to) return this.tell(client, `${name} is not online.`);
-      if (to.auth.id === client.auth.id)
-        return this.tell(
-          client,
-          "You can't send a private message to yourself.",
-        );
-      // Silent: the sender still sees their own copy and no error (Phase 4 map).
-      if (!isIgnoring(to.auth.id, client.auth.id))
-        this.tell(to, `From ${client.auth.username}: ${message}`);
-      this.tell(client, `To ${to.auth.username}: ${message}`);
-    },
-    // Silent: the friend is never asked or told (Phase 4 map).
-    friend: (client, name) => {
-      if (!name) return this.tell(client, "Usage: /friend <name>");
-      const friend = accountNamed(name);
-      if (!friend)
-        return this.tell(client, `There is no account named ${name}.`);
-      if (friend.id === client.auth.id)
-        return this.tell(
-          client,
-          "You can't add yourself to your friends list.",
-        );
-      if (!addFriend(client.auth.id, friend.id))
-        return this.tell(
-          client,
-          `${friend.username} is already on your friends list.`,
-        );
-      this.tell(client, `${friend.username} is now on your friends list.`);
-      this.sendFriends(client);
-    },
-    unfriend: (client, name) => {
-      if (!name) return this.tell(client, "Usage: /unfriend <name>");
-      const friend = accountNamed(name);
-      if (!friend)
-        return this.tell(client, `There is no account named ${name}.`);
-      if (!removeFriend(client.auth.id, friend.id))
-        return this.tell(
-          client,
-          `${friend.username} is not on your friends list.`,
-        );
-      this.tell(
-        client,
-        `${friend.username} is no longer on your friends list.`,
-      );
-      this.sendFriends(client);
-    },
-    // Silent: the ignored player is never told (Phase 4 map).
-    ignore: (client, name) => {
-      if (!name) return this.tell(client, "Usage: /ignore <name>");
-      const other = accountNamed(name);
-      if (!other)
-        return this.tell(client, `There is no account named ${name}.`);
-      if (other.id === client.auth.id)
-        return this.tell(client, "You can't add yourself to your ignore list.");
-      if (!addIgnore(client.auth.id, other.id))
-        return this.tell(
-          client,
-          `${other.username} is already on your ignore list.`,
-        );
-      this.tell(client, `${other.username} is now on your ignore list.`);
-      client.send(IGNORES, ignoresOf(client.auth.id));
-      if (removeFriend(client.auth.id, other.id)) this.sendFriends(client);
-    },
-    unignore: (client, name) => {
-      if (!name) return this.tell(client, "Usage: /unignore <name>");
-      const other = accountNamed(name);
-      if (!other)
-        return this.tell(client, `There is no account named ${name}.`);
-      if (!removeIgnore(client.auth.id, other.id))
-        return this.tell(
-          client,
-          `${other.username} is not on your ignore list.`,
-        );
-      this.tell(client, `${other.username} is no longer on your ignore list.`);
-      client.send(IGNORES, ignoresOf(client.auth.id));
-    },
-    // Silent: the target is never told (Phase 4 map). The walking is the simulation's.
-    follow: (client, name) => {
-      if (!name) return this.tell(client, "Usage: /follow <name>");
-      const account = accountNamed(name);
-      if (!account)
-        return this.tell(client, `There is no account named ${name}.`);
-      if (account.id === client.auth.id)
-        return this.tell(client, "You can't follow yourself.");
-      const target = this.onlineNamed(name);
-      if (!target)
-        return this.tell(client, `${account.username} is not online.`);
-      // Generic, so the follower can't tell they are ignored.
-      if (isIgnoring(account.id, client.auth.id))
-        return this.tell(client, `You can't follow ${account.username}.`);
-      if (this.sim.following(client.sessionId) === target.sessionId)
-        return this.tell(
-          client,
-          `You are already following ${account.username}.`,
-        );
-      this.sim.follow(client.sessionId, target.sessionId);
-    },
-    unfollow: (client) => {
-      if (!this.sim.following(client.sessionId))
-        return this.tell(client, "You are not following anyone.");
-      this.sim.unfollow(client.sessionId);
     },
   };
 
@@ -270,7 +160,7 @@ export class WorldRoom extends Room {
       client.auth.username,
     );
     // A take-over is the same player logging in again, so their friends hear nothing.
-    if (!takingOver.length) this.tellFriendedBy(client, "logged in");
+    if (!takingOver.length) tellFriendedBy(this, client, "logged in");
   }
 
   /**
@@ -297,7 +187,7 @@ export class WorldRoom extends Room {
     // No player means a take-over already removed it, or the login never finished.
     const loggedIn = this.sim.state.players.has(client.sessionId);
     this.saveAndRemove(client);
-    if (loggedIn) this.tellFriendedBy(client, "logged out");
+    if (loggedIn) tellFriendedBy(this, client, "logged out");
   }
 
   /**
@@ -318,52 +208,10 @@ export class WorldRoom extends Room {
     }
   }
 
-  /** `line` is the chat line after its leading "/". */
-  private runCommand(client: Client, line: string) {
-    const [name = "", args = ""] = line.split(/\s+(.*)/s);
-    const command = Object.hasOwn(this.commands, name.toLowerCase())
-      ? this.commands[name.toLowerCase()]
-      : undefined;
-    if (!command) return this.tell(client, `Unknown command: /${name}`);
-    command(client, args.trim());
-  }
-
-  /** A chat-box line for this client only. */
-  private tell(client: Client, line: string) {
-    client.send(PRIVATE_LINE, line);
-  }
-
-  private sendFriends(client: Client) {
-    const online = new Set(
-      this.online()
-        .filter((other) => this.sim.state.players.has(other.sessionId))
-        .map((other) => other.auth.id),
-    );
-    client.send(
-      FRIENDS,
-      friendsOf(client.auth.id).map(({ id, username }): Friend => ({
-        username,
-        online: online.has(id),
-      })),
-    );
-  }
-
-  /** Tells everyone online who has this player on their friends list, and refreshes their lists. */
-  private tellFriendedBy(client: Client, happened: string) {
-    const friendedHere = friendedBy(client.auth.id);
-    for (const other of this.clients) {
-      if (!friendedHere.has(other.auth.id)) continue;
-      this.tell(other, `${client.auth.username} has ${happened}`);
-      this.sendFriends(other);
-    }
-  }
-
-  /** A connected, logged-in player by case-insensitive username. */
-  private onlineNamed(name: string) {
-    return this.clients.find(
-      (other) =>
-        other.auth.username.toLowerCase() === name.toLowerCase() &&
-        this.sim.state.players.has(other.sessionId),
+  /** The one definition of online, for chat commands and friends lists (see `World`). */
+  onlinePlayers() {
+    return this.online().filter((client) =>
+      this.sim.state.players.has(client.sessionId),
     );
   }
 

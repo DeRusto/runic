@@ -480,14 +480,18 @@ export class Simulation {
     this.queuedActions.set(id, { follow: target });
   }
 
-  /** The session id of the player this one follows, if any. */
+  /** The session id of the player this one follows, if any. A queued intent counts already, since it replaces the action on the next tick. */
   following(id: string) {
+    const queued = this.queuedActions.get(id);
+    if (queued) return "follow" in queued ? queued.follow : undefined;
     const action = this.unsyncedPlayers.get(id)?.action;
     return action?.kind === "following" ? action.player : undefined;
   }
 
   unfollow(id: string) {
-    if (this.following(id)) this.clearAction(id);
+    if (!this.following(id)) return;
+    this.queuedActions.delete(id);
+    this.clearAction(id);
   }
 
   /** `site` comes straight off the network, so anything but the id of this skill's site is ignored, as is a click the rules refuse. */
@@ -704,8 +708,8 @@ export class Simulation {
           groundItem: intent.take,
         };
       } else if ("follow" in intent) {
-        // The target may have left since the intent arrived.
-        unsynced.action = this.state.players.has(intent.follow)
+        // The target may have left or died since the intent arrived.
+        unsynced.action = this.alive(intent.follow)
           ? { kind: "following", player: intent.follow }
           : undefined;
         unsynced.path = [];

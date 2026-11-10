@@ -1,4 +1,9 @@
-import { CHAT, combatLevel, playerOptionRefusal } from "@runic/shared";
+import {
+  CHAT,
+  combatLevel,
+  playerOptionRefusal,
+  type PlayerOption,
+} from "@runic/shared";
 import { printChatLine } from "./bottomBar.ts";
 import type { WorldConnection } from "./players.ts";
 
@@ -6,25 +11,24 @@ import type { WorldConnection } from "./players.ts";
 export function playerMenuChoices(room: WorldConnection, id: string) {
   const player = room.state.players.get(id)!;
   const { username } = player;
-  const refused = (option: string) =>
-    [option, () => printChatLine(playerOptionRefusal(option)!)] as const;
-  return [
-    refused("Trade"),
-    ["Follow", () => room.send(CHAT, `/follow ${username}`)],
-    refused("Attack"),
-    [
-      "Examine",
-      () => printChatLine(`${username}, combat level ${combatLevel(player)}`),
-    ],
-    [
-      "Message",
-      () => {
-        const input = document.getElementById("chat-input") as HTMLInputElement;
-        // Setting the value puts the caret at its end.
-        input.value = `/pm ${username} `;
-        input.focus();
-      },
-    ],
-    refused("Duel"),
-  ] as const;
+  const refuse = (option: PlayerOption) => () => {
+    const refusal = playerOptionRefusal(option);
+    if (refusal) printChatLine(refusal);
+  };
+  // In PLAYER_OPTIONS order, which is the menu's.
+  const choices: Record<PlayerOption, () => void> = {
+    Trade: refuse("Trade"),
+    Follow: () => room.send(CHAT, `/follow ${username}`),
+    Attack: refuse("Attack"),
+    Examine: () =>
+      printChatLine(`${username}, combat level ${combatLevel(player)}`),
+    Message: () => {
+      const input = document.getElementById("chat-input") as HTMLInputElement;
+      // Setting the value puts the caret at its end.
+      input.value = `/pm ${username} `;
+      input.focus();
+    },
+    Duel: refuse("Duel"),
+  };
+  return Object.entries(choices);
 }

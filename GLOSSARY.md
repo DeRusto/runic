@@ -164,6 +164,10 @@ _Avoid_: Pile, bundle
 A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud, and a mistake gets a line in the sender's own chat box only.
 _Avoid_: Slash command
 
+**Online**:
+Said of a player whose character is in the world, including one whose connection dropped while a combat lock holds them there. A login still waiting to enter the world is not online yet. Private messages, follow and the friends list all use this one meaning.
+_Avoid_: Connected, logged in
+
 **Private message**:
 A chat line sent with `/pm <name> <message>` to one online player. It shows in the chat boxes of that player (`From <name>:`) and the sender (`To <name>:`), and nowhere else, never over anyone's head.
 _Avoid_: PM (outside the command), whisper, DM
@@ -177,11 +181,11 @@ The accounts a player has added with `/ignore <name>` and not removed with `/uni
 _Avoid_: Block list, mute
 
 **Follow**:
-An action started with `/follow <name>`: the player walks after another online player at walking speed and stops on a tile next to them, never on theirs. The target is not told. It ends with `/unfollow`, a new walk, gather or fight, the death of either player, or the target logging out. A target who has the follower on their ignore list cannot be followed, and the refusal does not say why.
+An action started with `/follow <name>`: the player walks after another online player at walking speed and stops on a tile next to them, never on theirs. The target is not told. It ends with `/unfollow`, a new walk, gather or fight, the death of either player, the target logging out, or the target adding the follower to their ignore list. A dead target, or one who has the follower on their ignore list, cannot be followed, and the refusal does not say why.
 _Avoid_: Trail, shadow
 
 **Player menu**:
-What right-clicking another player opens at the cursor: Trade, Follow, Attack, Examine, Message and Duel, in that order. Follow sends `/follow <name>`, with the same errors. Message fills the chat box with `/pm <name> ` and sends nothing. Examine prints the player's name and combat level in your own chat box. Trade, Attack and Duel answer with a refusal in your own chat box until Phase 12 lifts it where its rules allow. Right-clicking yourself opens nothing.
+What right-clicking another player opens at the cursor: Trade, Follow, Attack, Examine, Message and Duel, in that order. Follow sends `/follow <name>`, with the same errors. Message types `/pm <name> ` into the player's chat box and sends nothing. Examine prints the other player's name and combat level in the player's own chat box. Trade, Attack and Duel answer with a refusal in the player's own chat box until Phase 12 lifts it where its rules allow. Right-clicking yourself opens nothing.
 _Avoid_: Context menu, player options
 
 **Drop**:
@@ -247,6 +251,10 @@ _Avoid_: Favourite skill, tracked skill
 **Smithing panel**:
 The panel a player opens by clicking a furnace or anvil, to choose what to make there.
 _Avoid_: Crafting menu, recipe list
+
+**Social panel**:
+The panel a player opens with O or the Social button on the bottom bar. It has two tabs: the friends list, with each friend shown online or offline, and the ignore list, with an Unignore button beside each name.
+_Avoid_: Friends panel, friends window
 
 **Tier**:
 One of the three metals, from lowest to highest: Copper, Iron and Emberite. A tier's ore, bars and gear all share its level gate.

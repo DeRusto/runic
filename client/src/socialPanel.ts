@@ -1,5 +1,12 @@
-import { CHAT, FRIENDS, IGNORES, type Friend } from "@runic/shared";
-import { sheetKey } from "./characterSheet.ts";
+import {
+  CHAT,
+  FRIENDS_LIST,
+  IGNORE_LIST,
+  LIST_FRIENDS_INTENT,
+  LIST_IGNORES_INTENT,
+  type Friend,
+} from "@runic/shared";
+import { panelKey } from "./characterSheet.ts";
 import type { WorldConnection } from "./players.ts";
 
 /** The floating window of friends and ignored players, opened from the bar or with O. */
@@ -17,7 +24,7 @@ export function showSocialPanel(room: WorldConnection) {
   document.getElementById("social-close")!.onclick = () => setOpen(false);
   // Beside the sheet's document.onkeydown, never in place of it.
   const onKey = (event: KeyboardEvent) => {
-    const key = sheetKey(event);
+    const key = panelKey(event);
     if (key === "o" || key === "O") toggle();
     if (key === "Escape") setOpen(false);
   };
@@ -40,7 +47,7 @@ export function showSocialPanel(room: WorldConnection) {
     };
   }
 
-  room.onMessage(FRIENDS, (friends: Friend[]) => {
+  room.onMessage(FRIENDS_LIST, (friends: Friend[]) => {
     list.replaceChildren(
       ...friends.map(({ username, online }) => {
         const row = document.createElement("li");
@@ -55,7 +62,7 @@ export function showSocialPanel(room: WorldConnection) {
     );
   });
   // Names only, no status (Phase 4 map). The server decides what is ignored; this only lists it.
-  room.onMessage(IGNORES, (names: string[]) => {
+  room.onMessage(IGNORE_LIST, (names: string[]) => {
     document.getElementById("ignores")!.replaceChildren(
       ...names.map((username) => {
         const row = document.createElement("li");
@@ -69,8 +76,8 @@ export function showSocialPanel(room: WorldConnection) {
       }),
     );
   });
-  room.send(IGNORES);
+  room.send(LIST_IGNORES_INTENT);
   // Statuses change while the connection is down, and nothing resends them.
-  room.onReconnect(() => room.send(FRIENDS));
-  room.send(FRIENDS);
+  room.onReconnect(() => room.send(LIST_FRIENDS_INTENT));
+  room.send(LIST_FRIENDS_INTENT);
 }

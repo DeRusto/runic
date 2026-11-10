@@ -1,4 +1,4 @@
-import { parseRegion } from "@runic/shared";
+import { parseRegion, siteId } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
@@ -129,4 +129,46 @@ test("a dead player can't follow", () => {
   sim.follow("a", "b");
   runTicks(1);
   expect(sim.following("a")).toBeUndefined();
+});
+
+test("a dead target can't be followed", () => {
+  sim.state.players.get("b")!.dead = true;
+  sim.follow("a", "b");
+  runTicks(1);
+  expect(sim.following("a")).toBeUndefined();
+});
+
+test("a follow counts from the moment it is queued, before its tick", () => {
+  sim.follow("a", "b");
+  expect(sim.following("a")).toBe("b");
+  sim.unfollow("a");
+  expect(sim.following("a")).toBeUndefined();
+  runTicks(1);
+  expect(sim.following("a")).toBeUndefined();
+});
+
+describe("a gather or a fight ends following", () => {
+  // A berry bush on (6,2) and a Spider on (6,1), both well away from the respawn tile.
+  beforeEach(() => {
+    sim = new Simulation(
+      parseRegion(["TTTTTTTT", "TR....ST", "T.....bT", "TTTTTTTT"].join("\n")),
+      () => 0,
+    );
+    sim.addPlayer("a", undefined, "Ann");
+    sim.addPlayer("b", undefined, "Bob");
+    sim.follow("a", "b");
+    runTicks(1);
+  });
+
+  test("a gather", () => {
+    sim.queueGather("a", "foraging", siteId({ x: 6, y: 2 }));
+    runTicks(1);
+    expect(sim.following("a")).toBeUndefined();
+  });
+
+  test("a fight", () => {
+    sim.queueTarget("a", "0");
+    runTicks(1);
+    expect(sim.following("a")).toBeUndefined();
+  });
 });

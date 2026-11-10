@@ -96,8 +96,14 @@ test.each([
   expect(bystander.lines).toEqual([]);
 });
 
+test("the limit counts a private message's text, not the command before it", async () => {
+  const longest = "x".repeat(MAX_CHAT_LENGTH);
+  await say(`/pm PmTarget ${longest}`);
+  expect(target.lines).toEqual([`From PmSender: ${longest}`]);
+});
+
 test("a private message over the limit is dropped like public chat", async () => {
-  await say(`/pm PmTarget ${"x".repeat(MAX_CHAT_LENGTH)}`);
+  await say(`/pm PmTarget ${"x".repeat(MAX_CHAT_LENGTH + 1)}`);
   expect([...sender.lines, ...target.lines]).toEqual([]);
 });
 

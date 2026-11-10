@@ -1,4 +1,11 @@
-import { CHAT, FRIENDS, IGNORES, type Friend } from "@runic/shared";
+import {
+  CHAT,
+  FRIENDS_LIST,
+  IGNORE_LIST,
+  LIST_FRIENDS_INTENT,
+  LIST_IGNORES_INTENT,
+  type Friend,
+} from "@runic/shared";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
 import { showSocialPanel } from "./socialPanel.ts";
@@ -51,7 +58,8 @@ let room: {
   onReconnect: (handler: () => void) => void;
 };
 const isOpen = () => !el("social").hidden;
-const sendFriends = (friends: Friend[]) => room.messages.get(FRIENDS)!(friends);
+const sendFriends = (friends: Friend[]) =>
+  room.messages.get(FRIENDS_LIST)!(friends);
 /** Each row's text is the name, then its status. */
 const rows = () =>
   el("friends").children.map((row) =>
@@ -76,8 +84,8 @@ beforeEach(() => {
 });
 
 test("asks for the friends list once it listens for it", () => {
-  expect(room.messages.has(FRIENDS)).toBe(true);
-  expect(room.send).toHaveBeenCalledWith(FRIENDS);
+  expect(room.messages.has(FRIENDS_LIST)).toBe(true);
+  expect(room.send).toHaveBeenCalledWith(LIST_FRIENDS_INTENT);
 });
 
 test("lists each friend with whether they are online", () => {
@@ -128,15 +136,15 @@ test("leaving the world stops the O key", () => {
 });
 
 test("asks for the ignore list, and lists names only", () => {
-  expect(room.send).toHaveBeenCalledWith(IGNORES);
-  room.messages.get(IGNORES)!(["Ada", "Bo"]);
+  expect(room.send).toHaveBeenCalledWith(LIST_IGNORES_INTENT);
+  room.messages.get(IGNORE_LIST)!(["Ada", "Bo"]);
   expect(
     el("ignores").children.map((row) => row.children[0].textContent),
   ).toEqual(["Ada", "Bo"]);
 });
 
 test("unignoring from the panel sends the same command as typing it", () => {
-  room.messages.get(IGNORES)!(["Ada"]);
+  room.messages.get(IGNORE_LIST)!(["Ada"]);
   el("ignores").children[0].children[1].onclick();
   expect(room.send).toHaveBeenCalledWith(CHAT, "/unignore Ada");
 });

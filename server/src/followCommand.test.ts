@@ -1,7 +1,15 @@
 import { matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import { CHAT, PRIVATE_LINE, WORLD_ROOM, type ChatLine } from "@runic/shared";
-import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from "vitest";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
@@ -91,4 +99,64 @@ test("a target who ignores you can't be followed, and the refusal doesn't say wh
   expect(me.lines).toEqual(["You can't follow FoThem."]);
   expect(following()).toBeUndefined();
   them.room.send(CHAT, "/unignore FoMe");
+});
+
+test("ignoring your follower ends their follow", async () => {
+  await say("/follow FoThem");
+  await vi.waitFor(() => expect(following()).toBe(them.room.sessionId));
+  them.room.send(CHAT, "/ignore FoMe");
+  await vi.waitFor(() =>
+    expect(them.lines).toContain("FoMe is now on your ignore list."),
+  );
+  expect(following()).toBeUndefined();
+  them.room.send(CHAT, "/unignore FoMe");
+  await vi.waitFor(() =>
+    expect(them.lines).toContain("FoMe is no longer on your ignore list."),
+  );
+});
+
+test("a follow queued this tick already counts as following", async () => {
+  // No tick, so the first follow stays queued.
+  const tick = vi.spyOn(world.sim, "tick").mockImplementation(() => {});
+  onTestFinished(() => tick.mockRestore());
+  me.room.send(CHAT, "/follow FoThem");
+  me.room.send(CHAT, "/follow FoThem");
+  await vi.waitFor(() =>
+    expect(me.lines).toEqual(["You are already following FoThem."]),
+  );
+  await say("/unfollow");
+});
+
+test("a dead target can't be followed, and the refusal doesn't say why", async () => {
+  // No tick, or one would respawn a player killed this way at once.
+  const tick = vi.spyOn(world.sim, "tick").mockImplementation(() => {});
+  const target = world.sim.state.players.get(them.room.sessionId)!;
+  target.dead = true;
+  onTestFinished(() => {
+    target.dead = false;
+    tick.mockRestore();
+  });
+  await say("/follow FoThem");
+  expect(me.lines).toEqual(["You can't follow FoThem."]);
+  expect(following()).toBeUndefined();
+});
+
+test("a player whose connection dropped is still online to follow and message", async () => {
+  const dropped = await joinAs("FoDropped");
+  dropped.room.reconnection.enabled = false;
+  const { sessionId } = dropped.room;
+  // Joined in full first: a connection lost mid-join is a leave, never a drop.
+  await vi.waitFor(() =>
+    expect((dropped.room.state as any).players?.get(sessionId)).toBeDefined(),
+  );
+  world.sim.lock(sessionId);
+  (world.clients.getById(sessionId)!.ref as any).terminate();
+  await vi.waitFor(() =>
+    expect(world.clients.getById(sessionId)).toBeUndefined(),
+  );
+  await say("/pm FoDropped hi");
+  await say("/follow FoDropped");
+  expect(me.lines).toEqual(["To FoDropped: hi"]);
+  await vi.waitFor(() => expect(following()).toBe(sessionId));
+  await say("/unfollow");
 });

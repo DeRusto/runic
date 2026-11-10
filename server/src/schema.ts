@@ -61,30 +61,25 @@ export const players = sqliteTable("players", {
     .default(STARTING_PINNED_SKILLS),
 });
 
-/** One row per name on a friends list. Adding is one-sided, so the friend gets no row back. */
-export const friends = sqliteTable(
-  "friends",
-  {
-    accountId: integer("account_id")
-      .notNull()
-      .references(() => accounts.id),
-    friendId: integer("friend_id")
-      .notNull()
-      .references(() => accounts.id),
-  },
-  (table) => [primaryKey({ columns: [table.accountId, table.friendId] })],
-);
+/**
+ * One row per name on a player's list, `listedId` being the name's account. Adding is
+ * one-sided, so the listed account gets no row back. `name: string`, not a literal, gives
+ * both tables one type, so the code over them is written once.
+ */
+const socialList = (name: string, listedColumn: string) =>
+  sqliteTable(
+    name,
+    {
+      accountId: integer("account_id")
+        .notNull()
+        .references(() => accounts.id),
+      listedId: integer(listedColumn)
+        .notNull()
+        .references(() => accounts.id),
+    },
+    (table) => [primaryKey({ columns: [table.accountId, table.listedId] })],
+  );
 
-/** One row per name on an ignore list. Ignoring is one-sided and silent, like adding a friend. */
-export const ignores = sqliteTable(
-  "ignores",
-  {
-    accountId: integer("account_id")
-      .notNull()
-      .references(() => accounts.id),
-    ignoredId: integer("ignored_id")
-      .notNull()
-      .references(() => accounts.id),
-  },
-  (table) => [primaryKey({ columns: [table.accountId, table.ignoredId] })],
-);
+export const friends = socialList("friends", "friend_id");
+/** Ignoring is silent too: the ignored player is never told. */
+export const ignores = socialList("ignores", "ignored_id");

@@ -10,6 +10,7 @@ import {
   levelFor,
   levelProgress,
   MAX_CHAT_LENGTH,
+  MAX_CHAT_LINE_LENGTH,
   PRIVATE_LINE,
   SKILLS,
   type ChatLine,
@@ -58,6 +59,12 @@ export function showBottomBar(
 
   const input = document.getElementById("chat-input") as HTMLInputElement;
   input.maxLength = MAX_CHAT_LENGTH;
+  // A chat command's limit counts its message, so the line can run past public chat's.
+  input.oninput = () => {
+    input.maxLength = input.value.startsWith("/")
+      ? MAX_CHAT_LINE_LENGTH
+      : MAX_CHAT_LENGTH;
+  };
   document.getElementById("chat-form")!.onsubmit = (event) => {
     event.preventDefault();
     room.send(CHAT, input.value);

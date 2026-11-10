@@ -34,11 +34,20 @@ export const CHAT_OVERHEAD_MS = 3000;
 export type ChatLine = { id: string; username: string; text: string };
 /** A chat-box line the server sends to one player only, payload the finished line: a private message or a chat command's error. */
 export const PRIVATE_LINE = "privateLine";
-/** A player asks for their friends list with no payload; the server sends them the whole `Friend[]` in name order then, and whenever it or a friend's status changes. */
-export const FRIENDS = "friends";
+/** The longest username an account can have. */
+export const MAX_USERNAME_LENGTH = 12;
+/** The longest chat command line: `/pm`, the longest username and a full-length message. */
+export const MAX_CHAT_LINE_LENGTH =
+  "/pm ".length + MAX_USERNAME_LENGTH + " ".length + MAX_CHAT_LENGTH;
+/** A player asks for their friends list, with no payload. The server answers with `FRIENDS_LIST`. */
+export const LIST_FRIENDS_INTENT = "listFriends";
+/** The server sends a player their whole `Friend[]` in name order when asked, and whenever it or a friend's status changes. */
+export const FRIENDS_LIST = "friendsList";
 export type Friend = { username: string; online: boolean };
-/** A player asks for their ignore list with no payload; the server sends them the usernames in name order then, and whenever it changes. */
-export const IGNORES = "ignores";
+/** A player asks for their ignore list, with no payload. The server answers with `IGNORE_LIST`. */
+export const LIST_IGNORES_INTENT = "listIgnores";
+/** The server sends a player the usernames on their ignore list in name order when asked, and whenever it changes. */
+export const IGNORE_LIST = "ignoreList";
 
 /** Closes the old connection when the same account logs in again. */
 export const TAKEN_OVER_CLOSE_CODE = 4011;
@@ -134,3 +143,4 @@ export * from "./region.ts";
 export * from "./regionMap.ts";
 export * from "./skills.ts";
 export * from "./playerMenu.ts";
+export * from "./social.ts";

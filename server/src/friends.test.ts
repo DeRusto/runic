@@ -2,7 +2,8 @@ import { matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
   CHAT,
-  FRIENDS,
+  FRIENDS_LIST,
+  LIST_FRIENDS_INTENT,
   PRIVATE_LINE,
   WORLD_ROOM,
   type ChatLine,
@@ -30,8 +31,11 @@ async function joinAs(name: string): Promise<Player> {
     player.lines.push(`${username}: ${text}`),
   );
   room.onMessage(PRIVATE_LINE, (line: string) => player.lines.push(line));
-  room.onMessage(FRIENDS, (friends: Friend[]) => (player.friends = friends));
-  room.send(FRIENDS);
+  room.onMessage(
+    FRIENDS_LIST,
+    (friends: Friend[]) => (player.friends = friends),
+  );
+  room.send(LIST_FRIENDS_INTENT);
   return player;
 }
 
