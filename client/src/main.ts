@@ -22,6 +22,7 @@ import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
+import { showSocialPanel } from "./socialPanel.ts";
 import { addStations } from "./stations.ts";
 
 const tiles = loadRegion(regionMap, regionTileset);
@@ -62,6 +63,7 @@ function enterWorld(room: WorldConnection) {
     showPileWindow(room),
   );
   showBottomBar(room, sayOverhead);
+  showSocialPanel(room);
   showFights(room);
 
   logout.hidden = false;

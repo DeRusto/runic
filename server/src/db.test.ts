@@ -21,17 +21,18 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, and the eight new gear slots.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, and the friends table.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
   ...GEAR_SLOTS.slice(2),
 ];
-const LATEST_MIGRATIONS = 3;
+const LATEST_MIGRATIONS = 4;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
+  sqlite.exec("DROP TABLE friends");
   for (const column of LATEST_COLUMNS) {
     sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
   }

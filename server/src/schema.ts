@@ -1,5 +1,10 @@
 import { STARTING_PINNED_SKILLS } from "@runic/shared";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
 
 export const accounts = sqliteTable("accounts", {
   id: integer().primaryKey({ autoIncrement: true }),
@@ -55,3 +60,17 @@ export const players = sqliteTable("players", {
     .$type<string[]>()
     .default(STARTING_PINNED_SKILLS),
 });
+
+/** One row per name on a friends list. Adding is one-sided, so the friend gets no row back. */
+export const friends = sqliteTable(
+  "friends",
+  {
+    accountId: integer("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    friendId: integer("friend_id")
+      .notNull()
+      .references(() => accounts.id),
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.friendId] })],
+);

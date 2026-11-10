@@ -34,6 +34,9 @@ export const CHAT_OVERHEAD_MS = 3000;
 export type ChatLine = { id: string; username: string; text: string };
 /** A chat-box line the server sends to one player only, payload the finished line: a private message or a chat command's error. */
 export const PRIVATE_LINE = "privateLine";
+/** A player asks for their friends list with no payload; the server sends them the whole `Friend[]` in name order then, and whenever it or a friend's status changes. */
+export const FRIENDS = "friends";
+export type Friend = { username: string; online: boolean };
 
 /** Closes the old connection when the same account logs in again. */
 export const TAKEN_OVER_CLOSE_CODE = 4011;

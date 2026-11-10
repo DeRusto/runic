@@ -168,6 +168,10 @@ _Avoid_: Slash command
 A chat line sent with `/pm <name> <message>` to one online player. It shows in the chat boxes of that player (`From <name>:`) and the sender (`To <name>:`), and nowhere else, never over anyone's head.
 _Avoid_: PM (outside the command), whisper, DM
 
+**Friends list**:
+The accounts a player has added with `/friend <name>` and not removed with `/unfriend <name>`, kept on the server across logins. Adding is one-sided: the friend is not asked or told. The social panel (O) shows each friend as online or offline, and the player's chat box gets a line when a friend logs in or out.
+_Avoid_: Buddy list, contacts
+
 **Drop**:
 Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
 _Avoid_: Discard, destroy, delete

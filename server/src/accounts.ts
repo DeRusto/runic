@@ -50,6 +50,12 @@ function findAccount(username: string) {
     .get();
 }
 
+/** The account with this username in any case, without its password, or undefined. */
+export function accountNamed(username: string) {
+  const account = findAccount(username);
+  return account && { id: account.id, username: account.username };
+}
+
 /** The account a token belongs to, or null if the token is bad or cancelled or the account is cut off. */
 export async function accountForToken(token: string) {
   const payload = await JWT.verify<{ id: number; tokenVersion: number }>(

@@ -13,6 +13,7 @@ import {
   EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
+  FRIENDS,
   LOGOUT_INTENT,
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
@@ -29,10 +30,12 @@ import {
   VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
+  type Friend,
   type GearSlot,
   type Tile,
 } from "@runic/shared";
-import { accountForToken } from "./accounts.ts";
+import { accountForToken, accountNamed } from "./accounts.ts";
+import { addFriend, friendedBy, friendsOf, removeFriend } from "./friends.ts";
 import { readSave, writeSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
 import { tickStepper } from "./tickStepper.ts";
@@ -75,6 +78,8 @@ export class WorldRoom extends Room {
       intent: { skill: string; pinned: boolean },
     ) => this.sim.pinSkill(client.sessionId, intent),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
+    // Asked for by the client once it listens, since a message sent during the join would arrive first.
+    [FRIENDS]: (client: Client) => this.sendFriends(client),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {
       const text = typeof line === "string" ? line.trim() : "";
@@ -107,6 +112,41 @@ export class WorldRoom extends Room {
         );
       this.tell(to, `From ${client.auth.username}: ${message}`);
       this.tell(client, `To ${to.auth.username}: ${message}`);
+    },
+    // Silent: the friend is never asked or told (Phase 4 map).
+    friend: (client, name) => {
+      if (!name) return this.tell(client, "Usage: /friend <name>");
+      const friend = accountNamed(name);
+      if (!friend)
+        return this.tell(client, `There is no account named ${name}.`);
+      if (friend.id === client.auth.id)
+        return this.tell(
+          client,
+          "You can't add yourself to your friends list.",
+        );
+      if (!addFriend(client.auth.id, friend.id))
+        return this.tell(
+          client,
+          `${friend.username} is already on your friends list.`,
+        );
+      this.tell(client, `${friend.username} is now on your friends list.`);
+      this.sendFriends(client);
+    },
+    unfriend: (client, name) => {
+      if (!name) return this.tell(client, "Usage: /unfriend <name>");
+      const friend = accountNamed(name);
+      if (!friend)
+        return this.tell(client, `There is no account named ${name}.`);
+      if (!removeFriend(client.auth.id, friend.id))
+        return this.tell(
+          client,
+          `${friend.username} is not on your friends list.`,
+        );
+      this.tell(
+        client,
+        `${friend.username} is no longer on your friends list.`,
+      );
+      this.sendFriends(client);
     },
   };
 
@@ -153,7 +193,8 @@ export class WorldRoom extends Room {
       await new Promise((tick) => this.clock.setTimeout(tick, TICK_MS));
       if (client.state === ClientState.LEAVING) return;
     }
-    for (const old of this.sameAccount(client)) {
+    const takingOver = this.sameAccount(client);
+    for (const old of takingOver) {
       this.saveAndRemove(old);
       old.leave(TAKEN_OVER_CLOSE_CODE);
     }
@@ -162,6 +203,8 @@ export class WorldRoom extends Room {
       readSave(client.auth.id),
       client.auth.username,
     );
+    // A take-over is the same player logging in again, so their friends hear nothing.
+    if (!takingOver.length) this.tellFriendedBy(client, "logged in");
   }
 
   /**
@@ -185,7 +228,10 @@ export class WorldRoom extends Room {
 
   onLeave(client: Client) {
     this.dropped.delete(client.sessionId);
+    // No player means a take-over already removed it, or the login never finished.
+    const loggedIn = this.sim.state.players.has(client.sessionId);
     this.saveAndRemove(client);
+    if (loggedIn) this.tellFriendedBy(client, "logged out");
   }
 
   /**
@@ -219,6 +265,31 @@ export class WorldRoom extends Room {
   /** A chat-box line for this client only. */
   private tell(client: Client, line: string) {
     client.send(PRIVATE_LINE, line);
+  }
+
+  private sendFriends(client: Client) {
+    const online = new Set(
+      this.online()
+        .filter((other) => this.sim.state.players.has(other.sessionId))
+        .map((other) => other.auth.id),
+    );
+    client.send(
+      FRIENDS,
+      friendsOf(client.auth.id).map(({ id, username }): Friend => ({
+        username,
+        online: online.has(id),
+      })),
+    );
+  }
+
+  /** Tells everyone online who has this player on their friends list, and refreshes their lists. */
+  private tellFriendedBy(client: Client, happened: string) {
+    const friendedHere = friendedBy(client.auth.id);
+    for (const other of this.clients) {
+      if (!friendedHere.has(other.auth.id)) continue;
+      this.tell(other, `${client.auth.username} has ${happened}`);
+      this.sendFriends(other);
+    }
   }
 
   private online() {
