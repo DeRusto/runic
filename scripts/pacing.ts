@@ -3,7 +3,7 @@
  * Plays mine → walk → smelt → smith on the real map with the formulas in shared/src, and prints
  * the hours each player takes to reach Mining and Smithing 10, 20 and 99.
  *
- * Run: node scripts/pacing.ts
+ * Run: node --experimental-strip-types scripts/pacing.ts (the flag is needed before Node 22.18)
  *
  * To test new numbers, change INPUTS below; every other line reads from it.
  */
@@ -58,7 +58,7 @@ type TierRow = (typeof INPUTS.tiers)[Tier];
 const TIERS = Object.keys(INPUTS.tiers) as Tier[];
 const row = (tier: Tier): TierRow => INPUTS.tiers[tier];
 const barsPerGear = (tier: Tier) =>
-  Object.values(row(tier).gear.costs)[0] as number;
+  (row(tier).gear.costs as Partial<Record<string, number>>)[`${tier}Bar`]!;
 const ticksToHours = (ticks: number) => (ticks * TICK_MS) / 3_600_000;
 
 /** Everything one ore is worth once it is smelted and smithed, in both skills. Used to choose a vein. */
@@ -171,7 +171,8 @@ function smithTrip(player: Player, tick: number) {
 
 /**
  * Greedy: the open vein with the most experience per tick, counting the walk there.
- * shortcut: myopic (one ore ahead, never waits for a better vein to regrow); add lookahead if a later ticket needs it.
+ * shortcut: myopic and mining-only (one ore ahead, never waits for a better vein to regrow, and leaves out the
+ * Smithy trip, whose walk grows with the tier); add lookahead or loop cost if a later ticket needs it.
  */
 function chooseVein(player: Player, veins: Vein[]) {
   const level = levelFor(player.xp.Mining);
