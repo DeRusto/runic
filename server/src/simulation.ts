@@ -793,12 +793,11 @@ export class Simulation {
         this.random() < source.doubleChance
           ? DOUBLE_YIELD
           : 1;
-      this.events.push({
-        type: verb,
-        player: id,
-        success,
-        ...(success ? { count } : {}),
-      });
+      this.events.push(
+        success
+          ? { type: verb, player: id, success, count }
+          : { type: verb, player: id, success },
+      );
       if (!success) continue;
       this.earnXp(player, xpField, source.xp);
       // Room is counted before either lands, so the second ore goes on the

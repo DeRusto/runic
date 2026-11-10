@@ -124,7 +124,8 @@ export type WorldEvent =
   | { type: "playerRespawned"; player: string }
   | { type: "enemyReturned"; enemy: string }
   /** A success carries how many it gave; a failure carries none. */
-  | { type: GatheringVerb; player: string; success: boolean; count?: 1 | 2 }
+  | { type: GatheringVerb; player: string; success: true; count: 1 | 2 }
+  | { type: GatheringVerb; player: string; success: false; count?: never }
   /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }
   | { type: "eaten"; player: string }

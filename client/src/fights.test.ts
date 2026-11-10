@@ -537,7 +537,7 @@ describe("the mine event", () => {
   });
 
   test("holds a success's result until 0.4 of the clip", () => {
-    send({ type: "mine", player: "a", success: true });
+    send({ type: "mine", player: "a", success: true, count: 1 });
     expect(holdResult).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(0.4 * 2400 - 1);
     expect(revealResult).not.toHaveBeenCalled();
@@ -563,7 +563,7 @@ describe("the mine event", () => {
   });
 
   test("someone else's success doesn't hold our bar", () => {
-    send({ type: "mine", player: "a", success: true }, 0, "me");
+    send({ type: "mine", player: "a", success: true, count: 1 }, 0, "me");
     expect(holdResult).not.toHaveBeenCalled();
     vi.advanceTimersByTime(0.4 * 2400);
     expect(revealResult).not.toHaveBeenCalled();
