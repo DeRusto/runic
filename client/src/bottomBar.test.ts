@@ -4,6 +4,7 @@ import {
   EMPTY_SLOT,
   EQUIP_INTENT,
   INVENTORY_SLOTS,
+  PRIVATE_LINE,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
@@ -32,15 +33,18 @@ const element = () => ({
 const slotsBox = element();
 const menu = element();
 const skillsBox = element();
+const chatLines = element();
 const fakeDocument = {
   getElementById: (id: string) =>
-    id === "slots"
-      ? slotsBox
-      : id === "slot-menu"
-        ? menu
-        : id === "skills"
-          ? skillsBox
-          : element(),
+    id === "chat-lines"
+      ? chatLines
+      : id === "slots"
+        ? slotsBox
+        : id === "slot-menu"
+          ? menu
+          : id === "skills"
+            ? skillsBox
+            : element(),
   createElement: element,
   onpointerdown: undefined as undefined | ((event: unknown) => void),
 };
@@ -117,7 +121,10 @@ const stateWith = (...food: string[]) =>
 let room: ReturnType<typeof fakeRoom>;
 const fakeRoom = () => ({
   sessionId: "me",
-  onMessage() {},
+  messages: new Map<string, (payload: any) => void>(),
+  onMessage(type: string, handler: (payload: any) => void) {
+    this.messages.set(type, handler);
+  },
   send: vi.fn(),
   onReconnect: signal<[]>(),
   onStateChange: signal<[ReturnType<typeof stateWith>]>(),
@@ -355,4 +362,15 @@ describe("the right-click menu", () => {
     fakeDocument.onpointerdown!({ target: "outside" });
     expect(menu.hidden).toBe(true);
   });
+});
+
+test("a private line from the server prints as it came, with nothing overhead", () => {
+  const said = vi.fn();
+  showBottomBar(room as unknown as WorldConnection, said);
+  chatLines.children = [];
+  room.messages.get(PRIVATE_LINE)!("From Ada: hi");
+  expect(chatLines.children.map((line) => line.textContent)).toEqual([
+    "From Ada: hi",
+  ]);
+  expect(said).not.toHaveBeenCalled();
 });

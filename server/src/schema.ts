@@ -1,5 +1,11 @@
 import { STARTING_PINNED_SKILLS } from "@runic/shared";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
 
 export const accounts = sqliteTable("accounts", {
   id: integer().primaryKey({ autoIncrement: true }),
@@ -55,3 +61,30 @@ export const players = sqliteTable("players", {
     .$type<string[]>()
     .default(STARTING_PINNED_SKILLS),
 });
+
+/**
+ * One row per name on a player's list, `listedId` being the name's account. Adding is
+ * one-sided, so the listed account gets no row back. `name: string`, not a literal, gives
+ * both tables one type, so the code over them is written once.
+ */
+const socialList = (name: string, listedColumn: string) =>
+  sqliteTable(
+    name,
+    {
+      accountId: integer("account_id")
+        .notNull()
+        .references(() => accounts.id),
+      listedId: integer(listedColumn)
+        .notNull()
+        .references(() => accounts.id),
+    },
+    // The key leads with accountId, so finding who lists an account needs its own index.
+    (table) => [
+      primaryKey({ columns: [table.accountId, table.listedId] }),
+      index(`${name}_${listedColumn}_idx`).on(table.listedId),
+    ],
+  );
+
+export const friends = socialList("friends", "friend_id");
+/** Ignoring is silent too: the ignored player is never told. */
+export const ignores = socialList("ignores", "ignored_id");

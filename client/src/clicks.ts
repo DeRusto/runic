@@ -15,7 +15,9 @@ import { printChatLine } from "./bottomBar.ts";
 import type { showGatheringSites } from "./gatheringSites.ts";
 import type { showGroundItems } from "./groundItemSacks.ts";
 import type { showPileWindow } from "./pileWindow.ts";
-import type { WorldConnection } from "./players.ts";
+import type { OpenMenu } from "./characterSheet.ts";
+import { playerMenuChoices } from "./playerMenu.ts";
+import type { showPlayers, WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
@@ -23,7 +25,7 @@ import { stationTile, type addStations } from "./stations.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. A right-click on another player opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -34,6 +36,8 @@ export function walkOnClick(
   blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
+  otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
+  openMenu: OpenMenu,
 ) {
   const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0));
   const raycaster = new THREE.Raycaster();
@@ -54,12 +58,24 @@ export function walkOnClick(
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
   };
 
-  const onClick = (event: MouseEvent) => {
+  const aim = (event: MouseEvent) => {
     pointer.set(
       (event.clientX / innerWidth) * 2 - 1,
       -(event.clientY / innerHeight) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
+  };
+
+  // The browser's own menu never shows on the canvas, whatever is under the click.
+  const onContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    aim(event);
+    const id = otherPlayerUnder(raycaster);
+    if (id) openMenu(event, [...playerMenuChoices(room, id)]);
+  };
+
+  const onClick = (event: MouseEvent) => {
+    aim(event);
     const enemy = enemyUnder(raycaster);
     if (enemy) {
       showMarker(enemy.tile.x, enemy.tile.y);
@@ -112,9 +128,11 @@ export function walkOnClick(
     room.send(WALK_INTENT, { x, y });
   };
   renderer.domElement.addEventListener("click", onClick);
+  renderer.domElement.addEventListener("contextmenu", onContextMenu);
 
   room.onLeave(() => {
     renderer.domElement.removeEventListener("click", onClick);
+    renderer.domElement.removeEventListener("contextmenu", onContextMenu);
     clearTimeout(hideMarker);
     scene.remove(marker);
   });

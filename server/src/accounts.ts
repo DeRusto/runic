@@ -4,11 +4,12 @@ import { JWT } from "@colyseus/auth";
 import { createEndpoint, createRouter } from "@colyseus/core";
 import { eq, sql } from "drizzle-orm";
 import type { SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core";
+import { MAX_USERNAME_LENGTH } from "@runic/shared";
 import { z } from "zod";
 import { db } from "./db.ts";
 import { accounts } from "./schema.ts";
 
-const USERNAME = /^[A-Za-z0-9_]{3,12}$/;
+const USERNAME = new RegExp(`^[A-Za-z0-9_]{3,${MAX_USERNAME_LENGTH}}$`);
 const MIN_PASSWORD = 8;
 // scrypt runs on whatever arrives, so an unbounded password is a cheap way to burn CPU
 const MAX_PASSWORD = 200;
@@ -48,6 +49,12 @@ function findAccount(username: string) {
     .from(accounts)
     .where(eq(accounts.usernameLower, username.toLowerCase()))
     .get();
+}
+
+/** The account with this username in any case, without its password, or undefined. */
+export function accountNamed(username: string) {
+  const account = findAccount(username);
+  return account && { id: account.id, username: account.username };
 }
 
 /** The account a token belongs to, or null if the token is bad or cancelled or the account is cut off. */

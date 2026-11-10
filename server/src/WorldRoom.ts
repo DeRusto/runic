@@ -13,9 +13,12 @@ import {
   EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
+  LIST_FRIENDS_INTENT,
+  LIST_IGNORES_INTENT,
   LOGOUT_INTENT,
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
+  MAX_CHAT_LINE_LENGTH,
   MINE_INTENT,
   PIN_INTENT,
   TARGET_INTENT,
@@ -34,6 +37,13 @@ import {
 import { accountForToken } from "./accounts.ts";
 import { readSave, writeSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
+import {
+  ignoredBy,
+  runCommand,
+  sendFriends,
+  sendIgnores,
+  tellFriendedBy,
+} from "./social.ts";
 import { tickStepper } from "./tickStepper.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -74,16 +84,25 @@ export class WorldRoom extends Room {
       intent: { skill: string; pinned: boolean },
     ) => this.sim.pinSkill(client.sessionId, intent),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
+    // Asked for by the client once it listens, since a message sent during the join would arrive first.
+    [LIST_FRIENDS_INTENT]: (client: Client) => sendFriends(this, client),
+    [LIST_IGNORES_INTENT]: (client: Client) => sendIgnores(client),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {
       const text = typeof line === "string" ? line.trim() : "";
-      if (!text || text.length > MAX_CHAT_LENGTH) return;
-      const { username } = client.auth;
-      this.broadcast(CHAT, {
-        id: client.sessionId,
-        username,
-        text,
-      } satisfies ChatLine);
+      // A command limits its own message; this only bounds the line.
+      if (text.startsWith("/") && text.length <= MAX_CHAT_LINE_LENGTH)
+        return runCommand(this, client, text.slice(1));
+      if (!text || text.startsWith("/") || text.length > MAX_CHAT_LENGTH)
+        return;
+      const { id, username } = client.auth;
+      const ignoring = ignoredBy(id);
+      // Dropped here, not hidden by the client, so an ignored player's words never reach you.
+      this.broadcast(
+        CHAT,
+        { id: client.sessionId, username, text } satisfies ChatLine,
+        { except: this.clients.filter((other) => ignoring.has(other.auth.id)) },
+      );
     },
   };
 
@@ -130,7 +149,12 @@ export class WorldRoom extends Room {
       await new Promise((tick) => this.clock.setTimeout(tick, TICK_MS));
       if (client.state === ClientState.LEAVING) return;
     }
-    for (const old of this.sameAccount(client)) {
+    const takingOver = this.sameAccount(client);
+    // A login kicked above can still be leaving; only one with a character makes this a take-over.
+    const loggedInElsewhere = takingOver.some((old) =>
+      this.sim.state.players.has(old.sessionId),
+    );
+    for (const old of takingOver) {
       this.saveAndRemove(old);
       old.leave(TAKEN_OVER_CLOSE_CODE);
     }
@@ -139,6 +163,8 @@ export class WorldRoom extends Room {
       readSave(client.auth.id),
       client.auth.username,
     );
+    // A take-over is the same player logging in again, so their friends hear nothing.
+    if (!loggedInElsewhere) tellFriendedBy(this, client, "logged in");
   }
 
   /**
@@ -162,7 +188,10 @@ export class WorldRoom extends Room {
 
   onLeave(client: Client) {
     this.dropped.delete(client.sessionId);
+    // No player means a take-over already removed it, or the login never finished.
+    const loggedIn = this.sim.state.players.has(client.sessionId);
     this.saveAndRemove(client);
+    if (loggedIn) tellFriendedBy(this, client, "logged out");
   }
 
   /**
@@ -181,6 +210,13 @@ export class WorldRoom extends Room {
           view.add(groundItem);
       }
     }
+  }
+
+  /** The one definition of online, for chat commands and friends lists (see `World`). */
+  onlinePlayers() {
+    return this.online().filter((client) =>
+      this.sim.state.players.has(client.sessionId),
+    );
   }
 
   private online() {

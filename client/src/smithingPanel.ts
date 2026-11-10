@@ -11,6 +11,7 @@ import {
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import { itemName } from "./itemIcons.ts";
+import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
 
@@ -30,6 +31,7 @@ export function showSmithingPanel(room: WorldConnection) {
     walkingTo = undefined;
     panel.hidden = true;
   };
+  const left = leftPanel(close);
 
   const rows = (Object.keys(RECIPES) as RecipeItem[]).map((item) => {
     const row = document.createElement("div");
@@ -72,6 +74,7 @@ export function showSmithingPanel(room: WorldConnection) {
     for (const { item, row } of rows)
       row.hidden = RECIPES[item].station !== station;
     draw(me);
+    left.opening();
     panel.hidden = false;
   };
 
@@ -97,6 +100,7 @@ export function showSmithingPanel(room: WorldConnection) {
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();
+    left.forget();
     document.removeEventListener("keydown", onKey);
     document.removeEventListener("pointerdown", onPress);
   });

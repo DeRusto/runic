@@ -199,7 +199,7 @@
         min-width: 0;
       }
       #skills {
-        grid-row: span 4;
+        grid-row: span 5;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         align-content: start;
@@ -222,13 +222,16 @@
         width: 100%;
         height: 8px;
       }
-      #character {
+      #character,
+      #social-button {
         white-space: nowrap;
       }
-      #character[aria-pressed="true"] {
+      #character[aria-pressed="true"],
+      #social-button[aria-pressed="true"] {
         outline: 2px solid #ffd27a;
       }
-      #character kbd {
+      #character kbd,
+      #social-button kbd {
         font: inherit;
         opacity: 0.7;
       }
@@ -245,7 +248,8 @@
        * Hidden by visibility, not display, on the window and its panes: a box that goes away
        * can lose its scroll position, and each tab keeps its own (spec §7).
        */
-      #sheet {
+      #sheet,
+      #social {
         position: fixed;
         right: 8px;
         bottom: 140px;
@@ -264,7 +268,39 @@
       #sheet[hidden] {
         visibility: hidden;
       }
+      /* On the left, so it and the sheet can both be open. */
+      #social {
+        right: auto;
+        left: 8px;
+        width: 240px;
+      }
+      #social[hidden] {
+        display: none;
+      }
+      /* Only the list scrolls, so the tabs and the X stay in reach. */
+      #social-friends,
+      #social-ignores {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      #friends,
+      #ignores {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      #friends li,
+      #ignores li {
+        display: flex;
+        justify-content: space-between;
+        padding: 2px 0;
+      }
+      #friends li[data-online="false"] {
+        opacity: 0.6;
+      }
       #sheet h2,
+      #social h2,
       #smithing h2,
       #pile h2 {
         display: flex;
@@ -274,6 +310,7 @@
         font-size: 14px;
       }
       #sheet-close,
+      #social-close,
       #smithing-close,
       #pile-close {
         width: 24px;
@@ -282,13 +319,15 @@
         border: 0;
         background: url(/ui/button_brown_close.png) center / 100% 100%;
       }
-      #sheet-tabs {
+      #sheet-tabs,
+      #social-tabs {
         display: flex;
         gap: 2px;
         margin-bottom: 8px;
         border-bottom: 2px solid #a26a35;
       }
-      #sheet-tabs button {
+      #sheet-tabs button,
+      #social-tabs button {
         flex: 1;
         padding: 3px;
         border: 0;
@@ -296,7 +335,8 @@
         color: #4a3018;
         font: inherit;
       }
-      #sheet-tabs button[aria-selected="true"] {
+      #sheet-tabs button[aria-selected="true"],
+      #social-tabs button[aria-selected="true"] {
         background: #a26a35;
         color: #fff4dc;
         font-weight: 600;
@@ -582,6 +622,36 @@
         <div id="sheet-skills" class="sheet-pane" role="tabpanel" hidden></div>
       </div>
     </section>
+    <section id="social" role="dialog" aria-label="Social" hidden>
+      <h2>
+        Social
+        <button id="social-close" type="button" aria-label="Close"></button>
+      </h2>
+      <div id="social-tabs" role="tablist">
+        <button
+          id="social-tab-friends"
+          type="button"
+          role="tab"
+          aria-selected="true"
+        >
+          Friends
+        </button>
+        <button
+          id="social-tab-ignores"
+          type="button"
+          role="tab"
+          aria-selected="false"
+        >
+          Ignore
+        </button>
+      </div>
+      <div id="social-friends" role="tabpanel">
+        <ul id="friends" aria-label="Friends list"></ul>
+      </div>
+      <div id="social-ignores" role="tabpanel" hidden>
+        <ul id="ignores" aria-label="Ignore list"></ul>
+      </div>
+    </section>
     <section
       id="smithing"
       role="dialog"
@@ -640,6 +710,14 @@
           aria-keyshortcuts="C"
         >
           Character <kbd>C</kbd> <span id="worn-gear"></span>
+        </button>
+        <button
+          id="social-button"
+          type="button"
+          aria-pressed="false"
+          aria-keyshortcuts="O"
+        >
+          Social <kbd>O</kbd>
         </button>
         <button id="logout" type="button">Log out</button>
       </div>

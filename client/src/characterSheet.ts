@@ -26,8 +26,8 @@ export type OpenMenu = (
 
 const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1 7 4 4v2h-5l-1 7-1-7H6v-2l4-4z"/></svg>`;
 
-/** Typing in chat never reaches the sheet. */
-function sheetKey(event: KeyboardEvent) {
+/** The key a panel hotkey sees: none while typing in chat, held down, or with a modifier. */
+export function panelKey(event: KeyboardEvent) {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return "";
   if (event.target instanceof HTMLInputElement) return "";
   return event.key;
@@ -49,7 +49,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   button.onclick = toggle;
   document.getElementById("sheet-close")!.onclick = () => setOpen(false);
   document.onkeydown = (event) => {
-    const key = sheetKey(event);
+    const key = panelKey(event);
     if (key === "c" || key === "C") toggle();
     if (key === "Escape") setOpen(false);
   };

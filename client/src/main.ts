@@ -22,6 +22,7 @@ import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
+import { showSocialPanel } from "./socialPanel.ts";
 import { addStations } from "./stations.ts";
 
 const tiles = loadRegion(regionMap, regionTileset);
@@ -49,7 +50,8 @@ const client = new Client(location.origin);
 /** Everything that shows a room tidies up after itself in that room's onLeave. */
 function enterWorld(room: WorldConnection) {
   status.textContent = "";
-  const sayOverhead = showPlayers(room, newFigure);
+  const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure);
+  const openMenu = showBottomBar(room, sayOverhead);
   walkOnClick(
     room,
     tiles,
@@ -60,8 +62,10 @@ function enterWorld(room: WorldConnection) {
     blacksmithUnder,
     showGroundItems(room),
     showPileWindow(room),
+    otherPlayerUnder,
+    openMenu,
   );
-  showBottomBar(room, sayOverhead);
+  showSocialPanel(room);
   showFights(room);
 
   logout.hidden = false;

@@ -160,6 +160,34 @@ _Avoid_: Bag, backpack
 Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
 _Avoid_: Pile, bundle
 
+**Chat command**:
+A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud. Most mistakes get a line in the sender's own chat box only; a line past the length limit is dropped without one.
+_Avoid_: Slash command
+
+**Online**:
+Said of a player whose character is in the world, including one whose connection dropped while a combat lock holds them there. A login still waiting to enter the world is not online yet. Private messages, follow and the friends list all use this one meaning.
+_Avoid_: Connected, logged in
+
+**Private message**:
+A chat line sent with `/pm <name> <message>` to one online player. It shows in the sender's chat box (`To <name>:`) and in that player's (`From <name>:`), unless that player ignores the sender, and nowhere else, never over anyone's head.
+_Avoid_: PM (outside the command), whisper, DM
+
+**Friends list**:
+The accounts a player has added with `/friend <name>` and not removed with `/unfriend <name>` or `/ignore <name>`, kept on the server across logins. Adding is one-sided: the friend is not asked or told. The social panel (O) shows each friend as online or offline, and the player's chat box gets a line when a friend logs in or out.
+_Avoid_: Buddy list, contacts
+
+**Ignore list**:
+The accounts a player has added with `/ignore <name>` and not removed with `/unignore <name>`, kept on the server across logins. The server drops their public chat and private messages before they reach this player, and the ignored player is not told: they still see their own lines. Ignoring a friend takes them off the friends list. The social panel (O) lists the names, with no status.
+_Avoid_: Block list, mute
+
+**Follow**:
+An action started with `/follow <name>`: the player walks after another online player at walking speed and stops on a tile next to them, never on theirs. The target is not told. It ends with `/unfollow`, a new walk, gather or fight, the death of either player, the target logging out, or the target adding the follower to their ignore list. A dead target, or one who has the follower on their ignore list, cannot be followed, and the refusal does not say why.
+_Avoid_: Trail, shadow
+
+**Player menu**:
+What right-clicking another player opens at the cursor: Trade, Follow, Attack, Examine, Message and Duel, in that order. Follow sends `/follow <name>`, with the same errors. Message types `/pm <name> ` into the player's chat box and sends nothing. Examine prints the other player's name and combat level in the player's own chat box. Trade, Attack and Duel answer with a refusal in the player's own chat box until Phase 12 lifts it where its rules allow. Right-clicking yourself opens nothing.
+_Avoid_: Context menu, player options
+
 **Drop**:
 Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
 _Avoid_: Discard, destroy, delete
@@ -223,6 +251,10 @@ _Avoid_: Favourite skill, tracked skill
 **Smithing panel**:
 The panel a player opens by clicking a furnace or anvil, to choose what to make there.
 _Avoid_: Crafting menu, recipe list
+
+**Social panel**:
+The panel a player opens with O or the Social button on the bottom bar. It has two tabs: the friends list, with each friend shown online or offline, and the ignore list, with an Unignore button beside each name.
+_Avoid_: Friends panel, friends window
 
 **Tier**:
 One of the three metals, from lowest to highest: Copper, Iron and Emberite. A tier's ore, bars and gear all share its level gate.

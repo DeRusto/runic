@@ -5,6 +5,8 @@ import {
   type Figure,
   type loadCharacters,
 } from "./characters.ts";
+import type * as THREE from "three";
+import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
 import { camera, focusOn, scene } from "./scene.ts";
 
@@ -14,14 +16,18 @@ const figures = new Map<string, Figure>();
 const overheads = new Map<string, Overhead>();
 export { figures as playerFigures, overheads as playerOverheads };
 
-/** Draws everyone at the tiles the server says. The camera follows our own. Returns how to show a line over someone's head. */
+/** Draws everyone at the tiles the server says. The camera follows our own. Returns how to show a line over someone's head, and what finds another player under a click. */
 export function showPlayers(
   room: WorldConnection,
   newFigure: Awaited<ReturnType<typeof loadCharacters>>,
 ) {
   const callbacks = Callbacks.get(room);
 
+  // A plain box, as for enemies, so a right-click between the legs still counts.
+  const hitBoxes = new Map<string, THREE.Mesh>();
+
   callbacks.onAdd("players", (player, id) => {
+    hitBoxes.set(id, newHitBox());
     const figure = newFigure(player, player.username);
     addSeeThroughOutline(figure.model);
     scene.add(figure.model);
@@ -30,8 +36,9 @@ export function showPlayers(
     overheads.set(id, new Overhead(player.username));
   });
   callbacks.onRemove("players", (_, id) => {
-    scene.remove(figures.get(id)!.model);
+    scene.remove(figures.get(id)!.model, hitBoxes.get(id)!);
     figures.delete(id);
+    hitBoxes.delete(id);
     overheads.get(id)!.remove();
     overheads.delete(id);
   });
@@ -47,6 +54,10 @@ export function showPlayers(
       figure.mining = action === "mining";
       if (action !== "smithing") figure.work = undefined;
       figure.update(now);
+      hitBoxes
+        .get(id)!
+        .position.copy(figure.model.position)
+        .setY(HIT_BOX_HEIGHT / 2);
     }
     const own = figures.get(room.sessionId)?.model.position;
     if (own) focusOn(own.x, own.z);
@@ -63,10 +74,20 @@ export function showPlayers(
   room.onLeave(() => {
     cancelAnimationFrame(nextFrame);
     for (const figure of figures.values()) scene.remove(figure.model);
+    scene.remove(...hitBoxes.values());
     for (const overhead of overheads.values()) overhead.remove();
     figures.clear();
+    hitBoxes.clear();
     overheads.clear();
   });
 
-  return (id: string, text: string) => overheads.get(id)?.say(text);
+  return {
+    sayOverhead: (id: string, text: string) => overheads.get(id)?.say(text),
+    /** The session id of the other player under a click's ray; never our own. */
+    otherPlayerUnder(raycaster: THREE.Raycaster) {
+      const others = [...hitBoxes].filter(([id]) => id !== room.sessionId);
+      const hit = raycaster.intersectObjects(others.map(([, box]) => box))[0];
+      return others.find(([, box]) => box === hit?.object)?.[0];
+    },
+  };
 }

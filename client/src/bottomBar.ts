@@ -10,6 +10,8 @@ import {
   levelFor,
   levelProgress,
   MAX_CHAT_LENGTH,
+  MAX_CHAT_LINE_LENGTH,
+  PRIVATE_LINE,
   SKILLS,
   type ChatLine,
 } from "@runic/shared";
@@ -44,7 +46,7 @@ export function revealResult() {
   showHeld();
 }
 
-/** Chat, inventory, skills and health, all read from our own player on each patch. */
+/** Chat, inventory, skills and health, all read from our own player on each patch. Returns how to open its right-click menu. */
 export function showBottomBar(
   room: WorldConnection,
   sayOverhead: (id: string, text: string) => void,
@@ -53,9 +55,16 @@ export function showBottomBar(
     printChatLine(`${username}: ${text}`);
     sayOverhead(id, text);
   });
+  room.onMessage(PRIVATE_LINE, printChatLine);
 
   const input = document.getElementById("chat-input") as HTMLInputElement;
   input.maxLength = MAX_CHAT_LENGTH;
+  // A chat command's limit counts its message, so the line can run past public chat's.
+  input.oninput = () => {
+    input.maxLength = input.value.startsWith("/")
+      ? MAX_CHAT_LINE_LENGTH
+      : MAX_CHAT_LENGTH;
+  };
   document.getElementById("chat-form")!.onsubmit = (event) => {
     event.preventDefault();
     room.send(CHAT, input.value);
@@ -104,8 +113,14 @@ export function showBottomBar(
     );
     menu.style.left = `${event.clientX}px`;
     // The bar is at the bottom of the window, so the menu opens upwards.
+    menu.style.top = "";
     menu.style.bottom = `${innerHeight - event.clientY}px`;
     menu.hidden = false;
+    // A click near the top of the world has no room above, so that menu opens downwards.
+    if (menu.offsetHeight > event.clientY) {
+      menu.style.top = `${event.clientY}px`;
+      menu.style.bottom = "";
+    }
     (menu.firstElementChild as HTMLElement).focus();
   };
   menu.hidden = true;
@@ -183,4 +198,5 @@ export function showBottomBar(
       if (!holdingResult) showHeld();
     });
   });
+  return openMenu;
 }
