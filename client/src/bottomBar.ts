@@ -45,7 +45,7 @@ export function revealResult() {
   showHeld();
 }
 
-/** Chat, inventory, skills and health, all read from our own player on each patch. */
+/** Chat, inventory, skills and health, all read from our own player on each patch. Returns how to open its right-click menu. */
 export function showBottomBar(
   room: WorldConnection,
   sayOverhead: (id: string, text: string) => void,
@@ -185,4 +185,5 @@ export function showBottomBar(
       if (!holdingResult) showHeld();
     });
   });
+  return openMenu;
 }

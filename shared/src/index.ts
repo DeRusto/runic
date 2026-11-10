@@ -133,3 +133,4 @@ export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./regionMap.ts";
 export * from "./skills.ts";
+export * from "./playerMenu.ts";

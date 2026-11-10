@@ -180,6 +180,10 @@ _Avoid_: Block list, mute
 An action started with `/follow <name>`: the player walks after another online player at walking speed and stops on a tile next to them, never on theirs. The target is not told. It ends with `/unfollow`, a new walk, gather or fight, the death of either player, or the target logging out. A target who has the follower on their ignore list cannot be followed, and the refusal does not say why.
 _Avoid_: Trail, shadow
 
+**Player menu**:
+What right-clicking another player opens at the cursor: Trade, Follow, Attack, Examine, Message and Duel, in that order. Follow sends `/follow <name>`, with the same errors. Message fills the chat box with `/pm <name> ` and sends nothing. Examine prints the player's name and combat level in your own chat box. Trade, Attack and Duel answer with a refusal in your own chat box until Phase 12 lifts it where its rules allow. Right-clicking yourself opens nothing.
+_Avoid_: Context menu, player options
+
 **Drop**:
 Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
 _Avoid_: Discard, destroy, delete
