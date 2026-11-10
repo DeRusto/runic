@@ -277,6 +277,13 @@
       #social[hidden] {
         display: none;
       }
+      /* Only the list scrolls, so the tabs and the X stay in reach. */
+      #social-friends,
+      #social-ignores {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
       #friends,
       #ignores {
         margin: 0;

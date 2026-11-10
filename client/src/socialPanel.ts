@@ -7,6 +7,7 @@ import {
   type Friend,
 } from "@runic/shared";
 import { panelKey } from "./characterSheet.ts";
+import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
 
 /** The floating window of friends and ignored players, opened from the bar or with O. */
@@ -15,9 +16,11 @@ export function showSocialPanel(room: WorldConnection) {
   const button = document.getElementById("social-button")!;
   const list = document.getElementById("friends")!;
   const setOpen = (open: boolean) => {
+    if (open) left.opening();
     panel.hidden = !open;
     button.setAttribute("aria-pressed", String(open));
   };
+  const left = leftPanel(() => setOpen(false));
   const toggle = () => setOpen(!!panel.hidden);
   setOpen(false);
   button.onclick = toggle;
@@ -31,6 +34,7 @@ export function showSocialPanel(room: WorldConnection) {
   document.addEventListener("keydown", onKey);
   room.onLeave(() => {
     setOpen(false);
+    left.forget();
     document.removeEventListener("keydown", onKey);
   });
 
@@ -78,6 +82,9 @@ export function showSocialPanel(room: WorldConnection) {
   });
   room.send(LIST_IGNORES_INTENT);
   // Statuses change while the connection is down, and nothing resends them.
-  room.onReconnect(() => room.send(LIST_FRIENDS_INTENT));
+  room.onReconnect(() => {
+    room.send(LIST_FRIENDS_INTENT);
+    room.send(LIST_IGNORES_INTENT);
+  });
   room.send(LIST_FRIENDS_INTENT);
 }

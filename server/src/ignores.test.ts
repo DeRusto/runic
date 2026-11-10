@@ -68,9 +68,16 @@ beforeEach(() => {
   for (const { lines } of [me, pest, bystander]) lines.length = 0;
 });
 
-/** Sends `line` as `from`, then a public marker from the bystander, so everyone's lines are complete once it arrives. */
+/**
+ * Sends `line` as `from`, then a public marker from the bystander, so everyone's lines are
+ * complete once it arrives. The marker waits for `from`'s list request to be answered: one
+ * connection's messages are handled in order, so the line has been handled by then.
+ */
 async function send(from: Player, line: string) {
+  from.ignores = undefined;
   from.room.send(CHAT, line);
+  from.room.send(LIST_IGNORES_INTENT);
+  await vi.waitFor(() => expect(from.ignores).toBeDefined());
   bystander.room.send(CHAT, "marker");
   await vi.waitFor(() => {
     for (const { lines } of [me, pest, bystander])

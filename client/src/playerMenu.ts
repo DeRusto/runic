@@ -1,6 +1,7 @@
 import {
   CHAT,
   combatLevel,
+  MAX_CHAT_LINE_LENGTH,
   playerOptionRefusal,
   type PlayerOption,
 } from "@runic/shared";
@@ -24,6 +25,8 @@ export function playerMenuChoices(room: WorldConnection, id: string) {
       printChatLine(`${username}, combat level ${combatLevel(player)}`),
     Message: () => {
       const input = document.getElementById("chat-input") as HTMLInputElement;
+      // Setting the value fires no input event, so raise the limit here as bottomBar does.
+      input.maxLength = MAX_CHAT_LINE_LENGTH;
       // Setting the value puts the caret at its end.
       input.value = `/pm ${username} `;
       input.focus();

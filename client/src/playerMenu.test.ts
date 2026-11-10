@@ -1,4 +1,8 @@
-import { CHAT, STARTING_HITPOINTS_XP } from "@runic/shared";
+import {
+  CHAT,
+  MAX_CHAT_LINE_LENGTH,
+  STARTING_HITPOINTS_XP,
+} from "@runic/shared";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
 
@@ -12,6 +16,7 @@ const element = () => ({
   childElementCount: 0,
   textContent: "",
   value: "",
+  maxLength: 0,
   focus: vi.fn(),
 });
 const chatLines = element();
@@ -78,6 +83,7 @@ test("Examine prints the player's name and combat level", () => {
 test("Message prefills /pm and the name in the chat input, ready to type", () => {
   choose("Message");
   expect(chatInput.value).toBe("/pm Ada ");
+  expect(chatInput.maxLength).toBe(MAX_CHAT_LINE_LENGTH);
   expect(chatInput.focus).toHaveBeenCalled();
   expect(send).not.toHaveBeenCalled();
 });

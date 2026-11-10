@@ -1,5 +1,6 @@
 import { TAKE_INTENT, WALK_INTENT, type Tile } from "@runic/shared";
 import { groundItemLine } from "./groundItems.ts";
+import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
 
 /**
@@ -26,6 +27,7 @@ export function showPileWindow(room: WorldConnection) {
     rows.clear();
     list.replaceChildren();
   };
+  const left = leftPanel(close);
 
   const draw = (tile: Tile) => {
     const state = room.state;
@@ -54,6 +56,7 @@ export function showPileWindow(room: WorldConnection) {
   const show = (tile: Tile) => {
     walkingTo = undefined;
     open = tile;
+    left.opening();
     panel.hidden = false;
     draw(tile);
   };
@@ -83,6 +86,7 @@ export function showPileWindow(room: WorldConnection) {
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();
+    left.forget();
     document.removeEventListener("keydown", onKey);
     document.removeEventListener("pointerdown", onPress);
   });

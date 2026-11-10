@@ -109,10 +109,13 @@ test("a private message over the limit is dropped like public chat", async () =>
 
 test("a dead player can still send a private message", async () => {
   const { sim } = matchMaker.getLocalRoomById(sender.room.roomId) as WorldRoom;
+  // No tick, or one would respawn a player killed this way at once.
+  const tick = vi.spyOn(sim, "tick").mockImplementation(() => {});
   const me = sim.state.players.get(sender.room.sessionId)!;
   me.dead = true;
   onTestFinished(() => {
     me.dead = false;
+    tick.mockRestore();
   });
   await say("/pm PmTarget boo");
   expect(target.lines).toEqual(["From PmSender: boo"]);

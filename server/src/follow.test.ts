@@ -90,7 +90,7 @@ test("a target who leaves before the tick is never followed", () => {
 });
 
 describe("death ends following", () => {
-  // A Spider on (2,1), next to the respawn tile; every roll hits for the most.
+  // A Spider on (2,1), next to the respawn tile; every roll lands, for the least damage, which still kills at 1 health.
   beforeEach(() => {
     sim = new Simulation(
       parseRegion(["TTTTTTT", "TRS...T", "T.....T", "TTTTTTT"].join("\n")),

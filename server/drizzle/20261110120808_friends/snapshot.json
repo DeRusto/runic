@@ -468,6 +468,20 @@
       "name": "accounts_username_lower_unique",
       "entityType": "uniques",
       "table": "accounts"
+    },
+    {
+      "columns": [
+        {
+          "value": "friend_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "friends_friend_id_idx",
+      "entityType": "indexes",
+      "table": "friends"
     }
   ],
   "renames": []

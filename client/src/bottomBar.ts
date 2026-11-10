@@ -113,8 +113,14 @@ export function showBottomBar(
     );
     menu.style.left = `${event.clientX}px`;
     // The bar is at the bottom of the window, so the menu opens upwards.
+    menu.style.top = "";
     menu.style.bottom = `${innerHeight - event.clientY}px`;
     menu.hidden = false;
+    // A click near the top of the world has no room above, so that menu opens downwards.
+    if (menu.offsetHeight > event.clientY) {
+      menu.style.top = `${event.clientY}px`;
+      menu.style.bottom = "";
+    }
     (menu.firstElementChild as HTMLElement).focus();
   };
   menu.hidden = true;

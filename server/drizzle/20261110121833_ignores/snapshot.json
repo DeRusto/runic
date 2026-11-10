@@ -517,6 +517,34 @@
     },
     {
       "columns": [
+        {
+          "value": "friend_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "friends_friend_id_idx",
+      "entityType": "indexes",
+      "table": "friends"
+    },
+    {
+      "columns": [
+        {
+          "value": "ignored_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "ignores_ignored_id_idx",
+      "entityType": "indexes",
+      "table": "ignores"
+    },
+    {
+      "columns": [
         "username"
       ],
       "nameExplicit": false,

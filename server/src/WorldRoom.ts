@@ -150,6 +150,10 @@ export class WorldRoom extends Room {
       if (client.state === ClientState.LEAVING) return;
     }
     const takingOver = this.sameAccount(client);
+    // A login kicked above can still be leaving; only one with a character makes this a take-over.
+    const loggedInElsewhere = takingOver.some((old) =>
+      this.sim.state.players.has(old.sessionId),
+    );
     for (const old of takingOver) {
       this.saveAndRemove(old);
       old.leave(TAKEN_OVER_CLOSE_CODE);
@@ -160,7 +164,7 @@ export class WorldRoom extends Room {
       client.auth.username,
     );
     // A take-over is the same player logging in again, so their friends hear nothing.
-    if (!takingOver.length) tellFriendedBy(this, client, "logged in");
+    if (!loggedInElsewhere) tellFriendedBy(this, client, "logged in");
   }
 
   /**

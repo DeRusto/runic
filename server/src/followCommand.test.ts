@@ -99,6 +99,9 @@ test("a target who ignores you can't be followed, and the refusal doesn't say wh
   expect(me.lines).toEqual(["You can't follow FoThem."]);
   expect(following()).toBeUndefined();
   them.room.send(CHAT, "/unignore FoMe");
+  await vi.waitFor(() =>
+    expect(them.lines).toContain("FoMe is no longer on your ignore list."),
+  );
 });
 
 test("ignoring your follower ends their follow", async () => {

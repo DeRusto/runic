@@ -32,8 +32,8 @@ const LATEST_MIGRATIONS = 5;
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
-  sqlite.exec("DROP TABLE friends");
-  sqlite.exec("DROP TABLE ignores");
+  sqlite.exec("DROP TABLE IF EXISTS friends");
+  sqlite.exec("DROP TABLE IF EXISTS ignores");
   for (const column of LATEST_COLUMNS) {
     sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
   }

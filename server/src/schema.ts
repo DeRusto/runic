@@ -1,5 +1,6 @@
 import { STARTING_PINNED_SKILLS } from "@runic/shared";
 import {
+  index,
   integer,
   primaryKey,
   sqliteTable,
@@ -77,7 +78,11 @@ const socialList = (name: string, listedColumn: string) =>
         .notNull()
         .references(() => accounts.id),
     },
-    (table) => [primaryKey({ columns: [table.accountId, table.listedId] })],
+    // The key leads with accountId, so finding who lists an account needs its own index.
+    (table) => [
+      primaryKey({ columns: [table.accountId, table.listedId] }),
+      index(`${name}_${listedColumn}_idx`).on(table.listedId),
+    ],
   );
 
 export const friends = socialList("friends", "friend_id");

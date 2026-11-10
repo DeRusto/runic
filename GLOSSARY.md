@@ -161,7 +161,7 @@ Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
 _Avoid_: Pile, bundle
 
 **Chat command**:
-A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud, and a mistake gets a line in the sender's own chat box only.
+A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud. Most mistakes get a line in the sender's own chat box only; a line past the length limit is dropped without one.
 _Avoid_: Slash command
 
 **Online**:
@@ -169,11 +169,11 @@ Said of a player whose character is in the world, including one whose connection
 _Avoid_: Connected, logged in
 
 **Private message**:
-A chat line sent with `/pm <name> <message>` to one online player. It shows in the chat boxes of that player (`From <name>:`) and the sender (`To <name>:`), and nowhere else, never over anyone's head.
+A chat line sent with `/pm <name> <message>` to one online player. It shows in the sender's chat box (`To <name>:`) and in that player's (`From <name>:`), unless that player ignores the sender, and nowhere else, never over anyone's head.
 _Avoid_: PM (outside the command), whisper, DM
 
 **Friends list**:
-The accounts a player has added with `/friend <name>` and not removed with `/unfriend <name>`, kept on the server across logins. Adding is one-sided: the friend is not asked or told. The social panel (O) shows each friend as online or offline, and the player's chat box gets a line when a friend logs in or out.
+The accounts a player has added with `/friend <name>` and not removed with `/unfriend <name>` or `/ignore <name>`, kept on the server across logins. Adding is one-sided: the friend is not asked or told. The social panel (O) shows each friend as online or offline, and the player's chat box gets a line when a friend logs in or out.
 _Avoid_: Buddy list, contacts
 
 **Ignore list**:

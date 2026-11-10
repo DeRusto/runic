@@ -56,6 +56,7 @@ let room: {
   leave: () => void;
   onLeave: (handler: () => void) => void;
   onReconnect: (handler: () => void) => void;
+  reconnect: () => void;
 };
 const isOpen = () => !el("social").hidden;
 const sendFriends = (friends: Friend[]) =>
@@ -70,6 +71,7 @@ beforeEach(() => {
   byId = new Map();
   keyListeners = [];
   let leave = () => {};
+  let reconnect = () => {};
   room = {
     send: vi.fn(),
     messages: new Map(),
@@ -77,8 +79,9 @@ beforeEach(() => {
       this.messages.set(type, handler);
     },
     onLeave: (handler) => (leave = handler),
-    onReconnect() {},
+    onReconnect: (handler) => (reconnect = handler),
     leave: () => leave(),
+    reconnect: () => reconnect(),
   };
   showSocialPanel(room as unknown as WorldConnection);
 });
@@ -86,6 +89,13 @@ beforeEach(() => {
 test("asks for the friends list once it listens for it", () => {
   expect(room.messages.has(FRIENDS_LIST)).toBe(true);
   expect(room.send).toHaveBeenCalledWith(LIST_FRIENDS_INTENT);
+});
+
+test("asks for both lists again after a reconnect", () => {
+  room.send.mockClear();
+  room.reconnect();
+  expect(room.send).toHaveBeenCalledWith(LIST_FRIENDS_INTENT);
+  expect(room.send).toHaveBeenCalledWith(LIST_IGNORES_INTENT);
 });
 
 test("lists each friend with whether they are online", () => {
