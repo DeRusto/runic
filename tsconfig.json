@@ -10,6 +10,7 @@
     "client/vite.config.ts",
     "server/src",
     "server/drizzle.config.ts",
-    "shared/src"
+    "shared/src",
+    "scripts"
   ]
 }
