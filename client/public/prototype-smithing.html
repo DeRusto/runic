@@ -1,0 +1,330 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway (wayfinder ticket #142: "How does the Smithing panel lay out five tiers?").
+  Four layouts of the station panel at five tiers, switchable via ?variant=A|B|C|D and the bottom bar.
+  Fake player, nothing is sent anywhere. Open http://localhost:5173/prototype-smithing.html
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PROTOTYPE: Smithing panel</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: #1b2330;
+        font: 12px system-ui;
+      }
+      #controls {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        background: #0008;
+        color: #eee;
+      }
+      #controls label { display: flex; gap: 6px; align-items: center; }
+      .panel {
+        position: fixed;
+        left: 8px;
+        bottom: 168px;
+        display: flex;
+        flex-direction: column;
+        width: 340px;
+        max-height: calc(100vh - 176px);
+        box-sizing: border-box;
+        padding: 8px;
+        border: 16px solid transparent;
+        border-image: url(/ui/panel_brown.png) 20 fill stretch;
+        color: #4a3018;
+        font: 12px system-ui;
+      }
+      .panel h2 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      .close {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 0;
+        background: url(/ui/button_brown_close.png) center / 100% 100%;
+      }
+      .tabs {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 8px;
+        border-bottom: 2px solid #a26a35;
+      }
+      .tabs button { flex: 1; padding: 3px; border: 0; font-size: 11px; }
+      .tabs button[aria-selected="true"] { background: #a26a35; color: #fff4dc; font-weight: 600; }
+      .tabs button.locked { opacity: 0.5; }
+      .rows { min-height: 0; overflow-y: auto; }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 2px 6px;
+        align-items: center;
+        padding: 4px 0;
+        border-top: 1px solid #a26a35;
+      }
+      .row.cant, .line.cant, .cell.cant { opacity: 0.55; }
+      .row .name { font-weight: 600; }
+      .row .wide { grid-column: 1 / span 3; }
+      .reason { color: #a8341f; }
+      .reason:empty { display: none; }
+      .tier-head {
+        margin: 8px 0 2px;
+        font-weight: 700;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .tier-head small { font-weight: 400; color: #7a5a38; }
+      img.icon { width: 24px; height: 24px; vertical-align: middle; }
+      /* Bronze and Steel have no icons yet: tint the copper and iron ones. */
+      img.bronze { filter: sepia(1) saturate(2.2) hue-rotate(-10deg) brightness(1.05); }
+      img.steel { filter: grayscale(1) brightness(1.25) contrast(1.2); }
+      /* C: grid */
+      .grid {
+        display: grid;
+        grid-template-columns: 56px repeat(5, 1fr);
+        gap: 3px;
+        align-items: center;
+        text-align: center;
+      }
+      .grid .colhead { font-weight: 600; font-size: 11px; }
+      .grid .rowhead { text-align: left; font-weight: 600; font-size: 11px; }
+      .cell {
+        padding: 3px 0;
+        border: 2px solid transparent;
+        background: #e8d3ae;
+        cursor: pointer;
+      }
+      .cell[aria-selected="true"] { border-color: #a26a35; background: #f3e4c5; }
+      .detail { margin-top: 8px; padding-top: 6px; border-top: 2px solid #a26a35; display: grid; gap: 3px; }
+      .detail .buttons { display: flex; gap: 6px; }
+      /* D: compact */
+      .line {
+        display: grid;
+        grid-template-columns: 24px 1fr auto auto;
+        gap: 6px;
+        align-items: center;
+        padding: 2px 0;
+      }
+      .line .cost { font-size: 11px; color: #7a5a38; }
+      /* Kenney UI Pack Adventure, the same pack as the panel and its close button. */
+      .line button {
+        padding: 1px 4px 2px;
+        border: 4px solid transparent;
+        border-image: url(/ui/button_brown.png) 8 fill stretch;
+        background: none;
+        color: #4a3018;
+        font: 600 11px system-ui;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .line button:hover:not(:disabled) { filter: brightness(1.12); }
+      .line button:active:not(:disabled) { transform: translateY(1px); }
+      .line button:disabled {
+        border-image-source: url(/ui/button_grey.png);
+        color: #777;
+        cursor: default;
+      }
+      details { border-top: 1px solid #a26a35; padding: 2px 0; }
+      summary { cursor: pointer; font-weight: 700; font-size: 13px; padding: 3px 0; }
+      summary small { font-weight: 400; color: #7a5a38; }
+      #switcher {
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #ff2d7a;
+        color: white;
+        font: 600 13px system-ui;
+        box-shadow: 0 4px 14px #0008;
+      }
+      #switcher button { border: 0; background: none; color: white; font-size: 18px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <strong>Fake player</strong>
+      <label>Clicked <select id="station"><option value="furnace">Furnace</option><option value="anvil" selected>Anvil</option></select></label>
+      <label>Smithing <input id="smithing" type="number" min="1" max="99" value="12" /></label>
+      <label>Mining <input id="mining" type="number" min="1" max="99" value="12" /></label>
+      <span>Bars: 8 Copper, 3 Bronze, 5 Iron, 0 Steel</span>
+      <span>Ore: 10 Copper, 6 Iron, 2 Emberite; 4 tin, 3 coal</span>
+    </div>
+    <section class="panel" id="panel"></section>
+    <div id="switcher">
+      <button id="prev" type="button" aria-label="Previous variant">&larr;</button>
+      <span id="label"></span>
+      <button id="next" type="button" aria-label="Next variant">&rarr;</button>
+    </div>
+    <script>
+      // Numbers from tickets #138 and #139.
+      const TIERS = [
+        { id: "copper", name: "Copper", gate: 1, xpPerBar: 6, smeltXp: 2, ore: "copperOre", find: null, icon: "copper" },
+        { id: "bronze", name: "Bronze", gate: 5, xpPerBar: 12, smeltXp: 4, ore: "copperOre", find: "tin", icon: "copper", tint: "bronze" },
+        { id: "iron", name: "Iron", gate: 10, xpPerBar: 18, smeltXp: 6, ore: "ironOre", find: null, icon: "iron" },
+        { id: "steel", name: "Steel", gate: 15, xpPerBar: 27, smeltXp: 9, ore: "ironOre", find: "coal", icon: "iron", tint: "steel" },
+        { id: "emberite", name: "Emberite", gate: 20, xpPerBar: 36, smeltXp: 12, ore: "emberiteOre", find: null, icon: "emberite" },
+      ];
+      const PIECES = [
+        { id: "Sword", bars: 3 },
+        { id: "Shield", bars: 4 },
+        { id: "Helmet", bars: 2 },
+        { id: "Chestplate", bars: 5 },
+        { id: "Leggings", bars: 3 },
+      ];
+      const HAVE = { copperBar: 8, bronzeBar: 3, ironBar: 5, steelBar: 0, emberiteBar: 0, copperOre: 10, ironOre: 6, emberiteOre: 2, tin: 4, coal: 3 };
+      const NAMES = { copperOre: "Copper Ore", ironOre: "Iron Ore", emberiteOre: "Emberite Ore", tin: "Tin", coal: "Coal" };
+
+      const level = (skill) => +document.getElementById(skill).value;
+      const icon = (tier, piece) => {
+        const file = tier.icon + (piece ?? "Bar") + ".png";
+        return `<img class="icon ${tier.tint ?? ""}" src="/icons/${file}" alt="" />`;
+      };
+      // Everything one row of either station needs.
+      const recipes = (station) =>
+        station === "furnace"
+          ? TIERS.map((tier) => {
+              const costs = [[tier.ore, 1], ...(tier.find ? [[tier.find, 1]] : [])];
+              const short = costs.find(([m, n]) => HAVE[m] < n);
+              const reason = level("mining") < tier.gate ? `Needs Mining ${tier.gate}` : short ? `Not enough ${NAMES[short[0]]}` : "";
+              return {
+                tier, name: `${tier.name} Bar`, icon: icon(tier), reason,
+                cost: costs.map(([m, n]) => `${n} ${NAMES[m]} (have ${HAVE[m]})`).join(", "),
+                shortCost: costs.map(([m]) => NAMES[m]).join(" + "),
+                gate: `Mining ${tier.gate}`, xp: `${tier.smeltXp} Mining xp`,
+              };
+            })
+          : TIERS.flatMap((tier) =>
+              PIECES.map((piece) => {
+                const have = HAVE[tier.id + "Bar"];
+                const reason = level("smithing") < tier.gate ? `Needs Smithing ${tier.gate}` : have < piece.bars ? `Not enough ${tier.name} Bar` : "";
+                return {
+                  tier, piece, name: `${tier.name} ${piece.id}`, icon: icon(tier, piece.id), reason,
+                  cost: `${piece.bars} ${tier.name} Bar (have ${have})`,
+                  shortCost: `${piece.bars} bars`,
+                  gate: `Smithing ${tier.gate}`, xp: `${piece.bars * tier.xpPerBar} Smithing xp`,
+                };
+              }),
+            );
+      const makeButtons = (r) =>
+        `<button ${r.reason ? "disabled" : ""}>Make 1</button><button ${r.reason ? "disabled" : ""}>Make all</button>`;
+      const unlocked = (tier, station) => level(station === "furnace" ? "mining" : "smithing") >= tier.gate;
+      const highest = (station) => [...TIERS].reverse().find((t) => unlocked(t, station)) ?? TIERS[0];
+      const header = (station) =>
+        `<h2><span>${station === "furnace" ? "Furnace" : "Anvil"}</span><button class="close" aria-label="Close"></button></h2>`;
+      const fullRow = (r) =>
+        `<div class="row ${r.reason ? "cant" : ""}"><span class="name">${r.icon} ${r.name}</span>${makeButtons(r)}
+          <span class="wide">${r.cost}</span><span class="wide">${r.gate} · ${r.xp}</span><span class="wide reason">${r.reason}</span></div>`;
+
+      let state = { tab: null, cell: null };
+      const VARIANTS = {
+        A: {
+          name: "Today's rows, one long scroll",
+          draw: (station) =>
+            header(station) +
+            `<div class="rows">${TIERS.map((tier) => {
+              const rows = recipes(station).filter((r) => r.tier === tier);
+              return `<div class="tier-head">${tier.name}<small>${rows[0].gate}</small></div>` + rows.map(fullRow).join("");
+            }).join("")}</div>`,
+        },
+        B: {
+          name: "Tabs by tier, opens on your best tier",
+          draw: (station) => {
+            const tab = state.tab ?? highest(station).id;
+            const tabs =
+              station === "anvil"
+                ? `<div class="tabs" role="tablist">${TIERS.map(
+                    (t) => `<button role="tab" data-tab="${t.id}" class="${unlocked(t, station) ? "" : "locked"}" aria-selected="${t.id === tab}">${t.name}</button>`,
+                  ).join("")}</div>`
+                : "";
+            const rows = recipes(station).filter((r) => station === "furnace" || r.tier.id === tab);
+            return header(station) + tabs + `<div class="rows">${rows.map(fullRow).join("")}</div>`;
+          },
+        },
+        C: {
+          name: "Grid of icons, details below",
+          draw: (station) => {
+            const all = recipes(station);
+            const cell = all.find((r) => r.name === state.cell) ?? all.find((r) => r.tier === highest(station)) ?? all[0];
+            const cellHtml = (r) =>
+              `<div class="cell ${r.reason ? "cant" : ""}" data-cell="${r.name}" title="${r.name}" aria-selected="${r === cell}">${r.icon}</div>`;
+            const grid =
+              `<div class="grid"><span></span>${TIERS.map((t) => `<span class="colhead">${t.name}</span>`).join("")}` +
+              (station === "furnace"
+                ? `<span class="rowhead">Bar</span>${all.map(cellHtml).join("")}`
+                : PIECES.map((p) => `<span class="rowhead">${p.id}</span>${all.filter((r) => r.piece === p).map(cellHtml).join("")}`).join("")) +
+              `</div>`;
+            const detail = `<div class="detail"><strong>${cell.icon} ${cell.name}</strong><span>${cell.cost}</span>
+              <span>${cell.gate} · ${cell.xp}</span><span class="reason">${cell.reason}</span><div class="buttons">${makeButtons(cell)}</div></div>`;
+            return header(station) + grid + detail;
+          },
+        },
+        D: {
+          name: "One-line rows, locked tiers folded",
+          draw: (station) =>
+            header(station) +
+            `<div class="rows">${TIERS.map((tier) => {
+              const rows = recipes(station).filter((r) => r.tier === tier);
+              const open = unlocked(tier, station);
+              return `<details ${open ? "open" : ""}><summary>${tier.name} <small>${open ? "" : rows[0].gate}</small></summary>${rows
+                .map(
+                  (r) => `<div class="line ${r.reason ? "cant" : ""}" title="${[r.cost, r.xp, r.reason].filter(Boolean).join(" · ")}">${r.icon}
+                    <span>${r.piece?.id ?? r.name}<br /><span class="cost">${r.shortCost}${r.reason ? " · " + r.reason : ""}</span></span>${makeButtons(r)}</div>`,
+                )
+                .join("")}</details>`;
+            }).join("")}</div>`,
+        },
+      };
+      const KEYS = Object.keys(VARIANTS);
+      const params = new URLSearchParams(location.search);
+      let variant = KEYS.includes(params.get("variant")) ? params.get("variant") : "A";
+
+      const draw = () => {
+        const station = document.getElementById("station").value;
+        document.getElementById("panel").innerHTML = VARIANTS[variant].draw(station);
+        document.getElementById("label").textContent = `${variant} (${VARIANTS[variant].name})`;
+      };
+      const go = (step) => {
+        variant = KEYS[(KEYS.indexOf(variant) + step + KEYS.length) % KEYS.length];
+        params.set("variant", variant);
+        history.replaceState(null, "", "?" + params);
+        state = { tab: null, cell: null };
+        draw();
+      };
+      document.getElementById("prev").onclick = () => go(-1);
+      document.getElementById("next").onclick = () => go(1);
+      document.addEventListener("keydown", (e) => {
+        if (e.target.closest("input, select, textarea")) return;
+        if (e.key === "ArrowLeft") go(-1);
+        if (e.key === "ArrowRight") go(1);
+      });
+      document.getElementById("controls").oninput = () => { state = { tab: null, cell: null }; draw(); };
+      document.getElementById("panel").onclick = (e) => {
+        const tab = e.target.closest("[data-tab]");
+        const cell = e.target.closest("[data-cell]");
+        if (tab) state.tab = tab.dataset.tab;
+        if (cell) state.cell = cell.dataset.cell;
+        if (tab || cell) draw();
+      };
+      draw();
+    </script>
+  </body>
+</html>
