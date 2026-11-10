@@ -3,6 +3,10 @@
  * Plays mine → walk → smelt → smith on the real map with the formulas in shared/src, and prints
  * the hours each player takes to reach Mining and Smithing 10, 20 and 99.
  *
+ * It plays the rules the map decided, ahead of the code: five metal tiers, a chance of 2 ore per
+ * successful mine, finds (tin and coal), smelting gated on and paying Mining only, and the anvil
+ * paying all of Smithing.
+ *
  * Run: node --experimental-strip-types scripts/pacing.ts (the flag is needed before Node 22.18)
  *
  * To test new numbers, change INPUTS below; every other line reads from it.
@@ -10,7 +14,6 @@
 import {
   INVENTORY_SLOTS,
   MAX_LEVEL,
-  RECIPES,
   STACK_SIZE,
   TICK_MS,
   VEINS,
@@ -24,25 +27,49 @@ import {
 import { pathNextTo } from "../server/src/pathfinding.ts";
 import { loadWorldRegion } from "../server/src/worldRegion.ts";
 
+type Find = "tin" | "coal";
+type Metal = "copper" | "bronze" | "iron" | "steel" | "emberite";
+
 const INPUTS = {
   /**
-   * Per tier, lowest first: the vein, the bar, and the gear item made from it. Every gear item
-   * pays the same experience per bar and per tick, so one stands for all. It's dropped as it's
-   * made, so it never fills the inventory, and Emberbones are assumed on hand.
+   * Per vein: `xp` per successful mine, `double` the chance it gives 2 ore, and the chance of each
+   * find. Level, holds and regrow come from VEINS. Gems are left out: nothing uses them yet, and
+   * the player is assumed to drop them.
    */
-  tiers: {
-    copper: {
-      vein: VEINS.copper,
-      bar: RECIPES.copperBar,
-      gear: RECIPES.copperSword,
-    },
-    iron: { vein: VEINS.iron, bar: RECIPES.ironBar, gear: RECIPES.ironSword },
-    emberite: {
-      vein: VEINS.emberite,
-      bar: RECIPES.emberiteBar,
-      gear: RECIPES.emberiteSword,
-    },
-  },
+  veins: {
+    copper: { xp: 6, double: 0.3, finds: { tin: 1 / 3 } },
+    iron: { xp: 18, double: 0.25, finds: { tin: 1 / 6, coal: 1 / 2 } },
+    emberite: { xp: 30, double: 0.2, finds: {} },
+  } as Record<
+    Tier,
+    { xp: number; double: number; finds: Partial<Record<Find, number>> }
+  >,
+  /**
+   * Per metal, lowest first: the ore and find a bar takes, the Mining level to smelt it, and the
+   * Mining experience smelting pays. Every bar takes 6 ticks.
+   */
+  bars: {
+    copper: { ore: "copper", level: 1, xp: 2 },
+    bronze: { ore: "copper", find: "tin", level: 5, xp: 4 },
+    iron: { ore: "iron", level: 10, xp: 6 },
+    steel: { ore: "iron", find: "coal", level: 15, xp: 9 },
+    emberite: { ore: "emberite", level: 20, xp: 12 },
+  } as Record<Metal, { ore: Tier; find?: Find; level: number; xp: number }>,
+  barTicks: 6,
+  /**
+   * Smithing experience per bar at the anvil, by metal. Every metal's gear has the same costs and
+   * times, and every item pays the same per bar and per tick, so a sword (3 bars, 12 ticks) stands
+   * for all. It's dropped as it's made, and Emberbones are assumed on hand.
+   */
+  anvilXpPerBar: {
+    copper: 6,
+    bronze: 12,
+    iron: 18,
+    steel: 27,
+    emberite: 36,
+  } as Record<Metal, number>,
+  /** The Smithing level each metal's gear needs: the same as its bar's Mining level. */
+  gear: { bars: 3, ticks: 12 },
   attemptChance,
   pickIntervalTicks,
   inventorySlots: INVENTORY_SLOTS,
@@ -50,27 +77,15 @@ const INPUTS = {
   walkTicksPerTile: WALK_TICKS_PER_TILE,
   playerCounts: [1, 3],
   seeds: [1, 2, 3, 4, 5],
-  milestones: [10, 20, MAX_LEVEL],
+  milestones: [5, 10, 15, 20, MAX_LEVEL],
   maxHours: 300,
 };
 
-type TierRow = (typeof INPUTS.tiers)[Tier];
-const TIERS = Object.keys(INPUTS.tiers) as Tier[];
-const row = (tier: Tier): TierRow => INPUTS.tiers[tier];
-const barsPerGear = (tier: Tier) =>
-  (row(tier).gear.costs as Partial<Record<string, number>>)[`${tier}Bar`]!;
+const TIERS = Object.keys(INPUTS.veins) as Tier[];
+const METALS = Object.keys(INPUTS.bars) as Metal[];
+const FINDS: Find[] = ["tin", "coal"];
 const ticksToHours = (ticks: number) => (ticks * TICK_MS) / 3_600_000;
-
-/** Everything one ore is worth once it is smelted and smithed, in both skills. Used to choose a vein. */
-const valuePerOre = (tier: Tier) => {
-  const { vein, bar, gear } = row(tier);
-  return (
-    vein.xp +
-    bar.xp.miningXp +
-    bar.xp.smithingXp +
-    gear.xp.smithingXp / barsPerGear(tier)
-  );
-};
+const level = (tier: Tier) => VEINS[tier].level;
 
 const tiles = loadWorldRegion();
 type Vein = { tier: Tier; tile: Tile; left: number; regrowTick: number };
@@ -105,7 +120,14 @@ type Player = {
   xp: Record<Skill, number>;
   reached: Record<Skill, Map<number, number>>;
   ore: Record<Tier, number>;
-  bars: Record<Tier, number>;
+  finds: Record<Find, number>;
+  bars: Record<Metal, number>;
+  /** Tin held when Mining 5 was reached, and coal when Mining 15 was. */
+  stockAtUnlock: Partial<Record<Find, number>>;
+  /** Bars smelted without a find although its metal was open, because the find ran out. */
+  starved: Record<Find, { short: number; all: number }>;
+  /** Successful mines per vein from Mining 20 on, to show which vein the top levels are trained on. */
+  minedFrom20: Record<Tier, number>;
   nextAttemptTick: number;
   busyUntil: number;
   mining?: Vein;
@@ -115,55 +137,85 @@ function earn(player: Player, skill: Skill, xp: number, tick: number) {
   const before = levelFor(player.xp[skill]);
   player.xp[skill] += xp;
   const after = levelFor(player.xp[skill]);
-  for (const level of INPUTS.milestones)
-    if (before < level && after >= level)
-      player.reached[skill].set(level, tick);
+  for (const milestone of INPUTS.milestones)
+    if (before < milestone && after >= milestone)
+      player.reached[skill].set(milestone, tick);
+  if (skill === "Mining" && before < 5 && after >= 5)
+    player.stockAtUnlock.tin = player.finds.tin;
+  if (skill === "Mining" && before < 15 && after >= 15)
+    player.stockAtUnlock.coal = player.finds.coal;
 }
 
-const slotsUsed = (player: Player) =>
-  TIERS.reduce(
-    (slots, tier) =>
-      slots +
-      Math.ceil(player.ore[tier] / INPUTS.stackSize) +
-      Math.ceil(player.bars[tier] / INPUTS.stackSize),
+const stacks = (counts: Record<string, number>) =>
+  Object.values(counts).reduce(
+    (s, n) => s + Math.ceil(n / INPUTS.stackSize),
     0,
   );
-
 /** shortcut: full once every slot holds something, though a partial stack has room; count stack room if trip size starts to matter. */
-const full = (player: Player) => slotsUsed(player) >= INPUTS.inventorySlots;
+const full = (player: Player) =>
+  stacks(player.ore) + stacks(player.finds) + stacks(player.bars) >=
+  INPUTS.inventorySlots;
 
-const smeltable = (player: Player, tier: Tier) =>
-  player.ore[tier] > 0 && levelFor(player.xp.Smithing) >= row(tier).bar.level;
-const smithable = (player: Player, tier: Tier) =>
-  player.bars[tier] >= barsPerGear(tier) &&
-  levelFor(player.xp.Smithing) >= row(tier).gear.level;
+/** Metals the player can both smelt and smith, so no bar is smelted that would sit unused. */
+const canMake = (player: Player, metal: Metal) =>
+  levelFor(player.xp.Mining) >= INPUTS.bars[metal].level &&
+  levelFor(player.xp.Smithing) >= INPUTS.bars[metal].level;
+const smeltable = (player: Player, metal: Metal) => {
+  const { ore, find } = INPUTS.bars[metal];
+  return (
+    canMake(player, metal) &&
+    player.ore[ore] > 0 &&
+    (!find || player.finds[find] > 0)
+  );
+};
+const smithable = (player: Player, metal: Metal) =>
+  player.bars[metal] >= INPUTS.gear.bars && canMake(player, metal);
+
+/** Everything one ore of this vein is worth once smelted and smithed into the best metal the player can make. */
+function valuePerOre(player: Player, tier: Tier) {
+  const best = [...METALS]
+    .reverse()
+    .find((m) => INPUTS.bars[m].ore === tier && canMake(player, m));
+  return best ? INPUTS.bars[best].xp + INPUTS.anvilXpPerBar[best] : 0;
+}
 
 /** Walks to the furnace, smelts all it can, walks to the anvil and smiths all it can. Returns when it's done. */
 function smithTrip(player: Player, tick: number) {
   const toFurnace = walk(player.at, furnace!);
   tick += toFurnace.steps * INPUTS.walkTicksPerTile;
-  // Highest tier first, and again after a level-up unlocks one.
+  // Highest metal first, and again after a level-up unlocks one.
   for (
-    let tier;
-    (tier = [...TIERS].reverse().find((t) => smeltable(player, t)));
+    let metal;
+    (metal = [...METALS].reverse().find((m) => smeltable(player, m)));
   ) {
-    const { bar } = row(tier);
-    tick += bar.ticks;
-    player.ore[tier]--;
-    player.bars[tier]++;
-    earn(player, "Smithing", bar.xp.smithingXp, tick);
-    earn(player, "Mining", bar.xp.miningXp, tick);
+    const { ore, find, xp } = INPUTS.bars[metal];
+    tick += INPUTS.barTicks;
+    player.ore[ore]--;
+    if (find) player.finds[find]--;
+    player.bars[metal]++;
+    earn(player, "Mining", xp, tick);
+    for (const better of METALS) {
+      const { ore: betterOre, find: betterFind } = INPUTS.bars[better];
+      if (!betterFind || betterOre !== ore || !canMake(player, better))
+        continue;
+      player.starved[betterFind].all++;
+      if (metal !== better) player.starved[betterFind].short++;
+    }
   }
   const toAnvil = walk(toFurnace.end, anvil!);
   tick += toAnvil.steps * INPUTS.walkTicksPerTile;
   for (
-    let tier;
-    (tier = [...TIERS].reverse().find((t) => smithable(player, t)));
+    let metal;
+    (metal = [...METALS].reverse().find((m) => smithable(player, m)));
   ) {
-    const { gear } = row(tier);
-    tick += gear.ticks;
-    player.bars[tier] -= barsPerGear(tier);
-    earn(player, "Smithing", gear.xp.smithingXp, tick);
+    tick += INPUTS.gear.ticks;
+    player.bars[metal] -= INPUTS.gear.bars;
+    earn(
+      player,
+      "Smithing",
+      INPUTS.anvilXpPerBar[metal] * INPUTS.gear.bars,
+      tick,
+    );
   }
   player.at = toAnvil.end;
   return tick;
@@ -171,28 +223,34 @@ function smithTrip(player: Player, tick: number) {
 
 /**
  * Greedy: the open vein with the most experience per tick, counting the walk there.
- * shortcut: myopic and mining-only (one ore ahead, never waits for a better vein to regrow, and leaves out the
- * Smithy trip, whose walk grows with the tier); add lookahead or loop cost if a later ticket needs it.
+ * shortcut: myopic and mining-only (one success ahead, never waits for a better vein to regrow, leaves out the
+ * Smithy trip and the worth of finds); add lookahead or loop cost if a later ticket needs it.
  */
 function chooseVein(player: Player, veins: Vein[]) {
-  const level = levelFor(player.xp.Mining);
+  const mining = levelFor(player.xp.Mining);
   let best: { vein: Vein; rate: number } | undefined;
   for (const vein of veins) {
-    const { vein: source } = row(vein.tier);
-    if (vein.left === 0 || level < source.level) continue;
+    if (vein.left === 0 || mining < level(vein.tier)) continue;
+    const source = INPUTS.veins[vein.tier];
     const walkTicks =
       walk(player.at, vein.tile).steps * INPUTS.walkTicksPerTile;
     const mineTicks =
-      INPUTS.pickIntervalTicks(level) /
-      INPUTS.attemptChance(source.level, level);
-    const rate = valuePerOre(vein.tier) / (walkTicks + mineTicks);
+      INPUTS.pickIntervalTicks(mining) /
+      INPUTS.attemptChance(level(vein.tier), mining);
+    const perSuccess =
+      source.xp + (1 + source.double) * valuePerOre(player, vein.tier);
+    const rate = perSuccess / (walkTicks + mineTicks);
     if (!best || rate > best.rate) best = { vein, rate };
   }
   return best?.vein;
 }
 
-/** Hours to each milestone, per player; undefined where it wasn't reached within maxHours. */
-function simulate(playerCount: number, seed: number) {
+type Run = Pick<
+  Player,
+  "reached" | "stockAtUnlock" | "starved" | "minedFrom20"
+>;
+
+function simulate(playerCount: number, seed: number): Run[] {
   let state = seed;
   // mulberry32: a seeded random, so a run repeats exactly.
   const random = () => {
@@ -204,17 +262,21 @@ function simulate(playerCount: number, seed: number) {
   const veins: Vein[] = veinTiles.map(({ tier, tile }) => ({
     tier,
     tile,
-    left: row(tier).vein.holds,
+    left: VEINS[tier].holds,
     regrowTick: 0,
   }));
-  const zero = () =>
-    Object.fromEntries(TIERS.map((t) => [t, 0])) as Record<Tier, number>;
+  const zero = <K extends string>(keys: K[]) =>
+    Object.fromEntries(keys.map((k) => [k, 0])) as Record<K, number>;
   const players: Player[] = Array.from({ length: playerCount }, () => ({
     at: furnace!,
     xp: { Mining: 0, Smithing: 0 },
     reached: { Mining: new Map(), Smithing: new Map() },
-    ore: zero(),
-    bars: zero(),
+    ore: zero(TIERS),
+    finds: zero(FINDS),
+    bars: zero(METALS),
+    stockAtUnlock: {},
+    starved: { tin: { short: 0, all: 0 }, coal: { short: 0, all: 0 } },
+    minedFrom20: zero(TIERS),
     nextAttemptTick: 0,
     busyUntil: 0,
   }));
@@ -226,20 +288,26 @@ function simulate(playerCount: number, seed: number) {
   for (let tick = 0; tick < maxTicks && !players.every(done); tick++) {
     for (const vein of veins)
       if (vein.left === 0 && tick >= vein.regrowTick)
-        vein.left = row(vein.tier).vein.holds;
+        vein.left = VEINS[vein.tier].holds;
 
     for (const player of players) {
       if (tick < player.busyUntil) continue;
       const vein = player.mining;
       if (vein && vein.left > 0 && !full(player)) {
         if (tick < player.nextAttemptTick) continue;
-        const level = levelFor(player.xp.Mining);
-        const { vein: source } = row(vein.tier);
-        player.nextAttemptTick = tick + INPUTS.pickIntervalTicks(level);
-        if (random() >= INPUTS.attemptChance(source.level, level)) continue;
-        player.ore[vein.tier]++;
+        const mining = levelFor(player.xp.Mining);
+        const source = INPUTS.veins[vein.tier];
+        player.nextAttemptTick = tick + INPUTS.pickIntervalTicks(mining);
+        if (random() >= INPUTS.attemptChance(level(vein.tier), mining))
+          continue;
+        // shortcut: a second ore or find with no room is kept rather than left on the ground; full() stops the next mine anyway.
+        player.ore[vein.tier] += random() < source.double ? 2 : 1;
+        for (const find of FINDS)
+          if (random() < (source.finds[find] ?? 0)) player.finds[find]++;
+        if (mining >= 20) player.minedFrom20[vein.tier]++;
         earn(player, "Mining", source.xp, tick);
-        if (--vein.left === 0) vein.regrowTick = tick + source.regrowTicks;
+        if (--vein.left === 0)
+          vein.regrowTick = tick + VEINS[vein.tier].regrowTicks;
         continue;
       }
       player.mining = undefined;
@@ -251,7 +319,7 @@ function simulate(playerCount: number, seed: number) {
         player.busyUntil = tick + path.steps * INPUTS.walkTicksPerTile;
         player.mining = next;
       } else if (
-        TIERS.some((t) => smeltable(player, t) || smithable(player, t))
+        METALS.some((m) => smeltable(player, m) || smithable(player, m))
       ) {
         player.busyUntil = smithTrip(player, tick);
       } else {
@@ -259,7 +327,7 @@ function simulate(playerCount: number, seed: number) {
       }
     }
   }
-  return players.map((player) => player.reached);
+  return players;
 }
 
 const fmt = (hours: number | undefined) =>
@@ -287,15 +355,37 @@ console.log(
   `| Players | Skill | ${INPUTS.milestones.map((l) => `Level ${l}`).join(" | ")} |`,
 );
 console.log(`|---|---|${INPUTS.milestones.map(() => "---").join("|")}|`);
+const finds: string[] = [];
 for (const count of INPUTS.playerCounts) {
   const runs = INPUTS.seeds.flatMap((seed) => simulate(count, seed));
   for (const skill of ["Mining", "Smithing"] as const) {
-    const cells = INPUTS.milestones.map((level) => {
-      const ticks = runs.map((reached) => reached[skill].get(level));
+    const cells = INPUTS.milestones.map((milestone) => {
+      const ticks = runs.map((run) => run.reached[skill].get(milestone));
       return ticks.includes(undefined)
         ? fmt(undefined)
         : fmt(ticksToHours(mean(ticks as number[])));
     });
     console.log(`| ${count} | ${skill} | ${cells.join(" | ")} |`);
   }
+  for (const find of FINDS) {
+    const stock = mean(runs.map((run) => run.stockAtUnlock[find] ?? 0));
+    const short = runs.reduce((s, run) => s + run.starved[find].short, 0);
+    const all = runs.reduce((s, run) => s + run.starved[find].all, 0);
+    finds.push(
+      `${count} player(s): ${stock.toFixed(0)} ${find} held at unlock; ` +
+        `${((100 * short) / Math.max(all, 1)).toFixed(0)}% of bars that could have used ${find} went without`,
+    );
+  }
+  const mined = TIERS.map((tier) =>
+    runs.reduce((s, run) => s + run.minedFrom20[tier], 0),
+  );
+  const total = mined.reduce((a, b) => a + b, 0);
+  finds.push(
+    `${count} player(s), mines from Mining 20 on: ` +
+      TIERS.map(
+        (tier, i) =>
+          `${tier} ${((100 * mined[i]) / Math.max(total, 1)).toFixed(0)}%`,
+      ).join(", "),
+  );
 }
+console.log(`\n${finds.join("\n")}`);
