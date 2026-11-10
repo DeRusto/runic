@@ -140,10 +140,10 @@ function earn(player: Player, skill: Skill, xp: number, tick: number) {
   for (const milestone of INPUTS.milestones)
     if (before < milestone && after >= milestone)
       player.reached[skill].set(milestone, tick);
-  if (skill === "Mining" && before < 5 && after >= 5)
-    player.stockAtUnlock.tin = player.finds.tin;
-  if (skill === "Mining" && before < 15 && after >= 15)
-    player.stockAtUnlock.coal = player.finds.coal;
+  if (skill === "Mining")
+    for (const { find, level } of Object.values(INPUTS.bars))
+      if (find && before < level && after >= level)
+        player.stockAtUnlock[find] = player.finds[find];
 }
 
 const stacks = (counts: Record<string, number>) =>
@@ -171,11 +171,14 @@ const smeltable = (player: Player, metal: Metal) => {
 const smithable = (player: Player, metal: Metal) =>
   player.bars[metal] >= INPUTS.gear.bars && canMake(player, metal);
 
-/** Everything one ore of this vein is worth once smelted and smithed into the best metal the player can make. */
+/** Everything one ore of this vein is worth once smelted and smithed into the best metal the player can make with the finds they hold. */
 function valuePerOre(player: Player, tier: Tier) {
-  const best = [...METALS]
-    .reverse()
-    .find((m) => INPUTS.bars[m].ore === tier && canMake(player, m));
+  const best = [...METALS].reverse().find((m) => {
+    const { ore, find } = INPUTS.bars[m];
+    return (
+      ore === tier && canMake(player, m) && (!find || player.finds[find] > 0)
+    );
+  });
   return best ? INPUTS.bars[best].xp + INPUTS.anvilXpPerBar[best] : 0;
 }
 
@@ -193,7 +196,7 @@ function smithTrip(player: Player, tick: number) {
     player.ore[ore]--;
     if (find) player.finds[find]--;
     player.bars[metal]++;
-    earn(player, "Mining", xp, tick);
+    // Counted before earn(), so a metal this bar unlocks isn't counted as open for it.
     for (const better of METALS) {
       const { ore: betterOre, find: betterFind } = INPUTS.bars[better];
       if (!betterFind || betterOre !== ore || !canMake(player, better))
@@ -201,6 +204,7 @@ function smithTrip(player: Player, tick: number) {
       player.starved[betterFind].all++;
       if (metal !== better) player.starved[betterFind].short++;
     }
+    earn(player, "Mining", xp, tick);
   }
   const toAnvil = walk(toFurnace.end, anvil!);
   tick += toAnvil.steps * INPUTS.walkTicksPerTile;
