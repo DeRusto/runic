@@ -107,10 +107,10 @@
         position: fixed;
         inset: auto 0 0;
         display: grid;
-        /* The right end's minimum fits two skills across beside its buttons and both gear icons at 800 px. */
+        /* The right end's minimum fits its row of buttons at 800 px. */
         grid-template-columns: minmax(0, 1fr) auto minmax(272px, 1fr);
         gap: 8px;
-        height: 132px;
+        height: 160px;
         padding: 8px;
         box-sizing: border-box;
         background: #232c3a;
@@ -193,13 +193,19 @@
         background: #2f3b4d;
       }
       #player-panel {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 4px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
         min-width: 0;
       }
+      #bar-buttons {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
       #skills {
-        grid-row: span 5;
+        flex: 1;
+        min-height: 0;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         align-content: start;
@@ -235,15 +241,6 @@
         font: inherit;
         opacity: 0.7;
       }
-      #worn-gear img {
-        width: 16px;
-        height: 16px;
-        vertical-align: text-bottom;
-      }
-      /* Overlapped, so a sword, shield and full armour take little more room than two used to. */
-      #worn-gear img + img {
-        margin-left: -10px;
-      }
       /*
        * Hidden by visibility, not display, on the window and its panes: a box that goes away
        * can lose its scroll position, and each tab keeps its own (spec §7).
@@ -252,12 +249,12 @@
       #social {
         position: fixed;
         right: 8px;
-        bottom: 140px;
+        bottom: 168px;
         display: flex;
         flex-direction: column;
         width: 340px;
         height: 400px;
-        max-height: calc(100vh - 148px);
+        max-height: calc(100vh - 176px);
         box-sizing: border-box;
         padding: 8px;
         border: 16px solid transparent;
@@ -459,11 +456,11 @@
       #pile {
         position: fixed;
         left: 8px;
-        bottom: 140px;
+        bottom: 168px;
         display: flex;
         flex-direction: column;
         width: 340px;
-        max-height: calc(100vh - 148px);
+        max-height: calc(100vh - 176px);
         box-sizing: border-box;
         padding: 8px;
         border: 16px solid transparent;
@@ -570,7 +567,7 @@
         opacity: 0.7;
       }
       #logout {
-        align-self: end;
+        white-space: nowrap;
       }
       #splash {
         position: fixed;
@@ -770,45 +767,47 @@
       <div id="slots" aria-label="Inventory"></div>
       <div id="slot-menu" role="menu" hidden></div>
       <div id="player-panel">
-        <div id="skills"></div>
         <div id="health"></div>
-        <div id="turn">
+        <div id="skills"></div>
+        <div id="bar-buttons">
+          <div id="turn">
+            <button
+              id="turn-left"
+              type="button"
+              aria-label="Turn view left"
+              aria-keyshortcuts="Q"
+            >
+              ⟲
+            </button>
+            <button
+              id="turn-right"
+              type="button"
+              aria-label="Turn view right"
+              aria-keyshortcuts="E"
+            >
+              ⟳
+            </button>
+            <kbd>Q</kbd>
+            <kbd>E</kbd>
+          </div>
           <button
-            id="turn-left"
+            id="character"
             type="button"
-            aria-label="Turn view left"
-            aria-keyshortcuts="Q"
+            aria-pressed="false"
+            aria-keyshortcuts="C"
           >
-            ⟲
+            Character <kbd>C</kbd>
           </button>
           <button
-            id="turn-right"
+            id="social-button"
             type="button"
-            aria-label="Turn view right"
-            aria-keyshortcuts="E"
+            aria-pressed="false"
+            aria-keyshortcuts="O"
           >
-            ⟳
+            Social <kbd>O</kbd>
           </button>
-          <kbd>Q</kbd>
-          <kbd>E</kbd>
+          <button id="logout" type="button">Log out</button>
         </div>
-        <button
-          id="character"
-          type="button"
-          aria-pressed="false"
-          aria-keyshortcuts="C"
-        >
-          Character <kbd>C</kbd> <span id="worn-gear"></span>
-        </button>
-        <button
-          id="social-button"
-          type="button"
-          aria-pressed="false"
-          aria-keyshortcuts="O"
-        >
-          Social <kbd>O</kbd>
-        </button>
-        <button id="logout" type="button">Log out</button>
       </div>
     </section>
     <p id="too-narrow">This game needs a window at least 800 px wide.</p>

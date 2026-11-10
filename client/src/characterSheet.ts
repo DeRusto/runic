@@ -113,7 +113,6 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   document
     .getElementById("gear-slots")!
     .replaceChildren(...gearSlots.map(({ box }) => box));
-  const wornIcons = document.getElementById("worn-gear")!;
   let gearDrawn: string | undefined;
 
   const combat = document.createElement("p");
@@ -165,14 +164,6 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         box.textContent = item ? "" : itemName(gearSlot);
       }
       showDetails();
-      wornIcons.replaceChildren(
-        ...items.filter(Boolean).map((item) => {
-          const icon = document.createElement("img");
-          icon.src = iconUrl(item);
-          icon.alt = itemName(item);
-          return icon;
-        }),
-      );
     },
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {
