@@ -99,12 +99,12 @@ The targets stay: level 10 in about 1 h, 20 in about 3 h and 99 in 50 to 60 h, f
 
 | Players | Skill | Level 10 | Level 20 | Level 99 |
 |---|---|---|---|---|
-| 1 | Mining | 1.1 | 3.2 | 49.9 |
-| 1 | Smithing | 1.1 | 3.2 | 49.5 |
+| 1 | Mining | 1.1 | 3.2 | 49.1 |
+| 1 | Smithing | 1.1 | 3.1 | 48.7 |
 | 3 | Mining | 2.6 | 6.6 | 102.7 |
 | 3 | Smithing | 2.5 | 6.4 | 101.8 |
 
-Three players sharing the veins run about 2× slower, because the veins run out. That's accepted for now and handed to [Site pools](https://github.com/DeRusto/runic/issues/106), which will change vein supply; rerun the simulation when it lands. Tin and coal aren't a wall: a player alone holds about 34 tin when Bronze opens and 64 coal when Steel opens, enough for a first full set (17 bars).
+Three players sharing the veins run about 2× slower, because the veins run out. That's accepted for now and handed to [Site pools](https://github.com/DeRusto/runic/issues/106), which will change vein supply; rerun the simulation when it lands. Tin and coal aren't a wall: a player alone holds about 34 tin when Bronze opens and 79 coal when Steel opens, enough for a first full set (17 bars).
 
 All of these live in `shared/` as named constants, beside the ones they join (`VEINS`, `RECIPES`, `GEAR`, `ITEMS`).
 
