@@ -111,11 +111,7 @@ export class WorldRoom extends Room {
     pm: (client, args) => {
       const [, name, message] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
       if (!name) return this.tell(client, "Usage: /pm <name> <message>");
-      const to = this.clients.find(
-        (other) =>
-          other.auth.username.toLowerCase() === name.toLowerCase() &&
-          this.sim.state.players.has(other.sessionId),
-      );
+      const to = this.onlineNamed(name);
       if (!to) return this.tell(client, `${name} is not online.`);
       if (to.auth.id === client.auth.id)
         return this.tell(
@@ -191,6 +187,32 @@ export class WorldRoom extends Room {
         );
       this.tell(client, `${other.username} is no longer on your ignore list.`);
       client.send(IGNORES, ignoresOf(client.auth.id));
+    },
+    // Silent: the target is never told (Phase 4 map). The walking is the simulation's.
+    follow: (client, name) => {
+      if (!name) return this.tell(client, "Usage: /follow <name>");
+      const account = accountNamed(name);
+      if (!account)
+        return this.tell(client, `There is no account named ${name}.`);
+      if (account.id === client.auth.id)
+        return this.tell(client, "You can't follow yourself.");
+      const target = this.onlineNamed(name);
+      if (!target)
+        return this.tell(client, `${account.username} is not online.`);
+      // Generic, so the follower can't tell they are ignored.
+      if (isIgnoring(account.id, client.auth.id))
+        return this.tell(client, `You can't follow ${account.username}.`);
+      if (this.sim.following(client.sessionId) === target.sessionId)
+        return this.tell(
+          client,
+          `You are already following ${account.username}.`,
+        );
+      this.sim.follow(client.sessionId, target.sessionId);
+    },
+    unfollow: (client) => {
+      if (!this.sim.following(client.sessionId))
+        return this.tell(client, "You are not following anyone.");
+      this.sim.unfollow(client.sessionId);
     },
   };
 
@@ -334,6 +356,15 @@ export class WorldRoom extends Room {
       this.tell(other, `${client.auth.username} has ${happened}`);
       this.sendFriends(other);
     }
+  }
+
+  /** A connected, logged-in player by case-insensitive username. */
+  private onlineNamed(name: string) {
+    return this.clients.find(
+      (other) =>
+        other.auth.username.toLowerCase() === name.toLowerCase() &&
+        this.sim.state.players.has(other.sessionId),
+    );
   }
 
   private online() {

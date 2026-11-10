@@ -163,6 +163,7 @@ type UnsyncedAction =
   | { kind: GatheringSkill; site: string }
   | { kind: "visiting" }
   | { kind: "taking"; groundItem: string }
+  | { kind: "following"; player: string }
   /** `doneTick` stays unset until arrival starts the first wait. */
   | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
 
@@ -178,6 +179,7 @@ export class Simulation {
     | { blacksmith: Tile }
     | { make: RecipeItem; all: boolean }
     | { take: string }
+    | { follow: string }
   >();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
@@ -407,6 +409,7 @@ export class Simulation {
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
+    this.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     for (const enemy of this.unsyncedEnemies.values())
       enemy.damagers.delete(id);
@@ -420,6 +423,14 @@ export class Simulation {
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
+  }
+
+  /** Death or logout on the target's side ends following too. */
+  private stopFollowersOf(target: string) {
+    for (const [id, { action }] of this.unsyncedPlayers) {
+      if (action?.kind === "following" && action.player === target)
+        this.clearAction(id);
+    }
   }
 
   private clearAction(id: string) {
@@ -461,6 +472,22 @@ export class Simulation {
     const target = this.state.enemies.get(enemy);
     if (!target || target.state === "dead") return;
     this.queuedActions.set(id, { enemy });
+  }
+
+  /** `target` is a player's session id, checked by the room's /follow command. */
+  follow(id: string, target: string) {
+    if (!this.alive(id)) return;
+    this.queuedActions.set(id, { follow: target });
+  }
+
+  /** The session id of the player this one follows, if any. */
+  following(id: string) {
+    const action = this.unsyncedPlayers.get(id)?.action;
+    return action?.kind === "following" ? action.player : undefined;
+  }
+
+  unfollow(id: string) {
+    if (this.following(id)) this.clearAction(id);
   }
 
   /** `site` comes straight off the network, so anything but the id of this skill's site is ignored, as is a click the rules refuse. */
@@ -676,6 +703,12 @@ export class Simulation {
           kind: "taking",
           groundItem: intent.take,
         };
+      } else if ("follow" in intent) {
+        // The target may have left since the intent arrived.
+        unsynced.action = this.state.players.has(intent.follow)
+          ? { kind: "following", player: intent.follow }
+          : undefined;
+        unsynced.path = [];
       } else if ("gather" in intent) {
         goNextTo(this.sites.get(intent.site)!, {
           kind: intent.gather,
@@ -709,6 +742,10 @@ export class Simulation {
         // stopping short of that is exactly "next to" (spec D1).
         const enemy = this.state.enemies.get(unsynced.action.enemy)!;
         unsynced.path = findPath(this.tiles, player, enemy).slice(0, -1);
+      } else if (unsynced.action?.kind === "following") {
+        // Next to, never on, the target's tile: so a follower on it steps off.
+        const target = this.state.players.get(unsynced.action.player)!;
+        unsynced.path = pathNextTo(this.tiles, player, target) ?? [];
       }
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
@@ -893,7 +930,10 @@ export class Simulation {
       const player = this.state.players.get(id)!;
       player.target = action?.kind === "fighting" ? action.enemy : "";
       player.action =
-        action && action.kind !== "visiting" && action.kind !== "taking"
+        action &&
+        action.kind !== "visiting" &&
+        action.kind !== "taking" &&
+        action.kind !== "following"
           ? action.kind
           : path.length
             ? "walking"
@@ -1137,6 +1177,7 @@ export class Simulation {
   private die(id: string, player: InstanceType<typeof Player>) {
     player.dead = true;
     this.clearAction(id);
+    this.stopFollowersOf(id);
     // Drop on death (#119): the Toolbelt stays.
     player.inventory.forEach((_, slot) => this.drop(id, slot));
     for (const gearSlot of GEAR_SLOTS) {
