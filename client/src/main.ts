@@ -5,6 +5,7 @@ import {
   respawnTile,
   TAKEN_OVER_CLOSE_CODE,
 } from "@runic/shared";
+import { DefaultLoadingManager } from "three";
 import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
 import { addBlacksmith } from "./blacksmith.ts";
@@ -25,6 +26,15 @@ import { showSmithingPanel } from "./smithingPanel.ts";
 import { showSocialPanel } from "./socialPanel.ts";
 import { addStations } from "./stations.ts";
 
+const loading = document.getElementById("loading")!;
+let loaded = 0;
+// Every model loader uses the default manager; its total grows as files are found, so never step back.
+DefaultLoadingManager.onProgress = (_url, done, total) => {
+  loaded = Math.max(loaded, Math.round((done / total) * 100));
+  loading.querySelector("i")!.style.width = `${loaded}%`;
+  loading.ariaValueNow = String(loaded);
+};
+
 const tiles = loadRegion(regionMap, regionTileset);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
@@ -36,11 +46,13 @@ const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
     addRegionMeshes(scene, tiles),
     addBlacksmith(tiles),
   ]).catch((error) => {
-    document.getElementById("loading")!.textContent =
-      "Could not load the game. Reload to try again.";
+    loading.dataset.failed = "";
+    loading.textContent = "Could not load the game. Reload to try again.";
     throw error;
   });
-document.getElementById("loading")!.remove();
+DefaultLoadingManager.onProgress = () => {};
+// The splash stays behind the login form until the first join settles.
+loading.remove();
 const stationUnder = addStations(tiles);
 
 const status = document.getElementById("status")!;
@@ -110,6 +122,8 @@ async function enter(join: () => Promise<WorldConnection>) {
   } catch (error) {
     if (!isTakenOver(error)) throw error;
     showTakenOver();
+  } finally {
+    document.getElementById("splash")?.remove();
   }
 }
 
