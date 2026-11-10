@@ -1,4 +1,5 @@
 import {
+  DOUBLE_YIELD,
   EVENTS,
   GATHERING,
   GATHERING_SKILLS,
@@ -140,7 +141,7 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "enemyReturned") {
         enemyFigures.get(event.enemy)![clipsOf(event.enemy).returns]();
       } else if ("success" in event) {
-        const { xpField, clip, success } =
+        const { xpField, clip, success, successDouble } =
           GATHERING[
             GATHERING_SKILLS.find(
               (skill) => GATHERING[skill].verb === event.type,
@@ -155,7 +156,14 @@ export function showFights(room: WorldConnection) {
         setTimeout(() => {
           playerOverheads
             .get(event.player)
-            ?.pop(event.success ? success : "No luck", "pick");
+            ?.pop(
+              event.success
+                ? event.count === DOUBLE_YIELD && successDouble
+                  ? successDouble
+                  : success
+                : "No luck",
+              "pick",
+            );
           if (event.player === room.sessionId) revealResult();
         }, ATTEMPT_RESULT_AT * clipMs);
       } else if (event.type === "make") {

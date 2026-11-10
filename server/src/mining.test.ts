@@ -13,9 +13,12 @@ const TILES = parseRegion(
 );
 const COPPER = "5,1";
 const IRON = "6,1";
+const EMBERITE = "7,1";
 const ARRIVAL_TICK = 5;
 const FAIL = 0.99;
-const SUCCEED = 0;
+const SUCCEED = 0.4;
+/** A roll that doubles: below every tier's double chance. */
+const DOUBLE = 0;
 
 let sim: Simulation;
 let roll: number;
@@ -27,7 +30,7 @@ beforeEach(() => {
 });
 
 const player = (id = "a") => sim.state.players.get(id)!;
-const oreLeft = (vein: string) => sim.state.veins.get(vein)!.oreLeft;
+const minesLeft = (vein: string) => sim.state.veins.get(vein)!.minesLeft;
 
 /** Adds a player with a pickaxe, unless `tools` says otherwise. */
 function addAt(
@@ -73,8 +76,8 @@ const mine = (vein: string, id = "a") => {
 };
 
 test("a vein starts full, by its tier", () => {
-  expect(oreLeft(COPPER)).toBe(3);
-  expect(oreLeft(IRON)).toBe(3);
+  expect(minesLeft(COPPER)).toBe(3);
+  expect(minesLeft(IRON)).toBe(3);
 });
 
 test("clicking a vein walks next to it and attempts on the tick of arrival", () => {
@@ -100,12 +103,132 @@ test("a player on their way or trying counts as mining", () => {
 
 test("a success gives one ore and its experience, uses the vein and ends the action", () => {
   sim.queueGather("a", "mining", COPPER);
-  expect(attemptTicks(40)).toEqual([ARRIVAL_TICK]);
-  expect(player().miningXp).toBe(10);
+  expect(attempts(40)).toEqual([
+    {
+      tick: ARRIVAL_TICK,
+      event: { type: "mine", player: "a", success: true, count: 1 },
+    },
+  ]);
+  expect(player().miningXp).toBe(6);
   expect(player().inventory[0]).toBe("copperOre");
   expect(player().inventoryCounts[0]).toBe(1);
-  expect(oreLeft(COPPER)).toBe(2);
+  expect(minesLeft(COPPER)).toBe(2);
   expect(player().action).toBe("");
+});
+
+test("a double gives two ore for one success's experience, and uses one hold", () => {
+  roll = DOUBLE;
+  sim.queueGather("a", "mining", COPPER);
+  expect(attempts(8)).toEqual([
+    {
+      tick: ARRIVAL_TICK,
+      event: { type: "mine", player: "a", success: true, count: 2 },
+    },
+  ]);
+  expect(player().miningXp).toBe(6);
+  expect(player().inventory[0]).toBe("copperOre");
+  expect(player().inventoryCounts[0]).toBe(2);
+  expect(minesLeft(COPPER)).toBe(2);
+  expect(player().action).toBe("");
+});
+
+test("a vein that holds 3 runs out after 3 successes, whatever they gave", () => {
+  addAt("b", 0);
+  roll = DOUBLE;
+  mine(COPPER, "b");
+  mine(COPPER, "b");
+  mine(COPPER, "b");
+  expect(player("b").inventoryCounts[0]).toBe(6);
+  expect(minesLeft(COPPER)).toBe(0);
+});
+
+/** A deterministic stream of rolls in [0, 1): Park–Miller, the same generator simulation.test.ts uses. */
+const seededRandom = (seed: number) => () =>
+  (seed = (seed * 16807) % 2147483647) / 2147483647;
+const doubleShare = (vein: string, x: number, y: number, mines: number) => {
+  const random = seededRandom(12345);
+  let doubles = 0;
+  let successes = 0;
+  for (let i = 0; i < mines; i++) {
+    const fresh = new Simulation(TILES, random);
+    fresh.addPlayer(
+      "a",
+      {
+        x,
+        y,
+        miningXp: xpForLevel(99),
+        tools: ["pickaxe"],
+        combatXp: 0,
+        defenseXp: 0,
+        foragingXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        inventory: Array<string>(INVENTORY_SLOTS).fill(""),
+      },
+      "a",
+    );
+    fresh.queueGather("a", "mining", vein);
+    for (let t = 0; t < 8; t++) {
+      fresh.tick();
+      for (const event of fresh.events.splice(0)) {
+        if (event.type !== "mine" || !event.success) continue;
+        successes++;
+        if (event.count === 2) doubles++;
+      }
+    }
+  }
+  expect(successes).toBe(mines);
+  return doubles / mines;
+};
+
+test("over many mines the share of doubles matches each tier's chance", () => {
+  for (const [vein, x, y, chance] of [
+    [COPPER, 4, 1, 0.3],
+    [IRON, 6, 2, 0.25],
+    [EMBERITE, 7, 2, 0.2],
+  ] as const) {
+    const share = doubleShare(vein, x, y, 500);
+    expect(share).toBeGreaterThan(chance - 0.07);
+    expect(share).toBeLessThan(chance + 0.07);
+  }
+});
+
+test("a double with one free slot puts one ore in it and one on the ground, owned by the miner", () => {
+  addAt("b", 0);
+  roll = DOUBLE;
+  for (let slot = 0; slot < INVENTORY_SLOTS - 1; slot++) {
+    player("b").inventory[slot] = "herb";
+    player("b").inventoryCounts[slot] = 20;
+  }
+  sim.queueGather("b", "mining", COPPER);
+  expect(attempts(8)).toEqual([
+    {
+      tick: 1,
+      event: { type: "mine", player: "b", success: true, count: 2 },
+    },
+  ]);
+  expect(player("b").inventory[INVENTORY_SLOTS - 1]).toBe("copperOre");
+  expect(player("b").inventoryCounts[INVENTORY_SLOTS - 1]).toBe(1);
+  expect(minesLeft(COPPER)).toBe(2);
+  const ground = [...sim.state.groundItems.values()];
+  expect(ground).toHaveLength(1);
+  expect(ground[0]).toMatchObject({
+    item: "copperOre",
+    count: 1,
+    x: 4,
+    y: 1,
+    owner: "b",
+  });
+});
+
+test("a double tops up a stack with room for two, and none reaches the ground", () => {
+  addAt("b", 0);
+  roll = DOUBLE;
+  player("b").inventory[0] = "copperOre";
+  player("b").inventoryCounts[0] = 18;
+  mine(COPPER, "b");
+  expect(player("b").inventoryCounts[0]).toBe(20);
+  expect(sim.state.groundItems.size).toBe(0);
 });
 
 test("ore tops up its stack", () => {
@@ -127,7 +250,7 @@ test("a failure gives nothing, keeps the vein, and tries again every 8 ticks", (
   ]);
   expect(player().miningXp).toBe(0);
   expect(player().inventory[0]).toBe("");
-  expect(oreLeft(COPPER)).toBe(3);
+  expect(minesLeft(COPPER)).toBe(3);
 });
 
 test("the attempt interval follows the Mining level, not Foraging", () => {
@@ -147,7 +270,7 @@ test("the chance follows the Mining level above the tier's gate", () => {
   sim.queueGather("c", "mining", IRON);
   attempts(1);
   expect(player("c").inventory[0]).toBe("ironOre"); // 52% one level up.
-  expect(player("c").miningXp).toBe(xpForLevel(11) + 30);
+  expect(player("c").miningXp).toBe(xpForLevel(11) + 18);
 });
 
 test("clicking again can't beat the attempt interval", () => {
@@ -203,11 +326,11 @@ test("a run-out vein stops whoever is still trying, and a shared last ore goes t
   addAt("c", 0, 4, 2);
   mine(COPPER, "b");
   mine(COPPER, "b");
-  expect(oreLeft(COPPER)).toBe(1);
+  expect(minesLeft(COPPER)).toBe(1);
   sim.queueGather("b", "mining", COPPER);
   sim.queueGather("c", "mining", COPPER);
   expect(attempts(10)).toHaveLength(1);
-  expect(oreLeft(COPPER)).toBe(0);
+  expect(minesLeft(COPPER)).toBe(0);
   expect(player("b").action).toBe("");
   expect(player("c").action).toBe("");
   expect(player("c").inventory[0]).toBe("");
@@ -229,7 +352,7 @@ test("a click on a run-out vein is ignored", () => {
   mine(COPPER, "b");
   mine(COPPER, "b");
   mine(COPPER, "b");
-  expect(oreLeft(COPPER)).toBe(0);
+  expect(minesLeft(COPPER)).toBe(0);
   sim.queueGather("a", "mining", COPPER);
   attempts(1);
   expect(player()).toMatchObject({ x: 1, y: 1, action: "" });
@@ -239,14 +362,14 @@ test("a vein grows back fully only after it runs out, at its tier's time", () =>
   addAt("b", 0);
   mine(COPPER, "b");
   attempts(1000);
-  expect(oreLeft(COPPER)).toBe(2);
+  expect(minesLeft(COPPER)).toBe(2);
   mine(COPPER, "b");
   mine(COPPER, "b");
-  expect(oreLeft(COPPER)).toBe(0);
+  expect(minesLeft(COPPER)).toBe(0);
   attempts(399 - 7);
-  expect(oreLeft(COPPER)).toBe(0);
+  expect(minesLeft(COPPER)).toBe(0);
   attempts(1);
-  expect(oreLeft(COPPER)).toBe(3);
+  expect(minesLeft(COPPER)).toBe(3);
 });
 
 test("a full inventory stops the trying", () => {
@@ -337,10 +460,10 @@ test("experience and ore are saved, and vein state isn't", () => {
   addAt("b", 0);
   mine(COPPER, "b");
   const save = sim.saveOf("b")!;
-  expect(save).toMatchObject({ miningXp: 10 });
+  expect(save).toMatchObject({ miningXp: 6 });
   expect(save.inventory![0]).toBe("copperOre");
-  expect(JSON.stringify(save)).not.toMatch(/oreLeft|vein/);
+  expect(JSON.stringify(save)).not.toMatch(/minesLeft|vein/);
   // A restart starts every vein full again, the same as bushes.
   const restarted = new Simulation(TILES, () => FAIL);
-  expect(restarted.state.veins.get(COPPER)!.oreLeft).toBe(3);
+  expect(restarted.state.veins.get(COPPER)!.minesLeft).toBe(3);
 });

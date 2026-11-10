@@ -9,14 +9,18 @@ export const FORAGE_INTENT = "forage";
 /** The mine intent's message type; its payload is the clicked vein's id in state. */
 export const MINE_INTENT = "mine";
 
-/** One row of `BUSHES` or `VEINS`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. */
+/** One row of `BUSHES` or `VEINS`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. */
 type GatheringSource = {
   level: number;
   holds: number;
   regrowTicks: number;
   xp: number;
+  doubleChance?: number;
   item: ItemId;
 };
+
+/** How many a success gives when it doubles. */
+export const DOUBLE_YIELD = 2;
 
 /** Everything that tells the gathering skills apart. Each key is also the skill's synced `PlayerAction`. */
 export const GATHERING = {
@@ -37,6 +41,7 @@ export const GATHERING = {
     intent: FORAGE_INTENT,
     clip: "PickUp",
     success: "Picked!",
+    successDouble: undefined,
   },
   mining: {
     skill: "Mining",
@@ -47,10 +52,11 @@ export const GATHERING = {
     site: "vein",
     verb: "mine",
     stateField: "veins",
-    leftField: "oreLeft",
+    leftField: "minesLeft",
     intent: MINE_INTENT,
     clip: "Pickaxing",
     success: "Mined!",
+    successDouble: "Mined 2!",
   },
 } as const;
 
