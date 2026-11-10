@@ -277,12 +277,14 @@
       #social[hidden] {
         display: none;
       }
-      #friends {
+      #friends,
+      #ignores {
         margin: 0;
         padding: 0;
         list-style: none;
       }
-      #friends li {
+      #friends li,
+      #ignores li {
         display: flex;
         justify-content: space-between;
         padding: 2px 0;
@@ -627,9 +629,20 @@
         >
           Friends
         </button>
+        <button
+          id="social-tab-ignores"
+          type="button"
+          role="tab"
+          aria-selected="false"
+        >
+          Ignore
+        </button>
       </div>
       <div id="social-friends" role="tabpanel">
         <ul id="friends" aria-label="Friends list"></ul>
+      </div>
+      <div id="social-ignores" role="tabpanel" hidden>
+        <ul id="ignores" aria-label="Ignore list"></ul>
       </div>
     </section>
     <section

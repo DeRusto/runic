@@ -37,6 +37,8 @@ export const PRIVATE_LINE = "privateLine";
 /** A player asks for their friends list with no payload; the server sends them the whole `Friend[]` in name order then, and whenever it or a friend's status changes. */
 export const FRIENDS = "friends";
 export type Friend = { username: string; online: boolean };
+/** A player asks for their ignore list with no payload; the server sends them the usernames in name order then, and whenever it changes. */
+export const IGNORES = "ignores";
 
 /** Closes the old connection when the same account logs in again. */
 export const TAKEN_OVER_CLOSE_CODE = 4011;

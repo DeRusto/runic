@@ -74,3 +74,17 @@ export const friends = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.accountId, table.friendId] })],
 );
+
+/** One row per name on an ignore list. Ignoring is one-sided and silent, like adding a friend. */
+export const ignores = sqliteTable(
+  "ignores",
+  {
+    accountId: integer("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    ignoredId: integer("ignored_id")
+      .notNull()
+      .references(() => accounts.id),
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.ignoredId] })],
+);

@@ -1,8 +1,8 @@
-import { FRIENDS, type Friend } from "@runic/shared";
+import { CHAT, FRIENDS, IGNORES, type Friend } from "@runic/shared";
 import { sheetKey } from "./characterSheet.ts";
 import type { WorldConnection } from "./players.ts";
 
-/** The floating window of friends (and, later, ignored players), opened from the bar or with O. */
+/** The floating window of friends and ignored players, opened from the bar or with O. */
 export function showSocialPanel(room: WorldConnection) {
   const panel = document.getElementById("social")!;
   const button = document.getElementById("social-button")!;
@@ -27,6 +27,19 @@ export function showSocialPanel(room: WorldConnection) {
     document.removeEventListener("keydown", onKey);
   });
 
+  const tabs = ["friends", "ignores"].map((name) => ({
+    tab: document.getElementById(`social-tab-${name}`)!,
+    pane: document.getElementById(`social-${name}`)!,
+  }));
+  for (const chosen of tabs) {
+    chosen.tab.onclick = () => {
+      for (const { tab, pane } of tabs) {
+        tab.setAttribute("aria-selected", String(tab === chosen.tab));
+        pane.hidden = tab !== chosen.tab;
+      }
+    };
+  }
+
   room.onMessage(FRIENDS, (friends: Friend[]) => {
     list.replaceChildren(
       ...friends.map(({ username, online }) => {
@@ -41,6 +54,22 @@ export function showSocialPanel(room: WorldConnection) {
       }),
     );
   });
+  // Names only, no status (Phase 4 map). The server decides what is ignored; this only lists it.
+  room.onMessage(IGNORES, (names: string[]) => {
+    document.getElementById("ignores")!.replaceChildren(
+      ...names.map((username) => {
+        const row = document.createElement("li");
+        const name = document.createElement("span");
+        const unignore = document.createElement("button");
+        name.textContent = username;
+        unignore.textContent = "Unignore";
+        unignore.onclick = () => room.send(CHAT, `/unignore ${username}`);
+        row.append(name, unignore);
+        return row;
+      }),
+    );
+  });
+  room.send(IGNORES);
   // Statuses change while the connection is down, and nothing resends them.
   room.onReconnect(() => room.send(FRIENDS));
   room.send(FRIENDS);

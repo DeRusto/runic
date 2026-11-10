@@ -172,6 +172,10 @@ _Avoid_: PM (outside the command), whisper, DM
 The accounts a player has added with `/friend <name>` and not removed with `/unfriend <name>`, kept on the server across logins. Adding is one-sided: the friend is not asked or told. The social panel (O) shows each friend as online or offline, and the player's chat box gets a line when a friend logs in or out.
 _Avoid_: Buddy list, contacts
 
+**Ignore list**:
+The accounts a player has added with `/ignore <name>` and not removed with `/unignore <name>`, kept on the server across logins. The server drops their public chat and private messages before they reach this player, and the ignored player is not told: they still see their own lines. Ignoring a friend takes them off the friends list. The social panel (O) lists the names, with no status.
+_Avoid_: Block list, mute
+
 **Drop**:
 Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
 _Avoid_: Discard, destroy, delete

@@ -1,4 +1,4 @@
-import { FRIENDS, type Friend } from "@runic/shared";
+import { CHAT, FRIENDS, IGNORES, type Friend } from "@runic/shared";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
 import { showSocialPanel } from "./socialPanel.ts";
@@ -125,4 +125,28 @@ test("leaving the world stops the O key", () => {
   room.leave();
   press("o");
   expect(isOpen()).toBe(false);
+});
+
+test("asks for the ignore list, and lists names only", () => {
+  expect(room.send).toHaveBeenCalledWith(IGNORES);
+  room.messages.get(IGNORES)!(["Ada", "Bo"]);
+  expect(
+    el("ignores").children.map((row) => row.children[0].textContent),
+  ).toEqual(["Ada", "Bo"]);
+});
+
+test("unignoring from the panel sends the same command as typing it", () => {
+  room.messages.get(IGNORES)!(["Ada"]);
+  el("ignores").children[0].children[1].onclick();
+  expect(room.send).toHaveBeenCalledWith(CHAT, "/unignore Ada");
+});
+
+test("the tabs show one list at a time", () => {
+  el("social-tab-ignores").onclick!();
+  expect(el("social-friends").hidden).toBe(true);
+  expect(el("social-ignores").hidden).toBe(false);
+  expect(el("social-tab-ignores").attributes["aria-selected"]).toBe("true");
+  el("social-tab-friends").onclick!();
+  expect(el("social-friends").hidden).toBe(false);
+  expect(el("social-ignores").hidden).toBe(true);
 });

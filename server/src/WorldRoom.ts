@@ -14,6 +14,7 @@ import {
   EVENTS,
   FORAGE_INTENT,
   FRIENDS,
+  IGNORES,
   LOGOUT_INTENT,
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
@@ -36,6 +37,13 @@ import {
 } from "@runic/shared";
 import { accountForToken, accountNamed } from "./accounts.ts";
 import { addFriend, friendedBy, friendsOf, removeFriend } from "./friends.ts";
+import {
+  addIgnore,
+  ignoredBy,
+  ignoresOf,
+  isIgnoring,
+  removeIgnore,
+} from "./ignores.ts";
 import { readSave, writeSave } from "./saves.ts";
 import { Simulation } from "./simulation.ts";
 import { tickStepper } from "./tickStepper.ts";
@@ -80,17 +88,21 @@ export class WorldRoom extends Room {
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Asked for by the client once it listens, since a message sent during the join would arrive first.
     [FRIENDS]: (client: Client) => this.sendFriends(client),
+    [IGNORES]: (client: Client) =>
+      client.send(IGNORES, ignoresOf(client.auth.id)),
     // Not through the simulation: chat skips the tick, and a dead player can still talk (D8).
     [CHAT]: (client: Client, line: string) => {
       const text = typeof line === "string" ? line.trim() : "";
       if (!text || text.length > MAX_CHAT_LENGTH) return;
       if (text.startsWith("/")) return this.runCommand(client, text.slice(1));
-      const { username } = client.auth;
-      this.broadcast(CHAT, {
-        id: client.sessionId,
-        username,
-        text,
-      } satisfies ChatLine);
+      const { id, username } = client.auth;
+      const ignoring = ignoredBy(id);
+      // Dropped here, not hidden by the client, so an ignored player's words never reach you.
+      this.broadcast(
+        CHAT,
+        { id: client.sessionId, username, text } satisfies ChatLine,
+        { except: this.clients.filter((other) => ignoring.has(other.auth.id)) },
+      );
     },
   };
 
@@ -110,7 +122,9 @@ export class WorldRoom extends Room {
           client,
           "You can't send a private message to yourself.",
         );
-      this.tell(to, `From ${client.auth.username}: ${message}`);
+      // Silent: the sender still sees their own copy and no error (Phase 4 map).
+      if (!isIgnoring(to.auth.id, client.auth.id))
+        this.tell(to, `From ${client.auth.username}: ${message}`);
       this.tell(client, `To ${to.auth.username}: ${message}`);
     },
     // Silent: the friend is never asked or told (Phase 4 map).
@@ -147,6 +161,36 @@ export class WorldRoom extends Room {
         `${friend.username} is no longer on your friends list.`,
       );
       this.sendFriends(client);
+    },
+    // Silent: the ignored player is never told (Phase 4 map).
+    ignore: (client, name) => {
+      if (!name) return this.tell(client, "Usage: /ignore <name>");
+      const other = accountNamed(name);
+      if (!other)
+        return this.tell(client, `There is no account named ${name}.`);
+      if (other.id === client.auth.id)
+        return this.tell(client, "You can't add yourself to your ignore list.");
+      if (!addIgnore(client.auth.id, other.id))
+        return this.tell(
+          client,
+          `${other.username} is already on your ignore list.`,
+        );
+      this.tell(client, `${other.username} is now on your ignore list.`);
+      client.send(IGNORES, ignoresOf(client.auth.id));
+      if (removeFriend(client.auth.id, other.id)) this.sendFriends(client);
+    },
+    unignore: (client, name) => {
+      if (!name) return this.tell(client, "Usage: /unignore <name>");
+      const other = accountNamed(name);
+      if (!other)
+        return this.tell(client, `There is no account named ${name}.`);
+      if (!removeIgnore(client.auth.id, other.id))
+        return this.tell(
+          client,
+          `${other.username} is not on your ignore list.`,
+        );
+      this.tell(client, `${other.username} is no longer on your ignore list.`);
+      client.send(IGNORES, ignoresOf(client.auth.id));
     },
   };
 
