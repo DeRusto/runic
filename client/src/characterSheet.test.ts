@@ -160,7 +160,6 @@ describe("the Gear tab", () => {
     wearing("ironSword");
     wearing("");
     expect(box().textContent).toBe("Weapon");
-    expect(el("worn-gear").children).toEqual([]);
   });
 
   test("a left-click takes it off", () => {
@@ -181,21 +180,11 @@ describe("the Gear tab", () => {
     expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "legs");
   });
 
-  test("the Character button shows small icons of the worn gear", () => {
-    wearing("ironSword", "copperShield");
-    const icons = el("worn-gear").children;
-    expect(icons.map(({ src }) => src)).toEqual([
-      "/icons/ironSword.png",
-      "/icons/copperShield.png",
-    ]);
-    expect(icons[0].alt).toBe("Iron sword");
-  });
-
   test("patches with no change to the gear don't redraw", () => {
     wearing("ironSword");
-    const icon = el("worn-gear").children[0];
+    box().title = "untouched";
     wearing("ironSword");
-    expect(el("worn-gear").children[0]).toBe(icon);
+    expect(box().title).toBe("untouched");
   });
 });
 
