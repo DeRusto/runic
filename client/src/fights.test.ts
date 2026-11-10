@@ -547,6 +547,14 @@ describe("the mine event", () => {
     expect(overhead.pop).toHaveBeenCalledWith("Mined!", "pick");
   });
 
+  test("a double says so at the same moment", () => {
+    send({ type: "mine", player: "a", success: true, count: 2 });
+    expect(holdResult).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(0.4 * 2400);
+    expect(revealResult).toHaveBeenCalledOnce();
+    expect(overhead.pop).toHaveBeenCalledWith("Mined 2!", "pick");
+  });
+
   test("a failure holds nothing, and says so at the same moment", () => {
     send({ type: "mine", player: "a", success: false });
     expect(holdResult).not.toHaveBeenCalled();

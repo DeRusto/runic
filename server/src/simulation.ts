@@ -10,6 +10,7 @@ import {
   costsOf,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_ENEMY_SWING,
+  DOUBLE_YIELD,
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
@@ -25,6 +26,7 @@ import {
   HEALING_POOL_INTERVAL_TICKS,
   HEALTH_PER_HITPOINTS_LEVEL,
   INVENTORY_SLOTS,
+  ITEMS,
   levelFor,
   makeRefusal,
   MASTERY_SHARE_PERCENT,
@@ -132,7 +134,7 @@ export const Enemy = schema(
 
 export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
 
-export const Vein = schema({ oreLeft: t.uint8() }, "Vein");
+export const Vein = schema({ minesLeft: t.uint8() }, "Vein");
 
 const SITE_SCHEMAS = { bushes: Bush, veins: Vein };
 
@@ -620,6 +622,17 @@ export class Simulation {
     player.inventoryCounts[slot]!++;
   }
 
+  /** How many more of `item` fit: spaces in its stacks, plus one per empty slot. Counted before any land, so a double with a single free slot and no stack leaves its second ore on the ground (#152). */
+  private roomFor(item: ItemId, player: InstanceType<typeof Player>) {
+    let room = 0;
+    player.inventory.forEach((held, slot) => {
+      if (held === EMPTY_SLOT) room++;
+      else if (held === item)
+        room += ITEMS[item].stack - player.inventoryCounts[slot]!;
+    });
+    return room;
+  }
+
   private drop(id: string, slot: number) {
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
@@ -774,10 +787,35 @@ export class Simulation {
       unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
       const source = gatheringSource(skill, site.kind);
       const success = this.random() < attemptChance(source.level, level);
-      this.events.push({ type: verb, player: id, success });
+      const count: 1 | 2 =
+        success &&
+        source.doubleChance !== undefined &&
+        this.random() < source.doubleChance
+          ? DOUBLE_YIELD
+          : 1;
+      this.events.push({
+        type: verb,
+        player: id,
+        success,
+        ...(success ? { count } : {}),
+      });
       if (!success) continue;
       this.earnXp(player, xpField, source.xp);
-      this.addToSlot(player, slotFor(source.item, player), source.item);
+      // Room is counted before either lands, so the second ore goes on the
+      // ground, owned by the miner, when the first took the last of it.
+      const room = this.roomFor(source.item, player);
+      for (let i = 0; i < count; i++) {
+        if (i < room)
+          this.addToSlot(player, slotFor(source.item, player), source.item);
+        else
+          this.groundItems.spawn(
+            player,
+            source.item,
+            1,
+            player.username,
+            this.state.tick,
+          );
+      }
       if (--site.synced[leftField]! === 0)
         site.regrowTick = this.state.tick + source.regrowTicks;
       unsynced.action = undefined;

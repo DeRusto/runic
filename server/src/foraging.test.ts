@@ -5,6 +5,7 @@ import {
   parseRegion,
   pickIntervalTicks,
   xpForLevel,
+  type WorldEvent,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
@@ -82,6 +83,19 @@ test("a success gives the XP and the food, uses a pick and ends the action", () 
   expect(player().foragingXp).toBe(10);
   expect(player().inventory[0]).toBe("berry");
   expect(picksLeft(BERRY)).toBe(4);
+});
+
+test("a pick still gives 1, and its event says so", () => {
+  sim.queueGather("a", "foraging", BERRY);
+  const seen: WorldEvent[] = [];
+  for (let i = 0; i < 8; i++) {
+    sim.tick();
+    seen.push(...sim.events.splice(0));
+  }
+  expect(seen).toEqual([
+    { type: "pick", player: "a", success: true, count: 1 },
+  ]);
+  expect(player().inventoryCounts[0]).toBe(1);
 });
 
 test("a pick goes in the first empty slot", () => {
