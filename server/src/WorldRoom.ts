@@ -18,6 +18,7 @@ import {
   MAX_CHAT_LENGTH,
   MINE_INTENT,
   PIN_INTENT,
+  PRIVATE_LINE,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
   TAKE_INTENT,
@@ -78,12 +79,34 @@ export class WorldRoom extends Room {
     [CHAT]: (client: Client, line: string) => {
       const text = typeof line === "string" ? line.trim() : "";
       if (!text || text.length > MAX_CHAT_LENGTH) return;
+      if (text.startsWith("/")) return this.runCommand(client, text.slice(1));
       const { username } = client.auth;
       this.broadcast(CHAT, {
         id: client.sessionId,
         username,
         text,
       } satisfies ChatLine);
+    },
+  };
+
+  /** Chat commands by lower-cased name; each gets the trimmed text after the name. */
+  private commands: Record<string, (client: Client, args: string) => void> = {
+    pm: (client, args) => {
+      const [, name, message] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
+      if (!name) return this.tell(client, "Usage: /pm <name> <message>");
+      const to = this.clients.find(
+        (other) =>
+          other.auth.username.toLowerCase() === name.toLowerCase() &&
+          this.sim.state.players.has(other.sessionId),
+      );
+      if (!to) return this.tell(client, `${name} is not online.`);
+      if (to.auth.id === client.auth.id)
+        return this.tell(
+          client,
+          "You can't send a private message to yourself.",
+        );
+      this.tell(to, `From ${client.auth.username}: ${message}`);
+      this.tell(client, `To ${to.auth.username}: ${message}`);
     },
   };
 
@@ -181,6 +204,21 @@ export class WorldRoom extends Room {
           view.add(groundItem);
       }
     }
+  }
+
+  /** `line` is the chat line after its leading "/". */
+  private runCommand(client: Client, line: string) {
+    const [name = "", args = ""] = line.split(/\s+(.*)/s);
+    const command = Object.hasOwn(this.commands, name.toLowerCase())
+      ? this.commands[name.toLowerCase()]
+      : undefined;
+    if (!command) return this.tell(client, `Unknown command: /${name}`);
+    command(client, args.trim());
+  }
+
+  /** A chat-box line for this client only. */
+  private tell(client: Client, line: string) {
+    client.send(PRIVATE_LINE, line);
   }
 
   private online() {

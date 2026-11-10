@@ -10,6 +10,7 @@ import {
   levelFor,
   levelProgress,
   MAX_CHAT_LENGTH,
+  PRIVATE_LINE,
   SKILLS,
   type ChatLine,
 } from "@runic/shared";
@@ -53,6 +54,7 @@ export function showBottomBar(
     printChatLine(`${username}: ${text}`);
     sayOverhead(id, text);
   });
+  room.onMessage(PRIVATE_LINE, printChatLine);
 
   const input = document.getElementById("chat-input") as HTMLInputElement;
   input.maxLength = MAX_CHAT_LENGTH;

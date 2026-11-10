@@ -160,6 +160,14 @@ _Avoid_: Bag, backpack
 Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
 _Avoid_: Pile, bundle
 
+**Chat command**:
+A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud, and a mistake gets a line in the sender's own chat box only.
+_Avoid_: Slash command
+
+**Private message**:
+A chat line sent with `/pm <name> <message>` to one online player. It shows in the chat boxes of that player (`From <name>:`) and the sender (`To <name>:`), and nowhere else, never over anyone's head.
+_Avoid_: PM (outside the command), whisper, DM
+
 **Drop**:
 Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
 _Avoid_: Discard, destroy, delete
