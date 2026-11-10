@@ -22,3 +22,5 @@ models/
 
 ui/
     ui/LICENSE-Kenney-UI-Pack-Adventure.txt.
+    splash.webp
+        Supplied for Runic by DeRusto. No licence is granted for it here.

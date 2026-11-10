@@ -24,15 +24,12 @@ function storeToken(token: string | null) {
 function askForToken() {
   return new Promise<string>((resolve) => {
     const form = document.createElement("form");
-    form.style.cssText =
-      "position:fixed;inset:0;margin:auto;width:min(280px,calc(100vw - 32px));height:fit-content;" +
-      "display:grid;gap:8px;padding:16px;background:#fff;color:#111;border:1px solid #888;" +
-      "font-family:system-ui,sans-serif";
+    form.id = "login";
     form.innerHTML = `
-      <label>Username <input name="username" autocomplete="username" required style="width:100%;box-sizing:border-box" /></label>
-      <label>Password <input name="password" type="password" required style="width:100%;box-sizing:border-box" /></label>
-      <label>Invite code <input name="inviteCode" autocomplete="off" style="width:100%;box-sizing:border-box" /></label>
-      <p role="alert" style="margin:0;color:#b00020"></p>
+      <label>Username <input name="username" autocomplete="username" required /></label>
+      <label>Password <input name="password" type="password" required /></label>
+      <label>Invite code <input name="inviteCode" autocomplete="off" /></label>
+      <p role="alert"></p>
       <button type="submit"></button>
       <button type="button"></button>
     `;
