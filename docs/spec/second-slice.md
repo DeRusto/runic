@@ -266,7 +266,7 @@ The ray tests live enemies, bushes, veins, stations and the Blacksmith, then fal
 - Left-click stays the main action: eat food or equip gear, and materials do nothing.
 - Right-click opens a small menu: Eat and Discard on food, Equip and Discard on gear, only Discard on materials. Materials must still catch a right-click, so their slots can't be `disabled` buttons as empty ones are today.
 - The skills column shows pinned skills only, two across and three down, in the sheet's order. With nothing pinned it shows "Pin skills from the sheet".
-- A **Character** button shows small icons of the worn gear.
+- A **Character** button opens the sheet. It first showed small icons of the worn gear; those were dropped when the bar's buttons moved into one row under the skills, with Health above the skills, and the bar grew to 160 px to fit them.
 - **Holding results:** the bar holds a pick's result until the clip shows it, and it detects a pick by counting filled slots. Stacks, gear and making all break that count, so it must key off the `pick` and `mine` events instead.
 - **Narrow windows:** the bar needs at least 800 px, because at 665 px its right end is cut off. Below 800 px the client shows one line asking for a wider window, and doesn't try a narrow layout **[D10]**.
 
