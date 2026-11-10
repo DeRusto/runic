@@ -30,9 +30,10 @@ const loading = document.getElementById("loading")!;
 let loaded = 0;
 // Every model loader uses the default manager; its total grows as files are found, so never step back.
 DefaultLoadingManager.onProgress = (_url, done, total) => {
-  loaded = Math.max(loaded, Math.round((done / total) * 100));
+  // A glTF can count as done before its own textures are found, so only the models settling make 100.
+  loaded = Math.max(loaded, Math.min(99, Math.round((done / total) * 100)));
   loading.querySelector("i")!.style.width = `${loaded}%`;
-  loading.ariaValueNow = String(loaded);
+  loading.setAttribute("aria-valuenow", String(loaded));
 };
 
 const tiles = loadRegion(regionMap, regionTileset);
@@ -45,12 +46,16 @@ const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
     loadSkeletons(),
     addRegionMeshes(scene, tiles),
     addBlacksmith(tiles),
-  ]).catch((error) => {
-    loading.dataset.failed = "";
-    loading.textContent = "Could not load the game. Reload to try again.";
-    throw error;
-  });
-DefaultLoadingManager.onProgress = () => {};
+  ])
+    // Loads still in flight after a failure would look for a bar that is gone.
+    .finally(() => (DefaultLoadingManager.onProgress = () => {}))
+    .catch((error) => {
+      loading.dataset.failed = "";
+      loading.setAttribute("role", "alert");
+      loading.removeAttribute("aria-label");
+      loading.textContent = "Could not load the game. Reload to try again.";
+      throw error;
+    });
 // The splash stays behind the login form until the first join settles.
 loading.remove();
 const stationUnder = addStations(tiles);

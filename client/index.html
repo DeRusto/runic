@@ -611,7 +611,16 @@
         font: 16px system-ui;
         text-align: center;
       }
+      /* A short window has no room below the logo, so the form takes the lowest spot and scrolls. */
+      @media (max-height: 560px) {
+        #loading,
+        #login {
+          bottom: 8px;
+        }
+      }
       #login {
+        max-height: calc(100vh - 16px);
+        overflow-y: auto;
         width: min(300px, calc(100vw - 32px));
         display: grid;
         gap: 8px;
