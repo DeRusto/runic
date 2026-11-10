@@ -32,6 +32,7 @@ function add(
     x = 5,
     y = 1,
     smithingXp = 0,
+    miningXp = 0,
     tools = ["hammer"],
     fill = "",
     fillCount = 0,
@@ -49,6 +50,7 @@ function add(
       x,
       y,
       smithingXp,
+      miningXp,
       tools,
       inventory,
       inventoryCounts,
@@ -105,16 +107,16 @@ test("materials leave and the item and experience arrive together at the end of 
     ["copperOre", 1],
     ["copperBar", 1],
   ]);
-  expect(player().smithingXp).toBe(4);
-  expect(player().miningXp).toBe(4);
+  expect(player().smithingXp).toBe(0);
+  expect(player().miningXp).toBe(2);
 });
 
-test("an Emberite bar gives its 24 experience in both Smithing and Mining", () => {
-  add([["emberiteOre", 1]], { smithingXp: xpForLevel(20) });
+test("an Emberite bar gives 12 Mining experience and no Smithing", () => {
+  add([["emberiteOre", 1]], { miningXp: xpForLevel(20) });
   sim.queueMake("a", { item: "emberiteBar", all: false });
   run(7);
-  expect(player().smithingXp).toBe(xpForLevel(20) + 24);
-  expect(player().miningXp).toBe(24);
+  expect(player().smithingXp).toBe(0);
+  expect(player().miningXp).toBe(xpForLevel(20) + 12);
 });
 
 test("a sword or shield gives only Smithing experience", () => {
@@ -128,14 +130,14 @@ test("a sword or shield gives only Smithing experience", () => {
   expect(player().miningXp).toBe(0);
 });
 
-test("Mining levels don't open smelting's Smithing gate", () => {
-  add([["ironOre", 1]]);
-  player().miningXp = xpForLevel(50);
+test("Smithing levels don't open smelting's Mining gate", () => {
+  add([["ironOre", 1]], { smithingXp: xpForLevel(50) });
   sim.queueMake("a", { item: "ironBar", all: false });
   run(7);
   expect(items()).toEqual([["ironOre", 1]]);
-  expect(player().miningXp).toBe(xpForLevel(50));
-  expect(lines()).toEqual(["Needs Smithing 10"]);
+  expect(player().smithingXp).toBe(xpForLevel(50));
+  expect(player().miningXp).toBe(0);
+  expect(lines()).toEqual(["Needs Mining 10"]);
 });
 
 test("Make 1 ends after one item, with no line", () => {
@@ -165,7 +167,7 @@ test("Make all goes on until the materials run out, then says so once", () => {
   run(30);
   expect(items()).toEqual([[`copperBar`, 2]]);
   expect(player().action).toBe("");
-  expect(player().smithingXp).toBe(8);
+  expect(player().miningXp).toBe(4);
   expect(lines()).toEqual(["Not enough materials"]);
 });
 
@@ -203,15 +205,16 @@ test("too few materials on arrival end it with a line, and nothing is made", () 
 });
 
 test("too low a level on arrival ends it, whatever is held", () => {
-  add([["ironOre", 5]], { smithingXp: xpForLevel(9) });
+  add([["ironOre", 5]], { miningXp: xpForLevel(9) });
   sim.queueMake("a", { item: "ironBar", all: true });
   run(20);
   expect(makes()).toEqual([]);
-  expect(lines()).toEqual(["Needs Smithing 10"]);
-  add([["ironOre", 5]], { id: "b", smithingXp: xpForLevel(10) });
+  expect(lines()).toEqual(["Needs Mining 10"]);
+  add([["ironOre", 5]], { id: "b", miningXp: xpForLevel(10) });
   sim.queueMake("b", { item: "ironBar", all: false });
   run(7);
-  expect(player("b").smithingXp).toBe(xpForLevel(10) + 12);
+  expect(player("b").miningXp).toBe(xpForLevel(10) + 6);
+  expect(player("b").smithingXp).toBe(0);
 });
 
 test("materials dropped during the wait end it with a line, and nothing is made", () => {
@@ -420,6 +423,6 @@ test("what was made and its experience are saved", () => {
   add([["copperOre", 1]]);
   sim.queueMake("a", { item: "copperBar", all: false });
   run(7);
-  expect(sim.saveOf("a")).toMatchObject({ smithingXp: 4 });
+  expect(sim.saveOf("a")).toMatchObject({ miningXp: 2 });
   expect(sim.saveOf("a")!.inventory![0]).toBe("copperBar");
 });

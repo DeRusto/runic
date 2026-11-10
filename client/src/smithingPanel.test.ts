@@ -48,6 +48,7 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     y: 1,
     dead: false,
     smithingXp: 0,
+    miningXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -219,6 +220,29 @@ test("a level gained while it's open lifts that row's level reason", () => {
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(10) }));
   expect(iron.className).toBe("");
   expect(texts(iron)).not.toContain("Needs Smithing 10");
+});
+
+test("a furnace row names Mining as its gate, whatever the Smithing level", () => {
+  patch(
+    me([["ironOre", 1]], {
+      smithingXp: xpForLevel(50),
+      miningXp: xpForLevel(9),
+    }),
+  );
+  open("furnace");
+  const iron = shownRows()[1];
+  expect(texts(iron).slice(0, 3)).toEqual([
+    "Iron bar",
+    "1 Iron ore (have 1)",
+    "Mining 10",
+  ]);
+  expect(texts(iron)).toContain("Needs Mining 10");
+  expect(buttons(iron).every((b: any) => b.disabled)).toBe(true);
+
+  patch(me([["ironOre", 1]], { smithingXp: 0, miningXp: xpForLevel(10) }));
+  expect(iron.className).toBe("");
+  expect(texts(iron)).not.toContain("Needs Mining 10");
+  expect(buttons(iron).every((b: any) => !b.disabled)).toBe(true);
 });
 
 test("its X closes it", () => {
