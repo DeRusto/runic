@@ -2,37 +2,46 @@ import { expect, test } from "vitest";
 import { countOf, makeRefusal, RECIPES, stationRefusal } from "./making.ts";
 import { xpForLevel } from "./skills.ts";
 
-const holding = (held: [string, number][], smithingXp = 0) => ({
+const holding = (held: [string, number][], smithingXp = 0, miningXp = 0) => ({
   smithingXp,
+  miningXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are spec §5's table", () => {
+test("the recipes are the rebalance spec §3's Making table", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
+      skill: "Mining",
+      xpField: "miningXp",
       level: 1,
       costs: { copperOre: 1 },
       ticks: 6,
-      xp: { smithingXp: 4, miningXp: 4 },
+      xp: { miningXp: 2 },
     },
     ironBar: {
       station: "furnace",
+      skill: "Mining",
+      xpField: "miningXp",
       level: 10,
       costs: { ironOre: 1 },
       ticks: 6,
-      xp: { smithingXp: 12, miningXp: 12 },
+      xp: { miningXp: 6 },
     },
     emberiteBar: {
       station: "furnace",
+      skill: "Mining",
+      xpField: "miningXp",
       level: 20,
       costs: { emberiteOre: 1 },
       ticks: 6,
-      xp: { smithingXp: 24, miningXp: 24 },
+      xp: { miningXp: 12 },
     },
     copperSword: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 1,
       costs: { copperBar: 3 },
       ticks: 12,
@@ -40,6 +49,8 @@ test("the recipes are spec §5's table", () => {
     },
     copperShield: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 1,
       costs: { copperBar: 4 },
       ticks: 16,
@@ -47,6 +58,8 @@ test("the recipes are spec §5's table", () => {
     },
     copperHelmet: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 1,
       costs: { copperBar: 2 },
       ticks: 8,
@@ -54,6 +67,8 @@ test("the recipes are spec §5's table", () => {
     },
     copperChestplate: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 1,
       costs: { copperBar: 5 },
       ticks: 20,
@@ -61,6 +76,8 @@ test("the recipes are spec §5's table", () => {
     },
     copperLeggings: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 1,
       costs: { copperBar: 3 },
       ticks: 12,
@@ -68,6 +85,8 @@ test("the recipes are spec §5's table", () => {
     },
     ironSword: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 10,
       costs: { ironBar: 3 },
       ticks: 12,
@@ -75,6 +94,8 @@ test("the recipes are spec §5's table", () => {
     },
     ironShield: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 10,
       costs: { ironBar: 4 },
       ticks: 16,
@@ -82,6 +103,8 @@ test("the recipes are spec §5's table", () => {
     },
     ironHelmet: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 10,
       costs: { ironBar: 2 },
       ticks: 8,
@@ -89,6 +112,8 @@ test("the recipes are spec §5's table", () => {
     },
     ironChestplate: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 10,
       costs: { ironBar: 5 },
       ticks: 20,
@@ -96,6 +121,8 @@ test("the recipes are spec §5's table", () => {
     },
     ironLeggings: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 10,
       costs: { ironBar: 3 },
       ticks: 12,
@@ -103,6 +130,8 @@ test("the recipes are spec §5's table", () => {
     },
     emberiteSword: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 20,
       costs: { emberiteBar: 3, emberbone: 2 },
       ticks: 12,
@@ -110,6 +139,8 @@ test("the recipes are spec §5's table", () => {
     },
     emberiteShield: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 20,
       costs: { emberiteBar: 4, emberbone: 3 },
       ticks: 16,
@@ -117,6 +148,8 @@ test("the recipes are spec §5's table", () => {
     },
     emberiteHelmet: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 20,
       costs: { emberiteBar: 2, emberbone: 1 },
       ticks: 8,
@@ -124,6 +157,8 @@ test("the recipes are spec §5's table", () => {
     },
     emberiteChestplate: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 20,
       costs: { emberiteBar: 5, emberbone: 4 },
       ticks: 20,
@@ -131,6 +166,8 @@ test("the recipes are spec §5's table", () => {
     },
     emberiteLeggings: {
       station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
       level: 20,
       costs: { emberiteBar: 3, emberbone: 2 },
       ticks: 12,
@@ -194,6 +231,17 @@ test("too low a Smithing level is refused with the level, whatever is held", () 
   expect(makeRefusal("ironSword", player)).toBe("Needs Smithing 10");
   expect(
     makeRefusal("ironSword", { ...player, smithingXp: xpForLevel(10) }),
+  ).toBeUndefined();
+});
+
+test("a furnace row is refused on Mining, whatever the Smithing level", () => {
+  const player = holding([["ironOre", 1]], xpForLevel(50), xpForLevel(9));
+  expect(makeRefusal("ironBar", player)).toBe("Needs Mining 10");
+  expect(
+    makeRefusal("ironBar", { ...player, miningXp: xpForLevel(10) }),
+  ).toBeUndefined();
+  expect(
+    makeRefusal("ironBar", holding([["ironOre", 1]], 0, xpForLevel(10))),
   ).toBeUndefined();
 });
 

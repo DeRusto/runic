@@ -37,7 +37,7 @@ export function showSmithingPanel(room: WorldConnection) {
     const row = document.createElement("div");
     const [name, cost, level, reason] = [part(), part(), part(), part()];
     name.textContent = itemName(item);
-    level.textContent = `Smithing ${RECIPES[item].level}`;
+    level.textContent = `${RECIPES[item].skill} ${RECIPES[item].level}`;
     const button = (label: string, all: boolean) => {
       const make = document.createElement("button");
       make.type = "button";

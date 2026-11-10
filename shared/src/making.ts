@@ -4,7 +4,11 @@ import { levelFor, type XpField } from "./skills.ts";
 
 type Recipe = {
   station: StationKind;
-  /** The Smithing level needed. */
+  /** The skill that gates this recipe: the furnace's is Mining, the anvil's is Smithing. */
+  skill: "Mining" | "Smithing";
+  /** That skill's synced experience field. */
+  xpField: "miningXp" | "smithingXp";
+  /** That skill's level needed. */
   level: number;
   costs: Partial<Record<ItemId, number>>;
   ticks: number;
@@ -12,31 +16,39 @@ type Recipe = {
   xp: Partial<Record<XpField, number>>;
 };
 
-/** Spec §5. The order here is the order of the Smithing panel's rows. */
+/** Spec §5, as revised by the rebalance spec §3 Making. The order here is the order of the Smithing panel's rows. */
 export const RECIPES = {
   copperBar: {
     station: "furnace",
+    skill: "Mining",
+    xpField: "miningXp",
     level: 1,
     costs: { copperOre: 1 },
     ticks: 6,
-    xp: { smithingXp: 4, miningXp: 4 },
+    xp: { miningXp: 2 },
   },
   ironBar: {
     station: "furnace",
+    skill: "Mining",
+    xpField: "miningXp",
     level: 10,
     costs: { ironOre: 1 },
     ticks: 6,
-    xp: { smithingXp: 12, miningXp: 12 },
+    xp: { miningXp: 6 },
   },
   emberiteBar: {
     station: "furnace",
+    skill: "Mining",
+    xpField: "miningXp",
     level: 20,
     costs: { emberiteOre: 1 },
     ticks: 6,
-    xp: { smithingXp: 24, miningXp: 24 },
+    xp: { miningXp: 12 },
   },
   copperSword: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 3 },
     ticks: 12,
@@ -44,6 +56,8 @@ export const RECIPES = {
   },
   copperShield: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 4 },
     ticks: 16,
@@ -51,6 +65,8 @@ export const RECIPES = {
   },
   copperHelmet: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 2 },
     ticks: 8,
@@ -58,6 +74,8 @@ export const RECIPES = {
   },
   copperChestplate: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 5 },
     ticks: 20,
@@ -65,6 +83,8 @@ export const RECIPES = {
   },
   copperLeggings: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 3 },
     ticks: 12,
@@ -72,6 +92,8 @@ export const RECIPES = {
   },
   ironSword: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 3 },
     ticks: 12,
@@ -79,6 +101,8 @@ export const RECIPES = {
   },
   ironShield: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 4 },
     ticks: 16,
@@ -86,6 +110,8 @@ export const RECIPES = {
   },
   ironHelmet: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 2 },
     ticks: 8,
@@ -93,6 +119,8 @@ export const RECIPES = {
   },
   ironChestplate: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 5 },
     ticks: 20,
@@ -100,6 +128,8 @@ export const RECIPES = {
   },
   ironLeggings: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 3 },
     ticks: 12,
@@ -107,6 +137,8 @@ export const RECIPES = {
   },
   emberiteSword: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 3, emberbone: 2 },
     ticks: 12,
@@ -114,6 +146,8 @@ export const RECIPES = {
   },
   emberiteShield: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 4, emberbone: 3 },
     ticks: 16,
@@ -121,6 +155,8 @@ export const RECIPES = {
   },
   emberiteHelmet: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 2, emberbone: 1 },
     ticks: 8,
@@ -128,6 +164,8 @@ export const RECIPES = {
   },
   emberiteChestplate: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 5, emberbone: 4 },
     ticks: 20,
@@ -135,6 +173,8 @@ export const RECIPES = {
   },
   emberiteLeggings: {
     station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 3, emberbone: 2 },
     ticks: 12,
@@ -161,10 +201,10 @@ export function countOf(item: string, player: HasInventory) {
 /** Why this item can't be made right now, or undefined if it can. The panel's rows and the server's checks both read this. */
 export function makeRefusal(
   item: RecipeItem,
-  player: HasInventory & { smithingXp: number },
+  player: HasInventory & Record<Recipe["xpField"], number>,
 ) {
-  const { level } = RECIPES[item];
-  if (levelFor(player.smithingXp) < level) return `Needs Smithing ${level}`;
+  const { level, skill, xpField } = RECIPES[item];
+  if (levelFor(player[xpField]) < level) return `Needs ${skill} ${level}`;
   if (costsOf(item).some(([cost, count]) => countOf(cost, player) < count))
     return "Not enough materials";
   return undefined;
