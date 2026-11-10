@@ -16,7 +16,7 @@ Done means §10 passes on `runicrpg.com`.
 
 Out of scope: trading; dropping items on the ground and picking them up; a bank; death penalties; player-versus-player combat; quests, and non-player characters other than the Blacksmith; sound; going public (email, self-serve password resets, sign-up abuse protection, anti-cheat, chat filtering); more than one server process; moving between regions.
 
-This spec records the slice as built. Phase 3 later replaced Discard with Drop everywhere it appears below (the intent, the right-click menu and the §10 checks), and added ground items, pickup and drop on death; see [Map: Phase 3](https://github.com/DeRusto/runic/issues/83).
+This spec records the slice as built. Phase 3 later replaced Discard with Drop everywhere it appears below (the intent, the right-click menu and the §10 checks), and added ground items, pickup and drop on death; see [Map: Phase 3](https://github.com/DeRusto/runic/issues/83). The [Mining and Smithing rebalance](mining-smithing-rebalance.md) later revised the Mining and Making rules in §4 and their numbers in §5.
 
 ## 2. A session
 

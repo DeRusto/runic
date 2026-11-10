@@ -127,7 +127,7 @@ The skill trained by picking food from bushes; the food heals when eaten.
 _Avoid_: Gathering, herbalism
 
 **Mining**:
-The skill trained by taking ore from veins.
+The skill trained by taking ore from veins and smelting it into bars at a furnace.
 _Avoid_: Gathering, quarrying
 
 **Gathering skill**:
@@ -135,7 +135,7 @@ A skill trained by taking items from a **site**, a spot that runs out and grows 
 _Avoid_: Resource skill, harvesting
 
 **Smithing**:
-The skill trained by turning ore into bars and bars into gear.
+The skill trained by turning bars into gear at an anvil. Smelting ore into bars is Mining.
 _Avoid_: Crafting, forging
 
 ### Players
@@ -213,15 +213,23 @@ The health a player's eaten food has yet to give back, as healing ticks waiting 
 _Avoid_: Heal over time, buff
 
 **Material**:
-An item that goes into making something: ore, bars and Emberbones.
+An item that goes into making something: ore, finds, bars and Emberbones. Gems count as materials before anything uses them.
 _Avoid_: Resource, ingredient
 
 **Ore**:
-The raw metal a player takes from a vein.
+The raw metal a player takes from a vein. A successful mine gives 1 or 2.
 _Avoid_: Rock, stone
 
+**Find**:
+A material a vein sometimes gives along with its ore on a successful mine: tin from Copper and Iron veins, coal from Iron veins, and gems from Emberite veins. A find is always 1.
+_Avoid_: Drop, extra, byproduct, bonus
+
+**Gem**:
+A rare find from an Emberite vein: Ashstone, Cinderglass or Heartflame, rarest last. Nothing uses gems yet.
+_Avoid_: Jewel, stone
+
 **Bar**:
-Metal made from ore at a furnace, ready to become gear at an anvil.
+Metal made at a furnace from ore, plus a find for Bronze (tin) and Steel (coal), ready to become gear at an anvil.
 _Avoid_: Ingot
 
 **Emberbone**:
@@ -257,7 +265,7 @@ The panel a player opens with O or the Social button on the bottom bar. It has t
 _Avoid_: Friends panel, friends window
 
 **Tier**:
-One of the three metals, from lowest to highest: Copper, Iron and Emberite. A tier's ore, bars and gear all share its level gate.
+One of the five metals, from lowest to highest: Copper (1), Bronze (5), Iron (10), Steel (15) and Emberite (20). A tier's bars and gear, and its ore where it has veins, all share its level gate. Only Copper, Iron and Emberite have veins; Bronze and Steel bars are smelted from another tier's ore and a find.
 _Avoid_: Grade, rank
 
 **Tool**:
