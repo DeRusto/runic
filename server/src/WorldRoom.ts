@@ -36,10 +36,10 @@ import {
 } from "@runic/shared";
 import { accountForToken } from "./accounts.ts";
 import { readSave, writeSave } from "./saves.ts";
+import { runCommand } from "./chatCommands.ts";
 import { Simulation } from "./simulation.ts";
 import {
   ignoredBy,
-  runCommand,
   sendFriends,
   sendIgnores,
   tellFriendedBy,

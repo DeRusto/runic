@@ -5,8 +5,6 @@ import {
   MAX_CHAT_LENGTH,
   PRIVATE_LINE,
   SOCIAL_LISTS,
-  commandRefusal,
-  emoteRefusal,
   followRefusal,
   listRefusal,
   pmRefusal,
@@ -16,7 +14,7 @@ import {
   type SocialList,
 } from "@runic/shared";
 import { accountNamed } from "./accounts.ts";
-import type { Simulation } from "./simulation.ts";
+import type { Command, World } from "./chatCommands.ts";
 import {
   addToList,
   isListed,
@@ -24,15 +22,6 @@ import {
   listedBy,
   removeFromList,
 } from "./socialLists.ts";
-
-/** What the chat commands need from the room. */
-export type World = {
-  sim: Simulation;
-  /** Every player in the world, the one definition of online: a dropped connection still counts, a login still waiting does not. */
-  onlinePlayers(): Client[];
-  /** Broadcasts a public chat line or an emote, as public chat does. */
-  say(client: Client, text: string, emote: boolean): void;
-};
 
 /** A chat-box line for this client only. */
 export const tell = (client: Client, line: string) =>
@@ -77,7 +66,8 @@ export const ignoredBy = (accountId: number) => listedBy("ignore", accountId);
  * In `userData`, not a map keyed by the Client: a reconnect gets a new Client, and Colyseus
  * carries `userData` over to it.
  */
-const replyTo = (client: Client): string | undefined => client.userData?.replyTo;
+const replyTo = (client: Client): string | undefined =>
+  client.userData?.replyTo;
 
 const onlineNamed = (world: World, name: string) =>
   world
@@ -88,6 +78,29 @@ const named = (client: Client, name: string) => {
   const account = name ? accountNamed(name) : undefined;
   return account && { ...account, self: account.id === client.auth.id };
 };
+
+/** `/pm` and `/r`: sends `message` to the online player named `name`, or tells the sender why not. */
+function sendPm(world: World, client: Client, name: string, message: string) {
+  const to = name ? onlineNamed(world, name) : undefined;
+  const refusal = pmRefusal(
+    name,
+    message,
+    to && {
+      username: to.auth.username,
+      self: to.auth.id === client.auth.id,
+    },
+  );
+  if (refusal) return tell(client, refusal);
+  if (!to) return;
+  // The same limit as public chat, on the message alone.
+  if (message.length > MAX_CHAT_LENGTH) return;
+  // Silent: the sender still sees their own copy and no error (Phase 4 map).
+  if (!isIgnoring(to.auth.id, client.auth.id)) {
+    tell(to, `From ${client.auth.username}: ${message}`);
+    to.userData = { ...to.userData, replyTo: client.auth.username };
+  }
+  tell(client, `To ${to.auth.username}: ${message}`);
+}
 
 /** What a list change means beyond the list itself. */
 const AFTER_LIST_CHANGE: Record<
@@ -127,48 +140,8 @@ const listCommand =
     AFTER_LIST_CHANGE[list](world, client, account.id, adding);
   };
 
-type Command = {
-  /** What `/help` shows before the colon, as in "/pm <name> <message>". */
-  usage: string;
-  description: string;
-  /** Gets the trimmed text after the name. */
-  run: (world: World, client: Client, args: string) => void;
-};
-
-/** Chat commands by lower-cased name. `/help` lists this table, so a command can't run without a help line (Spec §2). */
-const COMMANDS: Record<string, Command> = {
-  help: {
-    usage: "/help",
-    description: "List every chat command.",
-    run: (_world, client) => {
-      for (const name of Object.keys(COMMANDS).sort()) {
-        const { usage, description } = COMMANDS[name]!;
-        tell(client, `${usage}: ${description}`);
-      }
-    },
-  },
-  who: {
-    usage: "/who",
-    description: "List every online player.",
-    // Ignore lists hide no one here (Spec §2).
-    run: (world, client) => {
-      const names = world
-        .onlinePlayers()
-        .map((other) => other.auth.username)
-        .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-      tell(client, `Online (${names.length}): ${names.join(", ")}`);
-    },
-  },
-  e: {
-    usage: "/e <text>",
-    description:
-      "Act something out, shown in bold to everyone as your name then the text.",
-    run: (world, client, text) => {
-      const refusal = emoteRefusal(text);
-      if (refusal) return tell(client, refusal);
-      world.say(client, text, true);
-    },
-  },
+/** The chat commands about other players, by lower-cased name. */
+export const SOCIAL_COMMANDS: Record<string, Command> = {
   r: {
     usage: "/r <message>",
     description: "Reply to the last player who sent you a private message.",
@@ -176,7 +149,7 @@ const COMMANDS: Record<string, Command> = {
       const name = replyTo(client);
       const refusal = replyRefusal(name, message);
       if (refusal) return tell(client, refusal);
-      COMMANDS.pm!.run(world, client, `${name} ${message}`);
+      sendPm(world, client, name!, message);
     },
   },
   pm: {
@@ -184,25 +157,7 @@ const COMMANDS: Record<string, Command> = {
     description: "Send a private message to an online player.",
     run: (world, client, args) => {
       const [, name = "", message = ""] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
-      const to = name ? onlineNamed(world, name) : undefined;
-      const refusal = pmRefusal(
-        name,
-        message,
-        to && {
-          username: to.auth.username,
-          self: to.auth.id === client.auth.id,
-        },
-      );
-      if (refusal) return tell(client, refusal);
-      if (!to) return;
-      // The same limit as public chat, on the message alone.
-      if (message.length > MAX_CHAT_LENGTH) return;
-      // Silent: the sender still sees their own copy and no error (Phase 4 map).
-      if (!isIgnoring(to.auth.id, client.auth.id)) {
-        tell(to, `From ${client.auth.username}: ${message}`);
-        to.userData = { ...to.userData, replyTo: client.auth.username };
-      }
-      tell(client, `To ${to.auth.username}: ${message}`);
+      sendPm(world, client, name, message);
     },
   },
   friend: {
@@ -259,12 +214,3 @@ const COMMANDS: Record<string, Command> = {
     },
   },
 };
-
-/** `line` is the chat line after its leading "/". */
-export function runCommand(world: World, client: Client, line: string) {
-  const [name = "", args = ""] = line.split(/\s+(.*)/s);
-  const known = Object.hasOwn(COMMANDS, name.toLowerCase());
-  const refusal = commandRefusal(name, known);
-  if (refusal) return tell(client, refusal);
-  COMMANDS[name.toLowerCase()]!.run(world, client, args.trim());
-}
