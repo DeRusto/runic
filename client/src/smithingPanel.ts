@@ -137,10 +137,10 @@ export function showSmithingPanel(room: WorldConnection) {
     const me = state.players.get(room.sessionId);
     if (!me) return;
     if (me.dead) close();
-    else if (walkingTo && tilesApart(me, stationTile(walkingTo)) <= 1)
+    else if (walkingTo && tilesApart(me, stationTile(walkingTo, me)) <= 1)
       show(walkingTo, me);
     // Panels stay open through presses elsewhere; walking away is what closes this one (spec §6).
-    else if (at && tilesApart(me, stationTile(at)) > 1) close();
+    else if (at && tilesApart(me, stationTile(at, me)) > 1) close();
     else if (at) draw(me);
   });
 
@@ -156,7 +156,7 @@ export function showSmithingPanel(room: WorldConnection) {
   return (station: StationKind) => {
     const me = room.state.players.get(room.sessionId);
     if (!me || me.dead) return;
-    const tile = stationTile(station);
+    const tile = stationTile(station, me);
     if (tilesApart(me, tile) <= 1) return show(station, me);
     close();
     walkingTo = station;

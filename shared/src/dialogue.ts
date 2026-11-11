@@ -2,7 +2,7 @@
 export type DialogueLine = { speaker: "villager" | "you"; text: string };
 
 /** What the server does when a choice is picked, once it has checked the player is still beside the villager. */
-export type DialogueAction = "giveTools" | "openStore";
+export type DialogueAction = "giveTools" | "openStore" | "openBank";
 
 /** `to` is the node the conversation moves to. */
 export type DialogueChoice = {
@@ -96,7 +96,6 @@ export const VILLAGERS = {
       bye: { lines: [you("Bye."), villager("Mind how you go.")] },
     },
   },
-  // The banker's job arrives as a choice with the bank (#203).
   marta: {
     name: "Marta",
     role: "storekeeper",
@@ -112,12 +111,8 @@ export const VILLAGERS = {
           { text: "Bye.", to: "bye" },
         ],
       },
-      store: {
-        lines: [
-          you("What have you got?"),
-          villager("Have a look. No haggling."),
-        ],
-      },
+      // No lines, so the box closes as the store window opens.
+      store: { lines: [] },
       bye: { lines: [you("Bye."), villager("Don't track mud in next time.")] },
     },
   },
@@ -131,8 +126,13 @@ export const VILLAGERS = {
           villager("Aldous, banker. Whatever you leave with me stays put."),
           villager("Spiders don't rob banks. Not yet, anyway."),
         ],
-        choices: [{ text: "Bye.", to: "bye" }],
+        choices: [
+          { text: "I'd like to see my bank.", to: "bank", action: "openBank" },
+          { text: "Bye.", to: "bye" },
+        ],
       },
+      // No lines, so the box closes as the bank window opens.
+      bank: { lines: [] },
       bye: { lines: [you("Bye."), villager("Safe roads.")] },
     },
   },
@@ -145,4 +145,12 @@ export function choicesNodeOf(villager: VillagerId, node: string) {
   const { nodes } = VILLAGERS[villager] as Villager;
   if (nodes[node]?.choices) return node;
   return nodes[node]?.then;
+}
+
+/** Whether some choice in `villager`'s conversation runs `action`, so a shortcut to it may skip the talk. */
+export function offers(villager: VillagerId, action: unknown) {
+  const { nodes } = VILLAGERS[villager] as Villager;
+  return Object.values(nodes).some(({ choices }) =>
+    choices?.some((choice) => choice.action === action),
+  );
 }

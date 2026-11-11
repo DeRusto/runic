@@ -62,6 +62,9 @@ let counter: Counter | undefined;
 
 /** Hands the slots' clicks to the store's counter while it is open, and back with undefined. */
 export const useSlotsForCounter = (to: Counter | undefined) => (counter = to);
+/** While the bank is open, an inventory slot deposits instead (#197). */
+let deposit: ((slot: number, amount: number) => void) | undefined;
+export const depositOnClick = (send: typeof deposit) => (deposit = send);
 
 let holdingResult = false;
 let showHeld = () => {};
@@ -113,9 +116,12 @@ export function showBottomBar(
     const eat = () => room.send(EAT_INTENT, i);
     const equip = () => room.send(EQUIP_INTENT, i);
     // Only food and gear do anything on a left-click, so a material's slot sends nothing.
+    // Not the slot's text, which shows coins in short form.
+    const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
       if (counter) return item && counter.click(item);
+      if (deposit) return item && deposit(i, count());
       if (FOOD_HEALS.has(item)) eat();
       if (gearOf(item)) equip();
     };
@@ -124,10 +130,15 @@ export function showBottomBar(
       const item = slot.dataset.item;
       if (!item) return;
       if (counter) return openMenu(event, counter.menu(item));
+      if (deposit)
+        return openMenu(
+          event,
+          amountChoices("Deposit", count(), (amount) => deposit?.(i, amount)),
+        );
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
-        ...amountChoices("Drop", shown?.inventoryCounts[i] ?? 1, (amount) =>
+        ...amountChoices("Drop", count(), (amount) =>
           room.send(DROP_INTENT, { slot: i, amount }),
         ),
       ]);

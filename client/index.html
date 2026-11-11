@@ -192,7 +192,7 @@
         grid-auto-rows: 36px;
         gap: 2px;
       }
-      #slots > button {
+      :is(#slots, #bank-slots) > button {
         position: relative;
         overflow: hidden;
         padding: 0;
@@ -208,12 +208,12 @@
         color: inherit;
         font-size: 10px;
       }
-      #slots > button:hover {
+      :is(#slots, #bank-slots) > button:hover {
         box-shadow:
           0 0 0 1px #000,
           inset 0 0 0 1px #b08a5a;
       }
-      #slots > button::after {
+      :is(#slots, #bank-slots) > button::after {
         content: attr(data-count);
         position: absolute;
         right: 2px;
@@ -397,6 +397,7 @@
       #smithing,
       #pile,
       #store,
+      #bank,
       #logout-confirm {
         box-sizing: border-box;
         padding: 3px;
@@ -484,7 +485,7 @@
         opacity: 0.6;
       }
       /* The title bar: a dark band with a grip mark, the title in small caps and a square X (spec §6). */
-      :is(#sheet, #social, #smithing, #pile, #store) > h2 {
+      :is(#sheet, #social, #smithing, #pile, #store, #bank) > h2 {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -503,7 +504,7 @@
         user-select: none;
         touch-action: none;
       }
-      :is(#sheet, #social, #smithing, #pile, #store) > h2::before {
+      :is(#sheet, #social, #smithing, #pile, #store, #bank) > h2::before {
         content: "⠿" / "";
         color: #8a6a44;
         font-weight: 400;
@@ -512,7 +513,8 @@
       #social-close,
       #smithing-close,
       #pile-close,
-      #store-close {
+      #store-close,
+      #bank-close {
         width: 20px;
         height: 20px;
         margin-left: auto;
@@ -528,7 +530,8 @@
         #social-close,
         #smithing-close,
         #pile-close,
-        #store-close
+        #store-close,
+        #bank-close
       )::before {
         content: "✕" / "";
       }
@@ -537,7 +540,8 @@
         #social-close,
         #smithing-close,
         #pile-close,
-        #store-close
+        #store-close,
+        #bank-close
       ):hover {
         border-color: #e06a50;
         background: #5a1d12;
@@ -827,6 +831,39 @@
       }
       #pile {
         width: 220px;
+      }
+      /* Twelve slots across, the inventory's size, with the count and Deposit inventory below (#197). */
+      #bank {
+        position: fixed;
+        display: flex;
+        flex-direction: column;
+      }
+      #bank[hidden] {
+        display: none;
+      }
+      #bank-slots {
+        display: grid;
+        grid-template-columns: repeat(12, 36px);
+        grid-auto-rows: 36px;
+        gap: 2px;
+        padding: 8px;
+      }
+      #bank-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 8px 6px;
+      }
+      #bank-deposit-all {
+        padding: 4px 10px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #1d1610;
+        color: inherit;
+        font: inherit;
+      }
+      #bank-deposit-all:hover {
+        border-color: #d2a86a;
       }
       #pile-rows {
         display: flex;
@@ -1272,6 +1309,17 @@
           <button id="smithing-close" type="button" aria-label="Close"></button>
         </h2>
         <div id="smithing-rows"></div>
+      </section>
+      <section id="bank" role="dialog" aria-labelledby="bank-title" hidden>
+        <h2>
+          <span id="bank-title">Bank</span>
+          <button id="bank-close" type="button" aria-label="Close"></button>
+        </h2>
+        <div id="bank-slots" aria-label="Bank slots"></div>
+        <div id="bank-foot">
+          <span id="bank-used"></span>
+          <button id="bank-deposit-all" type="button">Deposit inventory</button>
+        </div>
       </section>
       <section id="pile" role="dialog" aria-labelledby="pile-title" hidden>
         <h2>

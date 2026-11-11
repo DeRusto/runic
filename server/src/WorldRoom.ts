@@ -7,7 +7,12 @@ import {
 } from "@colyseus/core";
 import { StateView } from "@colyseus/schema";
 import {
+  BANK_MOVE_INTENT,
   CHAT,
+  CLOSE_BANK_INTENT,
+  DEPOSIT_INTENT,
+  DEPOSIT_INVENTORY_INTENT,
+  WITHDRAW_INTENT,
   CHOOSE_INTENT,
   CLOSE_STORE_INTENT,
   DEAL_INTENT,
@@ -91,6 +96,20 @@ export class WorldRoom extends Room {
       this.sim.queueDrop(client.sessionId, drop?.slot, drop?.amount),
     [MOVE_INTENT]: (client: Client, move: { from: number; to: number }) =>
       this.sim.moveItem(client.sessionId, move?.from, move?.to),
+    [DEPOSIT_INTENT]: (
+      client: Client,
+      deposit: { slot: number; amount: number },
+    ) => this.sim.deposit(client.sessionId, deposit?.slot, deposit?.amount),
+    [WITHDRAW_INTENT]: (
+      client: Client,
+      withdraw: { slot: number; amount: number },
+    ) => this.sim.withdraw(client.sessionId, withdraw?.slot, withdraw?.amount),
+    [DEPOSIT_INVENTORY_INTENT]: (client: Client) =>
+      this.sim.depositInventory(client.sessionId),
+    [BANK_MOVE_INTENT]: (client: Client, move: { from: number; to: number }) =>
+      this.sim.moveBankItem(client.sessionId, move?.from, move?.to),
+    [CLOSE_BANK_INTENT]: (client: Client) =>
+      this.sim.closeBank(client.sessionId),
     [TAKE_INTENT]: (client: Client, groundItem: string) =>
       this.sim.queueTake(client.sessionId, groundItem),
     [EQUIP_INTENT]: (client: Client, slot: number) =>

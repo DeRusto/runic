@@ -48,6 +48,7 @@ export const TILE_KINDS = {
   N: { ground: "grass", station: "anvil", blocks: true },
   B: { ground: "grass", villager: "odo", blocks: true },
   M: { ground: "grass", villager: "marta", blocks: true },
+  $: { ground: "grass", villager: "aldous", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },
   W: { ground: "path", prop: "well", blocks: true },

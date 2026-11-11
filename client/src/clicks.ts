@@ -1,5 +1,6 @@
 import {
   GATHERING,
+  offers,
   gatherRefusal,
   stationRefusal,
   TAKE_INTENT,
@@ -7,11 +8,8 @@ import {
   TICK_MS,
   VISIT_INTENT,
   WALK_INTENT,
-  VILLAGERS,
   type DialogueAction,
   type TileKind,
-  type Villager,
-  type VillagerId,
 } from "@runic/shared";
 import * as THREE from "three";
 import { printChatLine } from "./bottomBar.ts";
@@ -29,23 +27,7 @@ import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** The right-click menu's name for each action a villager's conversation can lead to, which the shortcut runs on arrival without talking. */
-const SHORTCUTS: Partial<Record<DialogueAction, string>> = {
-  openStore: "Trade",
-};
-
-/** The shortcuts a villager's right-click menu offers after Talk-to: those of the actions their conversation offers. */
-function shortcutsOf(villager: VillagerId) {
-  const { nodes } = VILLAGERS[villager] as Villager;
-  const actions = Object.values(nodes).flatMap(
-    (node) => node.choices?.map((choice) => choice.action) ?? [],
-  );
-  return Object.entries(SHORTCUTS).filter(([action]) =>
-    actions.includes(action as DialogueAction),
-  ) as [DialogueAction, string][];
-}
-
-/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on another player opens the player menu. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on another player it opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -96,13 +78,15 @@ export function walkOnClick(
         showMarker(villager.x, villager.y);
         room.send(VISIT_INTENT, { villager: villager.villager, then });
       };
-      openMenu(event, [
+      return openMenu(event, [
         ["Talk-to", visit()],
-        ...shortcutsOf(villager.villager).map(
-          ([then, label]) => [label, visit(then)] as const,
-        ),
+        ...(offers(villager.villager, "openStore")
+          ? ([["Trade", visit("openStore")]] as const)
+          : []),
+        ...(offers(villager.villager, "openBank")
+          ? ([["Bank", visit("openBank")]] as const)
+          : []),
       ]);
-      return;
     }
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
@@ -141,7 +125,7 @@ export function walkOnClick(
       if (refusal) {
         printChatLine(refusal);
       } else {
-        const { x, y } = stationTile(station);
+        const { x, y } = stationTile(station, me);
         showMarker(x, y);
         openSmithingPanel(station);
       }

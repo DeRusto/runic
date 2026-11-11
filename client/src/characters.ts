@@ -177,7 +177,7 @@ export class Figure {
   private gear: [item: string, model: THREE.Object3D][] = [];
 
   constructor(
-    private tile: Tile,
+    readonly tile: Tile,
     readonly model: THREE.Object3D,
     private clips: Map<string, THREE.AnimationClip>,
     private gait = PLAYER_GAIT,

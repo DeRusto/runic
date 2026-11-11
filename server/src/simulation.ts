@@ -62,6 +62,11 @@ import {
   SWING_INTERVAL_TICKS,
   virtueOf,
   AVOIDANCE_TENTHS_PER_HIT_CHANCE,
+  BANK_SLOTS,
+  bankRefusal,
+  bankSlotFor,
+  depositRefusal,
+  itemParts,
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
@@ -70,6 +75,7 @@ import {
   WALK_TICKS_PER_TILE,
   choicesNodeOf,
   type Deal,
+  offers,
   type DialogueAction,
   type Villager,
   type VillagerId,
@@ -120,6 +126,9 @@ function dealLines(list: unknown, max: number) {
 
 const isInventorySlot = (slot: number) =>
   Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
+const isBankSlot = (slot: number) =>
+  Number.isInteger(slot) && slot >= 0 && slot < BANK_SLOTS;
+const isAmount = (amount: number) => Number.isInteger(amount) && amount > 0;
 
 export const Player = schema(
   {
@@ -144,6 +153,10 @@ export const Player = schema(
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint32"),
     tools: t.array("string"),
+    /** Like `inventory`, `BANK_SLOTS` long (#197). */
+    bank: t.array("string"),
+    /** Parallel to `bank`, and uncapped. */
+    bankCounts: t.array("uint32"),
     /** The item id worn in each gear slot, or "". */
     weapon: t.string().default(""),
     shield: t.string().default(""),
@@ -209,7 +222,6 @@ type GatheringSite = Tile & {
 type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
-  /** `then` runs on arrival instead of the conversation opening. */
   | { kind: "visiting"; villager: VillagerId; then?: DialogueAction }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
@@ -283,11 +295,15 @@ export class Simulation {
   > = {
     giveTools: (id) => this.giveTools(id),
     openStore: (id, villager) => this.openStore(id, villager),
+    openBank: (id, villager) => this.openBank(id, villager),
   };
   /** Each player with the store window open, and the storekeeper they must stay beside. */
   private shoppers = new Map<string, VillagerId>();
   private readonly shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
-  private stations: Partial<Record<StationKind, Tile>> = {};
+  /** Each player with their bank open, and the banker they must stay beside. */
+  private banks = new Map<string, VillagerId>();
+  /** Each station's tiles: the furnace covers four. */
+  private stations: Partial<Record<StationKind, Tile[]>> = {};
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -303,7 +319,7 @@ export class Simulation {
       row.forEach((kind, x) => {
         const { enemy, villager, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
-        if (station) this.stations[station] = { x, y };
+        if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const { site, stateField, leftField } = GATHERING[skill];
           const siteKind = kind[site];
@@ -346,6 +362,8 @@ export class Simulation {
       inventoryCounts = [],
       pinnedSkills = STARTING_PINNED_SKILLS,
       tools = [],
+      bank = [],
+      bankCounts = [],
       ...fields
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
@@ -360,6 +378,16 @@ export class Simulation {
       ...inventory.map((item, slot) =>
         item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
       ),
+    );
+    // A save from before the bank has none, so it starts empty (#197).
+    player.bank = new ArraySchema(
+      ...Array.from(
+        { length: BANK_SLOTS },
+        (_, slot) => bank[slot] ?? EMPTY_SLOT,
+      ),
+    );
+    player.bankCounts = new ArraySchema(
+      ...Array.from({ length: BANK_SLOTS }, (_, slot) => bankCounts[slot] ?? 0),
     );
     this.state.players.set(id, player);
     this.unsyncedPlayers.set(id, {
@@ -448,6 +476,8 @@ export class Simulation {
       inventory: [...player.inventory],
       inventoryCounts: [...player.inventoryCounts],
       tools: [...player.tools],
+      bank: [...player.bank],
+      bankCounts: [...player.bankCounts],
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.respawned(player)),
     };
@@ -473,6 +503,7 @@ export class Simulation {
     this.queuedLogouts.delete(id);
     this.talks.delete(id);
     this.shoppers.delete(id);
+    this.banks.delete(id);
     this.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     for (const enemy of this.unsyncedEnemies.values())
@@ -485,6 +516,7 @@ export class Simulation {
     this.unsyncedPlayers.get(id)!.dropped = true;
     this.talks.delete(id);
     this.shoppers.delete(id);
+    this.banks.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
@@ -595,20 +627,14 @@ export class Simulation {
 
   /**
    * Both come straight off the network, so a villager who isn't standing in this region is
-   * ignored, as is a `then` their own conversation doesn't offer. With `then`, arriving runs that
-   * action instead of opening the conversation, as Trade does.
+   * ignored, as is a `then` their conversation doesn't offer.
    */
   queueVisit(id: string, villager: string, then?: string) {
     if (!this.alive(id) || !this.villagers.has(villager as VillagerId)) return;
-    const { nodes } = VILLAGERS[villager as VillagerId] as Villager;
-    const offered = Object.values(nodes).some((node) =>
-      node.choices?.some((choice) => choice.action === then),
-    );
-    if (then !== undefined && !offered) return;
-    this.queuedActions.set(id, {
-      villager: villager as VillagerId,
-      then: then as DialogueAction | undefined,
-    });
+    const visit = { villager: villager as VillagerId };
+    if (then === undefined) this.queuedActions.set(id, visit);
+    else if (offers(visit.villager, then))
+      this.queuedActions.set(id, { ...visit, then: then as DialogueAction });
   }
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
@@ -646,6 +672,108 @@ export class Simulation {
     return tilesNextTo(this.tiles, this.villagers.get(villager)!).some(
       ({ x, y }) => x === player.x && y === player.y,
     );
+  }
+
+  private openBank(id: string, villager: VillagerId) {
+    this.banks.set(id, villager);
+    this.events.push({ type: "bankOpened", player: id });
+  }
+
+  /** The player shut the bank window, so walking away later says nothing. */
+  closeBank(id: string) {
+    this.banks.delete(id);
+  }
+
+  /** Shuts the bank from the server's side, with the line saying why. */
+  private shutBank(id: string, line: string) {
+    this.banks.delete(id);
+    this.events.push({ type: "told", player: id, line });
+    this.events.push({ type: "bankClosed", player: id });
+  }
+
+  /** The player, if their bank is open and no combat lock refuses it; the refusal is told. */
+  private banker(id: string) {
+    if (!this.banks.has(id) || !this.alive(id)) return undefined;
+    const refusal = bankRefusal(this.lockRunning(id));
+    if (refusal) this.events.push({ type: "told", player: id, line: refusal });
+    return refusal ? undefined : this.state.players.get(id)!;
+  }
+
+  /**
+   * Both come straight off the network, so anything but an inventory slot's index and a whole
+   * number above 0 is ignored. Like equip it skips the queue and touches no action.
+   */
+  deposit(id: string, slot: number, amount: number) {
+    if (!isInventorySlot(slot) || !isAmount(amount)) return;
+    const player = this.banker(id);
+    const line = player && this.depositSlot(id, player, slot, amount);
+    if (line) this.events.push({ type: "told", player: id, line });
+  }
+
+  /** Whatever fits goes in, and one line says when anything didn't (#197). */
+  depositInventory(id: string) {
+    const player = this.banker(id);
+    if (!player) return;
+    const refusals = Array.from({ length: INVENTORY_SLOTS }, (_, slot) =>
+      this.depositSlot(id, player, slot, Infinity),
+    );
+    const line = refusals.find(Boolean);
+    if (line) this.events.push({ type: "told", player: id, line });
+  }
+
+  /** Returns why the slot's item stays where it is, if it does. */
+  private depositSlot(
+    id: string,
+    player: InstanceType<typeof Player>,
+    slot: number,
+    amount: number,
+  ) {
+    const item = player.inventory[slot]!;
+    if (item === EMPTY_SLOT) return undefined;
+    const refusal = depositRefusal(item, player.bank);
+    if (refusal) return refusal;
+    const to = bankSlotFor(item, player.bank);
+    const count = Math.min(amount, player.inventoryCounts[slot]!);
+    player.bank[to] = item;
+    player.bankCounts[to]! += count;
+    player.inventoryCounts[slot]! -= count;
+    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
+    if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
+    return undefined;
+  }
+
+  /**
+   * Both come straight off the network, as for deposit. Takes as many as fit, topping up the
+   * inventory's stacks before filling free slots, and the rest stays in the bank (#197).
+   */
+  withdraw(id: string, slot: number, amount: number) {
+    if (!isBankSlot(slot) || !isAmount(amount)) return;
+    const player = this.banker(id);
+    const item = player?.bank[slot];
+    if (!player || !item) return;
+    const refusal = takeRefusal(item, player);
+    if (refusal) {
+      this.events.push({ type: "told", player: id, line: refusal });
+      return;
+    }
+    const { stack } = ITEMS[itemParts(item).base];
+    let left = Math.min(amount, player.bankCounts[slot]!);
+    for (let to = slotFor(item, player); left && to >= 0;) {
+      const moved = Math.min(left, stack - player.inventoryCounts[to]!);
+      player.inventory[to] = item;
+      player.inventoryCounts[to]! += moved;
+      player.bankCounts[slot]! -= moved;
+      left -= moved;
+      to = slotFor(item, player);
+    }
+    if (!player.bankCounts[slot]) player.bank[slot] = EMPTY_SLOT;
+  }
+
+  /** A drag in the bank, under the inventory's rules; both come straight off the network. */
+  moveBankItem(id: string, from: number, to: number) {
+    if (!isBankSlot(from) || !isBankSlot(to)) return;
+    const player = this.banks.has(id) && this.state.players.get(id);
+    if (player) moveStack(player.bank, player.bankCounts, from, to);
   }
 
   private giveTools(id: string) {
@@ -891,7 +1019,7 @@ export class Simulation {
       const unsynced = this.unsyncedPlayers.get(id)!;
       const player = this.state.players.get(id)!;
       // With no way there, the old action still ends, and nothing replaces it.
-      const goNextTo = (tile: Tile, action: UnsyncedAction) => {
+      const goNextTo = (tile: Tile | Tile[], action: UnsyncedAction) => {
         const path = pathNextTo(this.tiles, player, tile);
         unsynced.path = path ?? [];
         unsynced.action = path && action;
@@ -907,8 +1035,7 @@ export class Simulation {
       } else if ("villager" in intent) {
         goNextTo(this.villagers.get(intent.villager)!, {
           kind: "visiting",
-          villager: intent.villager,
-          then: intent.then,
+          ...intent,
         });
       } else if ("take" in intent) {
         // Onto its tile, not next to it. It may have gone since the intent arrived.
@@ -1169,6 +1296,10 @@ export class Simulation {
           `You walk away from ${VILLAGERS[villager].name}.`,
         );
     }
+    for (const [id, villager] of this.banks) {
+      if (!this.beside(id, villager))
+        this.shutBank(id, `You walk away from ${VILLAGERS[villager].name}.`);
+    }
   }
 
   private advanceSites() {
@@ -1419,6 +1550,12 @@ export class Simulation {
       this.stopShopping(
         enemy.target,
         `You're hit, and ${VILLAGERS[keeper].name} stops trading.`,
+      );
+    const banker = this.banks.get(enemy.target);
+    if (landed && banker)
+      this.shutBank(
+        enemy.target,
+        `You're hit, and ${VILLAGERS[banker].name} shuts the bank.`,
       );
     if (player.health === 0) this.die(enemy.target, player);
     else if (player.action === "") this.fightBack(enemy.target, player, id);
