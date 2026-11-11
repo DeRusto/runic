@@ -26,6 +26,10 @@ _Avoid_: Wilderness, combat zone
 The field where Skeletons roam.
 _Avoid_: Graveyard, dungeon
 
+**Lake**:
+The body of water in the region, where players fish from the bank. Water can't be walked on. It is one kind of water among those a region may hold, alongside a river or the sea.
+_Avoid_: Pond, mere
+
 **Smithy**:
 The part of the village where the furnace, anvil and Blacksmith stand.
 _Avoid_: Forge, workshop
@@ -37,6 +41,10 @@ _Avoid_: Node, resource, plant
 **Vein**:
 A spot in the world that can be mined for ore; it runs out after use and grows back over time. A vein is not a rock, which is a prop.
 _Avoid_: Ore rock, node, resource
+
+**Fishing spot**:
+A spot on the water at the edge of the bank, fished from the land beside it, that shows as rippling water. It runs out after use and comes back somewhere else along the shore.
+_Avoid_: Fishing pool, fishing hole, school
 
 **Furnace**:
 A small building in the smithy where a player turns ore into bars. Not a house.
