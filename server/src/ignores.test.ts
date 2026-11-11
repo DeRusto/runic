@@ -91,7 +91,7 @@ test("a new player's ignore list arrives empty", async () => {
   await vi.waitFor(() => expect(bystander.ignores).toEqual([]));
 });
 
-test("an ignored player's public chat and PMs never reach you, and they are not told", async () => {
+test("an ignored player's public chat, PMs and emotes never reach you, and they are not told", async () => {
   await say("/ignore igPEST");
   expect(me.lines).toEqual(["IgPest is now on your ignore list."]);
   expect(me.ignores).toEqual(["IgPest"]);
@@ -99,9 +99,14 @@ test("an ignored player's public chat and PMs never reach you, and they are not 
 
   await send(pest, "hello all");
   await send(pest, "/pm IgMe psst");
+  await send(pest, "/e waves");
   expect(me.lines).toEqual(["IgPest is now on your ignore list."]);
-  expect(pest.lines).toEqual(["IgPest: hello all", "To IgMe: psst"]);
-  expect(bystander.lines).toEqual(["IgPest: hello all"]);
+  expect(pest.lines).toEqual([
+    "IgPest: hello all",
+    "To IgMe: psst",
+    "IgPest: waves",
+  ]);
+  expect(bystander.lines).toEqual(["IgPest: hello all", "IgPest: waves"]);
 
   await say("/unignore IgPest");
   expect(me.ignores).toEqual([]);

@@ -48,6 +48,7 @@ test("a chat line reaches other players trimmed, with who said it", async () => 
     id: speaker.sessionId,
     username: "Speaker",
     text: "hello there",
+    emote: false,
   });
 });
 
