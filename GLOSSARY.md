@@ -59,7 +59,7 @@ Odo, the villager at the smithy, who gives players the tools they don't have yet
 _Avoid_: Smith, vendor
 
 **Conversation**:
-A talk with a villager in the dialogue box above the bar: the villager's lines and the player's choices, which the server checks the player is still beside the villager to carry out. Walking away or being hit ends it.
+A talk with a villager in the dialogue box above the bar: the villager's lines and the player's choices, which the server checks the player is still beside the villager to carry out. Walking away or being hit ends it, and a blocked hit counts.
 _Avoid_: Chat (that is the chat box), dialog
 
 **Storekeeper**:
@@ -93,6 +93,14 @@ _Avoid_: Junk, vendor trash
 **Counter**:
 The part of the general store's window where a player sets out a trade: what they will buy from the shelf, what they will sell from their inventory, and the coins each way. Nothing changes hands until the player makes the deal.
 _Avoid_: Cart, basket, trade window
+
+**Tray**:
+One of the counter's two lists: what the player will buy from the shelf, or what they will sell from their inventory. Each line is an item and a count, which the player can take back before the deal.
+_Avoid_: Cart, basket, offer
+
+**Deal**:
+Settling both trays at once with the store window's Deal button: sales first, so their coins pay for the buys. The server refuses it, and nothing changes hands, if the player can't pay, has no room, or the shelf has changed since they set out the trays.
+_Avoid_: Purchase, transaction, checkout
 
 **Prop**:
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.

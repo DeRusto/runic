@@ -25,7 +25,7 @@ import { addTip } from "./tooltip.ts";
 const coins = (count: number) => `${count} coin${count === 1 ? "" : "s"}`;
 
 /**
- * The general store's window, the counter (#198): the shelf's slots at the top, and below them
+ * The store window (village spec §5): the shelf's slots at the top, and below them the counter, with
  * a tray of what the player buys and one of what they sell, which one Deal settles. Nothing
  * changes hands before Deal. The server opens it, and closes it on a walk away or a hit.
  */
