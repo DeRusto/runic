@@ -202,7 +202,7 @@ The icons go in `client/public/ui/`, beside each pack's licence copied as `LICEN
 
 - Log out has no hotkey. Clicking its button opens a confirm box instead of logging out at once.
 - The box sits centred over the world in the panel's look, with a front panel's gold hairline. It reads "Log out?" and has two buttons, **Log out** and **Cancel**. It has no title bar and can't be dragged, and only one can be open.
-- **Log out** sends the log-out intent, as the button does today. The server still decides: a log out refused during a combat lock shows no line, and the player stays in.
+- **Log out** sends the log-out intent, as the button does today. The server still decides: during a combat lock it refuses with the chat line "You can't log out until 10 seconds after a fight.", and the player stays in.
 - **Cancel**, Escape or a second click on the Log out button closes the box, puts focus back on the Log out button, and does nothing else. Escape closes the box before any panel.
 
 ## 8. Experience labels

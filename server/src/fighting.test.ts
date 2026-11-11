@@ -723,6 +723,22 @@ describe("combat lock", () => {
     run(s, 50);
     expect(s.loggedOut).toEqual([]);
   });
+
+  test("a refused log out tells the player why, and only them", () => {
+    const s = fight(NEXT_TO, MISS);
+    s.addPlayer("a", SAVE);
+    s.queueTarget("a", "0");
+    run(s, 1);
+    s.queueLogout("a");
+    expect(run(s, 1).filter((e) => e.type === "told")).toEqual([
+      {
+        type: "told",
+        player: "a",
+        line: "You can't log out until 10 seconds after a fight.",
+        tick: 2,
+      },
+    ]);
+  });
 });
 
 describe("a dropped player", () => {

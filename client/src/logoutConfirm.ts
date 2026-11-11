@@ -18,7 +18,7 @@ export function showLogoutConfirm(room: WorldConnection) {
   setOpen(false);
   logout.onclick = () => (box.hidden ? setOpen(true) : close());
   document.getElementById("logout-confirm-no")!.onclick = close;
-  // The server decides: a log out refused during a combat lock is silent, and the player stays in.
+  // The server decides: during a combat lock it tells the player why, and they stay in.
   document.getElementById("logout-confirm-yes")!.onclick = () => {
     close();
     room.send(LOGOUT_INTENT);

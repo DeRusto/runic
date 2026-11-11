@@ -80,6 +80,13 @@ export const FIGHT_BACK_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
+
+/** The server alone knows the lock, so only it asks; 34 ticks of 300 ms round to 10 seconds. */
+export function logoutRefusal(locked: boolean) {
+  return locked
+    ? "You can't log out until 10 seconds after a fight."
+    : undefined;
+}
 export const REGEN_INTERVAL_TICKS = 20;
 export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const HEALING_POOL_INTERVAL_TICKS = 4;
