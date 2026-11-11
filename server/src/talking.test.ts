@@ -1,5 +1,5 @@
 import { parseRegion, type WorldEvent } from "@runic/shared";
-import { beforeEach, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 const TILES = parseRegion(
@@ -148,6 +148,46 @@ test("being hit ends the conversation", () => {
     },
     { type: "talkEnded", player: "a" },
   ]);
+});
+
+describe.each([
+  ["B", "odo", undefined, "talkEnded", "Odo stops talking"],
+  ["M", "marta", "openStore", "storeClosed", "Marta stops trading"],
+  ["$", "aldous", "openBank", "bankClosed", "Aldous shuts the bank"],
+])("with %s's window open", (tile, villager, then, closed, says) => {
+  /** Opens the window beside the villager, attacks the Spider beyond, and returns every event up to its first swing. */
+  const untilSwung = (roll: number, shield: string) => {
+    sim = new Simulation(parseRegion(`TTTTT\nT${tile}RST\nTTTTT`), () => roll);
+    sim.addPlayer("a");
+    me().shield = shield;
+    sim.queueVisit("a", villager, then);
+    sim.tick();
+    sim.queueTarget("a", "0");
+    sim.events.splice(0);
+    const sent: WorldEvent[] = [];
+    while (!sent.some(({ type }) => type === "enemySwing")) {
+      sim.tick();
+      sent.push(...sim.events.splice(0));
+    }
+    return sent;
+  };
+
+  test("a blocked swing closes it", () => {
+    const sent = untilSwung(0, "copperShield");
+    expect(sent).toContainEqual(expect.objectContaining({ blocked: true }));
+    expect(sent).toContainEqual({
+      type: "told",
+      player: "a",
+      line: `You're hit, and ${says}.`,
+    });
+    expect(sent).toContainEqual({ type: closed, player: "a" });
+  });
+
+  test("a miss leaves it open", () => {
+    const sent = untilSwung(0.99, "");
+    expect(sent).toContainEqual(expect.objectContaining({ damage: 0 }));
+    expect(sent.map(({ type }) => type)).not.toContain(closed);
+  });
 });
 
 test("a choice that isn't one of the current ones is ignored", () => {
