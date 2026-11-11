@@ -71,7 +71,7 @@ Aldous, the villager who runs the bank.
 _Avoid_: Teller, clerk
 
 **General store**:
-The one store in the village. It buys any item from a player and sells what is on its shelf.
+The one store in the village. It buys any item but coins from a player and sells what is on its shelf.
 _Avoid_: Shop, market
 
 **Shelf**:

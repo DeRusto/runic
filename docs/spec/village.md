@@ -13,7 +13,7 @@ The village gets three villagers who talk: Odo the Blacksmith, Marta the storeke
 From [Who is the village cast?](https://github.com/DeRusto/runic/issues/194) and [How does talking to a character look and play?](https://github.com/DeRusto/runic/issues/195).
 
 - Each villager stands on one tile. Clicking one walks the player next to them, and the conversation opens on arrival.
-- A conversation shows the villager's lines in the dialogue box above the bar, then the player's choices as buttons (number keys pick them). Escape closes it.
+- A conversation shows the villager's lines in the dialogue box above the bar, under their portrait, name and role ("Odo, blacksmith"). Each line types itself out; a click or Space shows the rest of it, and the next click or Space moves on. The player's choices follow as buttons (number keys pick them). Escape closes it.
 - The server checks the player is still beside the villager before it carries out a choice.
 - Odo gives the tools a player lacks only when asked in conversation, no longer on arrival.
 - Right-clicking Marta offers **Trade**, and Aldous **Bank**: the player walks over and the window opens on arrival, skipping the talk.
@@ -53,7 +53,7 @@ From [What does the general store sell and pay?](https://github.com/DeRusto/runi
 | Coal | 4 | Heartflame | 100 |
 | Iron ore | 8 | | |
 
-- A bar is worth its ores and finds, and gear its bars. An uncommon item is worth 2 times its common version, and a rare one 4 times.
+- A bar or piece of gear is worth everything it is made of: a bar its ores and finds, and gear its bars and any finds, such as the Emberbone in Emberite gear. An uncommon item is worth 2 times its common version, and a rare one 4 times.
 - The store sells at full value and pays 40% of value, rounded down, but never less than 1 coin for one item unless it is trash (worth 0). A sale of several pays the one-item price times the count. The rate never changes with stock.
 - The store buys every item, improved gear included, but not coins. Tools are not items.
 
