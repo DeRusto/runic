@@ -272,8 +272,8 @@ export class Simulation {
   ) {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { enemy, blacksmith, station } = kind;
-        if (blacksmith) this.villagers.set("odo", { x, y });
+        const { enemy, villager, station } = kind;
+        if (villager) this.villagers.set(villager, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const { site, stateField, leftField } = GATHERING[skill];
@@ -562,9 +562,10 @@ export class Simulation {
     this.queuedActions.set(id, { make, all: all === true });
   }
 
-  queueVisit(id: string) {
-    if (this.alive(id) && this.villagers.has("odo"))
-      this.queuedActions.set(id, { villager: "odo" });
+  /** `villager` comes straight off the network, so one who isn't standing in this region is ignored. */
+  queueVisit(id: string, villager: string) {
+    if (this.alive(id) && this.villagers.has(villager as VillagerId))
+      this.queuedActions.set(id, { villager: villager as VillagerId });
   }
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */

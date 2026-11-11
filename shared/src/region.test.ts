@@ -53,7 +53,8 @@ const IS = {
   emberite: (tile) => tile.vein === "emberite",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
-  blacksmith: (tile) => !!tile.blacksmith,
+  blacksmith: (tile) => tile.villager === "odo",
+  villager: (tile) => !!tile.villager,
   house: (tile) => !!tile.house,
 } satisfies Record<string, (tile: TileKind) => boolean>;
 
@@ -103,6 +104,7 @@ describe("the region", () => {
     ["furnace", 4],
     ["anvil", 1],
     ["blacksmith", 1],
+    ["villager", 3],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -124,9 +126,14 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
-  it("lets a player walk next to every bush, vein, station and the Blacksmith", () => {
+  it("lets a player walk next to every bush, vein, station and villager", () => {
     expect(
-      tilesOf(...BUSHES, ...VEINS, ...STATIONS_AND_BLACKSMITH).filter(
+      tilesOf(
+        ...BUSHES,
+        ...VEINS,
+        ...STATIONS_AND_BLACKSMITH,
+        "villager",
+      ).filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
@@ -227,6 +234,13 @@ describe("the region", () => {
     },
   );
 
+  it.each([
+    ["marta", 11, 41],
+    ["aldous", 26, 41],
+  ] as const)("stands %s at %i,%i", (villager, x, y) => {
+    expect(region[y]![x]!.villager).toBe(villager);
+  });
+
   it("stands the furnace, anvil and Blacksmith at the crossroads' north-east corner", () => {
     for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
       expect(x).toBeGreaterThanOrEqual(36);
@@ -297,7 +311,7 @@ describe("parseRegion", () => {
     ["e", { ground: "ashen", vein: "emberite", blocks: true }],
     ["F", { ground: "grass", station: "furnace", blocks: true }],
     ["N", { ground: "grass", station: "anvil", blocks: true }],
-    ["B", { ground: "grass", blacksmith: true, blocks: true }],
+    ["B", { ground: "grass", villager: "odo", blocks: true }],
     ["H", { ground: "grass", house: "wall", blocks: true }],
     ["D", { ground: "grass", house: "door", blocks: true }],
     ["W", { ground: "path", prop: "well", blocks: true }],

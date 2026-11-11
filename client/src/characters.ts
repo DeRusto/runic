@@ -3,6 +3,7 @@ import {
   WALK_TICKS_PER_TILE,
   type EnemyKind,
   type Tile,
+  type VillagerId,
 } from "@runic/shared";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -562,17 +563,26 @@ export async function loadCharacters() {
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
 }
 
-/** The Blacksmith, on their tile with a hammer in hand. */
-export async function loadBlacksmith(tile: Tile) {
-  const [ranger, hammer, clips] = await Promise.all([
-    load("Ranger"),
-    loadGltf("hammer"),
+/** Models no player has, so villagers read apart (spec D18). */
+const VILLAGER_MODELS = {
+  odo: "Ranger",
+  marta: "Rogue",
+  aldous: "Mage",
+} satisfies Record<VillagerId, string>;
+
+/** A villager on their tile; the Blacksmith holds a hammer. */
+export async function loadVillager(tile: Tile, villager: VillagerId) {
+  const [{ scene }, clips] = await Promise.all([
+    load(VILLAGER_MODELS[villager]),
     loadClips(),
   ]);
-  fit(ranger.scene, (size) => HEIGHT / size.y);
-  castShadows(hammer.scene);
-  ranger.scene.getObjectByName("handslotr")!.add(hammer.scene);
-  return new Figure(tile, ranger.scene, clips);
+  fit(scene, (size) => HEIGHT / size.y);
+  if (villager === "odo") {
+    const hammer = (await loadGltf("hammer")).scene;
+    castShadows(hammer);
+    scene.getObjectByName("handslotr")!.add(hammer);
+  }
+  return new Figure(tile, scene, clips);
 }
 
 /** So a hit's red flash shows on this enemy alone. */

@@ -12,7 +12,7 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
 export const MAKE_INTENT = "make";
-/** The visit intent's message type, for clicking the Blacksmith; it has no payload. Arriving opens the conversation. */
+/** The visit intent's message type, for clicking a villager; its payload is the villager's id. Arriving opens the conversation. */
 export const VISIT_INTENT = "visit";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";

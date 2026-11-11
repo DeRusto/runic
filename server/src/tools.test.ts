@@ -24,7 +24,7 @@ const arrive = () => ticks(20);
 const ASK_FOR_TOOLS = 2;
 /** Walks over to the Blacksmith and asks for tools. */
 const askForTools = (id = "a") => {
-  sim.queueVisit(id);
+  sim.queueVisit(id, "odo");
   arrive();
   sim.choose(id, ASK_FOR_TOOLS);
 };
@@ -71,7 +71,7 @@ test("the click replaces what the player was doing", () => {
 });
 
 test("clicking something else on the way means no visit", () => {
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   sim.queueWalk("a", { x: 1, y: 1 });
   arrive();
@@ -81,7 +81,7 @@ test("clicking something else on the way means no visit", () => {
 });
 
 test("a visit cut off by a lost connection gives nothing", () => {
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   sim.dropPlayer("a");
   arrive();
@@ -90,16 +90,16 @@ test("a visit cut off by a lost connection gives nothing", () => {
 
 test("a dead player's click is ignored", () => {
   me().dead = true;
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   expect(tools()).toEqual([]);
 });
 
 test("a player who isn't here, or a region with no Blacksmith, is ignored", () => {
-  expect(() => sim.queueVisit("nobody")).not.toThrow();
+  expect(() => sim.queueVisit("nobody", "odo")).not.toThrow();
   const empty = new Simulation(parseRegion("TTT\nTRT\nTTT"), () => 0.99);
   empty.addPlayer("a");
-  empty.queueVisit("a");
+  empty.queueVisit("a", "odo");
   empty.tick();
   expect(empty.events).toEqual([]);
 });
