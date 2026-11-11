@@ -46,6 +46,9 @@ test("each tier's shield is gated at its Defense level, whatever the Combat leve
   expect(gearRefusal("bronzeShield", defense(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
   );
+  expect(gearRefusal("steelShield", defense(xpForLevel(14)))).toBe(
+    "You need Defense 15 to equip this.",
+  );
   expect(gearRefusal("steelShield", defense(xpForLevel(15)))).toBeUndefined();
   expect(gearRefusal("ironShield", defense(4049))).toBe(
     "You need Defense 10 to equip this.",
