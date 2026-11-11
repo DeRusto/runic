@@ -6,6 +6,7 @@ import {
   PRIVATE_LINE,
   SOCIAL_LISTS,
   commandRefusal,
+  emoteRefusal,
   followRefusal,
   listRefusal,
   pmRefusal,
@@ -163,7 +164,8 @@ const COMMANDS: Record<string, Command> = {
     description:
       "Act something out, shown in bold to everyone as your name then the text.",
     run: (world, client, text) => {
-      if (!text) return tell(client, "Usage: /e <text>");
+      const refusal = emoteRefusal(text);
+      if (refusal) return tell(client, refusal);
       world.say(client, text, true);
     },
   },

@@ -32,6 +32,10 @@ export function replyRefusal(
   if (!message) return "Usage: /r <message>";
 }
 
+/** Why `/e` acts nothing out, or undefined. */
+export const emoteRefusal = (text: string) =>
+  text ? undefined : "Usage: /e <text>";
+
 /** Why `/friend` or `/ignore` (or, when not `adding`, their `/un…` command) changes nothing, or undefined. */
 export function listRefusal(
   list: SocialList,
