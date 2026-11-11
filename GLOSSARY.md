@@ -66,6 +66,18 @@ _Avoid_: Shopkeeper, merchant, vendor
 The villager who runs the bank.
 _Avoid_: Teller, clerk
 
+**General store**:
+The one store in the village. It buys any item from a player and sells what is on its shelf.
+_Avoid_: Shop, market
+
+**Shelf**:
+What the general store has for sale, the same for every player: its own stock, which refills over time, and the items players have sold to it, which run down over time.
+_Avoid_: Stock list, inventory
+
+**Value**:
+What an item costs at the general store, in coins. The store pays less than an item's value when it buys.
+_Avoid_: Price, worth
+
 **Prop**:
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
 _Avoid_: Decoration, doodad, object
