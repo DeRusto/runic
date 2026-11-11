@@ -16,7 +16,7 @@ A **character attribute** is a number combat reads: max health, the player's hit
 
 **Existing progress survives.** Every item a player holds today is common, and stays exactly as it is.
 
-Out of scope: changing an item after it is made, such as rerolling its Virtue or raising its Quality (it may come back with Jewelsmithing or a later map); improved items from enemies or any other loot.
+Out of scope: changing an item after it is made, such as rerolling its Virtue or raising its Quality (it may come back with Jewelsmithing or a later map); improved items from enemies or any other loot. Enemies drop no gear today. When they do, a later map can let that loot come out uncommon or rare: the compound id already carries it, and its chance and Virtues are that map's to decide.
 
 ## 2. Rules
 
