@@ -28,6 +28,8 @@ export type World = {
   sim: Simulation;
   /** Every player in the world, the one definition of online: a dropped connection still counts, a login still waiting does not. */
   onlinePlayers(): Client[];
+  /** Broadcasts a public chat line or an emote, as public chat does. */
+  say(client: Client, text: string, emote: boolean): void;
 };
 
 /** A chat-box line for this client only. */
@@ -146,6 +148,15 @@ const COMMANDS: Record<string, Command> = {
         .map((other) => other.auth.username)
         .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
       tell(client, `Online (${names.length}): ${names.join(", ")}`);
+    },
+  },
+  e: {
+    usage: "/e <text>",
+    description:
+      "Act something out, shown in bold to everyone as your name then the text.",
+    run: (world, client, text) => {
+      if (!text) return tell(client, "Usage: /e <text>");
+      world.say(client, text, true);
     },
   },
   pm: {

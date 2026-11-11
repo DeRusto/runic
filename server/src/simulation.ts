@@ -1109,7 +1109,7 @@ export class Simulation {
       if (this.random() >= emberboneChance) continue;
       const { username } = this.state.players.get(id)!;
       this.groundItems.spawn(enemy, "emberbone", 1, username, this.state.tick);
-      const line = "You find an Emberbone. It is on the ground.";
+      const line = "You find an [Emberbone]. It is on the ground.";
       this.events.push({ type: "told", player: id, line });
     }
     damagers.clear();
