@@ -39,7 +39,7 @@ A spot in the world that can be mined for ore; it runs out after use and grows b
 _Avoid_: Ore rock, node, resource
 
 **Furnace**:
-A fixed spot where a player turns ore into bars.
+A small building in the smithy where a player turns ore into bars. Not a house.
 _Avoid_: Smelter, forge
 
 **Anvil**:
@@ -50,9 +50,21 @@ _Avoid_: Forge, workbench
 A furnace or an anvil: a fixed spot where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
+**Villager**:
+A named person who stands on one tile in the village and talks to players. Each has one job they offer while talking. Never an enemy, and can't be attacked.
+_Avoid_: NPC, townsfolk, character
+
 **Blacksmith**:
-A fixed character who gives players the tools they don't have yet, for free. Not an enemy, and the only such character.
-_Avoid_: NPC, shopkeeper, vendor
+The villager at the smithy, who gives players the tools they don't have yet, for free.
+_Avoid_: Smith, vendor
+
+**Storekeeper**:
+The villager who runs the general store.
+_Avoid_: Shopkeeper, merchant, vendor
+
+**Banker**:
+The villager who runs the bank.
+_Avoid_: Teller, clerk
 
 **Prop**:
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
