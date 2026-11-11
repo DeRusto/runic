@@ -28,6 +28,9 @@ export type OpenMenu = (
   choices: (readonly [label: string, choose: () => void])[],
 ) => void;
 
+/** A skill bar's tooltip, with thousands separated by commas, as in "12,345 XP" (spec §5). */
+export const xpTip = (xp: number) => `${xp.toLocaleString("en")} XP`;
+
 const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1 7 4 4v2h-5l-1 7-1-7H6v-2l4-4z"/></svg>`;
 
 /**
@@ -134,7 +137,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     pin.setAttribute("aria-label", `Pin ${skill} to the bar`);
     row.append(name, pin, bar);
     const entry = { skill, field, row, name, bar, pin, xp: 0, pinTip: "" };
-    addTip(bar, () => `${entry.xp.toLocaleString("en")} XP`);
+    addTip(bar, () => xpTip(entry.xp));
     addTip(pin, () => entry.pinTip);
     return entry;
   });
