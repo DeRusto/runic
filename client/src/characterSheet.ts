@@ -13,7 +13,7 @@ import {
   virtueDoes,
 } from "@runic/shared";
 import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
-import { addPanel, panelKey } from "./panels.ts";
+import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { addTip } from "./tooltip.ts";
@@ -28,6 +28,9 @@ export type OpenMenu = (
   choices: (readonly [label: string, choose: () => void])[],
 ) => void;
 
+/** A skill bar's tooltip, with thousands separated by commas, as in "12,345 XP" (spec §5). */
+export const xpTip = (xp: number) => `${xp.toLocaleString("en")} XP`;
+
 const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1 7 4 4v2h-5l-1 7-1-7H6v-2l4-4z"/></svg>`;
 
 /**
@@ -37,13 +40,7 @@ const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1
 export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const sheet = document.getElementById("sheet")!;
   const button = document.getElementById("character")!;
-  const setOpen = (open: boolean) => {
-    sheet.hidden = !open;
-    button.setAttribute("aria-pressed", String(open));
-    if (open) placed.opened();
-    else placed.closed();
-  };
-  const placed = addPanel(sheet, () => setOpen(false), "right");
+  const setOpen = addButtonPanel(sheet, button, "right");
   const toggle = () => setOpen(!!sheet.hidden);
   setOpen(false);
   button.onclick = toggle;
@@ -134,7 +131,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     pin.setAttribute("aria-label", `Pin ${skill} to the bar`);
     row.append(name, pin, bar);
     const entry = { skill, field, row, name, bar, pin, xp: 0, pinTip: "" };
-    addTip(bar, () => `${entry.xp.toLocaleString("en")} XP`);
+    addTip(bar, () => xpTip(entry.xp));
     addTip(pin, () => entry.pinTip);
     return entry;
   });
@@ -182,13 +179,17 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         const { skill, pin } = entry;
         const pinned = me.pinnedSkills.includes(skill);
         pin.setAttribute("aria-pressed", String(pinned));
-        pin.disabled = !pinned && count >= MAX_PINNED_SKILLS;
-        entry.pinTip = pin.disabled
+        // Off by aria-disabled, not disabled, so the pointer over it still shows why.
+        const full = !pinned && count >= MAX_PINNED_SKILLS;
+        pin.setAttribute("aria-disabled", String(full));
+        entry.pinTip = full
           ? `The bar holds ${MAX_PINNED_SKILLS}: unpin one first`
           : pinned
             ? "Unpin from the bar"
             : "Pin to the bar";
-        pin.onclick = () => room.send(PIN_INTENT, { skill, pinned: !pinned });
+        pin.onclick = () => {
+          if (!full) room.send(PIN_INTENT, { skill, pinned: !pinned });
+        };
       }
     },
     drawSkills(me: SyncedPlayer) {

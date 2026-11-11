@@ -1,4 +1,5 @@
 import { LOGOUT_INTENT } from "@runic/shared";
+import { panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 
 /** The bar's Log out button opens a "Log out?" box, and only its Log out sends the intent (spec §7). */
@@ -18,7 +19,7 @@ export function showLogoutConfirm(room: WorldConnection) {
   };
   // In the capture phase, so the box takes Escape before any panel's listener sees it.
   const onKey = (event: KeyboardEvent) => {
-    if (event.key !== "Escape" || box.hidden) return;
+    if (panelKey(event) !== "Escape" || box.hidden) return;
     setOpen(false);
     event.stopPropagation();
   };

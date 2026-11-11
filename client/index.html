@@ -146,6 +146,7 @@
         /* The right end's minimum fits its row of buttons at 800 px. */
         grid-template-columns: minmax(0, 1fr) auto minmax(272px, 1fr);
         gap: 8px;
+        /* BOTTOM_BAR_PX in client/src/panels.ts keeps panels above this; change both together. */
         height: 160px;
         padding: 8px;
         box-sizing: border-box;
@@ -492,7 +493,7 @@
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.06em;
-        text-transform: uppercase;
+        font-variant: small-caps;
         /* It drags the panel, so a press on it neither selects text nor scrolls. */
         cursor: grab;
         user-select: none;
@@ -677,13 +678,13 @@
         height: 100%;
         fill: currentColor;
       }
-      .pin:hover:not(:disabled) {
+      .pin:hover:not([aria-disabled="true"]) {
         background: #2a1f14;
       }
       .pin[aria-pressed="true"] {
         color: #e06a50;
       }
-      .pin:disabled {
+      .pin[aria-disabled="true"] {
         opacity: 0.35;
       }
       /* Narrow enough to stay clear of the player at the world's centre, even at 800 px. */
@@ -823,13 +824,13 @@
         white-space: nowrap;
         cursor: pointer;
       }
-      #smithing-rows button:hover:not(:disabled) {
+      #smithing-rows button:hover:not([aria-disabled="true"]) {
         filter: brightness(1.12);
       }
-      #smithing-rows button:active:not(:disabled) {
+      #smithing-rows button:active:not([aria-disabled="true"]) {
         transform: translateY(1px);
       }
-      #smithing-rows button:disabled {
+      #smithing-rows button[aria-disabled="true"] {
         border-image-source: url(/ui/button_grey.png);
         color: #777;
         cursor: default;

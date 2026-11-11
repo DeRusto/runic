@@ -5,7 +5,7 @@ export function panelKey(event: KeyboardEvent) {
   return event.key;
 }
 
-/** The bottom bar's height in index.html; panels stay above it (spec §6). */
+/** The height of `#bar` in client/index.html; panels stay above it (spec §6). Change both together. */
 const BOTTOM_BAR_PX = 160;
 /** How far a first opening sits from the screen's edges. */
 const EDGE_PX = 8;
@@ -84,7 +84,8 @@ export function addPanel(
     titleBar.setPointerCapture(event.pointerId);
     titleBar.onpointermove = (move) =>
       moveTo(element, move.clientX - grabX, move.clientY - grabY);
-    titleBar.onpointerup = () => (titleBar.onpointermove = null);
+    // Not pointerup alone: a pointercancel, as when the window loses focus, also ends the drag.
+    titleBar.onlostpointercapture = () => (titleBar.onpointermove = null);
   };
   return {
     opened: () => {
@@ -109,4 +110,23 @@ export function addPanel(
       restack();
     },
   };
+}
+
+/**
+ * Registers a panel that a bar button opens and shuts (spec §6), keeping the panel shown,
+ * the button's `aria-pressed` and the front order together. Returns how to open or shut it.
+ */
+export function addButtonPanel(
+  element: HTMLElement,
+  button: HTMLElement,
+  side?: "left" | "right",
+) {
+  const setOpen = (open: boolean) => {
+    element.hidden = !open;
+    button.setAttribute("aria-pressed", String(open));
+    if (open) placed.opened();
+    else placed.closed();
+  };
+  const placed = addPanel(element, () => setOpen(false), side);
+  return setOpen;
 }

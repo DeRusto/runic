@@ -160,10 +160,6 @@ test("walking off the tile closes it, and coming back doesn't reopen it", () => 
 
 test.each([
   ["its X", () => byId.get("pile-close")!.onclick!()],
-  [
-    "a press elsewhere",
-    () => listeners.get("pointerdown")!({ target: element() }),
-  ],
   ["death", () => patch(3, { o: ore, s: sword }, { dead: true })],
 ])("%s closes it", (_, close) => {
   open({ x: 3, y: 1 });
@@ -171,9 +167,10 @@ test.each([
   expect(pile().hidden).toBe(true);
 });
 
-test("a press inside doesn't close it", () => {
+test("a press anywhere, inside or out, leaves it open", () => {
   open({ x: 3, y: 1 });
   listeners.get("pointerdown")!({ target: pile() });
+  listeners.get("pointerdown")!({ target: element() });
   expect(pile().hidden).toBe(false);
 });
 

@@ -181,7 +181,7 @@ The accounts a player has added with `/friend <name>` and not removed with `/unf
 _Avoid_: Buddy list, contacts
 
 **Ignore list**:
-The accounts a player has added with `/ignore <name>` and not removed with `/unignore <name>`, kept on the server across logins. The server drops their public chat and private messages before they reach this player, and the ignored player is not told: they still see their own lines. Ignoring a friend takes them off the friends list. The social panel (O) lists the names, with no status.
+The accounts a player has added with `/ignore <name>` and not removed with `/unignore <name>`, kept on the server across logins. The server drops their public chat, emotes and private messages before they reach this player, and the ignored player is not told: they still see their own lines. Ignoring a friend takes them off the friends list. The social panel (O) lists the names, with no status.
 _Avoid_: Block list, mute
 
 **Follow**:

@@ -19,9 +19,12 @@ const element = () => ({
   contains(other: unknown) {
     return other === this;
   },
+  attributes: {} as Record<string, string>,
+  setAttribute(name: string, value: string) {
+    this.attributes[name] = value;
+  },
   children: [] as any[],
   hidden: false,
-  disabled: false,
   textContent: "",
   className: "",
   type: "",
@@ -90,6 +93,8 @@ const line = (row: any) => texts(row).slice(1, 3);
 const headers = () =>
   sections().map((s: any) => [...texts(s.children[0]), s.open]);
 const buttons = (row: any) => row.children.filter((c: any) => c.type);
+/** Whether a Make button is off. Not `disabled`, which would hide the row's tooltip from the pointer over it. */
+const off = (button: any) => button.ariaDisabled === "true";
 const patch = (next: SyncedPlayer) => {
   current = next;
   onState({ players: new Map([["a", current]]) });
@@ -184,14 +189,14 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
       "Needs Smithing 20",
     ].join("\n"),
   );
-  expect(buttons(sword).every((b: any) => b.disabled)).toBe(true);
+  expect(buttons(sword).every(off)).toBe(true);
 
   patch(me(held, { smithingXp: xpForLevel(20) }));
   expect(tipOf(sword)).toContain("Not enough materials");
 
   patch(me([held[0]!, ["emberbone", 2]], { smithingXp: xpForLevel(20) }));
   expect(sword.className).toBe("");
-  expect(buttons(sword).every((b: any) => !b.disabled)).toBe(true);
+  expect(buttons(sword).every((b: any) => !off(b))).toBe(true);
   expect(shownRows()[21].className).toBe("cant");
 });
 
@@ -220,7 +225,7 @@ test("a row shows its icon, piece and short cost, with the full cost and experie
     "Make 1",
     "Make all",
   ]);
-  expect(buttons(sword).every((b: any) => !b.disabled)).toBe(true);
+  expect(buttons(sword).every((b: any) => !off(b))).toBe(true);
 });
 
 test("a row that can't be made is greyed with the reason, and its buttons are off", () => {
@@ -229,7 +234,14 @@ test("a row that can't be made is greyed with the reason, and its buttons are of
   const iron = shownRows()[10];
   expect(iron.className).toBe("cant");
   expect(tipOf(iron)).toContain("Needs Smithing 10");
-  expect(buttons(iron).every((b: any) => b.disabled)).toBe(true);
+  expect(buttons(iron).every(off)).toBe(true);
+});
+
+test("an off button sends nothing when clicked", () => {
+  open("anvil");
+  const [sword] = shownRows();
+  buttons(sword).forEach((b: any) => b.onclick());
+  expect(send).not.toHaveBeenCalled();
 });
 
 test("having too few materials greys a row too", () => {
@@ -290,7 +302,7 @@ test("the row greys itself as a pick uses up the materials, with the panel still
   expect(bar.className).toBe("cant");
   expect(tipOf(bar)).toContain("1 Copper ore (have 0)");
   expect(tipOf(bar)).toContain("Not enough materials");
-  expect(buttons(bar).every((b: any) => b.disabled)).toBe(true);
+  expect(buttons(bar).every(off)).toBe(true);
 });
 
 test("a level gained while it's open lifts that row's level reason", () => {
@@ -314,12 +326,12 @@ test("a furnace row names Mining as its gate, whatever the Smithing level", () =
   const iron = shownRows()[2];
   expect(line(iron)).toEqual(["Iron bar", "1 Iron ore · Needs Mining 10"]);
   expect(tipOf(iron)).toContain("Needs Mining 10");
-  expect(buttons(iron).every((b: any) => b.disabled)).toBe(true);
+  expect(buttons(iron).every(off)).toBe(true);
 
   patch(me([["ironOre", 1]], { smithingXp: 0, miningXp: xpForLevel(10) }));
   expect(iron.className).toBe("");
   expect(tipOf(iron)).not.toContain("Needs Mining 10");
-  expect(buttons(iron).every((b: any) => !b.disabled)).toBe(true);
+  expect(buttons(iron).every((b: any) => !off(b))).toBe(true);
 });
 
 test("its X closes it", () => {
@@ -376,11 +388,20 @@ describe("clicking a station from afar", () => {
   });
 });
 
-test("a press anywhere else closes it, and a press inside doesn't", () => {
+test("a press anywhere, inside or out, leaves it open", () => {
   open("furnace");
   listeners.get("pointerdown")!({ target: panel() });
-  expect(panel().hidden).toBe(false);
   listeners.get("pointerdown")!({ target: element() });
+  expect(panel().hidden).toBe(false);
+});
+
+test("walking out of reach of the station closes it, and coming back doesn't reopen it", () => {
+  open("anvil");
+  patch(me([], { x: 7, y: 2 }));
+  expect(panel().hidden).toBe(false);
+  patch(me([], { x: 8, y: 1 }));
+  expect(panel().hidden).toBe(true);
+  patch(me([], { x: 7, y: 1 }));
   expect(panel().hidden).toBe(true);
 });
 

@@ -23,7 +23,7 @@ const fakePanel = (width = 300, height = 200) => {
     setPointerCapture() {},
     onpointerdown: null as Handler,
     onpointermove: null as Handler,
-    onpointerup: null as Handler,
+    onlostpointercapture: null as Handler,
   };
   const element = {
     titleBar,
@@ -65,7 +65,8 @@ const drag = (element: FakePanel, from: number[], to: number[]) => {
   const target = element.titleBar;
   element.titleBar.onpointerdown!({ target, clientX, clientY, pointerId: 1 });
   element.titleBar.onpointermove!({ clientX: to[0], clientY: to[1] });
-  element.titleBar.onpointerup!({});
+  // The browser releases capture on pointerup and on pointercancel alike.
+  element.titleBar.onlostpointercapture!({});
 };
 
 test("the panel opened last is in front, above the others", () => {
@@ -116,6 +117,12 @@ test("a dragged panel follows the pointer but stays on screen and above the bott
   expect(at(a.element)).toEqual(["0px", "340px"]);
   drag(a.element, [10, 345], [5000, -500]);
   expect(at(a.element)).toEqual(["700px", "0px"]);
+});
+
+test("a drag ends when the pointer is lost, so later moves leave the panel", () => {
+  const a = open();
+  drag(a.element, corner(a.element), [100, 100]);
+  expect(a.element.titleBar.onpointermove).toBeNull();
 });
 
 test("the close button in the title bar never starts a drag", () => {

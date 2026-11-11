@@ -367,8 +367,8 @@ describe("the Skills tab", () => {
 
   test("at six pins the other pins are disabled, and pinned ones still work", () => {
     sheet.drawPins(me(TODAY));
-    expect(row("Blocking").pin.disabled).toBe(true);
-    expect(row("Combat").pin.disabled).toBe(false);
+    expect(row("Blocking").pin.attributes["aria-disabled"]).toBe("true");
+    expect(row("Combat").pin.attributes["aria-disabled"]).toBe("false");
     expect(row("Combat").pin.attributes["aria-pressed"]).toBe("true");
     expect(row("Blocking").pin.attributes["aria-pressed"]).toBe("false");
     expect(tipOf(row("Blocking").pin)).toBe("The bar holds 6: unpin one first");
@@ -377,7 +377,9 @@ describe("the Skills tab", () => {
 
   test("under six pins every pin works", () => {
     sheet.drawPins(me(TODAY.slice(1)));
-    expect(rows().every(({ pin }) => !pin.disabled)).toBe(true);
+    expect(
+      rows().every(({ pin }) => pin.attributes["aria-disabled"] === "false"),
+    ).toBe(true);
     expect(tipOf(row("Combat").pin)).toBe("Pin to the bar");
   });
 
@@ -393,6 +395,13 @@ describe("the Skills tab", () => {
       skill: "Defense",
       pinned: false,
     });
+  });
+
+  test("at six pins an off pin sends nothing when clicked", () => {
+    sheet.drawPins(me(TODAY));
+    room.send.mockClear();
+    row("Blocking").pin.onclick!();
+    expect(room.send).not.toHaveBeenCalled();
   });
 
   test("drawing keeps the same rows, so pinning doesn't move the list", () => {

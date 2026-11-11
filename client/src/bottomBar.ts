@@ -21,6 +21,7 @@ import {
   showCharacterSheet,
   type OpenMenu,
   type SyncedPlayer,
+  xpTip,
 } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
@@ -160,7 +161,7 @@ export function showBottomBar(
     const bar = document.createElement("progress");
     row.append(text, next, bar);
     const skill = { name, field, text, next, bar, row, xp: 0 };
-    addTip(bar, () => `${skill.xp.toLocaleString("en")} XP`);
+    addTip(bar, () => xpTip(skill.xp));
     return skill;
   });
   const noPins = document.createElement("p");
@@ -217,7 +218,7 @@ export function showBottomBar(
         skill.next.textContent =
           level === MAX_LEVEL
             ? "Max level"
-            : `${(xpForLevel(level + 1) - xp).toLocaleString("en-US")} XP to level ${level + 1}`;
+            : `${(xpForLevel(level + 1) - xp).toLocaleString("en")} XP to level ${level + 1}`;
         skill.bar.value = levelProgress(xp);
         skill.xp = xp;
       }
