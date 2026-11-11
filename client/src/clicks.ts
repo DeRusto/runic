@@ -19,6 +19,7 @@ import type { OpenMenu } from "./characterSheet.ts";
 import { playerMenuChoices } from "./playerMenu.ts";
 import type { showPlayers, WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
+import { dialoguePrototype } from "./dialoguePrototype.ts";
 import type { showEnemies } from "./enemies.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
@@ -43,6 +44,12 @@ export function walkOnClick(
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const hit = new THREE.Vector3();
+  // PROTOTYPE (#195): talk to Odo on arrival.
+  const odoY = tiles.findIndex((row) => row.some((tile) => tile.blacksmith));
+  const talkToOdo = dialoguePrototype(room, {
+    x: tiles[odoY]!.findIndex((tile) => tile.blacksmith),
+    y: odoY,
+  });
 
   const marker = new THREE.Mesh(
     new THREE.RingGeometry(0.28, 0.42, 24).rotateX(-Math.PI / 2),
@@ -117,6 +124,7 @@ export function walkOnClick(
     if (blacksmith) {
       showMarker(blacksmith.x, blacksmith.y);
       room.send(VISIT_INTENT);
+      talkToOdo();
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;
