@@ -10,11 +10,12 @@ export function addSlotTip(slot: HTMLElement, text: () => string) {
     const shown = text();
     tip.hidden = !shown;
     tip.replaceChildren(...colouredNames(shown, [slot.dataset.item ?? ""]));
-    // Up and to the right, since the slots sit low on the screen.
-    tip.style.left = `${event.clientX + 12}px`;
+    // Up and to the right, since the slots sit low on the screen, but kept inside the window.
+    tip.style.left = `${Math.min(event.clientX + 12, innerWidth - tip.offsetWidth)}px`;
     tip.style.bottom = `${innerHeight - event.clientY + 12}px`;
   };
-  slot.onpointerleave = () => {
+  // A click changes what the slot holds, so the tip would be stale until the pointer moves.
+  slot.onpointerleave = slot.onpointerdown = () => {
     tip.hidden = true;
   };
 }

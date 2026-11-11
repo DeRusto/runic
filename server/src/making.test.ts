@@ -5,7 +5,7 @@ import {
   xpForLevel,
   type WorldEvent,
 } from "@runic/shared";
-import { beforeEach, expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 // The furnace is at (4,1) and the anvil at (6,1), with (5,1) next to both.
@@ -248,6 +248,20 @@ test("with no room the materials stay, and it ends with one line", () => {
   expect(player().smithingXp).toBe(0);
   expect(player().action).toBe("");
   expect(lines()).toEqual(["Your inventory is full."]);
+});
+
+test("a make refused for room rolls nothing, so it leaves the random stream alone", () => {
+  const drawsIn = (make: boolean) => {
+    const random = vi.fn(() => 0);
+    sim = new Simulation(TILES, random);
+    add([["copperBar", 10]], { fill: "herb", fillCount: 20 });
+    if (make) sim.queueMake("a", { item: "copperSword", all: false });
+    run(13);
+    return random.mock.calls.length;
+  };
+  const refused = drawsIn(true);
+  expect(lines()).toEqual(["Your inventory is full."]);
+  expect(refused).toBe(drawsIn(false));
 });
 
 test("a stack with room is room, even in a full inventory", () => {

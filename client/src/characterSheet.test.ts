@@ -10,6 +10,7 @@ import type { WorldConnection } from "./players.ts";
 class FakeInput {}
 vi.stubGlobal("HTMLInputElement", FakeInput);
 vi.stubGlobal("innerHeight", 700);
+vi.stubGlobal("innerWidth", 1000);
 
 const element = () => ({
   append(...children: any[]) {

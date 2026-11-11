@@ -125,7 +125,7 @@ From [How does an improved item look and read?](https://github.com/DeRusto/runic
 
 ## 7. Build tickets
 
-Each is a thin working slice that builds on those it needs. Each is a `ready-for-agent` issue.
+Each is a thin working slice that builds on those it needs. All three are built.
 
 | # | Ticket | Delivers | Needs |
 |---|---|---|---|

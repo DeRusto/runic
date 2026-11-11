@@ -902,10 +902,11 @@ export class Simulation {
         if (!inventoryCounts[slot]) inventory[slot] = EMPTY_SLOT;
       });
     }
-    // On the copy, so the last ore in a full inventory leaves room for its bar.
-    const made = madeItem(item, levelFor(player.smithingXp), this.random);
-    const slot = slotFor(made, { inventory, inventoryCounts });
+    // On the copy, so the last ore in a full inventory leaves room for its bar. Gear never
+    // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
+    const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
+    const made = madeItem(item, levelFor(player.smithingXp), this.random);
     inventory[slot] = made;
     inventoryCounts[slot]!++;
     inventory.forEach((held, i) => {

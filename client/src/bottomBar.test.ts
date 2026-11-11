@@ -24,6 +24,7 @@ const element = () => ({
   style: {} as Record<string, string>,
   hidden: false,
   textContent: "",
+  offsetWidth: 100,
   onclick: undefined as undefined | (() => void),
   oncontextmenu: undefined as undefined | ((event: unknown) => void),
   get firstElementChild() {
@@ -53,6 +54,7 @@ const fakeDocument = {
 };
 vi.stubGlobal("document", fakeDocument);
 vi.stubGlobal("innerHeight", 700);
+vi.stubGlobal("innerWidth", 1000);
 let frames: (() => void)[] = [];
 vi.stubGlobal("requestAnimationFrame", (draw: () => void) => frames.push(draw));
 vi.stubGlobal("cancelAnimationFrame", () => (frames = []));
@@ -245,6 +247,21 @@ describe("a filled slot", () => {
     expect(pointAt()).toBe("[rare]Copper sword of Might");
     expect(tip.style).toEqual({ left: "62px", bottom: "112px" });
     slot().onpointerleave!();
+    expect(tip.hidden).toBe(true);
+  });
+
+  test("the tooltip stays inside the window at its right edge", () => {
+    room.onStateChange.invoke(stateHolding(["copperOre", 1]));
+    nextFrame();
+    slot().onpointermove!({ clientX: 990, clientY: 600 });
+    expect(tip.style.left).toBe("900px");
+  });
+
+  test("a click hides the tooltip, so it never names what the slot held before", () => {
+    room.onStateChange.invoke(stateHolding(["copperOre", 1]));
+    nextFrame();
+    pointAt();
+    slot().onpointerdown!();
     expect(tip.hidden).toBe(true);
   });
 });
