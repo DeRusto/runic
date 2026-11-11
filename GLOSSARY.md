@@ -42,6 +42,10 @@ _Avoid_: Node, resource, plant
 A spot in the world that can be mined for ore; it runs out after use and grows back over time. A vein is not a rock, which is a prop.
 _Avoid_: Ore rock, node, resource
 
+**Tree**:
+A spot in the world that can be chopped for logs with an axe; it runs out after use, shows as a **stump** that still blocks walking, and grows back in the same place. Comes in three kinds: **Birch** (Woodcutting 1), **Oak** (10) and **Charwood** (20). Only trees placed as trees can be chopped; the rows of trees that wall the region are props.
+_Avoid_: Choppable tree, node, resource
+
 **Fishing spot**:
 A spot on the water at the edge of the bank, fished from the land beside it, that shows as rippling water. It runs out after use and comes back somewhere else along the shore.
 _Avoid_: Fishing pool, fishing hole, school
@@ -119,7 +123,7 @@ Settling both trays at once with the store window's Deal button: sales first, so
 _Avoid_: Purchase, transaction, checkout
 
 **Prop**:
-A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
+A fixed piece of scenery on a tile that players can't interact with, such as a rock or a tree in the rows that wall the region. Some block walking and some don't. A bush, a vein and a tree that can be chopped are not props.
 _Avoid_: Decoration, doodad, object
 
 **House**:
@@ -285,12 +289,16 @@ The health a player's eaten food has yet to give back, as healing ticks waiting 
 _Avoid_: Heal over time, buff
 
 **Material**:
-An item that goes into making something: ore, finds, bars and Emberbones. Gems count as materials before anything uses them.
+An item that goes into making something: ore, finds, bars, logs and Emberbones. Gems and logs count as materials before anything uses them.
 _Avoid_: Resource, ingredient
 
 **Ore**:
 The raw metal a player takes from a vein. A successful mine gives 1 or 2.
 _Avoid_: Rock, stone
+
+**Log**:
+The wood a player takes from a tree: birch, oak or charwood logs. A successful chop gives 1. Logs stack like ore.
+_Avoid_: Wood, lumber, timber
 
 **Find**:
 A material a vein sometimes gives along with its ore on a successful mine: tin from Copper and Iron veins, coal from Iron veins, and gems from Emberite veins. A find is always 1.
