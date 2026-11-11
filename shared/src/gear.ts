@@ -1,3 +1,5 @@
+import { itemParts, type Virtue } from "./items.ts";
+import { TIERS } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
 /** The names of a player's synced gear fields, which are also their save columns. */
@@ -95,19 +97,68 @@ export const GEAR = new Map<string, Gear>([
   ["emberiteLeggings", armour("legs", 20, 6)],
 ]);
 
+/** The gear an item id is, improved or not, or undefined if it isn't gear. An improved piece has its common form's stats and gate (spec §2). */
+export const gearOf = (item: string) => GEAR.get(itemParts(item).base);
+
 /** The percentage all worn armour takes off a hit. */
 export const armourPercentOf = (player: Partial<Record<GearSlot, string>>) =>
   GEAR_SLOTS.reduce(
-    (total, slot) => total + (GEAR.get(player[slot] ?? "")?.armourPercent ?? 0),
+    (total, slot) => total + (gearOf(player[slot] ?? "")?.armourPercent ?? 0),
     0,
   );
+
+/** Avoidance is held in tenths of a point off an enemy's chance to hit. */
+export const AVOIDANCE_TENTHS_PER_POINT = 10;
+/** Tenths of a point of Avoidance in a whole chance to hit (1, or 100 points). */
+export const AVOIDANCE_TENTHS_PER_HIT_CHANCE = AVOIDANCE_TENTHS_PER_POINT * 100;
+
+/** Each Virtue's unit, its size on an uncommon Copper piece (spec §3), and what the Gear tab says it does at a size (spec §5). Fortitude is in health, Might in the sword bonus's units, and Avoidance in tenths of a point. */
+const VIRTUE_EFFECTS: Record<
+  Virtue,
+  { unit: number; does: (size: number) => string }
+> = {
+  fortitude: { unit: 20, does: (size) => `Adds ${size} to your max health.` },
+  might: {
+    unit: 3,
+    does: (size) => `Adds ${size} to your minimum and maximum hit.`,
+  },
+  avoidance: {
+    unit: 1,
+    does: (tenths) =>
+      `Takes ${tenths / AVOIDANCE_TENTHS_PER_POINT} points off an enemy's chance to hit you.`,
+  },
+};
+
+/** The size of `item`'s Virtue, 0 for a common piece. Its unit is multiplied by the tier number, read from the base id's prefix, and rare is double uncommon (spec §3). */
+function virtueSize(item: string) {
+  const { base, quality, virtue } = itemParts(item);
+  if (!virtue) return 0;
+  const tier = TIERS.findIndex((name) => base.startsWith(name)) + 1;
+  return VIRTUE_EFFECTS[virtue].unit * tier * (quality === "rare" ? 2 : 1);
+}
+
+/** The total of one Virtue over every worn piece, as armour adds up, in that Virtue's unit. */
+export const virtueOf = (
+  player: Partial<Record<GearSlot, string>>,
+  virtue: Virtue,
+) =>
+  GEAR_SLOTS.reduce((total, slot) => {
+    const item = player[slot] ?? "";
+    return total + (itemParts(item).virtue === virtue ? virtueSize(item) : 0);
+  }, 0);
+
+/** What the Gear tab says `item`'s Virtue does, after its base stat, or undefined for a common piece (spec §5). */
+export function virtueDoes(item: string) {
+  const { virtue } = itemParts(item);
+  return virtue ? VIRTUE_EFFECTS[virtue].does(virtueSize(item)) : undefined;
+}
 
 /** Why this gear can't be equipped, or undefined if it can or isn't gear. The bar greys it, and the server tells the player. */
 export function gearRefusal(
   item: string,
   player: { combatXp: number; defenseXp: number },
 ) {
-  const gear = GEAR.get(item);
+  const gear = gearOf(item);
   if (!gear) return undefined;
   const { skill, xp } = GATES[gear.slot];
   return levelFor(player[xp]) < gear.level

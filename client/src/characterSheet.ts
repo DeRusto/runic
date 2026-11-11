@@ -1,6 +1,6 @@
 import {
   combatLevel,
-  GEAR,
+  gearOf,
   GEAR_SLOTS,
   levelFor,
   levelProgress,
@@ -10,9 +10,11 @@ import {
   TAKE_OFF_INTENT,
   totalLevel,
   type GearSlot,
+  virtueDoes,
 } from "@runic/shared";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
+import { addSlotTip } from "./slotTip.ts";
 
 export type SyncedPlayer = NonNullable<
   ReturnType<WorldConnection["state"]["players"]["get"]>
@@ -78,13 +80,16 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   let pointedAt: GearSlot | undefined;
   const describe = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
-    const does = GEAR.get(item)?.does;
-    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}`;
+    const does = gearOf(item)?.does;
+    const virtue = virtueDoes(item);
+    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
   };
   const showDetails = () => {
-    details.textContent = pointedAt
-      ? describe(pointedAt)
-      : "Point at a slot to see what's in it.";
+    details.replaceChildren(
+      ...(pointedAt
+        ? colouredNames(describe(pointedAt), [worn[pointedAt] ?? ""])
+        : ["Point at a slot to see what's in it."]),
+    );
   };
   const gearSlots = GEAR_SLOTS.map((gearSlot) => {
     // Not disabled when empty, or it couldn't be pointed at to read "Empty".
@@ -108,6 +113,10 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       pointedAt = undefined;
       showDetails();
     };
+    addSlotTip(box, () => {
+      const item = worn[gearSlot];
+      return item ? `Take off ${itemName(item)}` : "";
+    });
     return { gearSlot, box };
   });
   document
@@ -159,7 +168,6 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         box.dataset.item = item;
         box.setAttribute("aria-disabled", String(!item));
         box.setAttribute("aria-label", describe(gearSlot));
-        box.title = item && `Take off ${itemName(item)}`;
         box.style.backgroundImage = item && `url("${iconUrl(item)}")`;
         box.textContent = item ? "" : itemName(gearSlot);
       }

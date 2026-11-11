@@ -1,4 +1,5 @@
 import { Callbacks, type Room } from "@colyseus/sdk";
+import { itemParts } from "@runic/shared";
 import type { WorldRoom } from "../../server/src/WorldRoom.ts";
 import {
   addSeeThroughOutline,
@@ -48,8 +49,9 @@ export function showPlayers(
       const player = room.state.players.get(id);
       const target = player?.target;
       figure.fightTile = target ? room.state.enemies.get(target) : undefined;
-      figure.weapon = player?.weapon ?? "";
-      figure.shield = player?.shield ?? "";
+      // The worn look is the common form's, improved or not (spec §2).
+      figure.weapon = itemParts(player?.weapon ?? "").base;
+      figure.shield = itemParts(player?.shield ?? "").base;
       const action = player?.action;
       figure.mining = action === "mining";
       if (action !== "smithing") figure.work = undefined;

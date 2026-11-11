@@ -52,6 +52,23 @@ export const ITEMS = {
 } as const;
 export type ItemId = keyof typeof ITEMS;
 
+/** The Qualities an item can be made at, lowest first; common is a plain id (spec §2). */
+export const QUALITIES = ["common", "uncommon", "rare"] as const;
+export type Quality = (typeof QUALITIES)[number];
+/** The Virtues an improved item can carry, as they appear in its id (spec §2). */
+export const VIRTUES = ["fortitude", "might", "avoidance"] as const;
+export type Virtue = (typeof VIRTUES)[number];
+
+/** Splits an id held in state or a save into its base id, Quality and Virtue: `copperChestplate:uncommon:fortitude`, or a plain id for a common item (ADR 0004). Every lookup by item id reads `base`. */
+export function itemParts(id: string) {
+  const [base, quality = "common", virtue] = id.split(":");
+  return {
+    base: base as ItemId,
+    quality: quality as Quality,
+    virtue: virtue as Virtue | undefined,
+  };
+}
+
 /** Every tool the Blacksmith gives. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). */
 export const TOOLS = ["pickaxe", "hammer"];
 
@@ -62,15 +79,16 @@ export type HasInventory = {
 };
 
 /** The slot a new `item` goes in: the first stack of it with room, then the first empty slot. -1 means full (spec §4). */
-export function slotFor(item: ItemId, player: HasInventory) {
+export function slotFor(item: string, player: HasInventory) {
   const items = [...player.inventory];
   const counts = [...player.inventoryCounts];
   const stack = items.findIndex(
-    (held, slot) => held === item && counts[slot]! < ITEMS[item].stack,
+    (held, slot) =>
+      held === item && counts[slot]! < ITEMS[itemParts(item).base].stack,
   );
   return stack >= 0 ? stack : items.indexOf(EMPTY_SLOT);
 }
 
 /** Why a take of `item` from the ground, or any gain of one, is refused, or undefined if one fits. The rest of a stack that does not fit stays where it is. */
-export const takeRefusal = (item: ItemId, player: HasInventory) =>
+export const takeRefusal = (item: string, player: HasInventory) =>
   slotFor(item, player) < 0 ? "Your inventory is full." : undefined;

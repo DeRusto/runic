@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { armourPercentOf, GEAR, gearRefusal } from "./gear.ts";
+import {
+  armourPercentOf,
+  GEAR,
+  gearOf,
+  gearRefusal,
+  virtueDoes,
+  virtueOf,
+} from "./gear.ts";
+import { TIERS } from "./region.ts";
 import { xpForLevel } from "./skills.ts";
 
 const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
@@ -116,4 +124,65 @@ test("each tier's armour is gated at its Defense level", () => {
     "You need Defense 20 to equip this.",
   );
   expect(gearRefusal("emberiteChestplate", defense(18050))).toBeUndefined();
+});
+
+test("an improved piece has its common form's base stats and gate", () => {
+  expect(gearOf("copperChestplate:rare:fortitude")).toBe(
+    GEAR.get("copperChestplate"),
+  );
+  expect(gearRefusal("ironSword:uncommon:might", combat(0))).toBe(
+    "You need Combat 10 to equip this.",
+  );
+  expect(
+    armourPercentOf({
+      head: "copperHelmet:uncommon:avoidance",
+      body: "copperChestplate",
+    }),
+  ).toBe(6);
+});
+
+test.each([
+  ["fortitude", [20, 40, 60, 80, 100]],
+  ["might", [3, 6, 9, 12, 15]],
+  ["avoidance", [1, 2, 3, 4, 5]],
+] as const)(
+  "%s is its unit × the tier on an uncommon piece, doubled on a rare",
+  (virtue, sizes) => {
+    TIERS.forEach((tier, i) => {
+      for (const piece of ["Sword", "Shield", "Helmet", "Chestplate"]) {
+        const worn = (quality: string) => ({
+          body: `${tier}${piece}:${quality}:${virtue}`,
+        });
+        expect(virtueOf(worn("uncommon"), virtue)).toBe(sizes[i]!);
+        expect(virtueOf(worn("rare"), virtue)).toBe(2 * sizes[i]!);
+      }
+    });
+  },
+);
+
+test("worn Virtues add up, and only the asked-for one counts", () => {
+  const worn = {
+    weapon: "ironSword:uncommon:fortitude",
+    head: "copperHelmet:rare:fortitude",
+    body: "emberiteChestplate:rare:might",
+    legs: "steelLeggings",
+  };
+  expect(virtueOf(worn, "fortitude")).toBe(100);
+  expect(virtueOf(worn, "might")).toBe(30);
+  expect(virtueOf(worn, "avoidance")).toBe(0);
+  expect(virtueOf({}, "fortitude")).toBe(0);
+});
+
+test("the Gear tab line gives the Virtue at its size, and nothing for a common piece", () => {
+  expect(virtueDoes("copperChestplate:uncommon:fortitude")).toBe(
+    "Adds 20 to your max health.",
+  );
+  expect(virtueDoes("emberiteSword:rare:might")).toBe(
+    "Adds 30 to your minimum and maximum hit.",
+  );
+  expect(virtueDoes("ironHelmet:rare:avoidance")).toBe(
+    "Takes 0.6 points off an enemy's chance to hit you.",
+  );
+  expect(virtueDoes("ironHelmet")).toBeUndefined();
+  expect(virtueDoes("")).toBeUndefined();
 });

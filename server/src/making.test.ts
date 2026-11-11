@@ -5,7 +5,7 @@ import {
   xpForLevel,
   type WorldEvent,
 } from "@runic/shared";
-import { beforeEach, expect, test } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 // The furnace is at (4,1) and the anvil at (6,1), with (5,1) next to both.
@@ -250,6 +250,20 @@ test("with no room the materials stay, and it ends with one line", () => {
   expect(lines()).toEqual(["Your inventory is full."]);
 });
 
+test("a make refused for room rolls nothing, so it leaves the random stream alone", () => {
+  const drawsIn = (make: boolean) => {
+    const random = vi.fn(() => 0);
+    sim = new Simulation(TILES, random);
+    add([["copperBar", 10]], { fill: "herb", fillCount: 20 });
+    if (make) sim.queueMake("a", { item: "copperSword", all: false });
+    run(13);
+    return random.mock.calls.length;
+  };
+  const refused = drawsIn(true);
+  expect(lines()).toEqual(["Your inventory is full."]);
+  expect(refused).toBe(drawsIn(false));
+});
+
 test("a stack with room is room, even in a full inventory", () => {
   add(
     [
@@ -425,4 +439,26 @@ test("what was made and its experience are saved", () => {
   run(7);
   expect(sim.saveOf("a")).toMatchObject({ miningXp: 2 });
   expect(sim.saveOf("a")!.inventory![0]).toBe("copperBar");
+});
+
+test("a piece of gear can come out improved, for the same experience, and says what was made", () => {
+  sim = new Simulation(TILES, () => 0);
+  add([["copperBar", 3]]);
+  sim.queueMake("a", { item: "copperSword", all: false });
+  run(13);
+  expect(items()).toEqual([["copperSword:rare:fortitude", 1]]);
+  expect(player().smithingXp).toBe(18);
+  expect(seen.map(({ event }) => event)).toContainEqual({
+    type: "made",
+    player: "a",
+    item: "copperSword:rare:fortitude",
+  });
+});
+
+test("a bar is never improved, even on the luckiest roll", () => {
+  sim = new Simulation(TILES, () => 0);
+  add([["copperOre", 1]]);
+  sim.queueMake("a", { item: "copperBar", all: false });
+  run(7);
+  expect(items()).toEqual([["copperBar", 1]]);
 });

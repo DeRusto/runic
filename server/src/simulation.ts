@@ -20,7 +20,7 @@ import {
   gatherRefusal,
   GATHERING,
   GATHERING_SKILLS,
-  GEAR,
+  gearOf,
   GEAR_SLOTS,
   gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
@@ -28,6 +28,7 @@ import {
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
+  madeItem,
   makeRefusal,
   MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
@@ -51,6 +52,8 @@ import {
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
+  virtueOf,
+  AVOIDANCE_TENTHS_PER_HIT_CHANCE,
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
@@ -75,6 +78,13 @@ import {
 import { GroundItem, GroundItems } from "./groundItems.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
+
+/** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
+const maxHealthOf = (
+  player: { hitpointsXp: number } & Partial<Record<GearSlot, string>>,
+) =>
+  levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL +
+  virtueOf(player, "fortitude");
 
 const isInventorySlot = (slot: number) =>
   Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
@@ -291,7 +301,7 @@ export class Simulation {
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: levelFor(fields.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL,
+      maxHealth: maxHealthOf(fields),
     });
     player.pinnedSkills = new ArraySchema(...pinnedSkills);
     player.tools = new ArraySchema(...tools);
@@ -577,7 +587,7 @@ export class Simulation {
     if (!isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
-    const gear = GEAR.get(item);
+    const gear = gearOf(item);
     if (!gear) return;
     const refusal = gearRefusal(item, player);
     if (refusal) {
@@ -587,6 +597,13 @@ export class Simulation {
     // Whatever was worn lands where this came from, so swapping always works (spec §4).
     this.placeGear(id, slot, player[gear.slot]);
     player[gear.slot] = item;
+    this.fitHealth(player);
+  }
+
+  /** After gear changes: max health follows worn Fortitude, and health drops to it but never rises (spec §2). */
+  private fitHealth(player: InstanceType<typeof Player>) {
+    player.maxHealth = maxHealthOf(player);
+    player.health = Math.min(player.health, player.maxHealth);
   }
 
   /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
@@ -603,6 +620,7 @@ export class Simulation {
     }
     this.placeGear(id, slot, worn);
     player[gearSlot] = "";
+    this.fitHealth(player);
   }
 
   /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
@@ -884,10 +902,12 @@ export class Simulation {
         if (!inventoryCounts[slot]) inventory[slot] = EMPTY_SLOT;
       });
     }
-    // On the copy, so the last ore in a full inventory leaves room for its bar.
+    // On the copy, so the last ore in a full inventory leaves room for its bar. Gear never
+    // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
     const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
-    inventory[slot] = item;
+    const made = madeItem(item, levelFor(player.smithingXp), this.random);
+    inventory[slot] = made;
     inventoryCounts[slot]!++;
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
@@ -895,6 +915,7 @@ export class Simulation {
     });
     for (const [field, gained] of xpOf(item))
       this.earnXp(player, field, gained);
+    this.events.push({ type: "made", player: id, item: made });
     return true;
   }
 
@@ -929,7 +950,7 @@ export class Simulation {
       if (takenThisTick.has(action.groundItem)) continue;
       // With no way there, the path ran out short of the tile.
       if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
-      const item = groundItem.item as ItemId;
+      const { item } = groundItem;
       const line = takeRefusal(item, player);
       if (line) {
         this.events.push({ type: "told", player: id, line });
@@ -1029,7 +1050,11 @@ export class Simulation {
           Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
     );
     // Only on a hit, as 0 means a miss.
-    const hit = rolled && rolled + (GEAR.get(player.weapon)?.hitBonus ?? 0);
+    const hit =
+      rolled &&
+      rolled +
+        (gearOf(player.weapon)?.hitBonus ?? 0) +
+        virtueOf(player, "might");
     const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
       critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
@@ -1040,8 +1065,7 @@ export class Simulation {
     );
     this.earnXp(player, "combatXp", xp);
     this.earnXp(player, "hitpointsXp", xp);
-    player.maxHealth =
-      levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL;
+    player.maxHealth = maxHealthOf(player);
     this.events.push({
       type: "playerSwing",
       player: id,
@@ -1164,7 +1188,9 @@ export class Simulation {
     this.lock(enemy.target);
     const defense = levelFor(player.defenseXp);
     const rolled = this.rollDamage(
-      hitChance + hitChancePerDefenseLevel * (defense - 1),
+      hitChance +
+        hitChancePerDefenseLevel * (defense - 1) -
+        virtueOf(player, "avoidance") / AVOIDANCE_TENTHS_PER_HIT_CHANCE,
       maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
@@ -1199,7 +1225,7 @@ export class Simulation {
   }
 
   private rollBlock(player: InstanceType<typeof Player>) {
-    const base = GEAR.get(player.shield)?.blockChance;
+    const base = gearOf(player.shield)?.blockChance;
     if (base === undefined) return false;
     const levelsAbove1 = levelFor(player.blockingXp) - 1;
     return (
@@ -1243,6 +1269,7 @@ export class Simulation {
       this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
       player[gearSlot] = "";
     }
+    this.fitHealth(player);
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;

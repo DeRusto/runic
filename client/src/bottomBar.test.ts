@@ -24,6 +24,7 @@ const element = () => ({
   style: {} as Record<string, string>,
   hidden: false,
   textContent: "",
+  offsetWidth: 100,
   onclick: undefined as undefined | (() => void),
   oncontextmenu: undefined as undefined | ((event: unknown) => void),
   get firstElementChild() {
@@ -34,22 +35,26 @@ const slotsBox = element();
 const menu = element();
 const skillsBox = element();
 const chatLines = element();
+const tip = element();
 const fakeDocument = {
   getElementById: (id: string) =>
     id === "chat-lines"
       ? chatLines
-      : id === "slots"
-        ? slotsBox
-        : id === "slot-menu"
-          ? menu
-          : id === "skills"
-            ? skillsBox
-            : element(),
+      : id === "slot-tip"
+        ? tip
+        : id === "slots"
+          ? slotsBox
+          : id === "slot-menu"
+            ? menu
+            : id === "skills"
+              ? skillsBox
+              : element(),
   createElement: element,
   onpointerdown: undefined as undefined | ((event: unknown) => void),
 };
 vi.stubGlobal("document", fakeDocument);
 vi.stubGlobal("innerHeight", 700);
+vi.stubGlobal("innerWidth", 1000);
 let frames: (() => void)[] = [];
 vi.stubGlobal("requestAnimationFrame", (draw: () => void) => frames.push(draw));
 vi.stubGlobal("cancelAnimationFrame", () => (frames = []));
@@ -138,6 +143,19 @@ const rightClick = (i = 0) =>
     clientY: 600,
   });
 const menuChoices = () => menu.children.map((choice) => choice.textContent);
+/** Points at a slot, and reads the tooltip it shows: a coloured name as `[quality]name`, or undefined when hidden. */
+const pointAt = (i = 0) => {
+  slot(i).onpointermove!({ clientX: 50, clientY: 600 });
+  return tip.hidden
+    ? undefined
+    : tip.children
+        .map((part) =>
+          typeof part === "string"
+            ? part
+            : `[${part.className}]${part.textContent}`,
+        )
+        .join("");
+};
 
 beforeEach(() => {
   frames = [];
@@ -204,21 +222,47 @@ describe("holding a pick's result", () => {
 });
 
 describe("a filled slot", () => {
-  test("shows its item's icon, with its name as a tooltip and no text", () => {
+  test("shows its item's icon, with its name as a tooltip and label and no text", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 2]));
     nextFrame();
     expect(slot().style.backgroundImage).toBe('url("/icons/copperOre.png")');
-    expect((slot() as unknown as { title: string }).title).toBe("Copper ore");
+    expect(slot().ariaLabel).toBe("Copper ore");
+    expect(pointAt()).toBe("Copper ore");
     expect(slot().textContent).toBe("");
   });
 
-  test("loses both when it empties", () => {
+  test("loses them all when it empties", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 2]));
     nextFrame();
     room.onStateChange.invoke(stateHolding());
     nextFrame();
     expect(slot().style.backgroundImage).toBe("");
-    expect((slot() as unknown as { title: string }).title).toBe("");
+    expect(slot().ariaLabel).toBe(null);
+    expect(pointAt()).toBe(undefined);
+  });
+
+  test("an improved item's tooltip shows its name in its Quality's colour, beside the cursor, until the pointer leaves (spec §5)", () => {
+    room.onStateChange.invoke(stateHolding(["copperSword:rare:might", 1]));
+    nextFrame();
+    expect(pointAt()).toBe("[rare]Copper sword of Might");
+    expect(tip.style).toEqual({ left: "62px", bottom: "112px" });
+    slot().onpointerleave!();
+    expect(tip.hidden).toBe(true);
+  });
+
+  test("the tooltip stays inside the window at its right edge", () => {
+    room.onStateChange.invoke(stateHolding(["copperOre", 1]));
+    nextFrame();
+    slot().onpointermove!({ clientX: 990, clientY: 600 });
+    expect(tip.style.left).toBe("900px");
+  });
+
+  test("a click hides the tooltip, so it never names what the slot held before", () => {
+    room.onStateChange.invoke(stateHolding(["copperOre", 1]));
+    nextFrame();
+    pointAt();
+    slot().onpointerdown!();
+    expect(tip.hidden).toBe(true);
   });
 });
 
@@ -302,16 +346,28 @@ describe("gear in the bar", () => {
 
   test("gear they can't wear yet is greyed with the reason, until they can", () => {
     expect(slot(0).dataset.locked).toBe("true");
-    expect((slot(0) as unknown as { title: string }).title).toBe(
+    expect(slot(0).ariaLabel).toBe(
       "Iron sword. You need Combat 10 to equip this.",
     );
+    expect(pointAt(0)).toBe("Iron sword. You need Combat 10 to equip this.");
     const state = stateHolding(["ironSword", 1]);
     state.players.get("me")!.combatXp = LEVEL_10_XP;
     room.onStateChange.invoke(state);
     nextFrame();
     expect(slot(0).dataset.locked).toBe("false");
-    expect((slot(0) as unknown as { title: string }).title).toBe("Iron sword");
+    expect(slot(0).ariaLabel).toBe("Iron sword");
   });
+});
+
+test("improved gear equips from the bar like its common form, and names its Virtue", () => {
+  room.onStateChange.invoke(stateHolding(["copperSword:uncommon:might", 1]));
+  nextFrame();
+  room.send.mockClear();
+  slot(0).onclick!();
+  expect(room.send).toHaveBeenCalledWith(EQUIP_INTENT, 0);
+  rightClick(0);
+  expect(menuChoices()).toEqual(["Equip", "Drop"]);
+  expect(slot(0).ariaLabel).toBe("Copper sword of Might");
 });
 
 describe("the right-click menu", () => {
@@ -369,7 +425,7 @@ test("a private line from the server prints as it came, with nothing overhead", 
   showBottomBar(room as unknown as WorldConnection, said);
   chatLines.children = [];
   room.messages.get(PRIVATE_LINE)!("From Ada: hi");
-  expect(chatLines.children.map((line) => line.textContent)).toEqual([
+  expect(chatLines.children.map((line) => line.children.join(""))).toEqual([
     "From Ada: hi",
   ]);
   expect(said).not.toHaveBeenCalled();

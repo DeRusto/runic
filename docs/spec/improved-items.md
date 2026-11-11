@@ -1,6 +1,6 @@
 # Runic: Improved items
 
-**Status: decided, not yet built.** Terms are defined in `GLOSSARY.md`. Decisions come from the closed tickets on [Map: Improved items](https://github.com/DeRusto/runic/issues/143), and how an item carries its Quality and Virtue is recorded in `docs/adr/0004-improved-items-as-compound-ids.md`.
+**Status: reviewed.** This spec records improved items as built. Terms are defined in `GLOSSARY.md`. Decisions come from the closed tickets on [Map: Improved items](https://github.com/DeRusto/runic/issues/143), and how an item carries its Quality and Virtue is recorded in `docs/adr/0004-improved-items-as-compound-ids.md`.
 
 This spec adds to the [second slice spec](second-slice.md) and the [Mining and Smithing rebalance](mining-smithing-rebalance.md). Everything there still holds.
 
@@ -110,7 +110,7 @@ From [How does an improved item look and read?](https://github.com/DeRusto/runic
 
 ### Where the name shows
 
-- **Inventory and Gear tab slots** replace the browser's `title` tooltip with a custom tooltip, so the coloured name shows on hover. Each slot keeps its `aria-label`. Refusal text, such as a level gate, shows in the same tooltip after the name.
+- **Inventory and Gear tab slots** replace the browser's `title` tooltip with a custom tooltip, so the coloured name shows on hover. Each slot keeps its `aria-label`. Refusal text, such as a level gate, shows in the same tooltip after the name. The tooltip is a near-black box with a thin border and white 12px system-ui text, like the ground label, so names in it take the light shades. It shows at once, beside the cursor.
 - **Gear tab:** "Body: Copper chestplate of Fortitude. Takes 4% off each hit you take. Adds 20 to your max health." The base stat comes first, then the Virtue line at its size for the tier and Quality, in the same wording as the base stats:
   - Fortitude: "Adds N to your max health."
   - Might: "Adds N to your minimum and maximum hit."
@@ -125,7 +125,7 @@ From [How does an improved item look and read?](https://github.com/DeRusto/runic
 
 ## 7. Build tickets
 
-Each is a thin working slice that builds on those it needs. Each is a `ready-for-agent` issue.
+Each is a thin working slice that builds on those it needs. All three are built.
 
 | # | Ticket | Delivers | Needs |
 |---|---|---|---|

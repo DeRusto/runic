@@ -4,7 +4,7 @@ import {
   EAT_INTENT,
   EQUIP_INTENT,
   FOOD_HEALS,
-  GEAR,
+  gearOf,
   gearRefusal,
   INVENTORY_SLOTS,
   levelFor,
@@ -18,15 +18,16 @@ import {
 import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
+import { addSlotTip } from "./slotTip.ts";
 
 const MAX_CHAT_LINES = 200;
 
 const chatLines = document.getElementById("chat-lines")!;
 
-/** Adds a line to the chat box. It's other players' words, so only ever textContent, never HTML. */
-export function printChatLine(line: string) {
+/** Adds a line to the chat box from its text and coloured names. It's other players' words, so only ever text nodes, never HTML. */
+export function printChatLine(...parts: (string | Node)[]) {
   const row = document.createElement("div");
-  row.textContent = line;
+  row.append(...parts);
   chatLines.append(row);
   if (chatLines.childElementCount > MAX_CHAT_LINES)
     chatLines.firstElementChild!.remove();
@@ -80,7 +81,7 @@ export function showBottomBar(
     slot.onclick = () => {
       const item = slot.dataset.item!;
       if (FOOD_HEALS.has(item)) eat();
-      if (GEAR.has(item)) equip();
+      if (gearOf(item)) equip();
     };
     slot.oncontextmenu = (event) => {
       event.preventDefault();
@@ -88,10 +89,11 @@ export function showBottomBar(
       if (!item) return;
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
-        ...(GEAR.has(item) ? ([["Equip", equip]] as const) : []),
+        ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
         ["Drop", () => room.send(DROP_INTENT, i)],
       ]);
     };
+    addSlotTip(slot, () => slot.ariaLabel ?? "");
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
@@ -176,9 +178,11 @@ export function showBottomBar(
         slot.dataset.item = item;
         const refusal = gearRefusal(item, me);
         slot.dataset.locked = String(!!refusal);
-        slot.title = refusal
+        slot.ariaLabel = refusal
           ? `${itemName(item)}. ${refusal}`
-          : item && itemName(item);
+          : item
+            ? itemName(item)
+            : null;
         slot.style.backgroundImage = item && `url("${iconUrl(item)}")`;
         slot.disabled = !item;
         const count = me.inventoryCounts[i] ?? 0;

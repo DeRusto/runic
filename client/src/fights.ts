@@ -3,6 +3,7 @@ import {
   EVENTS,
   GATHERING,
   GATHERING_SKILLS,
+  itemParts,
   levelFor,
   pickIntervalTicks,
   TICK_MS,
@@ -10,7 +11,7 @@ import {
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
-import { itemName } from "./itemIcons.ts";
+import { colouredNames, itemName } from "./itemIcons.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -180,6 +181,20 @@ export function showFights(room: WorldConnection) {
         figure.onceWithin(
           hammer ? "Hammering" : "Working_A",
           event.ticks * TICK_MS,
+        );
+      } else if (event.type === "made") {
+        if (
+          event.player !== room.sessionId ||
+          itemParts(event.item).quality === "common"
+        )
+          continue;
+        const name = itemName(event.item);
+        // shortcut: a vowel letter stands for a vowel sound, which holds for every tier name today; upgrade if one starts otherwise.
+        printChatLine(
+          ...colouredNames(
+            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} ${name}!`,
+            [event.item],
+          ),
         );
       } else if (event.type === "eaten") {
         const figure = playerFigures.get(event.player);

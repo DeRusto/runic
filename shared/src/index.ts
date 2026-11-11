@@ -135,6 +135,8 @@ export type WorldEvent =
   | { type: GatheringVerb; player: string; success: false; count?: never }
   /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }
+  /** An item finished at a station, by its id, so the client can name an improved one (spec §5). */
+  | { type: "made"; player: string; item: string }
   | { type: "eaten"; player: string }
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }

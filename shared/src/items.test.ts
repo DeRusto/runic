@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { EMPTY_SLOT, INVENTORY_SLOTS } from "./index.ts";
-import { ITEMS, slotFor, takeRefusal } from "./items.ts";
+import { itemParts, ITEMS, slotFor, takeRefusal } from "./items.ts";
 
 /** A whole inventory from the first slots given, as [item, count] pairs. */
 function holding(...stacks: [string, number][]) {
@@ -92,5 +92,28 @@ describe("takeRefusal", () => {
     );
     stacks[3] = ["berry", 19];
     expect(takeRefusal("berry", holding(...stacks))).toBeUndefined();
+  });
+});
+
+describe("an item id's parts (ADR 0004)", () => {
+  test("a plain id is a common item with no Virtue", () => {
+    expect(itemParts("copperChestplate")).toEqual({
+      base: "copperChestplate",
+      quality: "common",
+      virtue: undefined,
+    });
+  });
+
+  test("a compound id splits into its base id, Quality and Virtue", () => {
+    expect(itemParts("emberiteSword:rare:might")).toEqual({
+      base: "emberiteSword",
+      quality: "rare",
+      virtue: "might",
+    });
+  });
+
+  test("an improved piece stacks to 1, like its common form", () => {
+    const item = "copperSword:uncommon:fortitude";
+    expect(slotFor(item, holding([item, 1]))).toBe(1);
   });
 });
