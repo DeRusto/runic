@@ -229,8 +229,12 @@ What right-clicking another player opens at the cursor: Trade, Follow, Attack, E
 _Avoid_: Context menu, player options
 
 **Drop**:
-Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
+Moving some or all of one inventory slot onto the tile the player stands on, where it becomes one ground item. The amount comes from the amount menu, and the rest stays in the slot.
 _Avoid_: Discard, destroy, delete
+
+**Amount menu**:
+The right-click choices **1**, **5**, **10**, **X** and **All** that Drop, and later the bank and the general store, offer on a stack. X asks for a number, and an amount larger than the stack takes all of it. A lone item offers the plain choice instead.
+_Avoid_: Quantity picker, split menu
 
 **Ground item**:
 One item or stack lying on a tile, from a single drop. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. Ground items never merge, but a stack taken into an inventory joins a matching stack there.

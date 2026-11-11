@@ -42,7 +42,7 @@ const ticks = (sim: Simulation, n: number) => {
 
 test("dropping a slot leaves its whole stack on the player's tile, and empties the slot", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   expect(groundItems(sim)).toEqual([
     { x: 1, y: 1, item: "copperOre", count: 12 },
@@ -54,9 +54,9 @@ test("dropping a slot leaves its whole stack on the player's tile, and empties t
 
 test("several drops on one tile stay separate ground items", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
-  sim.queueDrop("a", 1);
+  sim.queueDrop("a", 1, 20);
   sim.tick();
   expect(groundItems(sim)).toEqual([
     { x: 1, y: 1, item: "copperOre", count: 12 },
@@ -66,10 +66,10 @@ test("several drops on one tile stay separate ground items", () => {
 
 test("a ground item vanishes 600 ticks after its drop, each on its own timer", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   ticks(sim, 10);
-  sim.queueDrop("a", 1);
+  sim.queueDrop("a", 1, 20);
   sim.tick();
   ticks(sim, 588);
   expect(groundItems(sim).map(({ item }) => item)).toEqual([
@@ -86,7 +86,7 @@ test("a ground item vanishes 600 ticks after its drop, each on its own timer", (
 
 test("a ground item stays when its owner logs out, and its timer keeps running", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   sim.removePlayer("a");
   ticks(sim, 599);
@@ -100,7 +100,7 @@ const seenBy = (sim: Simulation, player: string) =>
 
 test("only the owner can see a ground item for 200 ticks, then everyone can", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   ticks(sim, 199);
   expect(seenBy(sim, "a")).toHaveLength(1);
@@ -112,7 +112,7 @@ test("only the owner can see a ground item for 200 ticks, then everyone can", ()
 
 test("the owner is the account, so logging in again still sees it", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   const save = sim.saveOf("a")!;
   sim.removePlayer("a");
@@ -122,7 +122,7 @@ test("the owner is the account, so logging in again still sees it", () => {
 
 test("the owner's name rides along until the owner minute ends, for the gold ring", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   const [dropped] = sim.state.groundItems.values();
   expect(dropped!.owner).toBe("alice");
@@ -132,7 +132,7 @@ test("the owner's name rides along until the owner minute ends, for the gold rin
 
 test("a player who isn't here, or a ground item that isn't, sees nothing", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   ticks(sim, 200);
   expect(seenBy(sim, "nobody")).toEqual([]);
@@ -166,7 +166,7 @@ const onlyGroundItem = (sim: Simulation) =>
 
 test("taking a lone ground item from afar walks onto its tile, then moves it into the inventory", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   sim.queueWalk("a", { x: 4, y: 1 });
   ticks(sim, 20);
@@ -185,7 +185,7 @@ test("taking a lone ground item from afar walks onto its tile, then moves it int
 
 test("a taken stack joins a matching stack first, and what doesn't fit stays with its timers", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   ticks(sim, 200);
   hold(
@@ -212,7 +212,7 @@ test("a taken stack joins a matching stack first, and what doesn't fit stays wit
 
 test("taking gear with no free slot is refused with a chat line, and the item stays", () => {
   const sim = world();
-  sim.queueDrop("a", 1);
+  sim.queueDrop("a", 1, 20);
   sim.tick();
   hold(sim, "a", [], ["herb", 1]);
   sim.events.length = 0;
@@ -230,7 +230,7 @@ test("taking gear with no free slot is refused with a chat line, and the item st
 
 test("a take intent for a ground item the player can't see is ignored", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   sim.queueTake("b", onlyGroundItem(sim));
   sim.queueTake("b", "nothing");
@@ -242,7 +242,7 @@ test("a take intent for a ground item the player can't see is ignored", () => {
 
 test("a take intent whose payload isn't a ground item's id string is ignored", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   sim.queueWalk("a", { x: 4, y: 1 });
   ticks(sim, 20);
@@ -255,7 +255,7 @@ test("a take intent whose payload isn't a ground item's id string is ignored", (
 
 test("when two players take the same ground item on the same tick, only one gets it", () => {
   const sim = world();
-  sim.queueDrop("a", 1);
+  sim.queueDrop("a", 1, 20);
   sim.tick();
   ticks(sim, 200);
   sim.state.players.get("b")!.x = 1;
@@ -271,7 +271,7 @@ test("when two players take the same ground item on the same tick, only one gets
 
 test("when the first of two same-tick takers leaves part of a stack, the second still gets none", () => {
   const sim = world();
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   sim.tick();
   ticks(sim, 200);
   hold(sim, "a", [["copperOre", 15]], ["herb", 1]);
@@ -294,7 +294,7 @@ test("an improved piece is dropped and taken back whole", () => {
   const sim = world();
   const alice = sim.state.players.get("a")!;
   alice.inventory[1] = "copperSword:uncommon:might";
-  sim.queueDrop("a", 1);
+  sim.queueDrop("a", 1, 20);
   sim.tick();
   expect(groundItems(sim)).toEqual([
     { x: 1, y: 1, item: "copperSword:uncommon:might", count: 1 },

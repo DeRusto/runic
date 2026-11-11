@@ -9,6 +9,7 @@ import { StateView } from "@colyseus/schema";
 import {
   CHAT,
   DROP_INTENT,
+  MOVE_INTENT,
   EAT_INTENT,
   EQUIP_INTENT,
   EVENTS,
@@ -71,8 +72,10 @@ export class WorldRoom extends Room {
     [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
-    [DROP_INTENT]: (client: Client, slot: number) =>
-      this.sim.queueDrop(client.sessionId, slot),
+    [DROP_INTENT]: (client: Client, drop: { slot: number; amount: number }) =>
+      this.sim.queueDrop(client.sessionId, drop?.slot, drop?.amount),
+    [MOVE_INTENT]: (client: Client, move: { from: number; to: number }) =>
+      this.sim.moveItem(client.sessionId, move?.from, move?.to),
     [TAKE_INTENT]: (client: Client, groundItem: string) =>
       this.sim.queueTake(client.sessionId, groundItem),
     [EQUIP_INTENT]: (client: Client, slot: number) =>
