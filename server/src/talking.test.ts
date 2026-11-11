@@ -93,7 +93,7 @@ test("asking Odo for tools gives the missing ones, and nothing once every tool i
     {
       type: "told",
       player: "a",
-      line: "The Blacksmith gives you a pickaxe and a hammer.",
+      line: "Odo gives you a pickaxe and a hammer.",
     },
   ]);
   expect([...me().tools]).toEqual(["pickaxe", "hammer"]);

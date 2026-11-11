@@ -320,7 +320,7 @@ export class Simulation {
     DialogueAction,
     (id: string, villager: VillagerId) => void
   > = {
-    giveTools: (id) => this.giveTools(id),
+    giveTools: (id, villager) => this.giveTools(id, villager),
     openStore: (id, villager) => this.openWindow(id, "store", villager),
     openBank: (id, villager) => this.openWindow(id, "bank", villager),
   };
@@ -805,12 +805,12 @@ export class Simulation {
     if (player) moveStack(player.bank, player.bankCounts, from, to);
   }
 
-  private giveTools(id: string) {
+  private giveTools(id: string, villager: VillagerId) {
     const player = this.state.players.get(id)!;
     const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
     if (!lacking.length) return;
     player.tools.push(...lacking);
-    const line = `The Blacksmith gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
+    const line = `${VILLAGERS[villager].name} gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
     this.events.push({ type: "told", player: id, line });
   }
 

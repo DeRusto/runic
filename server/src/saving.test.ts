@@ -229,7 +229,7 @@ test("the Blacksmith's tools, asked for in conversation, reach the client with a
       {
         type: "told",
         player: room.sessionId,
-        line: "The Blacksmith gives you a pickaxe and a hammer.",
+        line: "Odo gives you a pickaxe and a hammer.",
       },
     ]),
   );
