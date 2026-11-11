@@ -31,3 +31,7 @@ test("after the lines come the node's choices, or the ones it leads back to", ()
 test("a node with no choices to follow ends the conversation after its lines", () => {
   expect(shownAt("odo", "bye", 2)).toBeUndefined();
 });
+
+test("asking Aldous for the bank closes the box at once, as the bank window opens", () => {
+  expect(shownAt("aldous", "bank", 0)).toBeUndefined();
+});

@@ -60,6 +60,13 @@ export const players = sqliteTable("players", {
     .notNull()
     .$type<string[]>()
     .default(STARTING_PINNED_SKILLS),
+  /** Like `inventory`, but `BANK_SLOTS` long once a player has logged in since the bank came (#197). */
+  bank: text({ mode: "json" }).notNull().$type<string[]>().default([]),
+  /** Parallel to `bank`. */
+  bankCounts: text("bank_counts", { mode: "json" })
+    .notNull()
+    .$type<number[]>()
+    .default([]),
 });
 
 /**

@@ -44,6 +44,10 @@ export function printChatLine(...parts: (string | Node)[]) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
+/** While the bank is open, an inventory slot deposits instead (#197). */
+let deposit: ((slot: number, amount: number) => void) | undefined;
+export const depositOnClick = (send: typeof deposit) => (deposit = send);
+
 let holdingResult = false;
 let showHeld = () => {};
 
@@ -94,8 +98,10 @@ export function showBottomBar(
     const eat = () => room.send(EAT_INTENT, i);
     const equip = () => room.send(EQUIP_INTENT, i);
     // Only food and gear do anything on a left-click, so a material's slot sends nothing.
+    const count = () => Number(slot.dataset.count) || 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
+      if (deposit) return item && deposit(i, count());
       if (FOOD_HEALS.has(item)) eat();
       if (gearOf(item)) equip();
     };
@@ -103,10 +109,15 @@ export function showBottomBar(
       event.preventDefault();
       const item = slot.dataset.item;
       if (!item) return;
+      if (deposit)
+        return openMenu(
+          event,
+          amountChoices("Deposit", count(), (amount) => deposit?.(i, amount)),
+        );
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
-        ...amountChoices("Drop", Number(slot.dataset.count) || 1, (amount) =>
+        ...amountChoices("Drop", count(), (amount) =>
           room.send(DROP_INTENT, { slot: i, amount }),
         ),
       ]);
