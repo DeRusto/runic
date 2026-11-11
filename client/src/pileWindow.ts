@@ -80,9 +80,10 @@ export function showPileWindow(room: WorldConnection) {
     else if (open) draw(open);
   });
 
-  // A press, so it closes before the click it belongs to can open it again or act on the world.
+  // A press elsewhere on the way changes the player's mind, so the window doesn't open on arrival.
+  // An open window stays through presses; walking off the tile closes it (spec §6).
   const onPress = (event: PointerEvent) => {
-    if (!onOpenPanel(event.target as Node)) close();
+    if (!onOpenPanel(event.target as Node)) walkingTo = undefined;
   };
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {

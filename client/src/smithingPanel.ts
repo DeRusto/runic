@@ -30,8 +30,10 @@ export function showSmithingPanel(room: WorldConnection) {
   const title = document.getElementById("smithing-title")!;
   /** The station being walked to, whose panel opens on arrival. */
   let walkingTo: StationKind | undefined;
+  /** The station whose panel is open. */
+  let at: StationKind | undefined;
   const close = () => {
-    walkingTo = undefined;
+    walkingTo = at = undefined;
     panel.hidden = true;
     placed.closed();
   };
@@ -113,6 +115,7 @@ export function showSmithingPanel(room: WorldConnection) {
 
   const show = (station: StationKind, me: SyncedPlayer) => {
     walkingTo = undefined;
+    at = station;
     title.textContent = itemName(station);
     // Folding starts over at each opening: the tiers the player has reached open, the rest fold.
     for (const s of sections) {
@@ -132,12 +135,14 @@ export function showSmithingPanel(room: WorldConnection) {
     if (me.dead) close();
     else if (walkingTo && tilesApart(me, stationTile(walkingTo)) <= 1)
       show(walkingTo, me);
-    else if (!panel.hidden) draw(me);
+    // Panels stay open through presses elsewhere; walking away is what closes this one (spec §6).
+    else if (at && tilesApart(me, stationTile(at)) > 1) close();
+    else if (at) draw(me);
   });
 
-  // A press, so it closes before the click it belongs to can open it again or act on the world.
+  // A press elsewhere on the way changes the player's mind, so the panel doesn't open on arrival.
   const onPress = (event: PointerEvent) => {
-    if (!onOpenPanel(event.target as Node)) close();
+    if (!onOpenPanel(event.target as Node)) walkingTo = undefined;
   };
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {

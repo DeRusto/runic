@@ -376,11 +376,20 @@ describe("clicking a station from afar", () => {
   });
 });
 
-test("a press anywhere else closes it, and a press inside doesn't", () => {
+test("a press anywhere, inside or out, leaves it open", () => {
   open("furnace");
   listeners.get("pointerdown")!({ target: panel() });
-  expect(panel().hidden).toBe(false);
   listeners.get("pointerdown")!({ target: element() });
+  expect(panel().hidden).toBe(false);
+});
+
+test("walking out of reach of the station closes it, and coming back doesn't reopen it", () => {
+  open("anvil");
+  patch(me([], { x: 7, y: 2 }));
+  expect(panel().hidden).toBe(false);
+  patch(me([], { x: 8, y: 1 }));
+  expect(panel().hidden).toBe(true);
+  patch(me([], { x: 7, y: 1 }));
   expect(panel().hidden).toBe(true);
 });
 
