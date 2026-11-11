@@ -22,5 +22,9 @@ models/
 
 ui/
     ui/LICENSE-Kenney-UI-Pack-Adventure.txt.
+    arrow_clockwise.png, arrow_counterclockwise.png
+        Kenney Board Game Icons 1.1. CC0: see ui/LICENSE-Kenney-Board-Game-Icons.txt.
+    singleplayer.png, multiplayer.png, exitRight.png
+        Kenney Game Icons 1.0. CC0: see ui/LICENSE-Kenney-Game-Icons.txt.
     splash.webp
         Supplied for Runic by DeRusto. No licence is granted for it here.
