@@ -31,6 +31,7 @@ import {
   logoutRefusal,
   madeItem,
   makeRefusal,
+  moveStack,
   MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
@@ -217,7 +218,7 @@ export class Simulation {
   /** Apart from the action, which eating doesn't replace (spec §4). */
   private queuedEats = new Map<string, number>();
   /** Apart from the action too, which dropping doesn't replace (spec §4). */
-  private queuedDrops = new Map<string, number>();
+  private queuedDrops = new Map<string, { slot: number; amount: number }>();
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
@@ -560,11 +561,22 @@ export class Simulation {
     this.queuedEats.set(id, slot);
   }
 
-  /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
-  queueDrop(id: string, slot: number) {
+  /** Both come straight off the network, so anything but a slot's index and a whole number above 0 is ignored. */
+  queueDrop(id: string, slot: number, amount: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
-    this.queuedDrops.set(id, slot);
+    if (!Number.isInteger(amount) || amount < 1) return;
+    this.queuedDrops.set(id, { slot, amount });
+  }
+
+  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (#193). */
+  moveItem(id: string, from: number, to: number) {
+    if (!this.alive(id)) return;
+    if (!isInventorySlot(from) || !isInventorySlot(to)) return;
+    const player = this.state.players.get(id)!;
+    moveStack(player.inventory, player.inventoryCounts, from, to);
+    const drop = this.queuedDrops.get(id)?.slot;
+    if (drop === from || drop === to) this.queuedDrops.delete(id);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
@@ -629,7 +641,7 @@ export class Simulation {
     const player = this.state.players.get(id)!;
     player.inventory[slot] = item;
     player.inventoryCounts[slot] = item ? 1 : 0;
-    if (this.queuedDrops.get(id) === slot) this.queuedDrops.delete(id);
+    if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
   }
 
   /** Adds one `item` to the slot `slotFor` chose. */
@@ -653,15 +665,16 @@ export class Simulation {
     return room;
   }
 
-  private drop(id: string, slot: number) {
+  /** A part drop is one ground item, and the rest stays in the slot. */
+  private drop(id: string, slot: number, amount = Infinity) {
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
     if (!item) return;
-    const count = player.inventoryCounts[slot]!;
+    const count = Math.min(amount, player.inventoryCounts[slot]!);
     const { username } = player;
     this.groundItems.spawn(player, item, count, username, this.state.tick);
-    player.inventory[slot] = EMPTY_SLOT;
-    player.inventoryCounts[slot] = 0;
+    player.inventoryCounts[slot]! -= count;
+    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
   }
 
   private eat(id: string, slot: number) {
@@ -759,7 +772,8 @@ export class Simulation {
     this.queuedActions.clear();
     for (const [id, slot] of this.queuedEats) this.eat(id, slot);
     this.queuedEats.clear();
-    for (const [id, slot] of this.queuedDrops) this.drop(id, slot);
+    for (const [id, { slot, amount }] of this.queuedDrops)
+      this.drop(id, slot, amount);
     this.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       const refusal = logoutRefusal(this.lockRunning(id));

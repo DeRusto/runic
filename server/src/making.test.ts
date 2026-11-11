@@ -221,7 +221,7 @@ test("materials dropped during the wait end it with a line, and nothing is made"
   add([["copperOre", 1]]);
   sim.queueMake("a", { item: "copperBar", all: false });
   run(3);
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   run(1);
   expect(player().action).toBe("smithing");
   run(10);
@@ -313,7 +313,7 @@ test("eating and dropping don't interrupt it", () => {
   sim.queueMake("a", { item: "copperBar", all: false });
   run(2);
   sim.queueEat("a", 1);
-  sim.queueDrop("a", 2);
+  sim.queueDrop("a", 2, 20);
   run(5);
   expect(items()).toEqual([
     ["copperBar", 1],
