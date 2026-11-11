@@ -35,6 +35,7 @@ const element = () => ({
   hidden: false,
   textContent: "",
   offsetWidth: 100,
+  offsetHeight: 20,
   onclick: undefined as undefined | (() => void),
   oncontextmenu: undefined as undefined | ((event: unknown) => void),
   get firstElementChild() {
@@ -50,7 +51,7 @@ const fakeDocument = {
   getElementById: (id: string) =>
     id === "chat-lines"
       ? chatLines
-      : id === "slot-tip"
+      : id === "tooltip"
         ? tip
         : id === "slots"
           ? slotsBox
@@ -257,16 +258,16 @@ describe("a filled slot", () => {
     room.onStateChange.invoke(stateHolding(["copperSword:rare:might", 1]));
     nextFrame();
     expect(pointAt()).toBe("[rare]Copper sword of Might");
-    expect(tip.style).toEqual({ left: "62px", bottom: "112px" });
+    expect(tip.style).toEqual({ left: "62px", top: "568px" });
     slot().onpointerleave!();
     expect(tip.hidden).toBe(true);
   });
 
-  test("the tooltip stays inside the window at its right edge", () => {
+  test("the tooltip flips to the left of the cursor at the window's right edge", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 1]));
     nextFrame();
     slot().onpointermove!({ clientX: 990, clientY: 600 });
-    expect(tip.style.left).toBe("900px");
+    expect(tip.style.left).toBe("878px");
   });
 
   test("a click hides the tooltip, so it never names what the slot held before", () => {
@@ -294,6 +295,16 @@ describe("the skills column", () => {
     room.onStateChange.invoke(statePinning("Smithing", "Blocking", "Combat"));
     nextFrame();
     expect(shown()).toEqual(["Combat 1", "Smithing 1", "Blocking 1"]);
+  });
+
+  test("a skill's bar shows its total experience in the tooltip (spec §5)", () => {
+    const state = statePinning("Combat");
+    state.players.get("me")!.combatXp = 12345;
+    room.onStateChange.invoke(state);
+    nextFrame();
+    const bar = skillsBox.children[0].children.at(-1);
+    bar.onpointermove({ clientX: 50, clientY: 600 });
+    expect(tip.children).toEqual(["12,345 XP"]);
   });
 
   test("asks for pins when there are none", () => {

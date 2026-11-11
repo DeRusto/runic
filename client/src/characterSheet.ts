@@ -14,7 +14,7 @@ import {
 } from "@runic/shared";
 import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
-import { addSlotTip } from "./slotTip.ts";
+import { addTip } from "./tooltip.ts";
 
 export type SyncedPlayer = NonNullable<
   ReturnType<WorldConnection["state"]["players"]["get"]>
@@ -113,9 +113,9 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       pointedAt = undefined;
       showDetails();
     };
-    addSlotTip(box, () => {
+    addTip(box, () => {
       const item = worn[gearSlot];
-      return item ? `Take off ${itemName(item)}` : "";
+      return item ? `Take off ${itemName(item)}` : itemName(gearSlot);
     });
     return { gearSlot, box };
   });
@@ -136,7 +136,10 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     pin.innerHTML = PIN_ICON;
     pin.setAttribute("aria-label", `Pin ${skill} to the bar`);
     row.append(name, pin, bar);
-    return { skill, field, row, name, bar, pin };
+    const entry = { skill, field, row, name, bar, pin, xp: 0, pinTip: "" };
+    addTip(bar, () => `${entry.xp.toLocaleString("en")} XP`);
+    addTip(pin, () => entry.pinTip);
+    return entry;
   });
   document
     .getElementById("sheet-skills")!
@@ -152,7 +155,8 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         ...tools.map((tool) => {
           const icon = document.createElement("img");
           icon.src = iconUrl(tool);
-          icon.alt = icon.title = itemName(tool);
+          icon.alt = itemName(tool);
+          addTip(icon, () => icon.alt);
           return icon;
         }),
       );
@@ -177,11 +181,12 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     drawPins(me: SyncedPlayer) {
       const count = me.pinnedSkills.length;
       note.textContent = `Pinned skills show on the bar (${count} of ${MAX_PINNED_SKILLS}).`;
-      for (const { skill, pin } of rows) {
+      for (const entry of rows) {
+        const { skill, pin } = entry;
         const pinned = me.pinnedSkills.includes(skill);
         pin.setAttribute("aria-pressed", String(pinned));
         pin.disabled = !pinned && count >= MAX_PINNED_SKILLS;
-        pin.title = pin.disabled
+        entry.pinTip = pin.disabled
           ? `The bar holds ${MAX_PINNED_SKILLS}: unpin one first`
           : pinned
             ? "Unpin from the bar"
@@ -191,11 +196,12 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     },
     drawSkills(me: SyncedPlayer) {
       combat.textContent = `Combat level ${combatLevel(me)} · Total level ${totalLevel(me)}`;
-      for (const { skill, field, name, bar } of rows) {
+      for (const entry of rows) {
+        const { skill, field, name, bar } = entry;
         const xp = me[field];
         name.textContent = `${skill} ${levelFor(xp)}`;
         bar.value = levelProgress(xp);
-        bar.title = `${xp} XP`;
+        entry.xp = xp;
       }
     },
   };
