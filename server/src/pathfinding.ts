@@ -21,14 +21,14 @@ export function tilesNextTo(tiles: TileKind[][], to: Tile): Tile[] {
   );
 }
 
-/** The fewest steps to a tile next to `to`, or undefined if none can be reached. */
+/** The fewest steps to a tile next to `to`, or next to any of them, or undefined if none can be reached. */
 export function pathNextTo(
   tiles: TileKind[][],
   from: Tile,
-  to: Tile,
+  to: Tile | Tile[],
 ): Tile[] | undefined {
   let best: Tile[] | undefined;
-  for (const goal of tilesNextTo(tiles, to)) {
+  for (const goal of [to].flat().flatMap((t) => tilesNextTo(tiles, t))) {
     const path = findPath(tiles, from, goal);
     const end = path.at(-1) ?? from;
     if (end.x !== goal.x || end.y !== goal.y) continue;

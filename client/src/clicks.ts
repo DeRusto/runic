@@ -122,7 +122,7 @@ export function walkOnClick(
       if (refusal) {
         printChatLine(refusal);
       } else {
-        const { x, y } = stationTile(station);
+        const { x, y } = stationTile(station, me);
         showMarker(x, y);
         openSmithingPanel(station);
       }

@@ -433,6 +433,29 @@ test("a region without that station ignores the pick", () => {
   expect(makes()).toEqual([]);
 });
 
+test.each([
+  ["west side", 1, 2],
+  ["north side", 2, 1],
+  ["east side", 4, 3],
+  ["south side", 3, 4],
+  ["north-west corner", 1, 1],
+])(
+  "a 2×2 furnace is one station, smelted at from its %s without a step",
+  (_, x, y) => {
+    sim = new Simulation(
+      parseRegion(
+        ["TTTTTT", "TR...T", "T.FF.T", "T.FF.T", "T....T", "TTTTTT"].join("\n"),
+      ),
+      () => FAIL,
+    );
+    add([["copperOre", 1]], { x, y });
+    sim.queueMake("a", { item: "copperBar", all: false });
+    run(7);
+    expect(player()).toMatchObject({ x, y });
+    expect(items()).toEqual([["copperBar", 1]]);
+  },
+);
+
 test("what was made and its experience are saved", () => {
   add([["copperOre", 1]]);
   sim.queueMake("a", { item: "copperBar", all: false });

@@ -275,7 +275,8 @@ export class Simulation {
   };
   /** Each player with their bank open, and the banker they must stay beside. */
   private banks = new Map<string, VillagerId>();
-  private stations: Partial<Record<StationKind, Tile>> = {};
+  /** Each station's tiles: the furnace covers four. */
+  private stations: Partial<Record<StationKind, Tile[]>> = {};
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -291,7 +292,7 @@ export class Simulation {
       row.forEach((kind, x) => {
         const { enemy, villager, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
-        if (station) this.stations[station] = { x, y };
+        if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const { site, stateField, leftField } = GATHERING[skill];
           const siteKind = kind[site];
@@ -936,7 +937,7 @@ export class Simulation {
       const unsynced = this.unsyncedPlayers.get(id)!;
       const player = this.state.players.get(id)!;
       // With no way there, the old action still ends, and nothing replaces it.
-      const goNextTo = (tile: Tile, action: UnsyncedAction) => {
+      const goNextTo = (tile: Tile | Tile[], action: UnsyncedAction) => {
         const path = pathNextTo(this.tiles, player, tile);
         unsynced.path = path ?? [];
         unsynced.action = path && action;
