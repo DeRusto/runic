@@ -1,5 +1,6 @@
 import { TAKE_INTENT, WALK_INTENT } from "@runic/shared";
 import { beforeEach, expect, test, vi } from "vitest";
+import { addPanel } from "./panels.ts";
 import { showPileWindow } from "./pileWindow.ts";
 import type { WorldConnection } from "./players.ts";
 
@@ -19,11 +20,17 @@ const element = () => ({
     );
   },
   children: [] as any[],
+  style: {} as Record<string, string>,
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   textContent: "",
   type: "",
   onclick: undefined as undefined | (() => void),
 });
+
+vi.stubGlobal("innerWidth", 1000);
+vi.stubGlobal("innerHeight", 700);
 
 let byId: Map<string, ReturnType<typeof element>>;
 let listeners: Map<string, (event: any) => void>;
@@ -136,6 +143,17 @@ test("rows follow the patches in place: taken ones vanish, counts shrink, new on
   expect(pile().hidden).toBe(false);
 });
 
+test("a row taken or a window closed under the pointer takes its tip with it", () => {
+  const tip = () => document.getElementById("tooltip") as { hidden: boolean };
+  open({ x: 3, y: 1 });
+  tip().hidden = false;
+  patch(3, { s: sword });
+  expect(tip().hidden).toBe(true);
+  tip().hidden = false;
+  byId.get("pile-close")!.onclick!();
+  expect(tip().hidden).toBe(true);
+});
+
 test("the pile emptying closes it", () => {
   open({ x: 3, y: 1 });
   patch(3, { e: elsewhere });
@@ -154,11 +172,6 @@ test("walking off the tile closes it, and coming back doesn't reopen it", () => 
 
 test.each([
   ["its X", () => byId.get("pile-close")!.onclick!()],
-  ["Esc", () => listeners.get("keydown")!({ key: "Escape" })],
-  [
-    "a press elsewhere",
-    () => listeners.get("pointerdown")!({ target: element() }),
-  ],
   ["death", () => patch(3, { o: ore, s: sword }, { dead: true })],
 ])("%s closes it", (_, close) => {
   open({ x: 3, y: 1 });
@@ -166,9 +179,10 @@ test.each([
   expect(pile().hidden).toBe(true);
 });
 
-test("a press inside doesn't close it", () => {
+test("a press anywhere, inside or out, leaves it open", () => {
   open({ x: 3, y: 1 });
   listeners.get("pointerdown")!({ target: pile() });
+  listeners.get("pointerdown")!({ target: element() });
   expect(pile().hidden).toBe(false);
 });
 
@@ -184,6 +198,18 @@ test("a press elsewhere on the way cancels it, so it never opens on arrival", ()
   patch(6, { o: ore, s: sword });
   open({ x: 3, y: 1 });
   listeners.get("pointerdown")!({ target: element() });
+  patch(3, { o: ore, s: sword });
+  expect(pile().hidden).toBe(true);
+});
+
+test("a press on another open panel on the way cancels it too", () => {
+  const other = element() as unknown as HTMLElement;
+  const placed = addPanel(other, () => {});
+  placed.opened();
+  patch(6, { o: ore, s: sword });
+  open({ x: 3, y: 1 });
+  listeners.get("pointerdown")!({ target: other });
+  placed.closed();
   patch(3, { o: ore, s: sword });
   expect(pile().hidden).toBe(true);
 });

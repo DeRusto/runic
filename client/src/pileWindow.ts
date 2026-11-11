@@ -1,7 +1,9 @@
 import { TAKE_INTENT, WALK_INTENT, type Tile } from "@runic/shared";
 import { groundItemLine } from "./groundItems.ts";
-import { leftPanel } from "./leftPanels.ts";
+import { itemTip, itemTipParts } from "./itemTip.ts";
+import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
+import { addTip, hideTip } from "./tooltip.ts";
 
 /**
  * The window a click on a pile opens, once the player stands on its tile. It lists only the
@@ -24,10 +26,11 @@ export function showPileWindow(room: WorldConnection) {
   const close = () => {
     open = walkingTo = undefined;
     panel.hidden = true;
+    placed.closed();
     rows.clear();
     list.replaceChildren();
   };
-  const left = leftPanel(close);
+  const placed = addPanel(panel, close);
 
   const draw = (tile: Tile) => {
     const state = room.state;
@@ -40,6 +43,7 @@ export function showPileWindow(room: WorldConnection) {
         const row = document.createElement("button");
         row.type = "button";
         row.onclick = () => room.send(TAKE_INTENT, id);
+        addTip(row, () => itemTipParts(itemTip(groundItem.item)));
         list.append(row);
         rows.set(id, row);
       }
@@ -47,6 +51,8 @@ export function showPileWindow(room: WorldConnection) {
     }
     for (const [id, row] of rows) {
       if (here.has(id)) continue;
+      // A removed row gets no pointerleave, so its tip would stay up.
+      hideTip();
       row.remove();
       rows.delete(id);
     }
@@ -56,9 +62,10 @@ export function showPileWindow(room: WorldConnection) {
   const show = (tile: Tile) => {
     walkingTo = undefined;
     open = tile;
-    left.opening();
     panel.hidden = false;
     draw(tile);
+    // After its rows, so it is measured with them; an empty pile has closed it already.
+    if (!panel.hidden) placed.opened();
   };
 
   close();
@@ -75,19 +82,13 @@ export function showPileWindow(room: WorldConnection) {
     else if (open) draw(open);
   });
 
-  const onKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape") close();
-  };
-  // A press, so it closes before the click it belongs to can open it again or act on the world.
-  const onPress = (event: PointerEvent) => {
-    if (!panel.contains(event.target as Node)) close();
-  };
-  document.addEventListener("keydown", onKey);
+  // A press on the way changes the player's mind, so the window doesn't open on arrival.
+  // An open window stays through presses; walking off the tile closes it (spec §6).
+  // Any press counts, even on another panel: this window is shut on the way, so none lands on it.
+  const onPress = () => (walkingTo = undefined);
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();
-    left.forget();
-    document.removeEventListener("keydown", onKey);
     document.removeEventListener("pointerdown", onPress);
   });
 

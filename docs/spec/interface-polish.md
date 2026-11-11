@@ -2,7 +2,7 @@
 
 **Status: both strands written.** Terms are defined in `GLOSSARY.md`. Decisions come from [Map: Interface polish](https://github.com/DeRusto/runic/issues/170), which charts the requests in [added tweaks and features](https://github.com/DeRusto/runic/issues/169).
 
-This spec adds to the [second slice spec](second-slice.md) and the [Improved items spec](improved-items.md). Everything there still holds, except that §5 here replaces the slot tooltip from [Improved items §5](improved-items.md#5-client), and §6 retires the brown panels, so names inside panels take the light quality shades.
+This spec adds to the [second slice spec](second-slice.md) and the [Improved items spec](improved-items.md). Everything there still holds, except that §5 here replaces the slot tooltip from [Improved items §5](improved-items.md#5-client), and §6 retires the brown panels, so names inside panels take the light quality shades. §6 also replaces the [second slice's](second-slice.md#smithing-panel) rule that a click anywhere else closes the smithing panel.
 
 The work runs on two strands. The **chat** strand (§1 to §4) adds four chat commands and writes item names in brackets. The **interface** strand (§5 to §9) gives the game one tooltip, one panel style, a dark bottom bar with square buttons, and experience labels on pinned bars.
 
@@ -154,6 +154,7 @@ A **panel** is a window that opens over the world: the character sheet, the smit
 - A panel reopens where it was last left during this login. Positions aren't saved across logins.
 - The first time in a login, the character sheet opens on the right and the other panels open on the left. Each is offset a little from the one before, so they cascade rather than stack exactly.
 - Escape closes the front panel only. C and O still toggle their own panel. Hotkeys and Escape don't fire while the chat box has focus.
+- A click or press outside a panel never closes it. The smithing panel and the pile window close by Escape while in front, by their close button, or by the player walking out of reach: more than one tile from the station, or off the pile's tile. Death closes them too, and so does the pile emptying. A click in the world still does what it normally does, so a click on another station or pile moves the panel or window over to it.
 
 ### Look
 
@@ -201,8 +202,8 @@ The icons go in `client/public/ui/`, beside each pack's licence copied as `LICEN
 
 - Log out has no hotkey. Clicking its button opens a confirm box instead of logging out at once.
 - The box sits centred over the world in the panel's look, with a front panel's gold hairline. It reads "Log out?" and has two buttons, **Log out** and **Cancel**. It has no title bar and can't be dragged, and only one can be open.
-- **Log out** sends the log-out intent, as the button does today. The server still decides, so a refused log out, such as during a combat lock, shows its usual line and the player stays in.
-- **Cancel**, Escape or a second click on the Log out button closes the box and does nothing else. Escape closes the box before any panel.
+- **Log out** sends the log-out intent, as the button does today. The server still decides: during a combat lock it refuses with the chat line "You can't log out until 10 seconds after a fight.", and the player stays in.
+- **Cancel**, Escape or a second click on the Log out button closes the box, puts focus back on the Log out button, and does nothing else. Escape closes the box before any panel.
 
 ## 8. Experience labels
 

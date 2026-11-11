@@ -28,6 +28,7 @@ import {
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
+  logoutRefusal,
   madeItem,
   makeRefusal,
   MASTERY_SHARE_PERCENT,
@@ -761,9 +762,10 @@ export class Simulation {
     for (const [id, slot] of this.queuedDrops) this.drop(id, slot);
     this.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
-      if (this.state.tick >= this.unsyncedPlayers.get(id)!.lockEndTick) {
-        this.loggedOut.push(id);
-      }
+      const refusal = logoutRefusal(this.lockRunning(id));
+      if (refusal)
+        this.events.push({ type: "told", player: id, line: refusal });
+      else this.loggedOut.push(id);
     }
     this.queuedLogouts.clear();
   }
@@ -1109,7 +1111,7 @@ export class Simulation {
       if (this.random() >= emberboneChance) continue;
       const { username } = this.state.players.get(id)!;
       this.groundItems.spawn(enemy, "emberbone", 1, username, this.state.tick);
-      const line = "You find an Emberbone. It is on the ground.";
+      const line = "You find an [Emberbone]. It is on the ground.";
       this.events.push({ type: "told", player: id, line });
     }
     damagers.clear();

@@ -11,14 +11,22 @@ import {
   levelProgress,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
+  MAX_LEVEL,
   PRIVATE_LINE,
   SKILLS,
+  xpForLevel,
   type ChatLine,
 } from "@runic/shared";
-import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
+import {
+  showCharacterSheet,
+  type OpenMenu,
+  type SyncedPlayer,
+  xpTip,
+} from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
+import { itemTip, itemTipParts } from "./itemTip.ts";
 import type { WorldConnection } from "./players.ts";
-import { addSlotTip } from "./slotTip.ts";
+import { addTip } from "./tooltip.ts";
 
 const MAX_CHAT_LINES = 200;
 
@@ -52,8 +60,12 @@ export function showBottomBar(
   room: WorldConnection,
   sayOverhead: (id: string, text: string) => void,
 ) {
-  room.onMessage(CHAT, ({ id, username, text }: ChatLine) => {
-    printChatLine(`${username}: ${text}`);
+  room.onMessage(CHAT, ({ id, username, text, emote }: ChatLine) => {
+    if (emote) {
+      const bold = document.createElement("b");
+      bold.textContent = `${username} ${text}`;
+      printChatLine(bold);
+    } else printChatLine(`${username}: ${text}`);
     sayOverhead(id, text);
   });
   room.onMessage(PRIVATE_LINE, printChatLine);
@@ -72,6 +84,8 @@ export function showBottomBar(
     input.value = "";
   };
 
+  /** The player the slots last showed, whose levels decide what they refuse. */
+  let shown: SyncedPlayer | undefined;
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
@@ -93,7 +107,10 @@ export function showBottomBar(
         ["Drop", () => room.send(DROP_INTENT, i)],
       ]);
     };
-    addSlotTip(slot, () => slot.ariaLabel ?? "");
+    addTip(slot, () => {
+      const item = slot.dataset.item;
+      return item && shown ? itemTipParts(itemTip(item, shown)) : "";
+    });
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
@@ -140,9 +157,12 @@ export function showBottomBar(
   const skills = SKILLS.map(([name, field]) => {
     const row = document.createElement("label");
     const text = document.createElement("span");
+    const next = document.createElement("span");
     const bar = document.createElement("progress");
-    row.append(text, bar);
-    return { name, field, text, bar, row };
+    row.append(text, next, bar);
+    const skill = { name, field, text, next, bar, row, xp: 0 };
+    addTip(bar, () => xpTip(skill.xp));
+    return skill;
   });
   const noPins = document.createElement("p");
   noPins.textContent = "Pin skills from the sheet";
@@ -173,6 +193,7 @@ export function showBottomBar(
     sheet.drawTools(me);
     sheet.drawGear(me);
     showHeld = () => {
+      shown = me;
       slots.forEach((slot, i) => {
         const item = me.inventory[i] ?? "";
         slot.dataset.item = item;
@@ -183,16 +204,23 @@ export function showBottomBar(
           : item
             ? itemName(item)
             : null;
-        slot.style.backgroundImage = item && `url("${iconUrl(item)}")`;
+        // A custom property, so the CSS can lay the icon over the slot's face.
+        slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
         slot.disabled = !item;
         const count = me.inventoryCounts[i] ?? 0;
         slot.dataset.count = count > 1 ? String(count) : "";
       });
       for (const skill of skills) {
         const xp = me[skill.field];
-        skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
+        const level = levelFor(xp);
+        skill.text.textContent = `${skill.name} ${level}`;
+        // Spec §8.
+        skill.next.textContent =
+          level === MAX_LEVEL
+            ? "Max level"
+            : `${(xpForLevel(level + 1) - xp).toLocaleString("en")} XP to level ${level + 1}`;
         skill.bar.value = levelProgress(xp);
-        skill.bar.title = `${xp} XP`;
+        skill.xp = xp;
       }
       sheet.drawSkills(me);
     };

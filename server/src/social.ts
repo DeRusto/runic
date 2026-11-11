@@ -5,16 +5,16 @@ import {
   MAX_CHAT_LENGTH,
   PRIVATE_LINE,
   SOCIAL_LISTS,
-  commandRefusal,
   followRefusal,
   listRefusal,
   pmRefusal,
+  replyRefusal,
   unfollowRefusal,
   type Friend,
   type SocialList,
 } from "@runic/shared";
 import { accountNamed } from "./accounts.ts";
-import type { Simulation } from "./simulation.ts";
+import type { Command, World } from "./chatCommands.ts";
 import {
   addToList,
   isListed,
@@ -22,13 +22,6 @@ import {
   listedBy,
   removeFromList,
 } from "./socialLists.ts";
-
-/** What the chat commands need from the room. */
-export type World = {
-  sim: Simulation;
-  /** Every player in the world, the one definition of online: a dropped connection still counts, a login still waiting does not. */
-  onlinePlayers(): Client[];
-};
 
 /** A chat-box line for this client only. */
 export const tell = (client: Client, line: string) =>
@@ -68,6 +61,14 @@ export const isIgnoring = (accountId: number, otherId: number) =>
 /** The ids of the accounts that ignore this one. */
 export const ignoredBy = (accountId: number) => listedBy("ignore", accountId);
 
+/**
+ * Per login, the name of whoever's private message last reached that player. Never saved.
+ * In `userData`, not a map keyed by the Client: a reconnect gets a new Client, and Colyseus
+ * carries `userData` over to it.
+ */
+const replyTo = (client: Client): string | undefined =>
+  client.userData?.replyTo;
+
 const onlineNamed = (world: World, name: string) =>
   world
     .onlinePlayers()
@@ -77,6 +78,29 @@ const named = (client: Client, name: string) => {
   const account = name ? accountNamed(name) : undefined;
   return account && { ...account, self: account.id === client.auth.id };
 };
+
+/** `/pm` and `/r`: sends `message` to the online player named `name`, or tells the sender why not. */
+function sendPm(world: World, client: Client, name: string, message: string) {
+  const to = name ? onlineNamed(world, name) : undefined;
+  const refusal = pmRefusal(
+    name,
+    message,
+    to && {
+      username: to.auth.username,
+      self: to.auth.id === client.auth.id,
+    },
+  );
+  if (refusal) return tell(client, refusal);
+  if (!to) return;
+  // The same limit as public chat, on the message alone.
+  if (message.length > MAX_CHAT_LENGTH) return;
+  // Silent: the sender still sees their own copy and no error (Phase 4 map).
+  if (!isIgnoring(to.auth.id, client.auth.id)) {
+    tell(to, `From ${client.auth.username}: ${message}`);
+    to.userData = { ...to.userData, replyTo: client.auth.username };
+  }
+  tell(client, `To ${to.auth.username}: ${message}`);
+}
 
 /** What a list change means beyond the list itself. */
 const AFTER_LIST_CHANGE: Record<
@@ -116,64 +140,77 @@ const listCommand =
     AFTER_LIST_CHANGE[list](world, client, account.id, adding);
   };
 
-/** Chat commands by lower-cased name; each gets the trimmed text after the name. */
-const COMMANDS: Record<
-  string,
-  (world: World, client: Client, args: string) => void
-> = {
-  pm: (world, client, args) => {
-    const [, name = "", message = ""] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
-    const to = name ? onlineNamed(world, name) : undefined;
-    const refusal = pmRefusal(
-      name,
-      message,
-      to && { username: to.auth.username, self: to.auth.id === client.auth.id },
-    );
-    if (refusal) return tell(client, refusal);
-    if (!to) return;
-    // The same limit as public chat, on the message alone.
-    if (message.length > MAX_CHAT_LENGTH) return;
-    // Silent: the sender still sees their own copy and no error (Phase 4 map).
-    if (!isIgnoring(to.auth.id, client.auth.id))
-      tell(to, `From ${client.auth.username}: ${message}`);
-    tell(client, `To ${to.auth.username}: ${message}`);
+/** The chat commands about other players, by lower-cased name. */
+export const SOCIAL_COMMANDS: Record<string, Command> = {
+  r: {
+    usage: "/r <message>",
+    description: "Reply to the last player who sent you a private message.",
+    run: (world, client, message) => {
+      const name = replyTo(client);
+      const refusal = replyRefusal(name, message);
+      if (refusal) return tell(client, refusal);
+      sendPm(world, client, name!, message);
+    },
   },
-  friend: listCommand("friend", true),
-  unfriend: listCommand("friend", false),
-  ignore: listCommand("ignore", true),
-  unignore: listCommand("ignore", false),
-  // Silent: the target is never told (Phase 4 map). The walking is the simulation's.
-  follow: (world, client, name) => {
-    const account = named(client, name);
-    const target = account && onlineNamed(world, name);
-    const player = target && world.sim.state.players.get(target.sessionId);
-    const refusal = followRefusal(
-      name,
-      account && {
-        ...account,
-        online: !!target,
-        barred: !!player?.dead || isIgnoring(account.id, client.auth.id),
-        alreadyFollowed:
-          !!target &&
-          world.sim.following(client.sessionId) === target.sessionId,
-      },
-    );
-    if (refusal) return tell(client, refusal);
-    if (!target) return;
-    world.sim.follow(client.sessionId, target.sessionId);
+  pm: {
+    usage: "/pm <name> <message>",
+    description: "Send a private message to an online player.",
+    run: (world, client, args) => {
+      const [, name = "", message = ""] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
+      sendPm(world, client, name, message);
+    },
   },
-  unfollow: (world, client) => {
-    const refusal = unfollowRefusal(!!world.sim.following(client.sessionId));
-    if (refusal) return tell(client, refusal);
-    world.sim.unfollow(client.sessionId);
+  friend: {
+    usage: "/friend <name>",
+    description: "Add an account to your friends list.",
+    run: listCommand("friend", true),
+  },
+  unfriend: {
+    usage: "/unfriend <name>",
+    description: "Take an account off your friends list.",
+    run: listCommand("friend", false),
+  },
+  ignore: {
+    usage: "/ignore <name>",
+    description: "Add an account to your ignore list.",
+    run: listCommand("ignore", true),
+  },
+  unignore: {
+    usage: "/unignore <name>",
+    description: "Take an account off your ignore list.",
+    run: listCommand("ignore", false),
+  },
+  follow: {
+    usage: "/follow <name>",
+    description: "Walk after an online player.",
+    // Silent: the target is never told (Phase 4 map). The walking is the simulation's.
+    run: (world, client, name) => {
+      const account = named(client, name);
+      const target = account && onlineNamed(world, name);
+      const player = target && world.sim.state.players.get(target.sessionId);
+      const refusal = followRefusal(
+        name,
+        account && {
+          ...account,
+          online: !!target,
+          barred: !!player?.dead || isIgnoring(account.id, client.auth.id),
+          alreadyFollowed:
+            !!target &&
+            world.sim.following(client.sessionId) === target.sessionId,
+        },
+      );
+      if (refusal) return tell(client, refusal);
+      if (!target) return;
+      world.sim.follow(client.sessionId, target.sessionId);
+    },
+  },
+  unfollow: {
+    usage: "/unfollow",
+    description: "Stop following.",
+    run: (world, client) => {
+      const refusal = unfollowRefusal(!!world.sim.following(client.sessionId));
+      if (refusal) return tell(client, refusal);
+      world.sim.unfollow(client.sessionId);
+    },
   },
 };
-
-/** `line` is the chat line after its leading "/". */
-export function runCommand(world: World, client: Client, line: string) {
-  const [name = "", args = ""] = line.split(/\s+(.*)/s);
-  const known = Object.hasOwn(COMMANDS, name.toLowerCase());
-  const refusal = commandRefusal(name, known);
-  if (refusal) return tell(client, refusal);
-  COMMANDS[name.toLowerCase()]!(world, client, args.trim());
-}

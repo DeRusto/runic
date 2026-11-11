@@ -1,9 +1,11 @@
 import {
+  CHAT,
   DROP_INTENT,
   EAT_INTENT,
   EMPTY_SLOT,
   EQUIP_INTENT,
   INVENTORY_SLOTS,
+  MAX_XP,
   PRIVATE_LINE,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -21,10 +23,21 @@ const element = () => ({
   focus() {},
   children: [] as any[],
   dataset: {} as Record<string, string>,
-  style: {} as Record<string, string>,
+  // The methods sit on the prototype, so a style still equals a plain object of its properties.
+  style: Object.create({
+    setProperty(this: Record<string, string>, name: string, value: string) {
+      this[name] = value;
+    },
+    getPropertyValue(this: Record<string, string>, name: string) {
+      return this[name] ?? "";
+    },
+  }),
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   textContent: "",
   offsetWidth: 100,
+  offsetHeight: 20,
   onclick: undefined as undefined | (() => void),
   oncontextmenu: undefined as undefined | ((event: unknown) => void),
   get firstElementChild() {
@@ -40,7 +53,7 @@ const fakeDocument = {
   getElementById: (id: string) =>
     id === "chat-lines"
       ? chatLines
-      : id === "slot-tip"
+      : id === "tooltip"
         ? tip
         : id === "slots"
           ? slotsBox
@@ -49,7 +62,7 @@ const fakeDocument = {
             : id === "skills"
               ? skillsBox
               : element(),
-  createElement: element,
+  createElement: (tagName: string) => Object.assign(element(), { tagName }),
   onpointerdown: undefined as undefined | ((event: unknown) => void),
 };
 vi.stubGlobal("document", fakeDocument);
@@ -225,9 +238,11 @@ describe("a filled slot", () => {
   test("shows its item's icon, with its name as a tooltip and label and no text", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 2]));
     nextFrame();
-    expect(slot().style.backgroundImage).toBe('url("/icons/copperOre.png")');
+    expect(slot().style.getPropertyValue("--icon")).toBe(
+      'url("/icons/copperOre.png")',
+    );
     expect(slot().ariaLabel).toBe("Copper ore");
-    expect(pointAt()).toBe("Copper ore");
+    expect(pointAt()).toBe("[tip-name common]Copper ore[tip-kind]Material");
     expect(slot().textContent).toBe("");
   });
 
@@ -236,7 +251,7 @@ describe("a filled slot", () => {
     nextFrame();
     room.onStateChange.invoke(stateHolding());
     nextFrame();
-    expect(slot().style.backgroundImage).toBe("");
+    expect(slot().style.getPropertyValue("--icon")).toBe("");
     expect(slot().ariaLabel).toBe(null);
     expect(pointAt()).toBe(undefined);
   });
@@ -244,17 +259,19 @@ describe("a filled slot", () => {
   test("an improved item's tooltip shows its name in its Quality's colour, beside the cursor, until the pointer leaves (spec §5)", () => {
     room.onStateChange.invoke(stateHolding(["copperSword:rare:might", 1]));
     nextFrame();
-    expect(pointAt()).toBe("[rare]Copper sword of Might");
-    expect(tip.style).toEqual({ left: "62px", bottom: "112px" });
+    expect(pointAt()).toMatch(
+      /^\[tip-name rare\]Copper sword of Might\[tip-kind\].*\[tip-stat\]/,
+    );
+    expect(tip.style).toEqual({ left: "62px", top: "568px" });
     slot().onpointerleave!();
     expect(tip.hidden).toBe(true);
   });
 
-  test("the tooltip stays inside the window at its right edge", () => {
+  test("the tooltip flips to the left of the cursor at the window's right edge", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 1]));
     nextFrame();
     slot().onpointermove!({ clientX: 990, clientY: 600 });
-    expect(tip.style.left).toBe("900px");
+    expect(tip.style.left).toBe("878px");
   });
 
   test("a click hides the tooltip, so it never names what the slot held before", () => {
@@ -284,6 +301,16 @@ describe("the skills column", () => {
     expect(shown()).toEqual(["Combat 1", "Smithing 1", "Blocking 1"]);
   });
 
+  test("a skill's bar shows its total experience in the tooltip (spec §5)", () => {
+    const state = statePinning("Combat");
+    state.players.get("me")!.combatXp = 12345;
+    room.onStateChange.invoke(state);
+    nextFrame();
+    const bar = skillsBox.children[0].children.at(-1);
+    bar.onpointermove({ clientX: 50, clientY: 600 });
+    expect(tip.children).toEqual(["12,345 XP"]);
+  });
+
   test("asks for pins when there are none", () => {
     room.onStateChange.invoke(statePinning());
     nextFrame();
@@ -295,6 +322,29 @@ describe("the skills column", () => {
     room.onStateChange.invoke(statePinning("Blocking"));
     expect(shown()).toEqual(["Blocking 1"]);
     revealResult();
+  });
+
+  /** The right-hand label over Mining's bar, with this much Mining experience. */
+  const nextLevelLabel = (miningXp: number) => {
+    const state = statePinning("Mining");
+    Object.assign(state.players.get("me")!, { miningXp });
+    room.onStateChange.invoke(state);
+    nextFrame();
+    return skillsBox.children.find((child) => !child.hidden).children[1]
+      .textContent;
+  };
+
+  test("shows the experience its next level needs, with thousands separated by commas", () => {
+    expect(nextLevelLabel(1000)).toBe("250 XP to level 6");
+    expect(nextLevelLabel(5050)).toBe("1,000 XP to level 12");
+  });
+
+  test("counts the whole level at its first experience", () => {
+    expect(nextLevelLabel(5000)).toBe("1,050 XP to level 12");
+  });
+
+  test("reads Max level at the max level", () => {
+    expect(nextLevelLabel(MAX_XP)).toBe("Max level");
   });
 });
 
@@ -349,7 +399,9 @@ describe("gear in the bar", () => {
     expect(slot(0).ariaLabel).toBe(
       "Iron sword. You need Combat 10 to equip this.",
     );
-    expect(pointAt(0)).toBe("Iron sword. You need Combat 10 to equip this.");
+    expect(pointAt(0)).toMatch(
+      /\[tip-refusal\]You need Combat 10 to equip this\.$/,
+    );
     const state = stateHolding(["ironSword", 1]);
     state.players.get("me")!.combatXp = LEVEL_10_XP;
     room.onStateChange.invoke(state);
@@ -429,4 +481,36 @@ test("a private line from the server prints as it came, with nothing overhead", 
     "From Ada: hi",
   ]);
   expect(said).not.toHaveBeenCalled();
+});
+
+test("public chat prints with a colon and says the text overhead", () => {
+  const said = vi.fn();
+  showBottomBar(room as unknown as WorldConnection, said);
+  chatLines.children = [];
+  room.messages.get(CHAT)!({
+    id: "ada",
+    username: "Ada",
+    text: "hi",
+    emote: false,
+  });
+  expect(chatLines.children.map((line) => line.children.join(""))).toEqual([
+    "Ada: hi",
+  ]);
+  expect(said).toHaveBeenCalledWith("ada", "hi");
+});
+
+test("an emote prints bold as the name then the text, and says the text alone overhead", () => {
+  const said = vi.fn();
+  showBottomBar(room as unknown as WorldConnection, said);
+  chatLines.children = [];
+  room.messages.get(CHAT)!({
+    id: "ada",
+    username: "DeRusto",
+    text: "dances",
+    emote: true,
+  });
+  const [bold] = chatLines.children[0].children;
+  expect(bold.tagName).toBe("b");
+  expect(bold.textContent).toBe("DeRusto dances");
+  expect(said).toHaveBeenCalledWith("ada", "dances");
 });

@@ -111,19 +111,19 @@ test("making an improved item prints a line for its maker, with the name in its 
   onMessage.mock.calls[0]![1](made);
   expect(printChatLine.mock.calls).toEqual([
     [
-      "You make a ",
+      "You make a [",
       { className: "uncommon", textContent: "Copper chestplate of Fortitude" },
-      "!",
+      "]!",
     ],
     [
-      "You make an ",
+      "You make an [",
       { className: "rare", textContent: "Iron sword of Might" },
-      "!",
+      "]!",
     ],
     [
-      "You make an ",
+      "You make an [",
       { className: "uncommon", textContent: "Emberite helmet of Avoidance" },
-      "!",
+      "]!",
     ],
   ]);
   vi.unstubAllGlobals();

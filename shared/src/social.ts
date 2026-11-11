@@ -23,6 +23,19 @@ export function pmRefusal(
   if (to.self) return "You can't send a private message to yourself.";
 }
 
+/** Why `/r` sends nothing, or undefined. `replyTo` is the name of whoever last sent this player a private message. */
+export function replyRefusal(
+  replyTo: string | undefined,
+  message: string,
+): string | undefined {
+  if (!replyTo) return "You have nobody to reply to.";
+  if (!message) return "Usage: /r <message>";
+}
+
+/** Why `/e` acts nothing out, or undefined. */
+export const emoteRefusal = (text: string) =>
+  text ? undefined : "Usage: /e <text>";
+
 /** Why `/friend` or `/ignore` (or, when not `adding`, their `/un…` command) changes nothing, or undefined. */
 export function listRefusal(
   list: SocialList,

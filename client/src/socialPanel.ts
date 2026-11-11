@@ -6,8 +6,7 @@ import {
   LIST_IGNORES_INTENT,
   type Friend,
 } from "@runic/shared";
-import { panelKey } from "./characterSheet.ts";
-import { leftPanel } from "./leftPanels.ts";
+import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 
 /** The floating window of friends and ignored players, opened from the bar or with O. */
@@ -15,12 +14,7 @@ export function showSocialPanel(room: WorldConnection) {
   const panel = document.getElementById("social")!;
   const button = document.getElementById("social-button")!;
   const list = document.getElementById("friends")!;
-  const setOpen = (open: boolean) => {
-    if (open) left.opening();
-    panel.hidden = !open;
-    button.setAttribute("aria-pressed", String(open));
-  };
-  const left = leftPanel(() => setOpen(false));
+  const setOpen = addButtonPanel(panel, button);
   const toggle = () => setOpen(!!panel.hidden);
   setOpen(false);
   button.onclick = toggle;
@@ -29,12 +23,10 @@ export function showSocialPanel(room: WorldConnection) {
   const onKey = (event: KeyboardEvent) => {
     const key = panelKey(event);
     if (key === "o" || key === "O") toggle();
-    if (key === "Escape") setOpen(false);
   };
   document.addEventListener("keydown", onKey);
   room.onLeave(() => {
     setOpen(false);
-    left.forget();
     document.removeEventListener("keydown", onKey);
   });
 

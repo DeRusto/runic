@@ -26,6 +26,8 @@ const element = () => ({
   children: [] as any[],
   dataset: {} as Record<string, string>,
   style: {} as Record<string, string>,
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   disabled: false,
   textContent: "",
@@ -84,6 +86,16 @@ const rows = () =>
     .map(({ children: [name, pin, bar] }) => ({ name, pin, bar }));
 const row = (skill: string) =>
   rows().find(({ pin }) => pin.attributes["aria-label"].includes(skill))!;
+/** Points at an element, and reads its tooltip line by line. */
+const tipOf = (target: any) => {
+  target.onpointermove({ clientX: 0, clientY: 0 });
+  return el("tooltip")
+    .children.map((part: any) =>
+      typeof part === "string" ? part : part.textContent,
+    )
+    .filter(Boolean)
+    .join("\n");
+};
 
 beforeEach(() => {
   byId = new Map();
@@ -114,7 +126,7 @@ describe("the Gear tab", () => {
   /** Points at a slot, and reads the tooltip it shows, or undefined when hidden. */
   const pointAt = (gearSlot = "weapon") => {
     box(gearSlot).onpointermove({ clientX: 0, clientY: 0 });
-    return el("slot-tip").hidden ? undefined : shown(el("slot-tip").children);
+    return el("tooltip").hidden ? undefined : shown(el("tooltip").children);
   };
 
   test("lays out all ten slots as a body", () => {
@@ -136,7 +148,7 @@ describe("the Gear tab", () => {
     expect(openMenu).not.toHaveBeenCalled();
     box("ring").onmouseenter();
     expect(details()).toBe("Ring: Empty");
-    expect(pointAt("ring")).toBe(undefined);
+    expect(pointAt("ring")).toBe("Ring");
   });
 
   test("a worn sword shows its icon, and pointing at it gives its name and what it does", () => {
@@ -165,10 +177,11 @@ describe("the Gear tab", () => {
     expect(box("body").attributes["aria-label"]).toMatch(
       /^Body: Copper chestplate of Fortitude\. /,
     );
-    expect(pointAt("body")).toBe(
-      "Take off [uncommon]Copper chestplate of Fortitude",
+    // The "Take off" goes, since a click still takes it off (spec §5).
+    expect(pointAt("body")).toMatch(
+      /^\[tip-name uncommon\]Copper chestplate of Fortitude\[tip-kind\]Body armour/,
     );
-    expect(pointAt()).toBe("Take off [rare]Iron sword of Might");
+    expect(pointAt()).toMatch(/^\[tip-name rare\]Iron sword of Might\[/);
   });
 
   test("worn armour says what it takes off", () => {
@@ -246,24 +259,18 @@ describe("opening and closing", () => {
     expect(el("character").attributes["aria-pressed"]).toBe("false");
   });
 
-  test("Esc and the close button shut it, and never open it", () => {
-    press("Escape");
-    expect(isOpen()).toBe(false);
-    press("c");
-    press("Escape");
-    expect(isOpen()).toBe(false);
+  test("the close button shuts it", () => {
     press("c");
     el("sheet-close").onclick!();
     expect(isOpen()).toBe(false);
   });
 
-  test("typing in chat never does either", () => {
+  test("typing C in chat never toggles it", () => {
     const target = new FakeInput();
     press("c", { target });
     expect(isOpen()).toBe(false);
     press("c");
     press("c", { target });
-    press("Escape", { target });
     expect(isOpen()).toBe(true);
   });
 
@@ -294,17 +301,17 @@ describe("the Toolbelt", () => {
   const drawn = (tools: string[]) =>
     sheet.drawTools(me([], { tools } as unknown as Partial<SyncedPlayer>));
 
-  test("is an icon per tool, each with its name as a tooltip", () => {
+  test("is an icon per tool, each with its name as its tooltip and alt text", () => {
     drawn(["pickaxe", "hammer"]);
     expect(
-      el("toolbelt").children.map(({ src, title, alt }) => ({
-        src,
-        title,
-        alt,
+      el("toolbelt").children.map((icon) => ({
+        src: icon.src,
+        tip: tipOf(icon),
+        alt: icon.alt,
       })),
     ).toEqual([
-      { src: "/icons/pickaxe.png", title: "Pickaxe", alt: "Pickaxe" },
-      { src: "/icons/hammer.png", title: "Hammer", alt: "Hammer" },
+      { src: "/icons/pickaxe.png", tip: "Pickaxe\nTool", alt: "Pickaxe" },
+      { src: "/icons/hammer.png", tip: "Hammer\nTool", alt: "Hammer" },
     ]);
   });
 
@@ -345,7 +352,9 @@ describe("the Skills tab", () => {
     ]);
     // Level 2 runs from 50 to 200 experience.
     expect(row("Mining").bar.value).toBeCloseTo(25 / 150);
-    expect(row("Mining").bar.title).toBe("75 XP");
+    expect(tipOf(row("Mining").bar)).toBe("75 XP");
+    sheet.drawSkills(me(TODAY, { miningXp: 12345 }));
+    expect(tipOf(row("Mining").bar)).toBe("12,345 XP");
   });
 
   test("shows the combat and total levels, and updates them as experience lands", () => {
@@ -358,15 +367,20 @@ describe("the Skills tab", () => {
 
   test("at six pins the other pins are disabled, and pinned ones still work", () => {
     sheet.drawPins(me(TODAY));
-    expect(row("Blocking").pin.disabled).toBe(true);
-    expect(row("Combat").pin.disabled).toBe(false);
+    expect(row("Blocking").pin.attributes["aria-disabled"]).toBe("true");
+    expect(row("Combat").pin.attributes["aria-disabled"]).toBe("false");
     expect(row("Combat").pin.attributes["aria-pressed"]).toBe("true");
     expect(row("Blocking").pin.attributes["aria-pressed"]).toBe("false");
+    expect(tipOf(row("Blocking").pin)).toBe("The bar holds 6: unpin one first");
+    expect(tipOf(row("Combat").pin)).toBe("Unpin from the bar");
   });
 
   test("under six pins every pin works", () => {
     sheet.drawPins(me(TODAY.slice(1)));
-    expect(rows().every(({ pin }) => !pin.disabled)).toBe(true);
+    expect(
+      rows().every(({ pin }) => pin.attributes["aria-disabled"] === "false"),
+    ).toBe(true);
+    expect(tipOf(row("Combat").pin)).toBe("Pin to the bar");
   });
 
   test("a pin sends what it would become", () => {
@@ -381,6 +395,13 @@ describe("the Skills tab", () => {
       skill: "Defense",
       pinned: false,
     });
+  });
+
+  test("at six pins an off pin sends nothing when clicked", () => {
+    sheet.drawPins(me(TODAY));
+    room.send.mockClear();
+    row("Blocking").pin.onclick!();
+    expect(room.send).not.toHaveBeenCalled();
   });
 
   test("drawing keeps the same rows, so pinning doesn't move the list", () => {

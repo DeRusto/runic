@@ -36,10 +36,10 @@ import {
 } from "@runic/shared";
 import { accountForToken } from "./accounts.ts";
 import { readSave, writeSave } from "./saves.ts";
+import { runCommand } from "./chatCommands.ts";
 import { Simulation } from "./simulation.ts";
 import {
   ignoredBy,
-  runCommand,
   sendFriends,
   sendIgnores,
   tellFriendedBy,
@@ -93,18 +93,22 @@ export class WorldRoom extends Room {
       // A command limits its own message; this only bounds the line.
       if (text.startsWith("/") && text.length <= MAX_CHAT_LINE_LENGTH)
         return runCommand(this, client, text.slice(1));
-      if (!text || text.startsWith("/") || text.length > MAX_CHAT_LENGTH)
-        return;
-      const { id, username } = client.auth;
-      const ignoring = ignoredBy(id);
-      // Dropped here, not hidden by the client, so an ignored player's words never reach you.
-      this.broadcast(
-        CHAT,
-        { id: client.sessionId, username, text } satisfies ChatLine,
-        { except: this.clients.filter((other) => ignoring.has(other.auth.id)) },
-      );
+      if (!text.startsWith("/")) this.say(client, text, false);
     },
   };
+
+  /** Public chat or, from `/e`, an emote: `text` is trimmed, and one empty or over the limit is dropped. */
+  say(client: Client, text: string, emote: boolean) {
+    if (!text || text.length > MAX_CHAT_LENGTH) return;
+    const { id, username } = client.auth;
+    const ignoring = ignoredBy(id);
+    // Dropped here, not hidden by the client, so an ignored player's words never reach you.
+    this.broadcast(
+      CHAT,
+      { id: client.sessionId, username, text, emote } satisfies ChatLine,
+      { except: this.clients.filter((other) => ignoring.has(other.auth.id)) },
+    );
+  }
 
   // Static, so a refused token fails at matchmaking, before any seat is reserved.
   static async onAuth(token: string) {

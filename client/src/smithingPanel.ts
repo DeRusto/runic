@@ -1,6 +1,5 @@
 import {
   costsOf,
-  countOf,
   levelRefusal,
   MAKE_INTENT,
   makeRefusal,
@@ -8,15 +7,16 @@ import {
   TIERS,
   tilesApart,
   WALK_INTENT,
-  xpOf,
   type RecipeItem,
   type StationKind,
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
-import { leftPanel } from "./leftPanels.ts";
+import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
+import { itemTipParts, recipeTip, type ItemTip } from "./itemTip.ts";
+import { addTip } from "./tooltip.ts";
 
 const part = () => document.createElement("span");
 
@@ -30,11 +30,14 @@ export function showSmithingPanel(room: WorldConnection) {
   const title = document.getElementById("smithing-title")!;
   /** The station being walked to, whose panel opens on arrival. */
   let walkingTo: StationKind | undefined;
+  /** The station whose panel is open. */
+  let at: StationKind | undefined;
   const close = () => {
-    walkingTo = undefined;
+    walkingTo = at = undefined;
     panel.hidden = true;
+    placed.closed();
   };
-  const left = leftPanel(close);
+  const placed = addPanel(panel, close);
 
   const items = Object.keys(RECIPES) as RecipeItem[];
   const sections = (["furnace", "anvil"] as const).flatMap((station) =>
@@ -61,7 +64,11 @@ export function showSmithingPanel(room: WorldConnection) {
           make.type = "button";
           make.textContent = label;
           make.ariaLabel = `${label} ${itemName(item)}`;
-          make.onclick = () => room.send(MAKE_INTENT, { item, all });
+          // Off by aria-disabled, not disabled, so the pointer over it still shows the row's tooltip.
+          make.onclick = () => {
+            if (make.ariaDisabled !== "true")
+              room.send(MAKE_INTENT, { item, all });
+          };
           return make;
         };
         const buttons = [button("Make 1", false), button("Make all", true)];
@@ -74,8 +81,17 @@ export function showSmithingPanel(room: WorldConnection) {
               : `${count} ${itemName(material)}`,
           )
           .join(" + ");
-        const xp = `${xpOf(item)[0]![1]} ${RECIPES[item].skill} experience`;
-        return { item, row, cost, short, xp, buttons };
+        // Filled in on each draw, as the materials held and any refusal change.
+        const entry = {
+          item,
+          row,
+          cost,
+          short,
+          buttons,
+          tip: undefined as ItemTip | undefined,
+        };
+        addTip(row, () => (entry.tip ? itemTipParts(entry.tip) : ""));
+        return entry;
       });
       section.append(header, ...rows.map(({ row }) => row));
       return { station, section, gate, first: recipes[0]!, rows };
@@ -87,18 +103,13 @@ export function showSmithingPanel(room: WorldConnection) {
     .replaceChildren(...sections.map(({ section }) => section));
 
   const draw = (me: SyncedPlayer) => {
-    for (const { item, row, cost, short, xp, buttons } of rows) {
+    for (const entry of rows) {
+      const { item, row, cost, short, buttons } = entry;
       const refusal = makeRefusal(item, me);
-      const full = costsOf(item)
-        .map(
-          ([material, count]) =>
-            `${count} ${itemName(material)} (have ${countOf(material, me)})`,
-        )
-        .join(", ");
       row.className = refusal ? "cant" : "";
       cost.textContent = [short, refusal].filter(Boolean).join(" · ");
-      row.title = [full, xp, refusal].filter(Boolean).join(" · ");
-      for (const make of buttons) make.disabled = !!refusal;
+      entry.tip = recipeTip(item, me);
+      for (const make of buttons) make.ariaDisabled = String(!!refusal);
     }
     for (const { gate, first } of sections)
       gate.textContent = levelRefusal(first, me)
@@ -108,6 +119,7 @@ export function showSmithingPanel(room: WorldConnection) {
 
   const show = (station: StationKind, me: SyncedPlayer) => {
     walkingTo = undefined;
+    at = station;
     title.textContent = itemName(station);
     // Folding starts over at each opening: the tiers the player has reached open, the rest fold.
     for (const s of sections) {
@@ -115,8 +127,8 @@ export function showSmithingPanel(room: WorldConnection) {
       s.section.open = !levelRefusal(s.first, me);
     }
     draw(me);
-    left.opening();
     panel.hidden = false;
+    placed.opened();
   };
 
   close();
@@ -127,22 +139,17 @@ export function showSmithingPanel(room: WorldConnection) {
     if (me.dead) close();
     else if (walkingTo && tilesApart(me, stationTile(walkingTo)) <= 1)
       show(walkingTo, me);
-    else if (!panel.hidden) draw(me);
+    // Panels stay open through presses elsewhere; walking away is what closes this one (spec §6).
+    else if (at && tilesApart(me, stationTile(at)) > 1) close();
+    else if (at) draw(me);
   });
 
-  const onKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape") close();
-  };
-  // A press, so it closes before the click it belongs to can open it again or act on the world.
-  const onPress = (event: PointerEvent) => {
-    if (!panel.contains(event.target as Node)) close();
-  };
-  document.addEventListener("keydown", onKey);
+  // A press on the way changes the player's mind, so the panel doesn't open on arrival.
+  // Any press counts, even on another panel: this panel is shut on the way, so none lands on it.
+  const onPress = () => (walkingTo = undefined);
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();
-    left.forget();
-    document.removeEventListener("keydown", onKey);
     document.removeEventListener("pointerdown", onPress);
   });
 
