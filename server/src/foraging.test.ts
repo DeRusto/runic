@@ -93,7 +93,7 @@ test("a pick still gives 1, and its event says so", () => {
     seen.push(...sim.events.splice(0));
   }
   expect(seen).toEqual([
-    { type: "pick", player: "a", success: true, count: 1 },
+    { type: "pick", player: "a", success: true, count: 1, finds: [] },
   ]);
   expect(player().inventoryCounts[0]).toBe(1);
 });

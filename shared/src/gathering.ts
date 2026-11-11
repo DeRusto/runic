@@ -9,13 +9,19 @@ export const FORAGE_INTENT = "forage";
 /** The mine intent's message type; its payload is the clicked vein's id in state. */
 export const MINE_INTENT = "mine";
 
-/** One row of `BUSHES` or `VEINS`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. */
-type GatheringSource = {
+/** One find a site can give on a successful gather: `chance` it rolls, and the one item it gives — `item`, or one of `split` by share. Each find rolls on its own, so one success can give several. */
+export type FindRoll =
+  | { chance: number; item: ItemId }
+  | { chance: number; split: { item: ItemId; share: number }[] };
+
+/** One row of `BUSHES` or `VEINS`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. `finds` are the finds a success can give; unset means none. */
+export type GatheringSource = {
   level: number;
   holds: number;
   regrowTicks: number;
   xp: number;
   doubleChance?: number;
+  finds?: FindRoll[];
   item: ItemId;
 };
 
@@ -64,6 +70,34 @@ export type GatheringSkill = keyof typeof GATHERING;
 type GatheringRow = (typeof GATHERING)[GatheringSkill];
 export type GatheringVerb = GatheringRow["verb"];
 export type GatheringLeftField = GatheringRow["leftField"];
+
+/** What one successful gather found: each of the source's finds rolls on its own, and a split find gives exactly one of its items, by share. */
+export function rollFinds(
+  source: GatheringSource,
+  random: () => number,
+): ItemId[] {
+  const found: ItemId[] = [];
+  for (const roll of source.finds ?? []) {
+    if (random() >= roll.chance) continue;
+    if ("item" in roll) {
+      found.push(roll.item);
+      continue;
+    }
+    let pick = random();
+    // The shares sum to 1, so a draw can only run past the last on rounding;
+    // start on the last item so that case still gives one.
+    let gave = roll.split[roll.split.length - 1]?.item;
+    for (const { item, share } of roll.split) {
+      pick -= share;
+      if (pick < 0) {
+        gave = item;
+        break;
+      }
+    }
+    if (gave !== undefined) found.push(gave);
+  }
+  return found;
+}
 
 /** In the order a tick advances them. */
 export const GATHERING_SKILLS = Object.keys(GATHERING) as GatheringSkill[];

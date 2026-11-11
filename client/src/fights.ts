@@ -10,6 +10,7 @@ import {
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
+import { itemName } from "./itemIcons.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -22,6 +23,12 @@ import { stationTile } from "./stations.ts";
 /** How far through a gathering clip the result shows (spec §7). */
 const ATTEMPT_RESULT_AT = 0.4;
 const EAT_CLIP_SPEED = 1.33;
+
+/** "tin", "tin and coal", "tin, coal and ashstone". */
+const listNames = (names: string[]) =>
+  names.length > 1
+    ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+    : (names[0] ?? "");
 
 /** Holds back a blow's number and bar until the clip connects. `onHit` runs then too, if it landed. */
 function atContact(
@@ -154,16 +161,15 @@ export function showFights(room: WorldConnection) {
         const interval = pickIntervalTicks(levelFor(player[xpField]));
         const clipMs = figure.onceWithin(clip, interval * TICK_MS);
         setTimeout(() => {
-          playerOverheads
-            .get(event.player)
-            ?.pop(
-              event.success
-                ? event.count === DOUBLE_YIELD && successDouble
-                  ? successDouble
-                  : success
-                : "No luck",
-              "pick",
-            );
+          // The line names every find, including any that went to the ground.
+          const line = event.success
+            ? `${event.count === DOUBLE_YIELD && successDouble ? successDouble : success}${
+                event.finds.length
+                  ? ` Found ${listNames(event.finds.map((find) => itemName(find).toLowerCase()))}.`
+                  : ""
+              }`
+            : "No luck";
+          playerOverheads.get(event.player)?.pop(line, "pick");
           if (event.player === room.sessionId) revealResult();
         }, ATTEMPT_RESULT_AT * clipMs);
       } else if (event.type === "make") {
