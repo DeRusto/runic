@@ -75,6 +75,7 @@ import {
   WALK_TICKS_PER_TILE,
   choicesNodeOf,
   type Deal,
+  type DealLine,
   offers,
   type DialogueAction,
   nodesOf,
@@ -122,26 +123,15 @@ const maxHealthOf = (
 
 /**
  * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
- * `max` items, each with a whole count above 0 and, on the buy tray, a whole shelf stock it saw.
+ * `max` items, each with a whole count above 0.
  */
-function dealLines<Line extends Deal["sell"][number]>(
-  list: unknown,
-  max: number,
-  withStock: boolean,
-) {
+function dealLines(list: unknown, max: number) {
   if (!Array.isArray(list) || list.length > max) return undefined;
-  const lines = list.map((line) => ({
-    item: line?.item,
-    count: line?.count,
-    ...(withStock && { stock: line?.stock }),
-  }));
+  const lines = list.map((line) => ({ item: line?.item, count: line?.count }));
   return lines.every(
-    (line) =>
-      typeof line.item === "string" &&
-      isAmount(line.count) &&
-      (!withStock || (Number.isInteger(line.stock) && line.stock >= 0)),
+    (line) => typeof line.item === "string" && isAmount(line.count),
   )
-    ? (lines as Line[])
+    ? (lines as DealLine[])
     : undefined;
 }
 
@@ -830,8 +820,8 @@ export class Simulation {
   deal(id: string, intent: Deal) {
     const player = this.state.players.get(id);
     if (!player || player.dead || !this.windowOf(id, "store")) return;
-    const buy = dealLines<Deal["buy"][number]>(intent?.buy, SHELF_SLOTS, true);
-    const sell = dealLines(intent?.sell, INVENTORY_SLOTS, false);
+    const buy = dealLines(intent?.buy, SHELF_SLOTS);
+    const sell = dealLines(intent?.sell, INVENTORY_SLOTS);
     if (!buy || !sell || (!buy.length && !sell.length)) return;
     const deal = { buy, sell };
     const tell = (line: string) =>

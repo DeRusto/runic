@@ -38,8 +38,6 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
   const dealButton = document.getElementById("store-deal") as HTMLButtonElement;
   const status = document.getElementById("store-status")!;
   const buying = new Map<string, number>();
-  /** How many of each item on the buy tray the shelf held when it was first put there, which the server checks is unchanged. */
-  const seen = new Map<string, number>();
   const selling = new Map<string, number>();
   /** The last line from outside the trays, such as why coins can't be sold. */
   let note = "";
@@ -59,11 +57,7 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
       : 0;
   };
   const dealOf = (): Deal => ({
-    buy: [...buying].map(([item, count]) => ({
-      item,
-      count,
-      stock: seen.get(item)!,
-    })),
+    buy: [...buying].map(([item, count]) => ({ item, count })),
     sell: [...selling].map(([item, count]) => ({ item, count })),
   });
   /** Adds `amount` to a tray line, up to `max`. */
@@ -86,8 +80,6 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     const buy = (amount: number) => {
       const item = slot.dataset.item;
       if (!item) return;
-      // Stamped once, so a later click can't hide a change since the line was set out (village spec §5).
-      if (!buying.has(item)) seen.set(item, stockOf(item));
       put(buying, item, amount, stockOf(item));
     };
     slot.onclick = () => buy(1);

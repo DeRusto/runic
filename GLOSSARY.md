@@ -99,7 +99,7 @@ One of the counter's two lists: what the player will buy from the shelf, or what
 _Avoid_: Cart, basket, offer
 
 **Deal**:
-Settling both trays at once with the store window's Deal button: sales first, so their coins pay for the buys. The server refuses it, and nothing changes hands, if the player can't pay, has no room, or the shelf has changed since they set out the trays.
+Settling both trays at once with the store window's Deal button: sales first, so their coins pay for the buys. The server refuses it, and nothing changes hands, if the player can't pay, has no room, or the shelf no longer has enough of what they buy.
 _Avoid_: Purchase, transaction, checkout
 
 **Prop**:

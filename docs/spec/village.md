@@ -69,7 +69,7 @@ From [What does the general store sell and pay?](https://github.com/DeRusto/runi
 - The shelf's slots sit at the top. Below them, the counter holds two trays: what the player buys, and what they sell. Clicking a shelf item puts 1 on the buy tray, and clicking an inventory item puts 1 on the sell tray; right-click offers the amount menu. Each tray line has a button to take it back.
 - A running line shows what the player pays, what they get and the change in their coins. One **Deal** settles both trays, sales first so their coins pay for the buys. Nothing changes hands before Deal.
 - When the deal can't go through, Deal greys out with the reason under it ("You need 6 more coins.", "You don't have room for all that.").
-- The server refuses a deal whose shelf stock changed after the player set it out ("The shelf has changed since you set out this deal."), even when enough is left.
+- The server refuses a deal only when the shelf no longer has enough of an item ("The store doesn't have that many left."). A deal still goes through when another player bought some first or a refill came in, so players sharing the shelf don't spoil each other's deals.
 
 ## 6. Bank
 

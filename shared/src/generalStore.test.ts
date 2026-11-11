@@ -62,7 +62,7 @@ describe("a deal", () => {
     expect(
       dealTotals(
         deal({
-          buy: [{ item: "berry", count: 2, stock: 20 }],
+          buy: [{ item: "berry", count: 2 }],
           sell: [{ item: "ironSword", count: 3 }],
         }),
       ),
@@ -73,7 +73,7 @@ describe("a deal", () => {
     const player = inventoryOf(["copperOre", 5]);
     const sellAndBuy = deal({
       sell: [{ item: "copperOre", count: 5 }],
-      buy: [{ item: "berry", count: 1, stock: 20 }],
+      buy: [{ item: "berry", count: 1 }],
     });
     expect(dealRefusal(sellAndBuy, player, SHELF)).toBeUndefined();
   });
@@ -81,15 +81,11 @@ describe("a deal", () => {
   test("is refused for want of coins, saying how many more", () => {
     const player = inventoryOf([COINS, 4]);
     expect(
-      dealRefusal(
-        deal({ buy: [{ item: "berry", count: 2, stock: 20 }] }),
-        player,
-        SHELF,
-      ),
+      dealRefusal(deal({ buy: [{ item: "berry", count: 2 }] }), player, SHELF),
     ).toBe("You need 2 more coins.");
     expect(
       dealRefusal(
-        deal({ buy: [{ item: "berry", count: 2, stock: 20 }] }),
+        deal({ buy: [{ item: "berry", count: 2 }] }),
         inventoryOf([COINS, 5]),
         SHELF,
       ),
@@ -102,11 +98,7 @@ describe("a deal", () => {
       ...Array<[string, number]>(INVENTORY_SLOTS - 1).fill(["tin", 20]),
     );
     expect(
-      dealRefusal(
-        deal({ buy: [{ item: "berry", count: 1, stock: 20 }] }),
-        full,
-        SHELF,
-      ),
+      dealRefusal(deal({ buy: [{ item: "berry", count: 1 }] }), full, SHELF),
     ).toBe("You don't have room for all that.");
   });
 
@@ -124,21 +116,10 @@ describe("a deal", () => {
     const player = inventoryOf([COINS, 100]);
     expect(
       dealRefusal(
-        deal({ buy: [{ item: "copperOre", count: 6, stock: 5 }] }),
+        deal({ buy: [{ item: "copperOre", count: 6 }] }),
         player,
         SHELF,
       ),
     ).toBe("The store doesn't have that many left.");
-  });
-
-  test("is refused when the shelf's stock changed after the player set it out, even with enough left", () => {
-    const player = inventoryOf([COINS, 100]);
-    expect(
-      dealRefusal(
-        deal({ buy: [{ item: "berry", count: 1, stock: 19 }] }),
-        player,
-        SHELF,
-      ),
-    ).toBe("The shelf has changed since you set out this deal.");
   });
 });

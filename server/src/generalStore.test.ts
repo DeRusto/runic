@@ -159,7 +159,7 @@ describe("a deal", () => {
         { item: "ironSword", count: 1 },
         { item: "tin", count: 3 },
       ],
-      buy: [{ item: "berry", count: 2, stock: 20 }],
+      buy: [{ item: "berry", count: 2 }],
     });
     // The sword pays 9 and the tin 1 each: 12, less 6 for two berries.
     expect(held()).toEqual([
@@ -186,11 +186,11 @@ describe("a deal", () => {
     openStore();
     const answers = () =>
       sim.events.splice(0).filter(({ type }) => type === "dealAnswered");
-    sim.deal("a", { buy: [{ item: "berry", count: 2, stock: 20 }], sell: [] });
+    sim.deal("a", { buy: [{ item: "berry", count: 2 }], sell: [] });
     expect(answers()).toEqual([
       { type: "dealAnswered", player: "a", done: false },
     ]);
-    sim.deal("a", { buy: [{ item: "berry", count: 1, stock: 20 }], sell: [] });
+    sim.deal("a", { buy: [{ item: "berry", count: 1 }], sell: [] });
     expect(answers()).toEqual([
       { type: "dealAnswered", player: "a", done: true },
     ]);
@@ -199,7 +199,7 @@ describe("a deal", () => {
   test("that the rules refuse changes nothing and says why", () => {
     addShopper("a", [COINS, 4]);
     openStore();
-    deal("a", { buy: [{ item: "berry", count: 2, stock: 20 }] });
+    deal("a", { buy: [{ item: "berry", count: 2 }] });
     expect(held()).toEqual([[COINS, 4]]);
     expect(shelf()).toEqual(STARTING_SHELF);
     expect(events).toEqual([
@@ -212,9 +212,9 @@ describe("a deal", () => {
     addShopper("b", [COINS, 100]);
     openStore("a");
     openStore("b");
-    deal("b", { buy: [{ item: "coal", count: 3, stock: 5 }] });
+    deal("b", { buy: [{ item: "coal", count: 3 }] });
     events = [];
-    deal("a", { buy: [{ item: "coal", count: 3, stock: 5 }] });
+    deal("a", { buy: [{ item: "coal", count: 3 }] });
     expect(held()).toEqual([[COINS, 100]]);
     expect(events).toEqual([
       {
@@ -225,21 +225,16 @@ describe("a deal", () => {
     ]);
   });
 
-  test("is refused when the shelf changed after it was set out, even with enough left", () => {
+  test("goes through when another player bought some first, if enough is left", () => {
     addShopper("a", [COINS, 100]);
     addShopper("b", [COINS, 100]);
     openStore("a");
     openStore("b");
-    deal("b", { buy: [{ item: "coal", count: 1, stock: 5 }] });
-    events = [];
-    deal("a", { buy: [{ item: "coal", count: 3, stock: 5 }] });
-    expect(held()).toEqual([[COINS, 100]]);
-    expect(events).toEqual([
-      {
-        type: "told",
-        player: "a",
-        line: "The shelf has changed since you set out this deal.",
-      },
+    deal("b", { buy: [{ item: "coal", count: 1 }] });
+    deal("a", { buy: [{ item: "coal", count: 3 }] });
+    expect(held()).toEqual([
+      [COINS, 88],
+      ["coal", 3],
     ]);
   });
 
@@ -253,8 +248,7 @@ describe("a deal", () => {
       { buy: [], sell: [{ item: "tin", count: 1.5 }] },
       { buy: [], sell: [{ item: "tin", count: -1 }] },
       { buy: [], sell: [{ item: ["tin"], count: 1 }] },
-      { buy: [{ item: "berry", count: 1 }], sell: [] },
-      { buy: [{ item: "berry", count: 1, stock: "20" }], sell: [] },
+      { buy: [{ item: "berry", count: 0 }], sell: [] },
     ])
       sim.deal("a", bad as Deal);
     ticks(1);
@@ -267,7 +261,7 @@ describe("the shelf", () => {
   test("refills the store's own stock by one every 30 s, up to its starting amount", () => {
     addShopper("a", [COINS, 100]);
     openStore();
-    deal("a", { buy: [{ item: "coal", count: 5, stock: 5 }] });
+    deal("a", { buy: [{ item: "coal", count: 5 }] });
     expect(shelf()[3]).toEqual(["coal", 0]);
     ticks(99);
     expect(shelf()[3]).toEqual(["coal", 1]);
@@ -337,7 +331,7 @@ describe("the shelf", () => {
     expect(shelf().map(([item]) => item)).not.toContain(pieces[24]);
     expect(held("b")).toEqual([[COINS, expect.any(Number)]]);
     // Buying out a sold item frees its slot, so the next sale fits.
-    deal("b", { buy: [{ item: "tin", count: 1, stock: 1 }] });
+    deal("b", { buy: [{ item: "tin", count: 1 }] });
     addShopper("c", [pieces[24]!, 1]);
     openStore("c");
     sellAll("c");

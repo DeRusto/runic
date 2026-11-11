@@ -86,10 +86,8 @@ export type HasShelf = {
 
 /** One line of a tray. */
 export type DealLine = { item: string; count: number };
-/** A line of the buy tray, with how many of the item the shelf held when the player set it out. */
-export type BuyLine = DealLine & { stock: number };
 /** What a player buys from the shelf and sells from their inventory in one deal; the deal intent's payload. */
-export type Deal = { buy: BuyLine[]; sell: DealLine[] };
+export type Deal = { buy: DealLine[]; sell: DealLine[] };
 
 /** What a deal costs the player and what its sales bring them, in coins. */
 export function dealTotals({ buy, sell }: Deal) {
@@ -121,13 +119,11 @@ export function dealRefusal(deal: Deal, player: HasInventory, shelf: HasShelf) {
       return "You don't have that many to sell.";
     removeItems(items, counts, item, count);
   }
-  for (const { item, count, stock } of deal.buy) {
+  for (const { item, count } of deal.buy) {
     const at = shelfItems.indexOf(item);
+    // Only too few left refuses, so players sharing the shelf don't spoil each other's deals (village spec §5).
     if (at < 0 || shelfCounts[at]! < count)
       return "The store doesn't have that many left.";
-    // So nobody pays for what another player's deal or a refill has just changed (village spec §5).
-    if (shelfCounts[at] !== stock)
-      return "The shelf has changed since you set out this deal.";
     shelfCounts[at]! -= count;
   }
   const { pay, get } = dealTotals(deal);
