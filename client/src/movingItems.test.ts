@@ -8,7 +8,7 @@ type FakeSlot = {
 };
 
 let slots: FakeSlot[];
-let move: ReturnType<typeof vi.fn>;
+let move: ReturnType<typeof vi.fn<(from: number, to: number) => void>>;
 /** Presses `key` on slot `at`, and returns whether the press was kept from going further. */
 const press = (at: number, key: string) => {
   const stopPropagation = vi.fn();
