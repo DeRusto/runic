@@ -730,28 +730,37 @@ export function storePrototype(openMenu: OpenMenu) {
     openMenu,
   };
 
-  // The real bar redraws on every patch, so the fake inventory is drawn over it each frame while open.
-  let frame = 0;
   const drawInventory = () => {
     slots.forEach((slot, i) => {
       const h = store.inv[i];
+      const count =
+        h && (h.count > 1 || h.item === COINS) ? String(h.count) : "";
+      // Only on a difference, or each write would wake the observer again.
+      if (slot.dataset.item === (h?.item ?? "") && slot.dataset.count === count)
+        return;
       slot.dataset.item = h?.item ?? "";
       slot.dataset.locked = "false";
       slot.style.setProperty("--icon", h ? icon(h.item) : "");
       slot.disabled = !h;
-      slot.dataset.count = h && (h.count > 1 || h.item === COINS) ? String(h.count) : "";
+      slot.dataset.count = count;
     });
   };
+  // The real bar redraws on patches; this puts the fake inventory straight back.
+  const watcher = new MutationObserver(drawInventory);
   const loop = () => {
     drawInventory();
-    frame = requestAnimationFrame(loop);
+    watcher.observe(document.getElementById("slots")!, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-item", "data-count"],
+    });
   };
 
   const close = () => {
     if (panel.hidden) return;
     panel.hidden = true;
     placed.closed();
-    cancelAnimationFrame(frame);
+    watcher.disconnect();
     slots.forEach((s, i) => Object.assign(s, saved[i]));
   };
   const placed = addPanel(panel, close);
@@ -829,7 +838,7 @@ export function storePrototype(openMenu: OpenMenu) {
 }
 
 const CSS = `
-#proto-switcher { position: fixed; left: 50%; bottom: 168px; transform: translateX(-50%); z-index: 50;
+#proto-switcher { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 50;
   display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 999px;
   background: #fff; color: #000; font: 600 12px system-ui; box-shadow: 0 2px 10px #0008; }
 #proto-switcher button { font: inherit; padding: 2px 8px; border-radius: 999px; border: 1px solid #999; background: #eee; }
