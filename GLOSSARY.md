@@ -241,7 +241,7 @@ What a player equips to fight better: a weapon, which raises how hard they hit, 
 _Avoid_: Equipment
 
 **Improved item**:
-Gear one Quality above common, with a Virtue. Today only making gives one, but nothing rules out enemy loot giving one later.
+Gear of uncommon or rare Quality, which carries a Virtue. Today only making gives one, but nothing rules out enemy loot giving one later.
 _Avoid_: Magic item, enchanted item, rare item (rare is one Quality)
 
 **Quality**:
