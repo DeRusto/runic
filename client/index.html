@@ -226,6 +226,12 @@
           0 -1px #000,
           0 1px #000;
       }
+      /* A slot picked up by keyboard (M) to move. */
+      :is(#slots, #bank-slots) > button[data-moving="true"] {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 2px #e8c060;
+      }
       #slots > button[data-locked="true"] {
         filter: grayscale(1);
         opacity: 0.6;

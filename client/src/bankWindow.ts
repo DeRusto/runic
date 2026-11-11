@@ -71,7 +71,7 @@ export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {
       const item = me!.bank[i] ?? EMPTY_SLOT;
       const count = me!.bankCounts[i] ?? 0;
       if (item) filled++;
-      slot.ariaLabel = item ? itemName(item) : null;
+      slot.ariaLabel = item ? itemName(item) : "Empty slot";
       slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
       slot.ariaDisabled = String(!item);
       slot.draggable = !!item;
