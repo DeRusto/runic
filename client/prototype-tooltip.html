@@ -1,0 +1,410 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway: three variants of the one tooltip (map ticket "How does the one tooltip
+  look and behave?"), switchable with ?variant=A|B|C or the arrows. Mock bar and panel, no server.
+  Run `npm run dev -w client`, then open http://localhost:5173/prototype-tooltip.html
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PROTOTYPE tooltip</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(#2c4a33, #1b2330);
+        color: #eee;
+        font: 12px system-ui;
+      }
+      .uncommon,
+      .rare {
+        font-weight: 600;
+      }
+      .uncommon {
+        color: #5fe36a;
+      }
+      .rare {
+        color: #6fb0ff;
+      }
+      .refusal {
+        color: #ff8a7a;
+      }
+      .stat {
+        color: #cfcfcf;
+      }
+
+      /* Mock panel: the character sheet's Gear tab and a smithing list, in the brown panel art. */
+      #panel {
+        position: fixed;
+        top: 40px;
+        right: 24px;
+        width: 260px;
+        padding: 20px;
+        border: 20px solid transparent;
+        border-image: url(/ui/panel_brown.png) 20 fill stretch;
+        color: #3b2412;
+      }
+      #panel h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      #gear {
+        display: grid;
+        grid-template-columns: repeat(3, 64px);
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+      #gear button {
+        width: 64px;
+        height: 64px;
+        border: 0;
+        background: #6d4a28 center / 52px no-repeat;
+        outline: 2px solid #a26a35;
+      }
+      #recipes button {
+        display: block;
+        width: 100%;
+        margin: 2px 0;
+        padding: 4px;
+        border: 0;
+        background: #c9a77c;
+        text-align: left;
+        font: inherit;
+      }
+
+      /* Mock bottom bar. */
+      #bar {
+        position: fixed;
+        inset: auto 0 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(272px, 1fr);
+        gap: 8px;
+        height: 160px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: #232c3a;
+      }
+      #slots {
+        display: grid;
+        grid-template-columns: repeat(10, 36px);
+        grid-auto-rows: 36px;
+        gap: 2px;
+      }
+      #slots button {
+        padding: 0;
+        border: 0;
+        background: #151b25 center / 32px no-repeat;
+      }
+      #buttons {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 6px;
+      }
+      #buttons button {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        background: url(/ui/button_brown.png) center / 100% 100%;
+        color: #fff;
+        font-weight: 700;
+      }
+      progress {
+        display: block;
+        width: 100%;
+        height: 8px;
+      }
+
+      /* Shared tip box for A and B. */
+      #tip {
+        position: fixed;
+        z-index: 2;
+        pointer-events: none;
+        max-width: 280px;
+        padding: 3px 6px;
+        border: 1px solid #555;
+        background: #111;
+        color: #fff;
+      }
+      #tip p {
+        margin: 0;
+      }
+
+      /* B: a card anchored to the thing, with a caret and a header. */
+      body.B #tip {
+        padding: 6px 8px;
+        border-color: #8a6a44;
+        border-radius: 3px;
+        box-shadow: 0 2px 8px #000a;
+      }
+      body.B #tip .name {
+        font-size: 13px;
+      }
+      body.B #tip .kind {
+        color: #9a9a9a;
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+      body.B #tip hr {
+        margin: 4px 0;
+        border: 0;
+        border-top: 1px solid #333;
+      }
+      body.B #tip::after {
+        content: "";
+        position: absolute;
+        left: var(--caret, 50%);
+        top: 100%;
+        border: 6px solid transparent;
+        border-top-color: #8a6a44;
+        transform: translateX(-50%);
+      }
+      body.B #tip.below::after {
+        top: auto;
+        bottom: 100%;
+        border-top-color: transparent;
+        border-bottom-color: #8a6a44;
+      }
+
+      /* C: no floating box, one docked line just above the bar. */
+      body.C #tip {
+        left: 8px !important;
+        bottom: 168px !important;
+        top: auto !important;
+        max-width: none;
+        padding: 4px 8px;
+        border: 0;
+        background: #000a;
+        text-shadow: 0 0 3px #000;
+      }
+      body.C #tip p {
+        display: inline;
+      }
+      body.C #tip p + p::before {
+        content: " · ";
+        color: #888;
+      }
+
+      #switcher {
+        position: fixed;
+        z-index: 3;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #fff;
+        color: #000;
+        font-weight: 600;
+        box-shadow: 0 2px 6px #000;
+      }
+      #switcher button {
+        border: 0;
+        background: none;
+        font: inherit;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="panel">
+      <h2>Character: Gear</h2>
+      <div id="gear"></div>
+      <h2>Smithing</h2>
+      <div id="recipes"></div>
+    </section>
+
+    <div id="bar">
+      <div>
+        <div>[Server] Welcome to Runic.</div>
+        <div>You make a <span class="uncommon">Copper chestplate of Fortitude</span>!</div>
+      </div>
+      <div id="slots"></div>
+      <div>
+        <div id="buttons"></div>
+        <div id="skills"></div>
+      </div>
+    </div>
+
+    <div id="tip" role="tooltip" hidden></div>
+    <div id="switcher">
+      <button id="prev">←</button><span id="label"></span><button id="next">→</button>
+    </div>
+
+    <script type="module">
+      const VARIANTS = {
+        A: "Follow the cursor, instant (today's slot tip, grown)",
+        B: "Card anchored to the thing, 400 ms delay",
+        C: "Docked line above the bar, instant",
+      };
+      const keys = Object.keys(VARIANTS);
+      const params = new URLSearchParams(location.search);
+      let variant = keys.includes(params.get("variant")) ? params.get("variant") : "A";
+      const setVariant = (v) => {
+        variant = v;
+        document.body.className = v;
+        document.getElementById("label").textContent = `${v} (${VARIANTS[v]})`;
+        history.replaceState(null, "", `?variant=${v}`);
+        hide();
+      };
+      const step = (d) => setVariant(keys[(keys.indexOf(variant) + d + keys.length) % keys.length]);
+      document.getElementById("prev").onclick = () => step(-1);
+      document.getElementById("next").onclick = () => step(1);
+      addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") step(-1);
+        if (e.key === "ArrowRight") step(1);
+      });
+
+      // Tip content: { name, quality, kind, stats: [], virtue, refusal } for items, or { text } for plain tips.
+      const item = (icon, name, quality, kind, stats, virtue, refusal) => ({
+        icon,
+        name,
+        quality,
+        kind,
+        stats,
+        virtue,
+        refusal,
+      });
+      const ITEMS = [
+        item("copperChestplate", "Copper chestplate of Fortitude", "uncommon", "Body armour, needs Defense 1", ["Takes 4% off each hit you take."], "Adds 20 to your max health."),
+        item("ironSword", "Iron sword of Might", "rare", "Weapon, needs Attack 10", ["Adds 200 to your minimum and maximum hit."], "Adds 18 to your minimum and maximum hit."),
+        item("bronzeShield", "Bronze shield", "", "Shield, needs Defense 5", ["Starts at a 15% chance to block a hit."]),
+        item("steelHelmet", "Steel helmet of Avoidance", "rare", "Head armour, needs Defense 15", ["Takes 5% off each hit you take."], "Takes 0.8 points off an enemy's chance to hit you.", "Needs Defense 15. You have 9."),
+        item("copperOre", "Copper ore (12)", "", "Material"),
+        item("berry", "Berry (3)", "", "Food, heals 2"),
+        item("pickaxe", "Pickaxe", "", "Tool"),
+      ];
+
+      const tip = document.getElementById("tip");
+      let timer;
+      const fill = (c) => {
+        tip.replaceChildren();
+        const line = (text, cls) => {
+          const p = document.createElement("p");
+          p.textContent = text;
+          if (cls) p.className = cls;
+          tip.append(p);
+        };
+        if (c.text) return line(c.text);
+        line(c.name, `name ${c.quality ?? ""}`);
+        if (variant === "B") {
+          line(c.kind, "kind");
+          if (c.stats?.length || c.virtue) tip.append(document.createElement("hr"));
+        }
+        for (const s of c.stats ?? []) line(s, "stat");
+        if (c.virtue) line(c.virtue, c.quality);
+        if (c.refusal) line(c.refusal, "refusal");
+      };
+      const place = (el, event) => {
+        tip.classList.remove("below");
+        if (variant === "A") {
+          // Up and to the right of the cursor, flipped at the window's right and top edges.
+          let x = event.clientX + 12;
+          if (x + tip.offsetWidth > innerWidth) x = event.clientX - 12 - tip.offsetWidth;
+          let y = event.clientY - 12 - tip.offsetHeight;
+          if (y < 0) y = event.clientY + 16;
+          tip.style.left = `${Math.max(0, x)}px`;
+          tip.style.top = `${y}px`;
+        } else if (variant === "B") {
+          // Centred above the element, below it if there's no room, clamped to the window.
+          const r = el.getBoundingClientRect();
+          const centre = r.left + r.width / 2;
+          const x = Math.min(Math.max(4, centre - tip.offsetWidth / 2), innerWidth - tip.offsetWidth - 4);
+          let y = r.top - 8 - tip.offsetHeight;
+          if (y < 0) {
+            y = r.bottom + 8;
+            tip.classList.add("below");
+          }
+          tip.style.left = `${x}px`;
+          tip.style.top = `${y}px`;
+          tip.style.setProperty("--caret", `${centre - x}px`);
+        }
+      };
+      const show = (el, content, event) => {
+        fill(content);
+        tip.hidden = false;
+        place(el, event);
+      };
+      function hide() {
+        clearTimeout(timer);
+        tip.hidden = true;
+      }
+      const addTip = (el, content) => {
+        el.addEventListener("pointerenter", (event) => {
+          clearTimeout(timer);
+          // B waits, unless a tip is already up: moving along a row of slots stays instant.
+          if (variant === "B" && tip.hidden) timer = setTimeout(() => show(el, content, event), 400);
+          else show(el, content, event);
+        });
+        el.addEventListener("pointermove", (event) => {
+          if (variant === "A" && !tip.hidden) place(el, event);
+        });
+        el.addEventListener("pointerleave", hide);
+        el.addEventListener("pointerdown", hide);
+      };
+
+      const slots = document.getElementById("slots");
+      for (let i = 0; i < 30; i++) {
+        const b = document.createElement("button");
+        const it = ITEMS[i];
+        if (it) {
+          b.style.backgroundImage = `url(/icons/${it.icon}.png)`;
+          addTip(b, it);
+        }
+        slots.append(b);
+      }
+      const gear = document.getElementById("gear");
+      for (const [i, slot] of ["", "Head", "", "Weapon", "Body", "Shield", "", "Legs", ""].entries()) {
+        const b = document.createElement("button");
+        if (!slot) b.style.visibility = "hidden";
+        const worn = { Head: ITEMS[3], Weapon: ITEMS[1], Body: ITEMS[0], Shield: ITEMS[2] }[slot];
+        if (worn) {
+          b.style.backgroundImage = `url(/icons/${worn.icon}.png)`;
+          addTip(b, { ...worn, refusal: undefined });
+        } else if (slot) addTip(b, { text: `${slot}: empty` });
+        gear.append(b);
+      }
+      const recipes = document.getElementById("recipes");
+      for (const [name, stats, refusal] of [
+        ["Copper chestplate", "Takes 4% off each hit you take.", ""],
+        ["Iron sword", "Adds 200 to your minimum and maximum hit.", "Needs Smithing 10"],
+      ]) {
+        const b = document.createElement("button");
+        b.textContent = name;
+        addTip(b, { name, stats: [stats, "5 Copper bar (have 5) · 30 Smithing experience"], refusal });
+        recipes.append(b);
+      }
+      const buttons = document.getElementById("buttons");
+      for (const [label, text] of [
+        ["C", "Character (C)"],
+        ["S", "Social (O)"],
+        ["⚙", "Options"],
+        ["↩", "Log out"],
+      ]) {
+        const b = document.createElement("button");
+        b.textContent = label;
+        addTip(b, { text });
+        buttons.append(b);
+      }
+      const skills = document.getElementById("skills");
+      for (const [name, xp, value] of [
+        ["Mining 11", "1,234 XP to level 12", 0.4],
+        ["Smithing 5", "88 XP to level 6", 0.8],
+      ]) {
+        const l = document.createElement("label");
+        l.textContent = name;
+        const p = document.createElement("progress");
+        p.value = value;
+        l.append(p);
+        addTip(p, { text: xp });
+        skills.append(l);
+      }
+      setVariant(variant);
+    </script>
+  </body>
+</html>
