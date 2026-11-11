@@ -37,6 +37,25 @@
         font: 12px system-ui;
         white-space: pre-line;
       }
+      /* An item tip's lines, top to bottom; the Virtue line keeps its Quality colour (spec §5). */
+      #tooltip .tip-name {
+        font-size: 13px;
+      }
+      #tooltip .tip-kind {
+        color: #999;
+        font-size: 11px;
+      }
+      #tooltip hr {
+        margin: 4px 0;
+        border: 0;
+        border-top: 1px solid #8a6a4480;
+      }
+      #tooltip .tip-stat:not(.uncommon, .rare) {
+        color: #ccc;
+      }
+      #tooltip .tip-refusal {
+        color: #f66;
+      }
       /* An improved item's name, in the light shades: every surface it shows on is dark (spec §5, §6). */
       .uncommon,
       .rare {

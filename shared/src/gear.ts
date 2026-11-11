@@ -153,15 +153,20 @@ export function virtueDoes(item: string) {
   return virtue ? VIRTUE_EFFECTS[virtue].does(virtueSize(item)) : undefined;
 }
 
+/** The skill and level needed to equip `item`, or undefined if it isn't gear. */
+export function gateOf(item: string) {
+  const gear = gearOf(item);
+  return gear && { ...GATES[gear.slot], level: gear.level };
+}
+
 /** Why this gear can't be equipped, or undefined if it can or isn't gear. The bar greys it, and the server tells the player. */
 export function gearRefusal(
   item: string,
   player: { combatXp: number; defenseXp: number },
 ) {
-  const gear = gearOf(item);
-  if (!gear) return undefined;
-  const { skill, xp } = GATES[gear.slot];
-  return levelFor(player[xp]) < gear.level
-    ? `You need ${skill} ${gear.level} to equip this.`
+  const gate = gateOf(item);
+  if (!gate) return undefined;
+  return levelFor(player[gate.xp]) < gate.level
+    ? `You need ${gate.skill} ${gate.level} to equip this.`
     : undefined;
 }

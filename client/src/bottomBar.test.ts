@@ -240,7 +240,7 @@ describe("a filled slot", () => {
       'url("/icons/copperOre.png")',
     );
     expect(slot().ariaLabel).toBe("Copper ore");
-    expect(pointAt()).toBe("Copper ore");
+    expect(pointAt()).toBe("[tip-name common]Copper ore[tip-kind]Material");
     expect(slot().textContent).toBe("");
   });
 
@@ -257,7 +257,7 @@ describe("a filled slot", () => {
   test("an improved item's tooltip shows its name in its Quality's colour, beside the cursor, until the pointer leaves (spec §5)", () => {
     room.onStateChange.invoke(stateHolding(["copperSword:rare:might", 1]));
     nextFrame();
-    expect(pointAt()).toBe("[rare]Copper sword of Might");
+    expect(pointAt()).toMatch(/^\[tip-name rare\]Copper sword of Might\[/);
     expect(tip.style).toEqual({ left: "62px", top: "568px" });
     slot().onpointerleave!();
     expect(tip.hidden).toBe(true);
@@ -395,7 +395,9 @@ describe("gear in the bar", () => {
     expect(slot(0).ariaLabel).toBe(
       "Iron sword. You need Combat 10 to equip this.",
     );
-    expect(pointAt(0)).toBe("Iron sword. You need Combat 10 to equip this.");
+    expect(pointAt(0)).toMatch(
+      /\[tip-refusal\]You need Combat 10 to equip this\.$/,
+    );
     const state = stateHolding(["ironSword", 1]);
     state.players.get("me")!.combatXp = LEVEL_10_XP;
     room.onStateChange.invoke(state);
