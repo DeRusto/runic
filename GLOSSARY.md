@@ -39,7 +39,7 @@ A spot in the world that can be mined for ore; it runs out after use and grows b
 _Avoid_: Ore rock, node, resource
 
 **Furnace**:
-A fixed spot where a player turns ore into bars.
+A small building in the smithy where a player turns ore into bars. Not a house.
 _Avoid_: Smelter, forge
 
 **Anvil**:
@@ -50,9 +50,57 @@ _Avoid_: Forge, workbench
 A furnace or an anvil: a fixed spot where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
+**Villager**:
+A named person who stands on one tile in the village and talks to players. Each has one job they offer while talking. Never an enemy, and can't be attacked.
+_Avoid_: NPC, townsfolk, character
+
 **Blacksmith**:
-A fixed character who gives players the tools they don't have yet, for free. Not an enemy, and the only such character.
-_Avoid_: NPC, shopkeeper, vendor
+Odo, the villager at the smithy, who gives players the tools they don't have yet, for free, when they ask in conversation.
+_Avoid_: Smith, vendor
+
+**Conversation**:
+A talk with a villager in the dialogue box above the bar: the villager's lines and the player's choices, which the server checks the player is still beside the villager to carry out. Walking away or being hit ends it, and a blocked hit counts.
+_Avoid_: Chat (that is the chat box), dialog
+
+**Storekeeper**:
+Marta, the villager who runs the general store.
+_Avoid_: Shopkeeper, merchant, vendor
+
+**Banker**:
+Aldous, the villager who runs the bank.
+_Avoid_: Teller, clerk
+
+**General store**:
+The one store in the village. It buys any item but coins from a player and sells what is on its shelf.
+_Avoid_: Shop, market
+
+**Shelf**:
+What the general store has for sale, the same for every player: its own stock, which refills over time, and the items players have sold to it, which run down over time.
+_Avoid_: Stock list, inventory
+
+**Bank**:
+Where a player keeps items they aren't carrying, opened through the banker. Each player has their own 96 slots, kept for good. A slot holds one piece of gear, or any number of one material, food or coins.
+_Avoid_: Vault, storage, chest
+
+**Value**:
+What an item costs at the general store, in coins. The store pays less than an item's value when it buys, but never less than 1 coin for one item, unless the item is trash.
+_Avoid_: Price, worth
+
+**Trash**:
+An item with a value of 0. The general store takes it but pays nothing for it.
+_Avoid_: Junk, vendor trash
+
+**Counter**:
+The part of the general store's window where a player sets out a trade: what they will buy from the shelf, what they will sell from their inventory, and the coins each way. Nothing changes hands until the player makes the deal.
+_Avoid_: Cart, basket, trade window
+
+**Tray**:
+One of the counter's two lists: what the player will buy from the shelf, or what they will sell from their inventory. Each line is an item and a count, which the player can take back before the deal.
+_Avoid_: Cart, basket, offer
+
+**Deal**:
+Settling both trays at once with the store window's Deal button: sales first, so their coins pay for the buys. The server refuses it, and nothing changes hands, if the player can't pay, has no room, or the shelf no longer has enough of what they buy.
+_Avoid_: Purchase, transaction, checkout
 
 **Prop**:
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
@@ -193,8 +241,12 @@ What right-clicking another player opens at the cursor: Trade, Follow, Attack, E
 _Avoid_: Context menu, player options
 
 **Drop**:
-Moving everything in one inventory slot onto the tile the player stands on, where it becomes a ground item. It is the only way to empty a slot.
+Moving some or all of one inventory slot onto the tile the player stands on, where it becomes one ground item. The amount comes from the amount menu, and the rest stays in the slot.
 _Avoid_: Discard, destroy, delete
+
+**Amount menu**:
+The right-click choices **1**, **5**, **10**, **X** and **All** that Drop, and later the bank and the general store, offer on a stack. X asks for a number, and an amount larger than the stack takes all of it. A lone item offers the plain choice instead.
+_Avoid_: Quantity picker, split menu
 
 **Ground item**:
 One item or stack lying on a tile, from a single drop. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. Ground items never merge, but a stack taken into an inventory joins a matching stack there.

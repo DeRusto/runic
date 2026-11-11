@@ -119,6 +119,11 @@ const ICONS: Icon[] = [
     turn: FLAT,
     look: { tint: 0x2e2e2e },
   },
+  {
+    id: "coins",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/coin_stack_small.gltf",
+    turn: FLAT,
+  },
 ];
 
 /** Each armour piece is the Knight's meshes for it, as no pack has armour on its own (spec §7). */

@@ -12,8 +12,10 @@ const {
   revealResult,
   enemyFigures,
   enemyOverheads,
+  stationTile,
 } = vi.hoisted(() => ({
   figure: {
+    tile: { x: 3, y: 2 },
     moving: false,
     once: vi.fn(),
     onceWithin: vi.fn(() => 2400),
@@ -25,6 +27,9 @@ const {
   revealResult: vi.fn(),
   enemyFigures: new Map<string, unknown>(),
   enemyOverheads: new Map<string, unknown>(),
+  stationTile: vi.fn((kind: string, _near: unknown) =>
+    kind === "anvil" ? { x: 6, y: 1 } : { x: 4, y: 1 },
+  ),
 }));
 vi.mock("./players.ts", () => ({
   playerFigures: new Map([["a", figure]]),
@@ -35,10 +40,7 @@ vi.mock("./enemies.ts", () => ({
   enemyOverheads,
 }));
 vi.mock("./bottomBar.ts", () => ({ printChatLine, holdResult, revealResult }));
-vi.mock("./stations.ts", () => ({
-  stationTile: (kind: string) =>
-    kind === "anvil" ? { x: 6, y: 1 } : { x: 4, y: 1 },
-}));
+vi.mock("./stations.ts", () => ({ stationTile }));
 
 describe("the make event", () => {
   const send = (event: WorldEvent) => {
@@ -66,6 +68,11 @@ describe("the make event", () => {
       "Working_A",
       6 * TICK_MS,
     );
+  });
+
+  test("faces the station's tile nearest where the maker stands", () => {
+    send({ type: "make", player: "a", station: "furnace", ticks: 6 });
+    expect(stationTile).toHaveBeenLastCalledWith("furnace", { x: 3, y: 2 });
   });
 
   test("for someone no longer here, does nothing", () => {
@@ -156,6 +163,11 @@ describe("the healed event", () => {
   test("shows a green number over that player, for every viewer", () => {
     send({ type: "healed", player: "a", amount: 2 });
     expect(overhead.pop).toHaveBeenCalledWith("+2", "heal");
+  });
+
+  test("faces the station's tile nearest where the maker stands", () => {
+    send({ type: "make", player: "a", station: "furnace", ticks: 6 });
+    expect(stationTile).toHaveBeenLastCalledWith("furnace", { x: 3, y: 2 });
   });
 
   test("for someone no longer here, does nothing", () => {

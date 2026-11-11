@@ -53,7 +53,8 @@ const IS = {
   emberite: (tile) => tile.vein === "emberite",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
-  blacksmith: (tile) => !!tile.blacksmith,
+  blacksmith: (tile) => tile.villager === "odo",
+  villager: (tile) => !!tile.villager,
   house: (tile) => !!tile.house,
 } satisfies Record<string, (tile: TileKind) => boolean>;
 
@@ -100,9 +101,10 @@ describe("the region", () => {
     ["iron", 4],
     ["emberite", 3],
     ["skeleton", 6],
-    ["furnace", 1],
+    ["furnace", 4],
     ["anvil", 1],
     ["blacksmith", 1],
+    ["villager", 3],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -124,9 +126,14 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
-  it("lets a player walk next to every bush, vein, station and the Blacksmith", () => {
+  it("lets a player walk next to every bush, vein, station and villager", () => {
     expect(
-      tilesOf(...BUSHES, ...VEINS, ...STATIONS_AND_BLACKSMITH).filter(
+      tilesOf(
+        ...BUSHES,
+        ...VEINS,
+        ...STATIONS_AND_BLACKSMITH,
+        "villager",
+      ).filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
@@ -206,9 +213,10 @@ describe("the region", () => {
   });
 
   it.each([
-    ["Copper", "copper", 8, 12],
-    ["Iron", "iron", 22, 28],
-    ["Emberite", "emberite", 40, 50],
+    // The walks from the Smithy at the crossroads, which the owner accepted (second slice §3).
+    ["Copper", "copper", 8, 14],
+    ["Iron", "iron", 17, 20],
+    ["Emberite", "emberite", 33, 38],
   ] as const)(
     "puts %s veins the right walk from the Smithy",
     (_, vein, minSeconds, maxSeconds) => {
@@ -226,11 +234,52 @@ describe("the region", () => {
     },
   );
 
-  it("stands the furnace, anvil and Blacksmith together at the village's edge", () => {
-    const smithy = tilesOf(...STATIONS_AND_BLACKSMITH).map(asTile);
-    for (const a of smithy) {
-      for (const b of smithy) expect(tilesApart(a, b)).toBeLessThanOrEqual(6);
-      expect(tilesApart(a, asTile(respawn))).toBeLessThanOrEqual(10);
+  it.each([
+    ["marta", 11, 41],
+    ["aldous", 26, 41],
+  ] as const)("stands %s at %i,%i", (villager, x, y) => {
+    expect(region[y]![x]!.villager).toBe(villager);
+  });
+
+  it("stands the furnace, anvil and Blacksmith at the crossroads' north-east corner", () => {
+    for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
+      expect(x).toBeGreaterThanOrEqual(36);
+      expect(x).toBeLessThanOrEqual(40);
+      expect(y).toBeGreaterThanOrEqual(37);
+      expect(y).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it("draws the furnace on a 2×2 footprint", () => {
+    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+    expect(tilesOf("furnace")).toEqual([
+      [x, y],
+      [x + 1, y],
+      [x, y + 1],
+      [x + 1, y + 1],
+    ]);
+  });
+
+  it("hides none of the smithy from the default camera, which looks north-west", () => {
+    const isTall = (tile: TileKind) =>
+      !!tile.house ||
+      tile.station === "furnace" ||
+      ["tree", "well", "lamp"].includes(tile.prop ?? "");
+    const furnace = new Set(tilesOf("furnace").map(([x, y]) => key(x, y)));
+    for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
+      for (let dx = 0; dx <= 4; dx++) {
+        for (let dy = 0; dy <= 4; dy++) {
+          // The furnace's own tiles stand south-east of one another.
+          if (furnace.has(key(x + dx, y + dy))) continue;
+          if (dx || dy) expect(isTall(region[y + dy]![x + dx]!)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("leaves the old smithy at (18–22, 37) as grass", () => {
+    for (let x = 18; x <= 22; x++) {
+      expect(region[37]![x]).toEqual({ ground: "grass", blocks: false });
     }
   });
 });
@@ -262,7 +311,7 @@ describe("parseRegion", () => {
     ["e", { ground: "ashen", vein: "emberite", blocks: true }],
     ["F", { ground: "grass", station: "furnace", blocks: true }],
     ["N", { ground: "grass", station: "anvil", blocks: true }],
-    ["B", { ground: "grass", blacksmith: true, blocks: true }],
+    ["B", { ground: "grass", villager: "odo", blocks: true }],
     ["H", { ground: "grass", house: "wall", blocks: true }],
     ["D", { ground: "grass", house: "door", blocks: true }],
     ["W", { ground: "path", prop: "well", blocks: true }],

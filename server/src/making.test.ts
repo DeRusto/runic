@@ -221,7 +221,7 @@ test("materials dropped during the wait end it with a line, and nothing is made"
   add([["copperOre", 1]]);
   sim.queueMake("a", { item: "copperBar", all: false });
   run(3);
-  sim.queueDrop("a", 0);
+  sim.queueDrop("a", 0, 20);
   run(1);
   expect(player().action).toBe("smithing");
   run(10);
@@ -313,7 +313,7 @@ test("eating and dropping don't interrupt it", () => {
   sim.queueMake("a", { item: "copperBar", all: false });
   run(2);
   sim.queueEat("a", 1);
-  sim.queueDrop("a", 2);
+  sim.queueDrop("a", 2, 20);
   run(5);
   expect(items()).toEqual([
     ["copperBar", 1],
@@ -432,6 +432,29 @@ test("a region without that station ignores the pick", () => {
   run(5);
   expect(makes()).toEqual([]);
 });
+
+test.each([
+  ["west side", 1, 2],
+  ["north side", 2, 1],
+  ["east side", 4, 3],
+  ["south side", 3, 4],
+  ["north-west corner", 1, 1],
+])(
+  "a 2×2 furnace is one station, smelted at from its %s without a step",
+  (_, x, y) => {
+    sim = new Simulation(
+      parseRegion(
+        ["TTTTTT", "TR...T", "T.FF.T", "T.FF.T", "T....T", "TTTTTT"].join("\n"),
+      ),
+      () => FAIL,
+    );
+    add([["copperOre", 1]], { x, y });
+    sim.queueMake("a", { item: "copperBar", all: false });
+    run(7);
+    expect(player()).toMatchObject({ x, y });
+    expect(items()).toEqual([["copperBar", 1]]);
+  },
+);
 
 test("what was made and its experience are saved", () => {
   add([["copperOre", 1]]);

@@ -317,6 +317,8 @@ describe("Spiders", () => {
 
 const EMPTY_INVENTORY = Array<string>(30).fill("");
 const EMPTY_COUNTS = Array<number>(30).fill(0);
+const EMPTY_BANK = Array<string>(96).fill("");
+const EMPTY_BANK_COUNTS = Array<number>(96).fill(0);
 
 test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 1,000 health", () => {
   expect(sim.saveOf("a")).toEqual({
@@ -343,6 +345,8 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     inventory: EMPTY_INVENTORY,
     inventoryCounts: EMPTY_COUNTS,
     tools: [],
+    bank: EMPTY_BANK,
+    bankCounts: EMPTY_BANK_COUNTS,
     weapon: "",
     shield: "",
     head: "",
@@ -373,6 +377,8 @@ const SAVED = {
   inventory: ["berry", ...EMPTY_INVENTORY.slice(1)],
   inventoryCounts: [7, ...EMPTY_COUNTS.slice(1)],
   tools: ["pickaxe"],
+  bank: ["herb", ...EMPTY_BANK.slice(1)],
+  bankCounts: [500, ...EMPTY_BANK_COUNTS.slice(1)],
   weapon: "copperSword",
   shield: "copperShield",
   head: "copperHelmet",

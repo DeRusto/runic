@@ -1,5 +1,6 @@
 import {
   CHAT,
+  COINS,
   DROP_INTENT,
   EAT_INTENT,
   EQUIP_INTENT,
@@ -12,6 +13,7 @@ import {
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MAX_LEVEL,
+  MOVE_INTENT,
   PRIVATE_LINE,
   SKILLS,
   xpForLevel,
@@ -25,10 +27,19 @@ import {
 } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
+import { amountChoices, dragToReorder } from "./movingItems.ts";
 import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
 const MAX_CHAT_LINES = 200;
+
+/** A slot's count of coins in short form: `999`, `12K`, `3.4M` (village spec §3). */
+export const shortCount = (count: number) =>
+  count < 1e3
+    ? String(count)
+    : count < 1e6
+      ? `${Math.floor(count / 1e3)}K`
+      : `${Math.floor(count / 1e5) / 10}M`;
 
 const chatLines = document.getElementById("chat-lines")!;
 
@@ -41,6 +52,16 @@ export function printChatLine(...parts: (string | Node)[]) {
     chatLines.firstElementChild!.remove();
   chatLines.scrollTop = chatLines.scrollHeight;
 }
+
+/** What an inventory slot's clicks do while a window takes them over: the store window sells (village spec §5), and the bank deposits (village spec §6). */
+type SlotTakeover = {
+  click: (slot: number, item: string) => void;
+  menu: (slot: number, item: string) => ReturnType<typeof amountChoices>;
+};
+let takeover: SlotTakeover | undefined;
+
+/** Hands the inventory slots' clicks to an open store window or bank, and back with undefined. */
+export const takeOverSlots = (to: SlotTakeover | undefined) => (takeover = to);
 
 let holdingResult = false;
 let showHeld = () => {};
@@ -92,8 +113,11 @@ export function showBottomBar(
     const eat = () => room.send(EAT_INTENT, i);
     const equip = () => room.send(EQUIP_INTENT, i);
     // Only food and gear do anything on a left-click, so a material's slot sends nothing.
+    // Not the slot's text, which shows coins in short form.
+    const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
+      if (takeover) return item && takeover.click(i, item);
       if (FOOD_HEALS.has(item)) eat();
       if (gearOf(item)) equip();
     };
@@ -101,19 +125,28 @@ export function showBottomBar(
       event.preventDefault();
       const item = slot.dataset.item;
       if (!item) return;
+      if (takeover) return openMenu(event, takeover.menu(i, item));
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
-        ["Drop", () => room.send(DROP_INTENT, i)],
+        ...amountChoices("Drop", count(), (amount) =>
+          room.send(DROP_INTENT, { slot: i, amount }),
+        ),
       ]);
     };
     addTip(slot, () => {
       const item = slot.dataset.item;
-      return item && shown ? itemTipParts(itemTip(item, shown)) : "";
+      if (!item || !shown) return "";
+      const tip = itemTip(item, shown);
+      // The slot shows a short form, so the tip gives the exact count.
+      const count = shown.inventoryCounts[i] ?? 0;
+      if (item === COINS) tip.kind = `${count.toLocaleString("en")} coins`;
+      return itemTipParts(tip);
     });
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
+  dragToReorder(slots, (from, to) => room.send(MOVE_INTENT, { from, to }));
 
   const menu = document.getElementById("slot-menu")!;
   const openMenu: OpenMenu = (event, choices) => {
@@ -203,12 +236,15 @@ export function showBottomBar(
           ? `${itemName(item)}. ${refusal}`
           : item
             ? itemName(item)
-            : null;
+            : "Empty slot";
         // A custom property, so the CSS can lay the icon over the slot's face.
         slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
-        slot.disabled = !item;
+        // Not disabled: a disabled slot can't catch a drag, and an empty one must.
+        slot.ariaDisabled = String(!item);
+        slot.draggable = !!item;
         const count = me.inventoryCounts[i] ?? 0;
-        slot.dataset.count = count > 1 ? String(count) : "";
+        slot.dataset.count =
+          item === COINS ? shortCount(count) : count > 1 ? String(count) : "";
       });
       for (const skill of skills) {
         const xp = me[skill.field];

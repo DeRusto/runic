@@ -6,6 +6,7 @@ import {
   EVENTS,
   GROUND_ITEM_DESPAWN_TICKS,
   GROUND_ITEM_OWNER_TICKS,
+  MOVE_INTENT,
   respawnTile,
   TAKE_INTENT,
   TARGET_INTENT,
@@ -128,7 +129,7 @@ test("a ground item reaches only its owner until its owner minute ends", async (
   held.inventory[0] = "berry";
   held.inventoryCounts[0] = 3;
 
-  dropper.send(DROP_INTENT, 0);
+  dropper.send(DROP_INTENT, { slot: 0, amount: 20 });
   await vi.waitFor(() => expect(dropper.state.groundItems.size).toBe(1), {
     timeout: TICK_MS * 6,
     interval: 50,
@@ -169,13 +170,60 @@ test("a take intent moves a ground item back into the inventory", async () => {
     [...(taker.state.groundItems?.entries() ?? [])].find(
       ([, { owner }]) => owner,
     )?.[0];
-  taker.send(DROP_INTENT, 0);
+  taker.send(DROP_INTENT, { slot: 0, amount: 20 });
   await vi.waitFor(() => expect(mine()).toBeDefined(), waitFor);
   taker.send(TAKE_INTENT, mine());
   await vi.waitFor(() => expect(mine()).toBeUndefined(), waitFor);
   const me = taker.state.players.get(taker.sessionId)!;
   expect([me.inventory[0], me.inventoryCounts[0]]).toEqual(["berry", 3]);
   await taker.leave();
+});
+
+test("a move intent drags a stack to another slot", async () => {
+  const owner = new Client(`http://localhost:${PORT}`);
+  owner.auth.token = await testToken(PORT, "Sorter");
+  const sorter = await owner.join(WORLD_ROOM);
+  const { sim } = matchMaker.getLocalRoomById(sorter.roomId) as WorldRoom;
+  await vi.waitFor(() =>
+    expect(sim.state.players.has(sorter.sessionId)).toBe(true),
+  );
+  const held = sim.state.players.get(sorter.sessionId)!;
+  held.inventory[0] = "berry";
+  held.inventoryCounts[0] = 3;
+
+  sorter.send(MOVE_INTENT, { from: 0, to: 4 });
+  await vi.waitFor(() => expect(held.inventory[4]).toBe("berry"));
+  expect(held.inventory[0]).toBe("");
+  await sorter.leave();
+});
+
+test("a player's bank reaches only that player", async () => {
+  const owner = new Client(`http://localhost:${PORT}`);
+  owner.auth.token = await testToken(PORT, "Saver");
+  const saver = await owner.join(WORLD_ROOM);
+  const other = new Client(`http://localhost:${PORT}`);
+  other.auth.token = await testToken(PORT, "Snoop");
+  const snoop = await other.join(WORLD_ROOM);
+  const { sim } = matchMaker.getLocalRoomById(saver.roomId) as WorldRoom;
+  await vi.waitFor(() => {
+    expect(sim.state.players.has(saver.sessionId)).toBe(true);
+    expect(sim.state.players.has(snoop.sessionId)).toBe(true);
+  });
+  const banked = sim.state.players.get(saver.sessionId)!;
+  banked.bank[0] = "coins";
+  banked.bankCounts[0] = 500;
+  const waitFor = { timeout: TICK_MS * 6, interval: 50 };
+
+  await vi.waitFor(() => {
+    const own = saver.state.players.get(saver.sessionId);
+    expect([own.bank[0], own.bankCounts[0]]).toEqual(["coins", 500]);
+  }, waitFor);
+  const seen = snoop.state.players.get(saver.sessionId);
+  expect(seen.username).toBe("Saver");
+  expect(seen.bank?.length ?? 0).toBe(0);
+  expect(seen.bankCounts?.length ?? 0).toBe(0);
+  await saver.leave();
+  await snoop.leave();
 });
 
 test("a public ground item leaves another viewer's state when taken and when it despawns", async () => {
@@ -196,7 +244,7 @@ test("a public ground item leaves another viewer's state when taken and when it 
   const dropPublic = async () => {
     held.inventory[0] = "berry";
     held.inventoryCounts[0] = 3;
-    giver.send(DROP_INTENT, 0);
+    giver.send(DROP_INTENT, { slot: 0, amount: 20 });
     let id: string | undefined;
     await vi.waitFor(() => {
       id = [...sim.state.groundItems.entries()].find(

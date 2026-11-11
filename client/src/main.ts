@@ -3,11 +3,13 @@ import { loadRegion, respawnTile, TAKEN_OVER_CLOSE_CODE } from "@runic/shared";
 import { DefaultLoadingManager } from "three";
 import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
+import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
-import { addBlacksmith } from "./blacksmith.ts";
+import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { showDialogueBox } from "./dialogueBox.ts";
 import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
@@ -22,6 +24,7 @@ import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 import { showSocialPanel } from "./socialPanel.ts";
+import { showStoreWindow } from "./storeWindow.ts";
 import { addStations } from "./stations.ts";
 
 const loading = document.getElementById("loading")!;
@@ -37,13 +40,13 @@ DefaultLoadingManager.onProgress = (_url, done, total) => {
 const tiles = loadRegion(regionMap, regionTileset);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
+const [newFigure, newSpider, newSkeleton, setRunOut, villagerUnder] =
   await Promise.all([
     loadCharacters(),
     loadSpiders(),
     loadSkeletons(),
     addRegionMeshes(scene, tiles),
-    addBlacksmith(tiles),
+    addVillagers(tiles),
   ])
     // Loads still in flight after a failure would look for a bar that is gone.
     .finally(() => (DefaultLoadingManager.onProgress = () => {}))
@@ -76,7 +79,7 @@ function enterWorld(room: WorldConnection) {
     showGatheringSites(room, tiles, setRunOut),
     stationUnder,
     showSmithingPanel(room),
-    blacksmithUnder,
+    villagerUnder,
     showGroundItems(room),
     showPileWindow(room),
     otherPlayerUnder,
@@ -84,6 +87,9 @@ function enterWorld(room: WorldConnection) {
   );
   showSocialPanel(room);
   showFights(room);
+  showDialogueBox(room);
+  showStoreWindow(room, openMenu);
+  showBankWindow(room, openMenu);
 
   logout.hidden = false;
   showLogoutConfirm(room);

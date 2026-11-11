@@ -1,4 +1,4 @@
-import { parseRegion, type WorldEvent } from "@runic/shared";
+import { parseRegion, VILLAGERS, type WorldEvent } from "@runic/shared";
 import { beforeEach, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
@@ -20,6 +20,16 @@ const ticks = (n: number) => {
   }
 };
 const arrive = () => ticks(20);
+/** Its index among the Blacksmith's first choices. */
+const ASK_FOR_TOOLS = VILLAGERS.odo.nodes.greet.choices.findIndex(
+  (choice) => "action" in choice && choice.action === "giveTools",
+);
+/** Walks over to the Blacksmith and asks for tools. */
+const askForTools = (id = "a") => {
+  sim.queueVisit(id, "odo");
+  arrive();
+  sim.choose(id, ASK_FOR_TOOLS);
+};
 
 beforeEach(() => {
   told = [];
@@ -29,31 +39,6 @@ beforeEach(() => {
 
 test("a new player has no tools", () => {
   expect(tools()).toEqual([]);
-});
-
-test("clicking the Blacksmith walks next to them, and gives the tools on arrival", () => {
-  sim.queueVisit("a");
-  ticks(1);
-  expect(me().action).toBe("walking");
-  expect(tools()).toEqual([]);
-  expect(told).toEqual([]);
-  arrive();
-  expect(me()).toMatchObject({ ...NEXT_TO, action: "" });
-  expect(tools()).toEqual(BOTH);
-  expect(told).toEqual([
-    {
-      type: "told",
-      player: "a",
-      line: "The Blacksmith gives you a pickaxe and a hammer.",
-    },
-  ]);
-});
-
-test("a player already next to them gets the tools on the next tick", () => {
-  Object.assign(me(), NEXT_TO);
-  sim.queueVisit("a");
-  ticks(1);
-  expect(tools()).toEqual(BOTH);
 });
 
 test("a player gets only the tools they lack", () => {
@@ -67,30 +52,14 @@ test("a player gets only the tools they lack", () => {
     inventory: [],
     tools: ["hammer"],
   });
-  sim.queueVisit("b");
+  askForTools("b");
   ticks(1);
   expect([...sim.state.players.get("b")!.tools]).toEqual(["hammer", "pickaxe"]);
   expect(told).toEqual([
     {
       type: "told",
       player: "b",
-      line: "The Blacksmith gives you a pickaxe.",
-    },
-  ]);
-});
-
-test("a player with every tool gets a line saying so, and no more tools", () => {
-  sim.queueVisit("a");
-  arrive();
-  told = [];
-  sim.queueVisit("a");
-  ticks(1);
-  expect(tools()).toEqual(BOTH);
-  expect(told).toEqual([
-    {
-      type: "told",
-      player: "a",
-      line: "You already have every tool.",
+      line: "Odo gives you a pickaxe.",
     },
   ]);
 });
@@ -98,14 +67,13 @@ test("a player with every tool gets a line saying so, and no more tools", () => 
 test("the click replaces what the player was doing", () => {
   sim.queueWalk("a", { x: 1, y: 2 });
   ticks(1);
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   expect(me()).toMatchObject(NEXT_TO);
   expect(tools()).toEqual(BOTH);
 });
 
 test("clicking something else on the way means no visit", () => {
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   sim.queueWalk("a", { x: 1, y: 1 });
   arrive();
@@ -115,7 +83,7 @@ test("clicking something else on the way means no visit", () => {
 });
 
 test("a visit cut off by a lost connection gives nothing", () => {
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   sim.dropPlayer("a");
   arrive();
@@ -124,16 +92,16 @@ test("a visit cut off by a lost connection gives nothing", () => {
 
 test("a dead player's click is ignored", () => {
   me().dead = true;
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   expect(tools()).toEqual([]);
 });
 
 test("a player who isn't here, or a region with no Blacksmith, is ignored", () => {
-  expect(() => sim.queueVisit("nobody")).not.toThrow();
+  expect(() => sim.queueVisit("nobody", "odo")).not.toThrow();
   const empty = new Simulation(parseRegion("TTT\nTRT\nTTT"), () => 0.99);
   empty.addPlayer("a");
-  empty.queueVisit("a");
+  empty.queueVisit("a", "odo");
   empty.tick();
   expect(empty.events).toEqual([]);
 });
@@ -143,15 +111,13 @@ test("tools take no inventory slot, and a full inventory still gets them", () =>
     me().inventory[slot] = "berry";
     me().inventoryCounts[slot] = 20;
   }
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   expect(tools()).toEqual(BOTH);
   expect([...me().inventory].every((item) => item === "berry")).toBe(true);
 });
 
 test("tools are saved, and come back at login", () => {
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   const save = sim.saveOf("a")!;
   expect(save.tools).toEqual(BOTH);
   sim.addPlayer("b", save);
@@ -193,11 +159,15 @@ test("tools are kept through dying", () => {
 });
 
 test("dropping every slot leaves tools alone", () => {
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   for (let slot = 0; slot < 30; slot++) {
-    sim.queueDrop("a", slot);
+    me().inventory[slot] = "berry";
+    me().inventoryCounts[slot] = 20;
+  }
+  for (let slot = 0; slot < 30; slot++) {
+    sim.queueDrop("a", slot, 20);
     ticks(1);
   }
+  expect([...me().inventory].every((item) => item === "")).toBe(true);
   expect(tools()).toEqual(BOTH);
 });

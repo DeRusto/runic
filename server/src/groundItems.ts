@@ -11,7 +11,7 @@ export const GroundItem = schema(
     x: t.uint8(),
     y: t.uint8(),
     item: t.string(),
-    count: t.uint8(),
+    count: t.uint32(),
     /** The username of the only player who can see it, or "" once everyone can. */
     owner: t.string().default(""),
   },

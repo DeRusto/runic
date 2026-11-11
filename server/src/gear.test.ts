@@ -100,7 +100,7 @@ describe("equipping", () => {
       combatXp: LEVEL_10_XP,
       weapon: "copperSword",
     });
-    sim.queueDrop("a", 0);
+    sim.queueDrop("a", 0, 20);
     sim.equip("a", 0);
     sim.tick();
     expect(me().inventory[0]).toBe("copperSword");
@@ -189,7 +189,7 @@ describe("what lasts", () => {
   test("worn gear can't be dropped, as no slot holds it", () => {
     start({ weapon: "copperSword" });
     for (let slot = 0; slot < INVENTORY_SLOTS; slot++) {
-      sim.queueDrop("a", slot);
+      sim.queueDrop("a", slot, 20);
       sim.tick();
     }
     expect(me().weapon).toBe("copperSword");

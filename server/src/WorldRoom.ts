@@ -7,9 +7,19 @@ import {
 } from "@colyseus/core";
 import { StateView } from "@colyseus/schema";
 import {
+  BANK_MOVE_INTENT,
   CHAT,
+  CLOSE_BANK_INTENT,
+  DEPOSIT_INTENT,
+  DEPOSIT_INVENTORY_INTENT,
+  WITHDRAW_INTENT,
+  CHOOSE_INTENT,
+  CLOSE_STORE_INTENT,
+  DEAL_INTENT,
   DROP_INTENT,
+  MOVE_INTENT,
   EAT_INTENT,
+  END_TALK_INTENT,
   EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
@@ -31,6 +41,7 @@ import {
   VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
+  type Deal,
   type GearSlot,
   type Tile,
 } from "@runic/shared";
@@ -68,11 +79,37 @@ export class WorldRoom extends Room {
       this.sim.queueGather(client.sessionId, "mining", vein),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
-    [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
+    [VISIT_INTENT]: (
+      client: Client,
+      visit: { villager: string; then?: string },
+    ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
+    [CHOOSE_INTENT]: (client: Client, choice: number) =>
+      this.sim.choose(client.sessionId, choice),
+    [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),
+    [DEAL_INTENT]: (client: Client, deal: Deal) =>
+      this.sim.deal(client.sessionId, deal),
+    [CLOSE_STORE_INTENT]: (client: Client) =>
+      this.sim.closeStore(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
-    [DROP_INTENT]: (client: Client, slot: number) =>
-      this.sim.queueDrop(client.sessionId, slot),
+    [DROP_INTENT]: (client: Client, drop: { slot: number; amount: number }) =>
+      this.sim.queueDrop(client.sessionId, drop?.slot, drop?.amount),
+    [MOVE_INTENT]: (client: Client, move: { from: number; to: number }) =>
+      this.sim.moveItem(client.sessionId, move?.from, move?.to),
+    [DEPOSIT_INTENT]: (
+      client: Client,
+      deposit: { slot: number; amount: number },
+    ) => this.sim.deposit(client.sessionId, deposit?.slot, deposit?.amount),
+    [WITHDRAW_INTENT]: (
+      client: Client,
+      withdraw: { slot: number; amount: number },
+    ) => this.sim.withdraw(client.sessionId, withdraw?.slot, withdraw?.amount),
+    [DEPOSIT_INVENTORY_INTENT]: (client: Client) =>
+      this.sim.depositInventory(client.sessionId),
+    [BANK_MOVE_INTENT]: (client: Client, move: { from: number; to: number }) =>
+      this.sim.moveBankItem(client.sessionId, move?.from, move?.to),
+    [CLOSE_BANK_INTENT]: (client: Client) =>
+      this.sim.closeBank(client.sessionId),
     [TAKE_INTENT]: (client: Client, groundItem: string) =>
       this.sim.queueTake(client.sessionId, groundItem),
     [EQUIP_INTENT]: (client: Client, slot: number) =>
@@ -129,7 +166,7 @@ export class WorldRoom extends Room {
         }
         if (this.sim.state.tick % SAVE_INTERVAL_TICKS === 0)
           this.saveEveryone();
-        this.showGroundItems();
+        this.updateViews();
         this.broadcastPatch();
         const events = this.sim.events.splice(0);
         if (events.length) this.broadcast(EVENTS, events);
@@ -199,13 +236,16 @@ export class WorldRoom extends Room {
   }
 
   /**
-   * Visibility only grows until a ground item goes. No view.remove is needed then: a view
+   * Adds to each view its own player and the ground items it can see. Visibility only grows until a ground item goes. No view.remove is needed then: a view
    * keeps no list of what it holds, and leaving the map clears the item's view bits.
    */
-  private showGroundItems() {
+  private updateViews() {
     for (const client of this.clients) {
+      const { view } = client;
+      // Their own player, so their bank reaches them alone. Here rather than on join, so a reconnect's view gets it too.
+      const own = this.sim.state.players.get(client.sessionId);
+      if (view && own && !view.has(own)) view.add(own);
       for (const [id, groundItem] of this.sim.state.groundItems) {
-        const { view } = client;
         if (
           view &&
           !view.has(groundItem) &&

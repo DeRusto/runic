@@ -1,4 +1,5 @@
 import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
+import type { VillagerId } from "./dialogue.ts";
 import type { ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
 
@@ -11,12 +12,35 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
 export const MAKE_INTENT = "make";
-/** The visit intent's message type, for clicking the Blacksmith; it has no payload. */
+/**
+ * The visit intent's message type, for clicking a villager; its payload is `{ villager, then }`.
+ * Arriving opens the conversation, or with `then`, a `DialogueAction` the conversation offers, runs that instead.
+ */
 export const VISIT_INTENT = "visit";
+/** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
+export const CHOOSE_INTENT = "choose";
+/** The end talk intent's message type, for closing a conversation; it has no payload. */
+export const END_TALK_INTENT = "endTalk";
+/** The deal intent's message type, for the store window's Deal button; its payload is a `Deal`. */
+export const DEAL_INTENT = "deal";
+/** The close store intent's message type, for closing the store window; it has no payload. */
+export const CLOSE_STORE_INTENT = "closeStore";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
-/** The drop intent's message type; its payload is the inventory slot's index. */
+/** The drop intent's message type; its payload is `{ slot, amount }`, and an amount over the stack drops it all. */
 export const DROP_INTENT = "drop";
+/** The move intent's message type, for a drag in the inventory; its payload is `{ from, to }`, two slots' indexes. */
+export const MOVE_INTENT = "move";
+/** The deposit intent's message type; its payload is `{ slot, amount }` for an inventory slot, and an amount over the stack deposits it all. */
+export const DEPOSIT_INTENT = "deposit";
+/** The withdraw intent's message type; its payload is `{ slot, amount }` for a bank slot, and the server takes as many as fit. */
+export const WITHDRAW_INTENT = "withdraw";
+/** The deposit inventory intent's message type; it has no payload. */
+export const DEPOSIT_INVENTORY_INTENT = "depositInventory";
+/** The bank move intent's message type, for a drag in the bank; its payload is `{ from, to }`, two bank slots' indexes. */
+export const BANK_MOVE_INTENT = "bankMove";
+/** The close bank intent's message type; it has no payload. */
+export const CLOSE_BANK_INTENT = "closeBank";
 /** The take intent's message type; its payload is the ground item's id. */
 export const TAKE_INTENT = "take";
 /** The equip intent's message type; its payload is the inventory slot's index. */
@@ -81,10 +105,15 @@ export const EAT_INTERVAL_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 
-/** The server alone knows the lock, so only it asks; 34 ticks of 300 ms round to 10 seconds. */
+/** The combat lock as players are told it, rounded to whole seconds: 34 ticks of 300 ms are 10. */
+export const COMBAT_LOCK_SECONDS = Math.round(
+  (COMBAT_LOCK_TICKS * TICK_MS) / 1000,
+);
+
+/** The server alone knows the lock, so only it asks. */
 export function logoutRefusal(locked: boolean) {
   return locked
-    ? "You can't log out until 10 seconds after a fight."
+    ? `You can't log out until ${COMBAT_LOCK_SECONDS} seconds after a fight.`
     : undefined;
 }
 export const REGEN_INTERVAL_TICKS = 20;
@@ -154,12 +183,29 @@ export type WorldEvent =
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
-  | { type: "told"; player: string; line: string };
+  | { type: "told"; player: string; line: string }
+  /** A conversation opened or moved on: the client shows `node`'s lines, then the choices that follow them. */
+  | { type: "talk"; player: string; villager: VillagerId; node: string }
+  /** The server ended a conversation the client may still be showing, on a walk away or a hit. */
+  | { type: "talkEnded"; player: string }
+  /** The server's answer to a deal: `done` when it went through, or false when refused, with the reason told. */
+  | { type: "dealAnswered"; player: string; done: boolean }
+  /** The store window opens for `player`. */
+  | { type: "storeOpened"; player: string }
+  /** The server closed a store window, on a walk away or a hit. */
+  | { type: "storeClosed"; player: string }
+  /** The player's bank window opens (village spec §6). */
+  | { type: "bankOpened"; player: string }
+  /** The server shut the bank window, on a walk away or a hit. */
+  | { type: "bankClosed"; player: string };
 
+export * from "./bank.ts";
+export * from "./dialogue.ts";
 export * from "./enemies.ts";
 export * from "./foraging.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";
+export * from "./generalStore.ts";
 export * from "./items.ts";
 export * from "./making.ts";
 export * from "./mining.ts";

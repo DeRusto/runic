@@ -1,3 +1,4 @@
+import type { VillagerId } from "./dialogue.ts";
 import type { EnemyKind } from "./enemies.ts";
 import type { BushKind } from "./foraging.ts";
 
@@ -16,7 +17,7 @@ export type TileKind = {
   bush?: BushKind;
   vein?: VeinTier;
   station?: StationKind;
-  blacksmith?: true;
+  villager?: VillagerId;
   house?: "wall" | "door";
   enemy?: EnemyKind;
   respawn?: true;
@@ -45,7 +46,9 @@ export const TILE_KINDS = {
   e: { ground: "ashen", vein: "emberite", blocks: true },
   F: { ground: "grass", station: "furnace", blocks: true },
   N: { ground: "grass", station: "anvil", blocks: true },
-  B: { ground: "grass", blacksmith: true, blocks: true },
+  B: { ground: "grass", villager: "odo", blocks: true },
+  M: { ground: "grass", villager: "marta", blocks: true },
+  $: { ground: "grass", villager: "aldous", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },
   W: { ground: "path", prop: "well", blocks: true },

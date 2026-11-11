@@ -1,5 +1,6 @@
 import {
   GATHERING,
+  offers,
   gatherRefusal,
   stationRefusal,
   TAKE_INTENT,
@@ -7,10 +8,10 @@ import {
   TICK_MS,
   VISIT_INTENT,
   WALK_INTENT,
+  type DialogueAction,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
-import type { addBlacksmith } from "./blacksmith.ts";
 import { printChatLine } from "./bottomBar.ts";
 import type { showGatheringSites } from "./gatheringSites.ts";
 import type { showGroundItems } from "./groundItemSacks.ts";
@@ -22,10 +23,11 @@ import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
+import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station or Blacksmith under the ray, or else walks to the tile under it on the ground plane. A right-click on another player opens the player menu. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on another player it opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -33,7 +35,7 @@ export function walkOnClick(
   siteUnder: ReturnType<typeof showGatheringSites>,
   stationUnder: ReturnType<typeof addStations>,
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
-  blacksmithUnder: Awaited<ReturnType<typeof addBlacksmith>>,
+  villagerUnder: Awaited<ReturnType<typeof addVillagers>>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
   otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
@@ -70,6 +72,22 @@ export function walkOnClick(
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
     aim(event);
+    const villager = villagerUnder(raycaster);
+    if (villager) {
+      const visit = (then?: DialogueAction) => () => {
+        showMarker(villager.x, villager.y);
+        room.send(VISIT_INTENT, { villager: villager.villager, then });
+      };
+      return openMenu(event, [
+        ["Talk-to", visit()],
+        ...(offers(villager.villager, "openStore")
+          ? ([["Trade", visit("openStore")]] as const)
+          : []),
+        ...(offers(villager.villager, "openBank")
+          ? ([["Bank", visit("openBank")]] as const)
+          : []),
+      ]);
+    }
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
   };
@@ -107,16 +125,16 @@ export function walkOnClick(
       if (refusal) {
         printChatLine(refusal);
       } else {
-        const { x, y } = stationTile(station);
+        const { x, y } = stationTile(station, me);
         showMarker(x, y);
         openSmithingPanel(station);
       }
       return;
     }
-    const blacksmith = blacksmithUnder(raycaster);
-    if (blacksmith) {
-      showMarker(blacksmith.x, blacksmith.y);
-      room.send(VISIT_INTENT);
+    const villager = villagerUnder(raycaster);
+    if (villager) {
+      showMarker(villager.x, villager.y);
+      room.send(VISIT_INTENT, { villager: villager.villager });
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;

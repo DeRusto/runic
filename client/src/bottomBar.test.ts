@@ -6,6 +6,7 @@ import {
   EQUIP_INTENT,
   INVENTORY_SLOTS,
   MAX_XP,
+  MOVE_INTENT,
   PRIVATE_LINE,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -252,7 +253,7 @@ describe("a filled slot", () => {
     room.onStateChange.invoke(stateHolding());
     nextFrame();
     expect(slot().style.getPropertyValue("--icon")).toBe("");
-    expect(slot().ariaLabel).toBe(null);
+    expect(slot().ariaLabel).toBe("Empty slot");
     expect(pointAt()).toBe(undefined);
   });
 
@@ -362,6 +363,19 @@ describe("a slot's stack count", () => {
     expect(slot(0).dataset.count).toBe("");
     expect(slot(1).dataset.count).toBe("");
   });
+
+  test("of coins shows in short form, and the tooltip gives the exact count", () => {
+    room.onStateChange.invoke(
+      stateHolding(["coins", 999], ["coins", 12_345], ["coins", 3_456_789]),
+    );
+    nextFrame();
+    expect([0, 1, 2].map((i) => slot(i).dataset.count)).toEqual([
+      "999",
+      "12K",
+      "3.4M",
+    ]);
+    expect(pointAt(2)).toBe("[tip-name common]Coins[tip-kind]3,456,789 coins");
+  });
 });
 
 test("a left-click eats food, and does nothing on a material", () => {
@@ -430,17 +444,29 @@ describe("the right-click menu", () => {
     nextFrame();
   });
 
-  test("offers Eat and Drop on food", () => {
+  test("offers Eat and each Drop amount on a stack of food", () => {
     rightClick(0);
     expect(menu.hidden).toBe(false);
+    expect(menuChoices()).toEqual([
+      "Eat",
+      "Drop 1",
+      "Drop 5",
+      "Drop 10",
+      "Drop X",
+      "Drop All",
+    ]);
+  });
+
+  test("offers only plain Drop on a lone item", () => {
+    rightClick(2);
     expect(menuChoices()).toEqual(["Eat", "Drop"]);
   });
 
-  test("offers only Drop on a material, whose slot can still catch the click", () => {
-    expect((slot(1) as unknown as { disabled: boolean }).disabled).toBe(false);
+  test("offers only the Drop amounts on a material, whose slot can still catch the click", () => {
+    expect(slot(1).ariaDisabled).toBe("false");
     rightClick(1);
     expect(menu.hidden).toBe(false);
-    expect(menuChoices()).toEqual(["Drop"]);
+    expect(menuChoices()[0]).toBe("Drop 1");
   });
 
   test("opens nothing on an empty slot", () => {
@@ -456,12 +482,42 @@ describe("the right-click menu", () => {
     expect(menu.hidden).toBe(true);
   });
 
-  test("Drop drops the slot clicked, and closes", () => {
+  test.each([
+    ["Drop 1", 1],
+    ["Drop 5", 5],
+    ["Drop 10", 10],
+    ["Drop All", 3],
+  ])(
+    "%s drops that many from the slot clicked, and closes",
+    (label, amount) => {
+      rightClick(1);
+      menu.children.find((choice) => choice.textContent === label)!.onclick!();
+      expect(room.send).toHaveBeenCalledWith(DROP_INTENT, { slot: 1, amount });
+      expect(menu.hidden).toBe(true);
+    },
+  );
+
+  test("Drop X asks how many, and sends even more than the stack for the server to cap", () => {
+    vi.stubGlobal("prompt", () => "300");
     rightClick(1);
-    menu.children[0]!.onclick!();
-    expect(room.send).toHaveBeenCalledWith(DROP_INTENT, 1);
-    expect(menu.hidden).toBe(true);
+    menu.children.find((choice) => choice.textContent === "Drop X")!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(DROP_INTENT, {
+      slot: 1,
+      amount: 300,
+    });
   });
+
+  test.each([[null], [""], ["0"], ["2.5"], ["lots"]])(
+    "Drop X answered with %j sends nothing",
+    (answer) => {
+      vi.stubGlobal("prompt", () => answer);
+      room.send.mockClear();
+      rightClick(1);
+      menu.children.find((choice) => choice.textContent === "Drop X")!
+        .onclick!();
+      expect(room.send).not.toHaveBeenCalled();
+    },
+  );
 
   test("clicking anywhere else closes it, and clicking inside doesn't", () => {
     rightClick(0);
@@ -469,6 +525,39 @@ describe("the right-click menu", () => {
     expect(menu.hidden).toBe(false);
     fakeDocument.onpointerdown!({ target: "outside" });
     expect(menu.hidden).toBe(true);
+  });
+});
+
+describe("dragging", () => {
+  beforeEach(() => {
+    room.onStateChange.invoke(stateHolding(["berry", 5], ["copperOre", 3]));
+    nextFrame();
+  });
+
+  const drag = (from: number, to: number) => {
+    slot(from).ondragstart!({});
+    slot(to).ondragover!({ preventDefault() {} });
+    slot(to).ondrop!({ preventDefault() {} });
+    slot(from).ondragend!();
+  };
+
+  test("only a filled slot can be dragged", () => {
+    expect(slot(0).draggable).toBe(true);
+    expect(slot(5).draggable).toBe(false);
+  });
+
+  test("a slot dropped onto another, empty or not, asks the server to move it", () => {
+    drag(0, 7);
+    expect(room.send).toHaveBeenCalledWith(MOVE_INTENT, { from: 0, to: 7 });
+    drag(1, 0);
+    expect(room.send).toHaveBeenCalledWith(MOVE_INTENT, { from: 1, to: 0 });
+  });
+
+  test("dropping a slot back onto itself, or something from outside, sends nothing", () => {
+    room.send.mockClear();
+    drag(0, 0);
+    slot(3).ondrop!({ preventDefault() {} });
+    expect(room.send).not.toHaveBeenCalled();
   });
 });
 
