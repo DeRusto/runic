@@ -79,8 +79,16 @@ Where a player keeps items they aren't carrying, opened through the banker. Each
 _Avoid_: Vault, storage, chest
 
 **Value**:
-What an item costs at the general store, in coins. The store pays less than an item's value when it buys.
+What an item costs at the general store, in coins. The store pays less than an item's value when it buys, but never less than 1 coin for one item, unless the item is trash.
 _Avoid_: Price, worth
+
+**Trash**:
+An item with a value of 0. The general store takes it but pays nothing for it.
+_Avoid_: Junk, vendor trash
+
+**Counter**:
+The part of the general store's window where a player sets out a trade: what they will buy from the shelf, what they will sell from their inventory, and the coins each way. Nothing changes hands until the player makes the deal.
+_Avoid_: Cart, basket, trade window
 
 **Prop**:
 A fixed piece of scenery on a tile that players can't interact with, such as a tree or a rock. Some block walking and some don't. A bush is not a prop.
