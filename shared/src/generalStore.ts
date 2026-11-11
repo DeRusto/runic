@@ -35,16 +35,21 @@ export const QUALITY_VALUE_TIMES: Record<Quality, number> = {
   rare: 4,
 };
 
-/** What an item costs at the general store, in coins: its hand-set value, or for a bar or gear what it is made of (village spec §5). */
+/**
+ * What an item costs at the general store, in coins: its hand-set value, or for a bar or gear what it is
+ * made of (village spec §5). Coins, which the store doesn't buy, are worth 0; any other item with no
+ * value throws, so a new item can't quietly become trash.
+ */
 export function valueOf(item: string): number {
   const { base, quality } = itemParts(item);
-  const common =
-    RAW_VALUES[base] ??
-    // Coins, which aren't sold, have no recipe and are worth nothing as an item.
-    (Object.hasOwn(RECIPES, base) ? costsOf(base as RecipeItem) : []).reduce(
+  if (base === COINS) return 0;
+  let common = RAW_VALUES[base];
+  if (common === undefined && Object.hasOwn(RECIPES, base))
+    common = costsOf(base as RecipeItem).reduce(
       (total, [cost, count]) => total + valueOf(cost) * count,
       0,
     );
+  if (common === undefined) throw new Error(`No store value for ${item}`);
   return common * QUALITY_VALUE_TIMES[quality];
 }
 

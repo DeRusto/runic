@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { EMPTY_SLOT, INVENTORY_SLOTS } from "./index.ts";
-import { COINS } from "./items.ts";
+import { COINS, ITEMS } from "./items.ts";
 import {
   dealRefusal,
   dealTotals,
@@ -26,6 +26,13 @@ describe("value", () => {
     expect(valueOf("ironSword")).toBe(24);
     expect(valueOf("ironSword:uncommon:might")).toBe(48);
     expect(valueOf("ironSword:rare:fortitude")).toBe(96);
+  });
+
+  test("every item but coins has a value, and an item with none is an error, not trash", () => {
+    for (const item of Object.keys(ITEMS))
+      if (item !== COINS) expect(valueOf(item)).toBeGreaterThan(0);
+    expect(valueOf(COINS)).toBe(0);
+    expect(() => valueOf("mysteryOre")).toThrow("mysteryOre");
   });
 
   test("the store pays 40% of value rounded down, never under 1 coin, and nothing for trash", () => {
