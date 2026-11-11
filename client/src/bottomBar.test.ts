@@ -259,7 +259,9 @@ describe("a filled slot", () => {
   test("an improved item's tooltip shows its name in its Quality's colour, beside the cursor, until the pointer leaves (spec §5)", () => {
     room.onStateChange.invoke(stateHolding(["copperSword:rare:might", 1]));
     nextFrame();
-    expect(pointAt()).toMatch(/^\[tip-name rare\]Copper sword of Might\[/);
+    expect(pointAt()).toMatch(
+      /^\[tip-name rare\]Copper sword of Might\[tip-kind\].*\[tip-stat\]/,
+    );
     expect(tip.style).toEqual({ left: "62px", top: "568px" });
     slot().onpointerleave!();
     expect(tip.hidden).toBe(true);
