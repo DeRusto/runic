@@ -11,8 +11,10 @@ import {
   levelProgress,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
+  MAX_LEVEL,
   PRIVATE_LINE,
   SKILLS,
+  xpForLevel,
   type ChatLine,
 } from "@runic/shared";
 import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
@@ -140,9 +142,10 @@ export function showBottomBar(
   const skills = SKILLS.map(([name, field]) => {
     const row = document.createElement("label");
     const text = document.createElement("span");
+    const next = document.createElement("span");
     const bar = document.createElement("progress");
-    row.append(text, bar);
-    return { name, field, text, bar, row };
+    row.append(text, next, bar);
+    return { name, field, text, next, bar, row };
   });
   const noPins = document.createElement("p");
   noPins.textContent = "Pin skills from the sheet";
@@ -190,7 +193,13 @@ export function showBottomBar(
       });
       for (const skill of skills) {
         const xp = me[skill.field];
-        skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
+        const level = levelFor(xp);
+        skill.text.textContent = `${skill.name} ${level}`;
+        // Spec §8.
+        skill.next.textContent =
+          level === MAX_LEVEL
+            ? "Max level"
+            : `${(xpForLevel(level + 1) - xp).toLocaleString("en-US")} XP to level ${level + 1}`;
         skill.bar.value = levelProgress(xp);
         skill.bar.title = `${xp} XP`;
       }
