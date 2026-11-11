@@ -50,14 +50,24 @@ const PICKAXE = "pickaxe";
 // Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
 const HAMMER = "hammer in hand";
 
-const { copper: COPPER, iron: IRON, emberite: EMBERITE } = TIER_LOOKS;
-/** Each tier's model and colour in hand, by item id (spec §7). */
+const {
+  copper: COPPER,
+  bronze: BRONZE,
+  iron: IRON,
+  steel: STEEL,
+  emberite: EMBERITE,
+} = TIER_LOOKS;
+/** Each tier's model and colour in hand, by item id (spec §7). Bronze and Steel reuse the model below them. */
 const GEAR_LOOKS: Record<string, TierLook & { file: string; hand: string }> = {
   copperSword: { file: "sword_A", hand: "handslotr", ...COPPER },
+  bronzeSword: { file: "sword_A", hand: "handslotr", ...BRONZE },
   ironSword: { file: "sword_B", hand: "handslotr", ...IRON },
+  steelSword: { file: "sword_B", hand: "handslotr", ...STEEL },
   emberiteSword: { file: "sword_C", hand: "handslotr", ...EMBERITE },
   copperShield: { file: "shield_A", hand: "handslotl", ...COPPER },
+  bronzeShield: { file: "shield_A", hand: "handslotl", ...BRONZE },
   ironShield: { file: "shield_B", hand: "handslotl", ...IRON },
+  steelShield: { file: "shield_B", hand: "handslotl", ...STEEL },
   emberiteShield: { file: "shield_C", hand: "handslotl", ...EMBERITE },
 };
 

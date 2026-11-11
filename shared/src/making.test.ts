@@ -20,6 +20,15 @@ test("the recipes are the rebalance spec §3's Making table", () => {
       ticks: 6,
       xp: { miningXp: 2 },
     },
+    bronzeBar: {
+      station: "furnace",
+      skill: "Mining",
+      xpField: "miningXp",
+      level: 5,
+      costs: { copperOre: 1, tin: 1 },
+      ticks: 6,
+      xp: { miningXp: 4 },
+    },
     ironBar: {
       station: "furnace",
       skill: "Mining",
@@ -28,6 +37,15 @@ test("the recipes are the rebalance spec §3's Making table", () => {
       costs: { ironOre: 1 },
       ticks: 6,
       xp: { miningXp: 6 },
+    },
+    steelBar: {
+      station: "furnace",
+      skill: "Mining",
+      xpField: "miningXp",
+      level: 15,
+      costs: { ironOre: 1, coal: 1 },
+      ticks: 6,
+      xp: { miningXp: 9 },
     },
     emberiteBar: {
       station: "furnace",
@@ -83,6 +101,51 @@ test("the recipes are the rebalance spec §3's Making table", () => {
       ticks: 12,
       xp: { smithingXp: 18 },
     },
+    bronzeSword: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 3 },
+      ticks: 12,
+      xp: { smithingXp: 36 },
+    },
+    bronzeShield: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 4 },
+      ticks: 16,
+      xp: { smithingXp: 48 },
+    },
+    bronzeHelmet: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 2 },
+      ticks: 8,
+      xp: { smithingXp: 24 },
+    },
+    bronzeChestplate: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 5 },
+      ticks: 20,
+      xp: { smithingXp: 60 },
+    },
+    bronzeLeggings: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 3 },
+      ticks: 12,
+      xp: { smithingXp: 36 },
+    },
     ironSword: {
       station: "anvil",
       skill: "Smithing",
@@ -127,6 +190,51 @@ test("the recipes are the rebalance spec §3's Making table", () => {
       costs: { ironBar: 3 },
       ticks: 12,
       xp: { smithingXp: 54 },
+    },
+    steelSword: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 3 },
+      ticks: 12,
+      xp: { smithingXp: 81 },
+    },
+    steelShield: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 4 },
+      ticks: 16,
+      xp: { smithingXp: 108 },
+    },
+    steelHelmet: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 2 },
+      ticks: 8,
+      xp: { smithingXp: 54 },
+    },
+    steelChestplate: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 5 },
+      ticks: 20,
+      xp: { smithingXp: 135 },
+    },
+    steelLeggings: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 3 },
+      ticks: 12,
+      xp: { smithingXp: 81 },
     },
     emberiteSword: {
       station: "anvil",
@@ -205,6 +313,42 @@ test("Emberite gear needs its Emberbones as well as its bars and level", () => {
       ),
     ),
   ).toBeUndefined();
+});
+
+test("Bronze and Steel bars need their find as well as ore", () => {
+  const level15 = xpForLevel(15);
+  expect(
+    makeRefusal("bronzeBar", holding([["copperOre", 1]], 0, level15)),
+  ).toBe("Not enough materials");
+  expect(
+    makeRefusal(
+      "bronzeBar",
+      holding(
+        [
+          ["copperOre", 1],
+          ["tin", 1],
+        ],
+        0,
+        xpForLevel(4),
+      ),
+    ),
+  ).toBe("Needs Mining 5");
+  expect(
+    makeRefusal(
+      "steelBar",
+      holding(
+        [
+          ["ironOre", 1],
+          ["coal", 1],
+        ],
+        0,
+        level15,
+      ),
+    ),
+  ).toBeUndefined();
+  expect(makeRefusal("steelBar", holding([["ironOre", 1]], 0, level15))).toBe(
+    "Not enough materials",
+  );
 });
 
 test("countOf adds up every stack of an item", () => {

@@ -1,6 +1,6 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-30 are rendered by client/render-icons, 25 from the CC0 models below and five from
+42 are rendered by client/render-icons, 37 from the CC0 models below and five from
 our own geometry. The other is a Craftpix file.
 
 ------------------------------------------------------------------------
@@ -27,17 +27,20 @@ a licence to anyone else: this file is not CC0, and if you want it for your own
 project, get it from Craftpix under their terms.
 
 ------------------------------------------------------------------------
-2. The rendered 30
+2. The rendered 42
 ------------------------------------------------------------------------
 
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
 http://creativecommons.org/publicdomain/zero/1.0/
 
-copperOre, ironOre, emberiteOre, copperBar, ironBar, emberiteBar
+copperOre, ironOre, emberiteOre, copperBar, ironBar, emberiteBar, and bronzeBar
+and steelBar tinted from the copper and iron bars
     KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
-copperSword, ironSword, copperShield, ironShield, emberiteShield
+copperSword, ironSword, copperShield, ironShield, emberiteShield, and the bronze
+and steel sword and shield tinted from the copper and iron ones
     KayKit Fantasy Weapons Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
-copperHelmet, copperChestplate, copperLeggings, and the same in iron and emberite
+copperHelmet, copperChestplate, copperLeggings, and the same in bronze, iron,
+steel and emberite
     KayKit Adventurers 2.0, by Kay Lousberg (www.kaylousberg.com), the Knight
     character's helmet, body and leg meshes
 pickaxe, hammer
@@ -47,6 +50,6 @@ berry
 herb
     Stylized Nature MegaKit, free version, by Quaternius (quaternius.com), the model Plant_1
 coal
-    Stylized Nature MegaKit, free version, by Quaternius (quaternius.com), the model Rock_1_E
+    KayKit Forest Nature Pack 1.0, by Kay Lousberg (www.kaylousberg.com), the model Rock_1_E_Color1
 
 emberbone.png, tin.png, ashstone.png, cinderglass.png and heartflame.png are from no pack: they are Runic's own, drawn by three.js geometry in client/render-icons/main.ts.

@@ -20,13 +20,13 @@ describe("an item's name", () => {
 describe("the committed icons", () => {
   const pngs = readdirSync(ICONS_DIR).filter((file) => file.endsWith(".png"));
 
-  test("cover every item and the two tools, 31 in all (spec §7)", () => {
+  test("cover every item and the two tools, 43 in all (spec §7)", () => {
     expect(pngs.sort()).toEqual(
       [...Object.keys(ITEMS), "pickaxe", "hammer"]
         .map((id) => `${id}.png`)
         .sort(),
     );
-    expect(pngs).toHaveLength(31);
+    expect(pngs).toHaveLength(43);
   });
 
   test("each is the file iconUrl names, and a real PNG", () => {
@@ -38,12 +38,12 @@ describe("the committed icons", () => {
     }
   });
 
-  test("total about 450 KB", () => {
+  test("total about 700 KB", () => {
     const bytes = pngs.reduce(
       (total, file) => total + statSync(`${ICONS_DIR}/${file}`).size,
       0,
     );
-    expect(bytes).toBeLessThan(500_000);
+    expect(bytes).toBeLessThan(750_000);
   });
 
   test("the licence copy says which file is Craftpix's", () => {

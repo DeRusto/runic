@@ -1,4 +1,4 @@
-import type { Tier } from "./region.ts";
+import type { VeinTier } from "./region.ts";
 
 /** Spec §3, by tier. `level` is the Mining level needed; `holds` is how many successful mines a vein holds. `xp` is per successful mine; `doubleChance` is the chance a success gives 2 ore; `finds` are the materials a success can give along with its ore, each rolling on its own. */
 export const VEINS = {
@@ -41,4 +41,4 @@ export const VEINS = {
       },
     ],
   },
-} as const satisfies Record<Tier, unknown>;
+} as const satisfies Record<VeinTier, unknown>;
