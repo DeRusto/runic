@@ -1,0 +1,580 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway: three variants of the one panel (map ticket "How does the one panel look
+  and behave?"), switchable with ?variant=A|B|C or the arrows (or [ and ]). Mock bar, no server.
+  Run `npm run dev -w client`, then open http://localhost:5173/prototype-panel.html
+  A: docked, today's rules unified. B: free windows you drag. C: one panel at a time, a book.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PROTOTYPE panel</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(#2c4a33, #1b2330);
+        color: #eee;
+        font: 12px system-ui;
+      }
+      #player {
+        position: fixed;
+        left: 50%;
+        top: calc((100vh - 160px) / 2);
+        width: 18px;
+        height: 36px;
+        margin: -18px 0 0 -9px;
+        border-radius: 9px;
+        background: #e0c38a;
+      }
+      #state {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        margin: 0;
+        padding: 6px 8px;
+        background: #0008;
+        color: #9fe;
+        font: 11px ui-monospace, monospace;
+        white-space: pre;
+        z-index: 50;
+      }
+
+      /* ---------- shared panel content (same in every variant) ---------- */
+      .panel {
+        position: fixed;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+        font: 12px system-ui;
+      }
+      .panel[hidden] {
+        display: none;
+      }
+      .panel header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .panel h2 {
+        margin: 0;
+        font-size: 14px;
+      }
+      .close {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: 0;
+        cursor: pointer;
+      }
+      .main {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+      .tabs {
+        display: flex;
+      }
+      .tabs button {
+        border: 0;
+        font: inherit;
+        cursor: pointer;
+      }
+      .body {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      .pane[hidden] {
+        display: none;
+      }
+      .gear {
+        display: grid;
+        grid-template-columns: repeat(3, 56px);
+        grid-auto-rows: 56px;
+        gap: 6px;
+        justify-content: center;
+        margin: 4px 0 10px;
+      }
+      .gear span {
+        background: #6d4a28;
+        outline: 2px solid #a26a35;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 2px;
+        border-top: 1px solid #a26a3588;
+      }
+      progress {
+        display: block;
+        width: 100%;
+        height: 8px;
+        margin: 2px 0 6px;
+      }
+
+      /* ---------- A: docked, brown panel art, folder tabs on top ---------- */
+      .vA .panel {
+        bottom: 168px;
+        width: 300px;
+        height: 380px;
+        max-height: calc(100vh - 176px);
+        padding: 6px 8px 8px;
+        border: 16px solid transparent;
+        border-image: url(/ui/panel_brown.png) 20 fill stretch;
+        color: #4a3018;
+      }
+      .vA .panel[data-dock="left"] {
+        left: 8px;
+      }
+      .vA .panel[data-dock="right"] {
+        right: 8px;
+      }
+      .vA header {
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+        border-bottom: 2px solid #a26a35;
+      }
+      .vA .close {
+        background: url(/ui/button_brown_close.png) center / 100% 100%;
+      }
+      .vA .tabs {
+        gap: 2px;
+        margin-bottom: -2px;
+      }
+      .vA .tabs button {
+        padding: 4px 12px;
+        border-radius: 6px 6px 0 0;
+        background: #c9a06a;
+        color: #4a3018;
+      }
+      .vA .tabs button[aria-selected="true"] {
+        background: #e8d3ae;
+        font-weight: 600;
+      }
+      .vA .body {
+        padding: 6px;
+        background: #e8d3ae66;
+        border-top: 2px solid #e8d3ae;
+      }
+
+      /* ---------- B: free windows, dark box like the tooltip, tabs down the left ---------- */
+      .vB .panel {
+        width: 320px;
+        height: 360px;
+        border: 1px solid #8a6a44;
+        border-radius: 4px;
+        background: #16110cf2;
+        box-shadow: 0 6px 18px #000a;
+        color: #eee;
+      }
+      .vB .panel.front {
+        border-color: #d2a86a;
+      }
+      .vB header {
+        padding: 4px 4px 4px 10px;
+        background: #2a1f14;
+        border-bottom: 1px solid #8a6a44;
+        cursor: move;
+        user-select: none;
+      }
+      .vB h2 {
+        font-size: 13px;
+        color: #f0d9b0;
+      }
+      .vB h2::before {
+        content: "⠿ ";
+        color: #8a6a44;
+      }
+      .vB .close {
+        width: 20px;
+        height: 20px;
+        background: none;
+        color: #c9a77c;
+        font-size: 16px;
+      }
+      .vB .close::before {
+        content: "✕";
+      }
+      .vB .close:hover {
+        color: #fff;
+      }
+      .vB .main {
+        flex-direction: row;
+      }
+      .vB .tabs {
+        flex-direction: column;
+        width: 70px;
+        border-right: 1px solid #8a6a44;
+      }
+      .vB .tabs:empty {
+        display: none;
+      }
+      .vB .tabs button {
+        padding: 8px 6px;
+        background: none;
+        color: #c9a77c;
+        text-align: left;
+      }
+      .vB .tabs button[aria-selected="true"] {
+        background: #2a1f14;
+        color: #fff;
+        box-shadow: inset 3px 0 #d2a86a;
+      }
+      .vB .body {
+        padding: 8px;
+      }
+      .vB .row {
+        border-color: #8a6a4488;
+      }
+
+      /* ---------- C: one at a time, a book with a ribbon title and bookmark tabs ---------- */
+      .vC .panel {
+        left: 24px;
+        bottom: 176px;
+        width: 320px;
+        height: 390px;
+        max-height: calc(100vh - 210px);
+        padding: 22px 10px 10px;
+        border: 16px solid transparent;
+        border-image: url(/ui/panel_brown.png) 20 fill stretch;
+        color: #4a3018;
+        overflow: visible;
+      }
+      .vC header {
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .vC h2 {
+        padding: 5px 28px;
+        background: #a8341f;
+        color: #fff4dc;
+        clip-path: polygon(0 0, 100% 0, 92% 50%, 100% 100%, 0 100%, 8% 50%);
+        white-space: nowrap;
+      }
+      .vC .close {
+        display: none;
+      }
+      .vC .panel > .close-corner {
+        position: absolute;
+        top: -26px;
+        right: -26px;
+        width: 26px;
+        height: 26px;
+        border: 0;
+        background: url(/ui/button_brown_close.png) center / 100% 100%;
+        cursor: pointer;
+      }
+      .vC .tabs {
+        position: absolute;
+        top: 24px;
+        left: calc(100% + 12px);
+        flex-direction: column;
+        gap: 6px;
+      }
+      .vC .tabs button {
+        padding: 10px 6px;
+        writing-mode: vertical-rl;
+        border-radius: 0 6px 6px 0;
+        background: #8a6a44;
+        color: #fff4dc;
+      }
+      .vC .tabs button[aria-selected="true"] {
+        background: #a8341f;
+        font-weight: 600;
+        padding-right: 10px;
+      }
+      .vC .body {
+        padding: 0 4px;
+      }
+      .close-corner {
+        display: none;
+      }
+      .vC .close-corner {
+        display: block;
+      }
+
+      /* ---------- mock bottom bar ---------- */
+      #bar {
+        position: fixed;
+        inset: auto 0 0;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        height: 160px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: #232c3a;
+      }
+      #bar input {
+        width: 280px;
+        padding: 4px;
+        background: #151b25;
+        border: 1px solid #000;
+        color: #fff;
+      }
+      #bar button {
+        padding: 6px 10px;
+        border: 0;
+        background: url(/ui/button_brown.png) center / 100% 100%;
+        color: #4a3018;
+        font: 600 12px system-ui;
+        cursor: pointer;
+      }
+      #bar button[aria-pressed="true"] {
+        outline: 2px solid #ffd27a;
+      }
+      #bar p {
+        margin: 4px 0;
+        color: #aaa;
+      }
+
+      #switcher {
+        position: fixed;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #ff3db8;
+        color: #fff;
+        font: 600 12px system-ui;
+        box-shadow: 0 2px 8px #0008;
+        z-index: 50;
+      }
+      #switcher button {
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="player" title="the player, at the world's centre"></div>
+    <pre id="state"></pre>
+
+    <section class="panel" data-id="sheet" data-dock="right" data-key="c" hidden>
+      <header><h2>Character</h2><button class="close" aria-label="Close"></button></header>
+      <div class="main">
+        <div class="tabs" role="tablist">
+          <button role="tab" data-pane="gear">Gear</button>
+          <button role="tab" data-pane="skills">Skills</button>
+        </div>
+        <div class="body">
+          <div class="pane" data-pane="gear">
+            <div class="gear">
+              <span></span><span></span><span></span><span></span><span></span><span></span
+              ><span></span><span></span><span></span>
+            </div>
+            Toolbelt: pickaxe, axe, hammer
+          </div>
+          <div class="pane" data-pane="skills">
+            Attack 12<progress value="0.4"></progress>Defense 9<progress value="0.7"></progress>
+            Mining 15<progress value="0.2"></progress>Smithing 14<progress value="0.9"></progress>
+            Woodcutting 6<progress value="0.5"></progress>Foraging 3<progress value="0.1"></progress>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" data-id="social" data-dock="left" data-key="o" hidden>
+      <header><h2>Social</h2><button class="close" aria-label="Close"></button></header>
+      <div class="main">
+        <div class="tabs" role="tablist">
+          <button role="tab" data-pane="friends">Friends</button>
+          <button role="tab" data-pane="ignores">Ignore</button>
+        </div>
+        <div class="body">
+          <div class="pane" data-pane="friends">
+            <div class="row"><span>Alice</span><span>online</span></div>
+            <div class="row"><span>Bob</span><span>online</span></div>
+            <div class="row" style="opacity: 0.6"><span>Carol</span><span>offline</span></div>
+          </div>
+          <div class="pane" data-pane="ignores">
+            <div class="row"><span>Spammer</span><span>remove</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" data-id="smithing" data-dock="left" hidden>
+      <header><h2>Anvil</h2><button class="close" aria-label="Close"></button></header>
+      <div class="main">
+        <div class="tabs"></div>
+        <div class="body">
+          <div class="row"><b>Copper</b><span></span></div>
+          <div class="row"><span>Copper helmet</span><span>Make</span></div>
+          <div class="row"><span>Copper chestplate</span><span>Make</span></div>
+          <div class="row"><span>Copper sword</span><span>Make</span></div>
+          <div class="row"><b>Iron</b><span>needs Smithing 20</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" data-id="pile" data-dock="left" hidden>
+      <header><h2>Pile</h2><button class="close" aria-label="Close"></button></header>
+      <div class="main">
+        <div class="tabs"></div>
+        <div class="body">
+          <div class="row"><span>Copper ore ×4</span></div>
+          <div class="row"><span>Logs ×2</span></div>
+          <div class="row"><span>Copper helmet</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="bar">
+      <div>
+        <input id="chat" placeholder="Chat (hotkeys must not fire here)" />
+        <p>Esc closes. C = Character, O = Social. Click Anvil or Pile as if in the world.</p>
+      </div>
+      <button data-open="sheet">Character (C)</button>
+      <button data-open="social">Social (O)</button>
+      <button data-open="smithing">Anvil</button>
+      <button data-open="pile">Pile</button>
+    </section>
+
+    <div id="switcher">
+      <button id="prev" aria-label="Previous variant">◀</button>
+      <span id="label"></span>
+      <button id="next" aria-label="Next variant">▶</button>
+    </div>
+
+    <script>
+      const NAMES = {
+        A: "Docked: brown art, folder tabs, sheet right, others left",
+        B: "Free windows: dark box, drag the title, side tabs",
+        C: "One at a time: a book, ribbon title, bookmark tabs",
+      };
+      const keys = Object.keys(NAMES);
+      const params = new URLSearchParams(location.search);
+      let variant = keys.includes(params.get("variant")) ? params.get("variant") : "A";
+
+      const panels = [...document.querySelectorAll(".panel")];
+      const byId = (id) => panels.find((p) => p.dataset.id === id);
+      let order = []; // open panels, oldest first; the last is the front
+      const dragged = {}; // B: where each panel was left, for this "login"
+      let z = 10;
+
+      for (const p of panels) {
+        const corner = document.createElement("button");
+        corner.className = "close-corner";
+        corner.ariaLabel = "Close";
+        corner.onclick = () => close(p);
+        p.append(corner);
+        p.querySelector(".close").onclick = () => close(p);
+        const tabs = [...p.querySelectorAll("[role=tab]")];
+        const pick = (name) => {
+          for (const t of tabs) t.setAttribute("aria-selected", String(t.dataset.pane === name));
+          for (const pane of p.querySelectorAll(".pane")) pane.hidden = pane.dataset.pane !== name;
+          render();
+        };
+        for (const t of tabs) t.onclick = () => pick(t.dataset.pane);
+        if (tabs.length) pick(tabs[0].dataset.pane);
+        p.addEventListener("pointerdown", () => variant === "B" && raise(p));
+        dragBy(p.querySelector("header"), p);
+      }
+
+      function raise(p) {
+        order = order.filter((o) => o !== p).concat(p);
+        p.style.zIndex = ++z;
+        render();
+      }
+
+      function open(p) {
+        if (variant === "A" && p.dataset.dock === "left")
+          for (const o of [...order]) if (o.dataset.dock === "left" && o !== p) close(o);
+        if (variant === "C") for (const o of [...order]) if (o !== p) close(o);
+        p.hidden = false;
+        if (variant === "B") place(p);
+        raise(p);
+      }
+
+      function close(p) {
+        p.hidden = true;
+        order = order.filter((o) => o !== p);
+        render();
+      }
+
+      const toggle = (p) => (p.hidden ? open(p) : close(p));
+
+      // B: first open lands where A would dock it, nudged per panel so they cascade; then wherever it was dragged.
+      function place(p) {
+        const at = dragged[p.dataset.id];
+        if (at) return Object.assign(p.style, { left: at.x + "px", top: at.y + "px" });
+        const i = panels.indexOf(p);
+        const x = p.dataset.dock === "right" ? innerWidth - 330 : 8 + i * 24;
+        Object.assign(p.style, { left: x + "px", top: Math.max(40, innerHeight - 160 - 370 - i * 24) + "px" });
+      }
+
+      function dragBy(handle, p) {
+        handle.addEventListener("pointerdown", (event) => {
+          if (variant !== "B" || event.target.closest("button")) return;
+          const dx = event.clientX - p.offsetLeft;
+          const dy = event.clientY - p.offsetTop;
+          handle.setPointerCapture(event.pointerId);
+          handle.onpointermove = (e) => {
+            // Kept fully on screen and above the bar.
+            const x = Math.min(Math.max(0, e.clientX - dx), innerWidth - p.offsetWidth);
+            const y = Math.min(Math.max(0, e.clientY - dy), innerHeight - 160 - p.offsetHeight);
+            Object.assign(p.style, { left: x + "px", top: y + "px" });
+            dragged[p.dataset.id] = { x, y };
+            render();
+          };
+          handle.onpointerup = () => (handle.onpointermove = null);
+        });
+      }
+
+      for (const b of document.querySelectorAll("[data-open]")) b.onclick = () => toggle(byId(b.dataset.open));
+
+      addEventListener("keydown", (event) => {
+        if (event.target.closest("input")) return;
+        if (event.key === "[" || event.key === "ArrowLeft") return step(-1);
+        if (event.key === "]" || event.key === "ArrowRight") return step(1);
+        if (event.key === "Escape") {
+          const front = order.at(-1);
+          if (front) close(front);
+          return;
+        }
+        const p = panels.find((x) => x.dataset.key === event.key.toLowerCase());
+        if (p) toggle(p);
+      });
+
+      function setVariant(v) {
+        variant = v;
+        document.body.className = "v" + v;
+        history.replaceState(null, "", `?variant=${v}`);
+        document.getElementById("label").textContent = `${v} (${NAMES[v]})`;
+        for (const p of [...order]) close(p);
+        for (const p of panels) p.removeAttribute("style");
+      }
+      const step = (d) => setVariant(keys[(keys.indexOf(variant) + d + keys.length) % keys.length]);
+      document.getElementById("prev").onclick = () => step(-1);
+      document.getElementById("next").onclick = () => step(1);
+
+      function render() {
+        for (const p of panels) p.classList.toggle("front", p === order.at(-1));
+        for (const b of document.querySelectorAll("[data-open]"))
+          b.setAttribute("aria-pressed", String(!byId(b.dataset.open).hidden));
+        const lines = order.map((p) => {
+          const tab = p.querySelector("[aria-selected=true]")?.textContent ?? "-";
+          const r = p.getBoundingClientRect();
+          return `${p.dataset.id.padEnd(9)} tab=${tab.padEnd(7)} at ${Math.round(r.left)},${Math.round(r.top)}`;
+        });
+        document.getElementById("state").textContent =
+          `variant ${variant}\nopen, back to front (Esc closes the last):\n` + (lines.join("\n") || "  none");
+      }
+
+      setVariant(variant);
+    </script>
+  </body>
