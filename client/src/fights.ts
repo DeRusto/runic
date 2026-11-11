@@ -192,7 +192,7 @@ export function showFights(room: WorldConnection) {
         // shortcut: a vowel letter stands for a vowel sound, which holds for every tier name today; upgrade if one starts otherwise.
         printChatLine(
           ...colouredNames(
-            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} ${name}!`,
+            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} [${name}]!`,
             [event.item],
           ),
         );
