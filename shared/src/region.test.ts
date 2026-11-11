@@ -101,7 +101,7 @@ describe("the region", () => {
     ["iron", 4],
     ["emberite", 3],
     ["skeleton", 6],
-    ["furnace", 1],
+    ["furnace", 4],
     ["anvil", 1],
     ["blacksmith", 1],
     ["villager", 3],
@@ -213,9 +213,10 @@ describe("the region", () => {
   });
 
   it.each([
-    ["Copper", "copper", 8, 12],
-    ["Iron", "iron", 22, 28],
-    ["Emberite", "emberite", 40, 50],
+    // The smithy's move to the crossroads (#204) cut Iron and Emberite below the second slice's 25 s and 45 s.
+    ["Copper", "copper", 8, 14],
+    ["Iron", "iron", 17, 20],
+    ["Emberite", "emberite", 33, 38],
   ] as const)(
     "puts %s veins the right walk from the Smithy",
     (_, vein, minSeconds, maxSeconds) => {
@@ -240,11 +241,45 @@ describe("the region", () => {
     expect(region[y]![x]!.villager).toBe(villager);
   });
 
-  it("stands the furnace, anvil and Blacksmith together at the village's edge", () => {
-    const smithy = tilesOf(...STATIONS_AND_BLACKSMITH).map(asTile);
-    for (const a of smithy) {
-      for (const b of smithy) expect(tilesApart(a, b)).toBeLessThanOrEqual(6);
-      expect(tilesApart(a, asTile(respawn))).toBeLessThanOrEqual(10);
+  it("stands the furnace, anvil and Blacksmith at the crossroads' north-east corner", () => {
+    for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
+      expect(x).toBeGreaterThanOrEqual(36);
+      expect(x).toBeLessThanOrEqual(40);
+      expect(y).toBeGreaterThanOrEqual(37);
+      expect(y).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it("draws the furnace on a 2×2 footprint", () => {
+    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+    expect(tilesOf("furnace")).toEqual([
+      [x, y],
+      [x + 1, y],
+      [x, y + 1],
+      [x + 1, y + 1],
+    ]);
+  });
+
+  it("hides none of the smithy from the default camera, which looks north-west", () => {
+    const isTall = (tile: TileKind) =>
+      !!tile.house ||
+      tile.station === "furnace" ||
+      ["tree", "well", "lamp"].includes(tile.prop ?? "");
+    const furnace = new Set(tilesOf("furnace").map(([x, y]) => key(x, y)));
+    for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
+      for (let dx = 0; dx <= 4; dx++) {
+        for (let dy = 0; dy <= 4; dy++) {
+          // The furnace's own tiles stand south-east of one another.
+          if (furnace.has(key(x + dx, y + dy))) continue;
+          if (dx || dy) expect(isTall(region[y + dy]![x + dx]!)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("leaves the old smithy at (18–22, 37) as grass", () => {
+    for (let x = 18; x <= 22; x++) {
+      expect(region[37]![x]).toEqual({ ground: "grass", blocks: false });
     }
   });
 });
