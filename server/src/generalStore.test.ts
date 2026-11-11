@@ -262,7 +262,7 @@ describe("the shelf", () => {
     expect(shelf()).toEqual(STARTING_SHELF);
   });
 
-  test("when full, the store still buys, but the item doesn't go on it", () => {
+  test("when full, the store still buys, but the item doesn't go on it until a sold item is bought out", () => {
     const sold = [
       "tin",
       "ironOre",
@@ -301,6 +301,13 @@ describe("the shelf", () => {
     expect(shelf()).toHaveLength(40);
     expect(shelf().map(([item]) => item)).not.toContain(pieces[24]);
     expect(held("b")).toEqual([[COINS, expect.any(Number)]]);
+    // Buying out a sold item frees its slot, so the next sale fits.
+    deal("b", { buy: [{ item: "tin", count: 1 }] });
+    addShopper("c", [pieces[24]!, 1]);
+    openStore("c");
+    sellAll("c");
+    expect(shelf().map(([item]) => item)).not.toContain("tin");
+    expect(shelf().at(-1)).toEqual([pieces[24], 1]);
   });
 });
 
