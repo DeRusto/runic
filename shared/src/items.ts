@@ -72,6 +72,9 @@ export function itemParts(id: string) {
 /** Every tool the Blacksmith gives. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). */
 export const TOOLS = ["pickaxe", "hammer"];
 
+/** The rare finds from Emberite veins, rarest last. Nothing uses them yet (spec §3). */
+export const GEMS = ["ashstone", "cinderglass", "heartflame"];
+
 /** A player's two parallel inventory fields, which are also their save columns (spec D9). */
 export type HasInventory = {
   inventory: Iterable<string>;

@@ -17,8 +17,13 @@ import {
   xpForLevel,
   type ChatLine,
 } from "@runic/shared";
-import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
+import {
+  showCharacterSheet,
+  type OpenMenu,
+  type SyncedPlayer,
+} from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
+import { itemTip, itemTipParts } from "./itemTip.ts";
 import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
@@ -78,6 +83,8 @@ export function showBottomBar(
     input.value = "";
   };
 
+  /** The player the slots last showed, whose levels decide what they refuse. */
+  let shown: SyncedPlayer | undefined;
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
@@ -99,7 +106,10 @@ export function showBottomBar(
         ["Drop", () => room.send(DROP_INTENT, i)],
       ]);
     };
-    addTip(slot, () => slot.ariaLabel ?? "");
+    addTip(slot, () => {
+      const item = slot.dataset.item;
+      return item && shown ? itemTipParts(itemTip(item, shown)) : "";
+    });
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
@@ -182,6 +192,7 @@ export function showBottomBar(
     sheet.drawTools(me);
     sheet.drawGear(me);
     showHeld = () => {
+      shown = me;
       slots.forEach((slot, i) => {
         const item = me.inventory[i] ?? "";
         slot.dataset.item = item;

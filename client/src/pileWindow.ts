@@ -1,7 +1,9 @@
 import { TAKE_INTENT, WALK_INTENT, type Tile } from "@runic/shared";
 import { groundItemLine } from "./groundItems.ts";
+import { itemTip, itemTipParts } from "./itemTip.ts";
 import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
+import { addTip } from "./tooltip.ts";
 
 /**
  * The window a click on a pile opens, once the player stands on its tile. It lists only the
@@ -40,6 +42,7 @@ export function showPileWindow(room: WorldConnection) {
         const row = document.createElement("button");
         row.type = "button";
         row.onclick = () => room.send(TAKE_INTENT, id);
+        addTip(row, () => itemTipParts(itemTip(groundItem.item)));
         list.append(row);
         rows.set(id, row);
       }

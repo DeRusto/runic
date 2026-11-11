@@ -1,6 +1,5 @@
 import {
   costsOf,
-  countOf,
   levelRefusal,
   MAKE_INTENT,
   makeRefusal,
@@ -8,7 +7,6 @@ import {
   TIERS,
   tilesApart,
   WALK_INTENT,
-  xpOf,
   type RecipeItem,
   type StationKind,
 } from "@runic/shared";
@@ -17,6 +15,7 @@ import { iconUrl, itemName } from "./itemIcons.ts";
 import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
+import { itemTipParts, recipeTip, type ItemTip } from "./itemTip.ts";
 import { addTip } from "./tooltip.ts";
 
 const part = () => document.createElement("span");
@@ -75,10 +74,16 @@ export function showSmithingPanel(room: WorldConnection) {
               : `${count} ${itemName(material)}`,
           )
           .join(" + ");
-        const xp = `${xpOf(item)[0]![1]} ${RECIPES[item].skill} experience`;
-        // Filled in on each draw, from the full cost, experience and any refusal.
-        const entry = { item, row, cost, short, xp, buttons, tip: "" };
-        addTip(row, () => entry.tip);
+        // Filled in on each draw, as the materials held and any refusal change.
+        const entry = {
+          item,
+          row,
+          cost,
+          short,
+          buttons,
+          tip: undefined as ItemTip | undefined,
+        };
+        addTip(row, () => (entry.tip ? itemTipParts(entry.tip) : ""));
         return entry;
       });
       section.append(header, ...rows.map(({ row }) => row));
@@ -92,17 +97,11 @@ export function showSmithingPanel(room: WorldConnection) {
 
   const draw = (me: SyncedPlayer) => {
     for (const entry of rows) {
-      const { item, row, cost, short, xp, buttons } = entry;
+      const { item, row, cost, short, buttons } = entry;
       const refusal = makeRefusal(item, me);
-      const full = costsOf(item)
-        .map(
-          ([material, count]) =>
-            `${count} ${itemName(material)} (have ${countOf(material, me)})`,
-        )
-        .join(", ");
       row.className = refusal ? "cant" : "";
       cost.textContent = [short, refusal].filter(Boolean).join(" · ");
-      entry.tip = [full, xp, refusal].filter(Boolean).join(" · ");
+      entry.tip = recipeTip(item, me);
       for (const make of buttons) make.disabled = !!refusal;
     }
     for (const { gate, first } of sections)
