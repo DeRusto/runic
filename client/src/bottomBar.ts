@@ -33,7 +33,7 @@ import { addTip } from "./tooltip.ts";
 
 const MAX_CHAT_LINES = 200;
 
-/** A slot's count of coins in short form: `999`, `12K`, `3.4M` (#193). */
+/** A slot's count of coins in short form: `999`, `12K`, `3.4M` (village spec §3). */
 export const shortCount = (count: number) =>
   count < 1e3
     ? String(count)
@@ -53,7 +53,7 @@ export function printChatLine(...parts: (string | Node)[]) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
-/** What an inventory slot's clicks do while a window takes them over: the store window sells (#198), and the bank deposits (#197). */
+/** What an inventory slot's clicks do while a window takes them over: the store window sells (village spec §5), and the bank deposits (village spec §6). */
 type SlotTakeover = {
   click: (slot: number, item: string) => void;
   menu: (slot: number, item: string) => ReturnType<typeof amountChoices>;

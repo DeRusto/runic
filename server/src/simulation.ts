@@ -402,7 +402,7 @@ export class Simulation {
         item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
       ),
     );
-    // A save from before the bank has none, so it starts empty (#197).
+    // A save from before the bank has none, so it starts empty (village spec §6).
     player.bank = new ArraySchema(
       ...Array.from(
         { length: BANK_SLOTS },
@@ -738,7 +738,7 @@ export class Simulation {
     if (line) this.events.push({ type: "told", player: id, line });
   }
 
-  /** Whatever fits goes in, and one line says when anything didn't (#197). */
+  /** Whatever fits goes in, and one line says when anything didn't (village spec §6). */
   depositInventory(id: string) {
     const player = this.playerAtBank(id);
     if (!player) return;
@@ -772,7 +772,7 @@ export class Simulation {
 
   /**
    * Both come straight off the network, as for deposit. Takes as many as fit, topping up the
-   * inventory's stacks before filling free slots, and the rest stays in the bank (#197).
+   * inventory's stacks before filling free slots, and the rest stays in the bank (village spec §6).
    */
   withdraw(id: string, slot: number, amount: number) {
     if (!isBankSlot(slot) || !isAmount(amount)) return;
@@ -812,7 +812,7 @@ export class Simulation {
   }
 
   /**
-   * Settles both trays at once, sales first so their coins pay for the buys (#198). It comes
+   * Settles both trays at once, sales first so their coins pay for the buys (village spec §5). It comes
    * straight off the network, so anything of the wrong shape, or from a player without the
    * store open, is ignored. Like a drag it skips the queue and touches no action.
    */
@@ -868,7 +868,7 @@ export class Simulation {
     this.queuedDrops.set(id, { slot, amount });
   }
 
-  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (#193). */
+  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (village spec §4). */
   moveItem(id: string, from: number, to: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(from) || !isInventorySlot(to)) return;

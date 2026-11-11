@@ -11,8 +11,8 @@ import {
 import { costsOf, RECIPES, type RecipeItem } from "./making.ts";
 
 /**
- * The hand-set value of every raw item, in coins (#196). The cheapest sellable item is worth 3,
- * so it sells for 1 (#198). A value of 0 would make an item trash; none are yet.
+ * The hand-set value of every raw item, in coins (village spec §5). The cheapest sellable item is worth 3,
+ * so it sells for 1. A value of 0 would make an item trash; none are yet.
  */
 export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   berry: 3,
@@ -28,14 +28,14 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   heartflame: 100,
 };
 
-/** How many times its common version's value an item of each Quality is worth (#196). */
+/** How many times its common version's value an item of each Quality is worth (village spec §5). */
 export const QUALITY_VALUE_TIMES: Record<Quality, number> = {
   common: 1,
   uncommon: 2,
   rare: 4,
 };
 
-/** What an item costs at the general store, in coins: its hand-set value, or for a bar or gear what it is made of (#196). */
+/** What an item costs at the general store, in coins: its hand-set value, or for a bar or gear what it is made of (village spec §5). */
 export function valueOf(item: string): number {
   const { base, quality } = itemParts(item);
   const common =
@@ -48,25 +48,25 @@ export function valueOf(item: string): number {
   return common * QUALITY_VALUE_TIMES[quality];
 }
 
-/** The store pays this share of value when it buys (#196). */
+/** The store pays this share of value when it buys (village spec §5). */
 export const STORE_PAYS_PERCENT = 40;
 
-/** What the store pays for one item of this value: 40% rounded down, but never under 1 coin unless it is trash (#198). */
+/** What the store pays for one item of this value: 40% rounded down, but never under 1 coin unless it is trash (village spec §5). */
 export const storePaysFor = (value: number) =>
   value && Math.max(1, Math.floor((value * STORE_PAYS_PERCENT) / 100));
 
-/** The shelf's slots, shared by every player (#196). */
+/** The shelf's slots, shared by every player (village spec §5). */
 export const SHELF_SLOTS = 40;
-/** The store's own stock, which the shelf starts with and refills to (#196). */
+/** The store's own stock, which the shelf starts with and refills to (village spec §5). */
 export const STARTING_STOCK: Partial<Record<ItemId, number>> = {
   berry: 20,
   herb: 10,
   copperOre: 5,
   coal: 5,
 };
-/** One of each item below its starting stock comes back this often: 30 s (#196). */
+/** One of each item below its starting stock comes back this often: 30 s (village spec §5). */
 export const RESTOCK_TICKS = 100;
-/** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min and 20 min (#196). */
+/** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min and 20 min (village spec §5). */
 export const DRAIN_TICKS: Record<Quality, number> = {
   common: 200,
   uncommon: 1000,
@@ -102,7 +102,7 @@ export const sellRefusal = (item: string) =>
 
 /**
  * Why `deal` can't go through, or undefined if it can. It is tried on a copy, sales first so
- * their coins pay for the buys, as the deal itself runs (#198).
+ * their coins pay for the buys, as the deal itself runs (village spec §5).
  */
 export function dealRefusal(deal: Deal, player: HasInventory, shelf: HasShelf) {
   const items = [...player.inventory];
@@ -120,7 +120,7 @@ export function dealRefusal(deal: Deal, player: HasInventory, shelf: HasShelf) {
     const at = shelfItems.indexOf(item);
     if (at < 0 || shelfCounts[at]! < count)
       return "The store doesn't have that many left.";
-    // So nobody pays for what another player's deal or a refill has just changed (#202).
+    // So nobody pays for what another player's deal or a refill has just changed (village spec §5).
     if (shelfCounts[at] !== stock)
       return "The shelf has changed since you set out this deal.";
     shelfCounts[at]! -= count;

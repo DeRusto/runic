@@ -192,7 +192,7 @@ export type WorldEvent =
   | { type: "storeOpened"; player: string }
   /** The server closed a store window, on a walk away or a hit. */
   | { type: "storeClosed"; player: string }
-  /** The player's bank window opens (#197). */
+  /** The player's bank window opens (village spec §6). */
   | { type: "bankOpened"; player: string }
   /** The server shut the bank window, on a walk away or a hit. */
   | { type: "bankClosed"; player: string };

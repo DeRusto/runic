@@ -19,7 +19,7 @@ import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
 /**
- * The bank window (#197): a 12×8 grid the server opens beside Aldous. A click withdraws a whole
+ * The bank window (village spec §6): a 12×8 grid the server opens beside Aldous. A click withdraws a whole
  * slot and the inventory's slots deposit while it is open; right-click asks how many.
  */
 export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {

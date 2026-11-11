@@ -1,12 +1,12 @@
 import { COMBAT_LOCK_SECONDS, EMPTY_SLOT } from "./index.ts";
 import { ITEMS, itemParts } from "./items.ts";
 
-/** How many slots each player's bank has (#197). */
+/** How many slots each player's bank has (village spec §6). */
 export const BANK_SLOTS = 96;
 
 /**
  * The bank slot a deposit of `item` goes in. Whatever stacks in the inventory (materials, food,
- * coins) keeps one uncapped slot in the bank, and gear takes a slot per piece (#197). -1 means full.
+ * coins) keeps one uncapped slot in the bank, and gear takes a slot per piece (village spec §6). -1 means full.
  */
 export function bankSlotFor(item: string, bank: Iterable<string>) {
   const slots = [...bank];

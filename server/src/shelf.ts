@@ -11,7 +11,7 @@ import {
 const startingOf = (item: string) => STARTING_STOCK[item as ItemId] ?? 0;
 
 /**
- * The general store's shelf, kept in the synced parallel arrays it is given (#196). Each item
+ * The general store's shelf, kept in the synced parallel arrays it is given (village spec §5). Each item
  * moves one at a time back to its starting stock: the store's own refill, and what players
  * sold drains away and then leaves its slot.
  */

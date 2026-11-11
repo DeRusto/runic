@@ -1,5 +1,5 @@
 /**
- * The amount menu's choices for `verb` on a stack of `count` (#193): 1, 5, 10, X or All, where X
+ * The amount menu's choices for `verb` on a stack of `count` (village spec §4): 1, 5, 10, X or All, where X
  * asks for a number. A lone item offers plain `verb`. The server caps an amount at what is there.
  */
 export function amountChoices(

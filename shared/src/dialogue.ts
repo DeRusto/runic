@@ -35,7 +35,7 @@ const villager = (text: string): DialogueLine => ({
 });
 const you = (text: string): DialogueLine => ({ speaker: "you", text });
 
-/** Every villager, by id. Add one by adding a row (#90). */
+/** Every villager, by id. Add one by adding a row (village spec §2). */
 export const VILLAGERS = {
   // The prototype's lines, kept by the owner (#195). The repeat turn-in offer is Phase 11's.
   odo: {

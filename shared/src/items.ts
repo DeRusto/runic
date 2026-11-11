@@ -49,12 +49,12 @@ export const ITEMS = {
   emberiteHelmet: SINGLE,
   emberiteChestplate: SINGLE,
   emberiteLeggings: SINGLE,
-  /** All of a player's coins share one slot with no cap (#193). */
+  /** All of a player's coins share one slot with no cap (village spec §3). */
   coins: { stack: Infinity },
 } as const;
 export type ItemId = keyof typeof ITEMS;
 
-/** The id of coins, which the general store pays in (#193). */
+/** The id of coins, which the general store pays in (village spec §3). */
 export const COINS = "coins";
 
 /** The Qualities an item can be made at, lowest first; common is a plain id (spec §2). */
@@ -102,7 +102,7 @@ export const takeRefusal = (item: string, player: HasInventory) =>
   slotFor(item, player) < 0 ? "Your inventory is full." : undefined;
 
 /**
- * Drags the stack in slot `from` onto slot `to` of the same slots (#193). Onto the same item
+ * Drags the stack in slot `from` onto slot `to` of the same slots (village spec §4). Onto the same item
  * with room, it fills the target and the rest stays in `from`; anything else swaps, which moves
  * onto an empty slot. Nothing splits into an empty slot.
  */
