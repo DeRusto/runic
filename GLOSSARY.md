@@ -107,7 +107,7 @@ The skill that sets a player's maximum health; trained by dealing damage. Player
 _Avoid_: HP skill, vitality, constitution
 
 **Health**:
-How much damage a player can still take before dying; at most 100 for each Hitpoints level.
+How much damage a player can still take before dying; at most 100 for each Hitpoints level, plus the Fortitude on their worn gear.
 _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
@@ -239,6 +239,18 @@ _Avoid_: Trophy, token
 **Gear**:
 What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
+
+**Improved item**:
+Gear that came out of making one Quality above common, with a Virtue. Making is the only source: enemies never drop one.
+_Avoid_: Magic item, enchanted item, rare item (rare is one Quality)
+
+**Quality**:
+A step on the ladder an item is made at: common, uncommon or rare. A common item has no Virtue, an uncommon one has a Virtue, and a rare one has a Virtue at double the size. Quality never changes an item's base stats, gate or look. Its colour shows in the item's name.
+_Avoid_: Rarity, grade, tier (that's the metal)
+
+**Virtue**:
+The named boost an improved item gives one number combat reads: Fortitude raises max health, Might raises the hit, and Avoidance lowers an enemy's chance to hit. The Virtues on worn gear add up. A Virtue never raises a skill level, so it never changes combat level or meets a gate.
+_Avoid_: Bonus (a sword's hit bonus and Mastery's share use that word), affix, enchantment
 
 **Armour**:
 Gear worn on the body that reduces the damage of hits that land, by a percentage. It doesn't make a hit less likely to land: that's Defense.
