@@ -165,7 +165,7 @@ A chat line that starts with `/`, such as `/pm`. The server reads it as an instr
 _Avoid_: Slash command
 
 **Emote**:
-A chat line sent with `/e <text>` that acts something out. It reads `<name> <text>` in bold in every chat box, such as "**DeRusto dances**", and otherwise behaves exactly like public chat: the same length limit, dropped for players who ignore the sender, sent while dead, and shown over the sender's head.
+A chat line sent with `/e <text>` that acts something out. It reads `<name> <text>` in bold, such as "**DeRusto dances**", in the chat box of every player who doesn't ignore the sender. Otherwise it behaves exactly like public chat: the same length limit, sent while dead, and shown over the sender's head.
 _Avoid_: Action, `/me`
 
 **Online**:
@@ -269,7 +269,7 @@ A window that opens over the world: the character sheet, the smithing panel, the
 _Avoid_: Window (alone), dialog, menu
 
 **Tooltip**:
-The one dark box that shows beside the cursor on every hover in the game. An item's tooltip gives its name, kind and stats.
+The one dark box that shows beside the cursor on every hover in the game. An item's tooltip gives its name and kind, then its stats if it has any.
 _Avoid_: Slot tip, hover text, title
 
 **Character sheet**:

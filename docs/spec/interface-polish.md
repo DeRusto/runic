@@ -110,7 +110,7 @@ Every hover in the game shows the same **tooltip**, and no element keeps a `titl
 An item tip holds, top to bottom:
 
 1. The name, at 13 px, coloured by Quality.
-2. A grey 11 px kind line. Gear gives its slot and its gate, as in "Head armour, needs Defense 15". Food gives what it heals, as in "Food, heals 2". A tool reads "Tool", a gem "Gem", and anything else "Material".
+2. A grey 11 px kind line. Gear gives its slot and its gate, as in "Head armour, needs Defense 15". Food gives its total healing in the health line's units and its healing ticks (`perTick * ticks` and `ticks` in `FOOD_HEALS`), as in "Food, heals 400 over 4 ticks" for a berry. A tool reads "Tool", a gem "Gem", and anything else "Material".
 3. A thin divider, only when stat lines follow.
 4. The base stats in light grey, in the Gear tab's wording (`does` in `shared/src/gear.ts`).
 5. The Virtue line in the Quality colour, in the Gear tab's wording (`virtueDoes`).
@@ -206,7 +206,7 @@ The icons go in `client/public/ui/`, beside each pack's licence copied as `LICEN
 
 ## 8. Experience labels
 
-- Each pinned skill on the bottom bar shows how much experience its next level needs, right-aligned above its bar and always visible: `1,234 XP to level 12`. The skill's name and level stay on the left of the same line.
+- Each pinned skill on the bottom bar shows how much experience its next level needs, right-aligned above its bar and always visible: `1,000 XP to level 12`. The skill's name and level stay on the left of the same line.
 - The count is `xpForLevel(level + 1) - xp`, with thousands separated by commas.
 - At the max level it reads `Max level`.
 - The character sheet's skill bars don't gain the label. Both keep the hover tip from §5.
