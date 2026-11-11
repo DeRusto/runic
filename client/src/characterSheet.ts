@@ -182,13 +182,17 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         const { skill, pin } = entry;
         const pinned = me.pinnedSkills.includes(skill);
         pin.setAttribute("aria-pressed", String(pinned));
-        pin.disabled = !pinned && count >= MAX_PINNED_SKILLS;
-        entry.pinTip = pin.disabled
+        // Off by aria-disabled, not disabled, so the pointer over it still shows why.
+        const full = !pinned && count >= MAX_PINNED_SKILLS;
+        pin.setAttribute("aria-disabled", String(full));
+        entry.pinTip = full
           ? `The bar holds ${MAX_PINNED_SKILLS}: unpin one first`
           : pinned
             ? "Unpin from the bar"
             : "Pin to the bar";
-        pin.onclick = () => room.send(PIN_INTENT, { skill, pinned: !pinned });
+        pin.onclick = () => {
+          if (!full) room.send(PIN_INTENT, { skill, pinned: !pinned });
+        };
       }
     },
     drawSkills(me: SyncedPlayer) {

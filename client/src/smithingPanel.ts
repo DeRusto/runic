@@ -64,7 +64,11 @@ export function showSmithingPanel(room: WorldConnection) {
           make.type = "button";
           make.textContent = label;
           make.ariaLabel = `${label} ${itemName(item)}`;
-          make.onclick = () => room.send(MAKE_INTENT, { item, all });
+          // Off by aria-disabled, not disabled, so the pointer over it still shows the row's tooltip.
+          make.onclick = () => {
+            if (make.ariaDisabled !== "true")
+              room.send(MAKE_INTENT, { item, all });
+          };
           return make;
         };
         const buttons = [button("Make 1", false), button("Make all", true)];
@@ -105,7 +109,7 @@ export function showSmithingPanel(room: WorldConnection) {
       row.className = refusal ? "cant" : "";
       cost.textContent = [short, refusal].filter(Boolean).join(" · ");
       entry.tip = recipeTip(item, me);
-      for (const make of buttons) make.disabled = !!refusal;
+      for (const make of buttons) make.ariaDisabled = String(!!refusal);
     }
     for (const { gate, first } of sections)
       gate.textContent = levelRefusal(first, me)
