@@ -298,7 +298,8 @@
       #sheet,
       #social,
       #smithing,
-      #pile {
+      #pile,
+      #logout-confirm {
         box-sizing: border-box;
         padding: 3px;
         border: 1px solid #000;
@@ -594,6 +595,37 @@
       #smithing[hidden],
       #pile[hidden] {
         display: none;
+      }
+      /* Centred over the world with a front panel's gold hairline, and no title bar (spec §7). */
+      #logout-confirm {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 12px 16px;
+        outline-color: #d2a86a;
+        text-align: center;
+      }
+      #logout-confirm[hidden] {
+        display: none;
+      }
+      #logout-confirm p {
+        margin: 0 0 10px;
+        font-size: 14px;
+      }
+      #logout-confirm button {
+        min-width: 72px;
+        margin: 0 4px;
+        padding: 4px 8px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #2a1f14;
+        color: inherit;
+        font: inherit;
+      }
+      #logout-confirm button:hover,
+      #logout-confirm button:focus-visible {
+        border-color: #d2a86a;
       }
       #pile {
         width: 220px;
@@ -923,6 +955,16 @@
       </h2>
       <div id="pile-rows"></div>
     </section>
+    <div
+      id="logout-confirm"
+      role="alertdialog"
+      aria-labelledby="logout-confirm-title"
+      hidden
+    >
+      <p id="logout-confirm-title">Log out?</p>
+      <button id="logout-confirm-yes" type="button">Log out</button>
+      <button id="logout-confirm-no" type="button">Cancel</button>
+    </div>
     <section id="bar" hidden>
       <div id="chat">
         <div id="chat-lines" role="log" aria-label="Chat"></div>
