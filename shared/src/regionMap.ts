@@ -1,3 +1,4 @@
+import { VILLAGERS } from "./dialogue.ts";
 import { ENEMIES } from "./enemies.ts";
 import { BUSHES } from "./foraging.ts";
 import { VEINS } from "./mining.ts";
@@ -29,7 +30,7 @@ type TiledMap = {
 type TiledTileset = {
   tiles?: { id: number; properties?: TiledProperty[] }[];
 };
-type TileProperties = Partial<Omit<TileKind, "enemy" | "blacksmith">>;
+type TileProperties = Partial<Omit<TileKind, "enemy" | "villager">>;
 
 const LAYERS = ["ground", "features", "placements"];
 
@@ -122,9 +123,9 @@ function place(tile: TileKind, object: TiledObject) {
       fail(`unknown enemy "${String(enemy)}"`);
     tile.enemy = enemy as TileKind["enemy"];
   } else if (object.type === "npc") {
-    if (object.name !== "Blacksmith")
+    if (!Object.hasOwn(VILLAGERS, String(object.name)))
       fail(`unknown NPC "${String(object.name)}"`);
-    tile.blacksmith = true;
+    tile.villager = object.name as TileKind["villager"];
     tile.blocks = true;
   } else fail(`unknown placement class "${object.type}"`);
 }

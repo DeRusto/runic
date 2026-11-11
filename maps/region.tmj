@@ -179,7 +179,7 @@
                 {
                  "height":0,
                  "id":2,
-                 "name":"Blacksmith",
+                 "name":"odo",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -188,6 +188,32 @@
                  "width":0,
                  "x":352,
                  "y":592
+                }, 
+                {
+                 "height":0,
+                 "id":17,
+                 "name":"marta",
+                 "opacity":1,
+                 "point":true,
+                 "rotation":0,
+                 "type":"npc",
+                 "visible":true,
+                 "width":0,
+                 "x":176,
+                 "y":656
+                }, 
+                {
+                 "height":0,
+                 "id":18,
+                 "name":"aldous",
+                 "opacity":1,
+                 "point":true,
+                 "rotation":0,
+                 "type":"npc",
+                 "visible":true,
+                 "width":0,
+                 "x":416,
+                 "y":656
                 }, 
                 {
                  "height":0,
@@ -456,7 +482,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":17,
+ "nextobjectid":19,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

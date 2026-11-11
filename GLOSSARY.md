@@ -63,11 +63,11 @@ A talk with a villager in the dialogue box above the bar: the villager's lines a
 _Avoid_: Chat (that is the chat box), dialog
 
 **Storekeeper**:
-The villager who runs the general store.
+Marta, the villager who runs the general store.
 _Avoid_: Shopkeeper, merchant, vendor
 
 **Banker**:
-The villager who runs the bank.
+Aldous, the villager who runs the bank.
 _Avoid_: Teller, clerk
 
 **General store**:
