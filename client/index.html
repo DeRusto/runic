@@ -142,7 +142,8 @@
         height: 160px;
         padding: 8px;
         box-sizing: border-box;
-        background: #232c3a;
+        background: linear-gradient(#1d1610, #120d09);
+        border-top: 1px solid #8a6a44;
         color: #eee;
         font: 12px system-ui;
       }
@@ -165,6 +166,16 @@
       #chat-input {
         width: 100%;
         box-sizing: border-box;
+        padding: 3px 6px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        outline: 0;
+        background: #0b0806;
+        color: inherit;
+        font: inherit;
+      }
+      #chat-input:focus {
+        border-color: #b08a5a;
       }
       #slots {
         display: grid;
@@ -177,9 +188,21 @@
         overflow: hidden;
         padding: 0;
         border: 0;
-        background: #151b25 center / 32px no-repeat;
+        border-radius: 3px;
+        /* The square buttons' face, under the icon bottomBar.ts sets as --icon. */
+        background:
+          var(--icon, none) center / 32px no-repeat,
+          linear-gradient(#1d1610, #120d09);
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #8a6a44;
         color: inherit;
         font-size: 10px;
+      }
+      #slots > button:hover {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #b08a5a;
       }
       #slots > button::after {
         content: attr(data-count);
@@ -203,8 +226,10 @@
         display: flex;
         flex-direction: column;
         padding: 2px;
-        background: #151b25;
-        outline: 1px solid #000;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: linear-gradient(#1d1610, #120d09);
+        box-shadow: 0 2px 8px #000a;
       }
       #slot-menu[hidden] {
         display: none;
@@ -219,7 +244,7 @@
       }
       #slot-menu button:hover,
       #slot-menu button:focus-visible {
-        background: #2f3b4d;
+        background: #3a2a1a;
       }
       #player-panel {
         display: flex;

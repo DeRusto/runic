@@ -190,7 +190,8 @@ export function showBottomBar(
           : item
             ? itemName(item)
             : null;
-        slot.style.backgroundImage = item && `url("${iconUrl(item)}")`;
+        // A custom property, so the CSS can lay the icon over the slot's face.
+        slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
         slot.disabled = !item;
         const count = me.inventoryCounts[i] ?? 0;
         slot.dataset.count = count > 1 ? String(count) : "";
