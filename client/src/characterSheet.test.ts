@@ -144,6 +144,13 @@ describe("the Gear tab", () => {
     );
   });
 
+  test("an improved piece says its Virtue after its base stat", () => {
+    wearing("", "", { body: "copperChestplate:uncommon:fortitude" });
+    expect(box("body").attributes["aria-label"]).toBe(
+      "Body: Copper chestplate of Fortitude. Takes 4% off each hit you take. Adds 20 to your max health.",
+    );
+  });
+
   test("the line follows the gear while it's pointed at", () => {
     wearing("", "emberiteShield");
     box("shield").onmouseenter();

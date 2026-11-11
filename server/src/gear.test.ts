@@ -555,7 +555,7 @@ describe("improved gear", () => {
   });
 
   test("swings with its common form's hit bonus", () => {
-    start({ weapon: "emberiteSword:rare:might", combatXp: LEVEL_20_XP });
+    start({ weapon: "emberiteSword:rare:fortitude", combatXp: LEVEL_20_XP });
     rolls = [0, 0, 0];
     sim.queueTarget("a", "0");
     sim.tick();
@@ -567,5 +567,115 @@ describe("improved gear", () => {
     sim.takeOff("a", "body");
     expect(me().body).toBe("");
     expect(me().inventory[0]).toBe("copperChestplate:rare:avoidance");
+  });
+});
+
+describe("Virtues", () => {
+  const FORTITUDE_20 = "copperChestplate:uncommon:fortitude";
+  const FORTITUDE_40 = "copperHelmet:rare:fortitude";
+
+  test("Might adds to a hit that lands, with the sword's bonus", () => {
+    start({ weapon: "copperSword:uncommon:might" });
+    rolls = [0, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([203]); // 100 + 100 for the sword + 3.
+  });
+
+  test("Might from several pieces adds up", () => {
+    start({
+      weapon: "copperSword:uncommon:might",
+      body: "emberiteChestplate:rare:might",
+    });
+    rolls = [0, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([233]); // 200 + 3 + 30.
+  });
+
+  test("Might adds nothing to a miss", () => {
+    start({ weapon: "emberiteSword:rare:might" });
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([0]);
+  });
+
+  test("a critical multiplies Might with the rest of the hit", () => {
+    start({ weapon: "emberiteSword:rare:might", combatXp: LEVEL_20_XP });
+    rolls = [0, 0, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([645]); // (400 + 30) × 1.5.
+  });
+
+  test("Avoidance takes points off the enemy's chance to hit, after Defense", () => {
+    // The Spider hits on a roll under 35% at Defense 1; a rare Emberite piece takes 1 point off.
+    const spiderSwing = (fields: Start, roll: number) => {
+      start(fields);
+      rolls = [MISS, roll, 0];
+      sim.queueTarget("a", "0");
+      ticks(5);
+      return sim.events.find((event) => event.type === "enemySwing")!;
+    };
+    const avoids = { body: "emberiteChestplate:rare:avoidance" };
+    expect(spiderSwing({}, 0.345)).not.toMatchObject({ damage: 0 });
+    expect(spiderSwing(avoids, 0.345)).toMatchObject({ damage: 0 });
+    expect(spiderSwing(avoids, 0.335)).not.toMatchObject({ damage: 0 });
+    // Defense 10 makes it 33.2%, and the Avoidance 32.2%.
+    const trained = { ...avoids, defenseXp: LEVEL_10_XP };
+    expect(spiderSwing({ defenseXp: LEVEL_10_XP }, 0.325)).not.toMatchObject({
+      damage: 0,
+    });
+    expect(spiderSwing(trained, 0.325)).toMatchObject({ damage: 0 });
+    expect(spiderSwing(trained, 0.32)).not.toMatchObject({ damage: 0 });
+  });
+
+  test("Fortitude adds to max health on load, and worn pieces add up", () => {
+    start({ body: FORTITUDE_20, head: FORTITUDE_40 });
+    expect(me().maxHealth).toBe(1060);
+  });
+
+  test("equipping Fortitude raises max health, never health", () => {
+    start({ held: [FORTITUDE_20] });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ maxHealth: 1020, health: 1000 });
+  });
+
+  test("taking Fortitude off lowers health to the new max, only if above it", () => {
+    start({ body: FORTITUDE_20, health: 1020 });
+    sim.takeOff("a", "body");
+    expect(me()).toMatchObject({ maxHealth: 1000, health: 1000 });
+    start({ body: FORTITUDE_20, health: 500 });
+    sim.takeOff("a", "body");
+    expect(me()).toMatchObject({ maxHealth: 1000, health: 500 });
+  });
+
+  test("swapping for less Fortitude lowers health to the new max", () => {
+    start({
+      held: ["copperHelmet:uncommon:fortitude"],
+      head: FORTITUDE_40,
+      health: 1040,
+    });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ maxHealth: 1020, health: 1020 });
+  });
+
+  test("Fortitude dropped on death leaves max health with it, so the respawn fills only the rest", () => {
+    start({ weapon: "copperSword:uncommon:fortitude", health: 100 });
+    rolls = [MISS, 0, 0]; // The Spider's first swing hits for 100.
+    sim.queueTarget("a", "0");
+    ticks(5);
+    expect(me().dead).toBe(true);
+    ticks(10);
+    expect(me()).toMatchObject({ dead: false, maxHealth: 1000, health: 1000 });
+  });
+
+  test("a Hitpoints level-up keeps worn Fortitude in max health", () => {
+    start({ body: FORTITUDE_20, hitpointsXp: LEVEL_10_XP - 5, health: 500 });
+    expect(me().maxHealth).toBe(920);
+    rolls = [0, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(me()).toMatchObject({ maxHealth: 1020, health: 500 });
   });
 });

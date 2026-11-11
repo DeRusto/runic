@@ -1,5 +1,12 @@
 import { expect, test } from "vitest";
-import { armourPercentOf, GEAR, gearOf, gearRefusal } from "./gear.ts";
+import {
+  armourPercentOf,
+  GEAR,
+  gearOf,
+  gearRefusal,
+  virtueDoes,
+  virtueOf,
+} from "./gear.ts";
 import { xpForLevel } from "./skills.ts";
 
 const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
@@ -131,4 +138,52 @@ test("an improved piece has its common form's base stats and gate", () => {
       body: "copperChestplate",
     }),
   ).toBe(6);
+});
+
+const TIER_NAMES = ["copper", "bronze", "iron", "steel", "emberite"];
+
+test.each([
+  ["fortitude", [20, 40, 60, 80, 100]],
+  ["might", [3, 6, 9, 12, 15]],
+  ["avoidance", [0.1, 0.2, 0.3, 0.4, 0.5]],
+] as const)(
+  "%s is its unit × the tier on an uncommon piece, doubled on a rare",
+  (virtue, sizes) => {
+    TIER_NAMES.forEach((tier, i) => {
+      for (const piece of ["Sword", "Shield", "Helmet", "Chestplate"]) {
+        const worn = (quality: string) => ({
+          body: `${tier}${piece}:${quality}:${virtue}`,
+        });
+        expect(virtueOf(worn("uncommon"), virtue)).toBeCloseTo(sizes[i]!);
+        expect(virtueOf(worn("rare"), virtue)).toBeCloseTo(2 * sizes[i]!);
+      }
+    });
+  },
+);
+
+test("worn Virtues add up, and only the asked-for one counts", () => {
+  const worn = {
+    weapon: "ironSword:uncommon:fortitude",
+    head: "copperHelmet:rare:fortitude",
+    body: "emberiteChestplate:rare:might",
+    legs: "steelLeggings",
+  };
+  expect(virtueOf(worn, "fortitude")).toBe(100);
+  expect(virtueOf(worn, "might")).toBe(30);
+  expect(virtueOf(worn, "avoidance")).toBe(0);
+  expect(virtueOf({}, "fortitude")).toBe(0);
+});
+
+test("the Gear tab line gives the Virtue at its size, and nothing for a common piece", () => {
+  expect(virtueDoes("copperChestplate:uncommon:fortitude")).toBe(
+    "Adds 20 to your max health.",
+  );
+  expect(virtueDoes("emberiteSword:rare:might")).toBe(
+    "Adds 30 to your minimum and maximum hit.",
+  );
+  expect(virtueDoes("ironHelmet:rare:avoidance")).toBe(
+    "Takes 0.6 points off an enemy's chance to hit you.",
+  );
+  expect(virtueDoes("ironHelmet")).toBeUndefined();
+  expect(virtueDoes("")).toBeUndefined();
 });

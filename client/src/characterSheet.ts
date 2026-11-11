@@ -10,6 +10,7 @@ import {
   TAKE_OFF_INTENT,
   totalLevel,
   type GearSlot,
+  virtueDoes,
 } from "@runic/shared";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
@@ -79,7 +80,8 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const describe = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
     const does = gearOf(item)?.does;
-    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}`;
+    const virtue = virtueDoes(item);
+    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
   };
   const showDetails = () => {
     details.textContent = pointedAt

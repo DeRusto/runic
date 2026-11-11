@@ -52,6 +52,7 @@ import {
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
+  virtueOf,
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
@@ -76,6 +77,13 @@ import {
 import { GroundItem, GroundItems } from "./groundItems.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
+
+/** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
+const maxHealthOf = (
+  player: { hitpointsXp: number } & Partial<Record<GearSlot, string>>,
+) =>
+  levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL +
+  virtueOf(player, "fortitude");
 
 const isInventorySlot = (slot: number) =>
   Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
@@ -292,7 +300,7 @@ export class Simulation {
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: levelFor(fields.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL,
+      maxHealth: maxHealthOf(fields),
     });
     player.pinnedSkills = new ArraySchema(...pinnedSkills);
     player.tools = new ArraySchema(...tools);
@@ -588,6 +596,13 @@ export class Simulation {
     // Whatever was worn lands where this came from, so swapping always works (spec §4).
     this.placeGear(id, slot, player[gear.slot]);
     player[gear.slot] = item;
+    this.fitHealth(player);
+  }
+
+  /** After gear changes: max health follows worn Fortitude, and health drops to it but never rises (spec §2). */
+  private fitHealth(player: InstanceType<typeof Player>) {
+    player.maxHealth = maxHealthOf(player);
+    player.health = Math.min(player.health, player.maxHealth);
   }
 
   /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
@@ -604,6 +619,7 @@ export class Simulation {
     }
     this.placeGear(id, slot, worn);
     player[gearSlot] = "";
+    this.fitHealth(player);
   }
 
   /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
@@ -1032,7 +1048,11 @@ export class Simulation {
           Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
     );
     // Only on a hit, as 0 means a miss.
-    const hit = rolled && rolled + (gearOf(player.weapon)?.hitBonus ?? 0);
+    const hit =
+      rolled &&
+      rolled +
+        (gearOf(player.weapon)?.hitBonus ?? 0) +
+        virtueOf(player, "might");
     const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
       critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
@@ -1043,8 +1063,7 @@ export class Simulation {
     );
     this.earnXp(player, "combatXp", xp);
     this.earnXp(player, "hitpointsXp", xp);
-    player.maxHealth =
-      levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL;
+    player.maxHealth = maxHealthOf(player);
     this.events.push({
       type: "playerSwing",
       player: id,
@@ -1167,7 +1186,9 @@ export class Simulation {
     this.lock(enemy.target);
     const defense = levelFor(player.defenseXp);
     const rolled = this.rollDamage(
-      hitChance + hitChancePerDefenseLevel * (defense - 1),
+      hitChance +
+        hitChancePerDefenseLevel * (defense - 1) -
+        virtueOf(player, "avoidance") / 100,
       maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
@@ -1246,6 +1267,7 @@ export class Simulation {
       this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
       player[gearSlot] = "";
     }
+    this.fitHealth(player);
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;

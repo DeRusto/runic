@@ -1,4 +1,4 @@
-import { itemParts } from "./items.ts";
+import { itemParts, type Virtue } from "./items.ts";
 import { levelFor } from "./skills.ts";
 
 /** The names of a player's synced gear fields, which are also their save columns. */
@@ -105,6 +105,46 @@ export const armourPercentOf = (player: Partial<Record<GearSlot, string>>) =>
     (total, slot) => total + (gearOf(player[slot] ?? "")?.armourPercent ?? 0),
     0,
   );
+
+/** A Virtue's size on an uncommon Copper piece (spec §3): health, hit in the sword bonus's units, and points off an enemy's chance to hit. */
+export const VIRTUE_UNITS = {
+  fortitude: 20,
+  might: 3,
+  avoidance: 0.1,
+} as const;
+/** The tier number a Virtue's unit is multiplied by, read from the base id's prefix (spec §3). */
+const TIERS = ["copper", "bronze", "iron", "steel", "emberite"];
+
+/** The size of `item`'s Virtue, 0 for a common piece. Rare is double uncommon. */
+function virtueSize(item: string) {
+  const { base, quality, virtue } = itemParts(item);
+  if (!virtue) return 0;
+  const tier = TIERS.findIndex((name) => base.startsWith(name)) + 1;
+  return VIRTUE_UNITS[virtue] * tier * (quality === "rare" ? 2 : 1);
+}
+
+/** The total of one Virtue over every worn piece, as armour adds up. Avoidance is in percentage points. */
+export const virtueOf = (
+  player: Partial<Record<GearSlot, string>>,
+  virtue: Virtue,
+) =>
+  GEAR_SLOTS.reduce((total, slot) => {
+    const item = player[slot] ?? "";
+    return total + (itemParts(item).virtue === virtue ? virtueSize(item) : 0);
+  }, 0);
+
+/** What the Gear tab says `item`'s Virtue does, after its base stat, or undefined for a common piece (spec §5). */
+export function virtueDoes(item: string) {
+  const { virtue } = itemParts(item);
+  // Rounded, as 0.1 × 3 isn't exactly 0.3.
+  const size = Math.round(virtueSize(item) * 10) / 10;
+  if (virtue === "fortitude") return `Adds ${size} to your max health.`;
+  if (virtue === "might")
+    return `Adds ${size} to your minimum and maximum hit.`;
+  if (virtue === "avoidance")
+    return `Takes ${size} points off an enemy's chance to hit you.`;
+  return undefined;
+}
 
 /** Why this gear can't be equipped, or undefined if it can or isn't gear. The bar greys it, and the server tells the player. */
 export function gearRefusal(
