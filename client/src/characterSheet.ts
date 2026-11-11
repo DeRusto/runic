@@ -13,6 +13,7 @@ import {
   virtueDoes,
 } from "@runic/shared";
 import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
+import { addPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
@@ -28,13 +29,6 @@ export type OpenMenu = (
 
 const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1 7 4 4v2h-5l-1 7-1-7H6v-2l4-4z"/></svg>`;
 
-/** The key a panel hotkey sees: none while typing in chat, held down, or with a modifier. */
-export function panelKey(event: KeyboardEvent) {
-  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return "";
-  if (event.target instanceof HTMLInputElement) return "";
-  return event.key;
-}
-
 /**
  * The floating window's controls and rows. The page holds it, and `hidden` only takes it
  * out of sight, so the open tab and each tab's scroll position last through closing it.
@@ -45,7 +39,10 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const setOpen = (open: boolean) => {
     sheet.hidden = !open;
     button.setAttribute("aria-pressed", String(open));
+    if (open) placed.opened();
+    else placed.closed();
   };
+  const placed = addPanel(sheet, () => setOpen(false), "right");
   const toggle = () => setOpen(!!sheet.hidden);
   setOpen(false);
   button.onclick = toggle;
@@ -53,7 +50,6 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   document.onkeydown = (event) => {
     const key = panelKey(event);
     if (key === "c" || key === "C") toggle();
-    if (key === "Escape") setOpen(false);
   };
 
   const tabs = ["gear", "skills"].map((name) => ({

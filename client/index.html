@@ -310,12 +310,21 @@
         color: #eee;
         font: 12px system-ui;
       }
+      /* Its own stacking context, so a panel's z-index orders the panels and nothing else. */
+      #panels {
+        isolation: isolate;
+      }
+      /* The front panel's hairline turns gold, and the title bars behind it dim (spec §6). */
+      #panels > .front {
+        outline-color: #d2a86a;
+      }
+      #panels > :not(.front) > h2 {
+        filter: saturate(0.6) brightness(0.8);
+      }
       /* The tabs run down a column on the left, beside the content (spec §6). */
       #sheet,
       #social {
         position: fixed;
-        right: 8px;
-        bottom: 168px;
         display: grid;
         grid-template-columns: 76px minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr);
@@ -329,10 +338,7 @@
       #sheet[hidden] {
         visibility: hidden;
       }
-      /* On the left, so it and the sheet can both be open. */
       #social {
-        right: auto;
-        left: 8px;
         width: 280px;
       }
       #social[hidden] {
@@ -391,6 +397,10 @@
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+        /* It drags the panel, so a press on it neither selects text nor scrolls. */
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
       }
       :is(#sheet, #social, #smithing, #pile) > h2::before {
         content: "⠿" / "";
@@ -584,8 +594,6 @@
       #smithing,
       #pile {
         position: fixed;
-        left: 8px;
-        bottom: 168px;
         display: flex;
         flex-direction: column;
         width: 340px;
@@ -840,89 +848,96 @@
     <p id="status">Connecting…</p>
     <div id="overheads"></div>
     <div id="tooltip" role="tooltip" hidden></div>
-    <!-- Before the bar, so the bar's right-click menu shows above it. -->
-    <section id="sheet" role="dialog" aria-label="Character" hidden>
-      <h2>
-        Character
-        <button id="sheet-close" type="button" aria-label="Close"></button>
-      </h2>
-      <div id="sheet-tabs" role="tablist">
-        <button
-          id="sheet-tab-gear"
-          type="button"
-          role="tab"
-          aria-selected="true"
-        >
-          Gear
-        </button>
-        <button
-          id="sheet-tab-skills"
-          type="button"
-          role="tab"
-          aria-selected="false"
-        >
-          Skills
-        </button>
-      </div>
-      <div id="sheet-panes">
-        <div id="sheet-gear" class="sheet-pane" role="tabpanel">
-          <div id="gear-slots"></div>
-          <p id="gear-details"></p>
-          Toolbelt
-          <div id="toolbelt"></div>
+    <!-- Before the bar, so the bar's right-click menu shows above them. -->
+    <div id="panels">
+      <section id="sheet" role="dialog" aria-label="Character" hidden>
+        <h2>
+          Character
+          <button id="sheet-close" type="button" aria-label="Close"></button>
+        </h2>
+        <div id="sheet-tabs" role="tablist">
+          <button
+            id="sheet-tab-gear"
+            type="button"
+            role="tab"
+            aria-selected="true"
+          >
+            Gear
+          </button>
+          <button
+            id="sheet-tab-skills"
+            type="button"
+            role="tab"
+            aria-selected="false"
+          >
+            Skills
+          </button>
         </div>
-        <div id="sheet-skills" class="sheet-pane" role="tabpanel" hidden></div>
-      </div>
-    </section>
-    <section id="social" role="dialog" aria-label="Social" hidden>
-      <h2>
-        Social
-        <button id="social-close" type="button" aria-label="Close"></button>
-      </h2>
-      <div id="social-tabs" role="tablist">
-        <button
-          id="social-tab-friends"
-          type="button"
-          role="tab"
-          aria-selected="true"
-        >
-          Friends
-        </button>
-        <button
-          id="social-tab-ignores"
-          type="button"
-          role="tab"
-          aria-selected="false"
-        >
-          Ignore
-        </button>
-      </div>
-      <div id="social-friends" role="tabpanel">
-        <ul id="friends" aria-label="Friends list"></ul>
-      </div>
-      <div id="social-ignores" role="tabpanel" hidden>
-        <ul id="ignores" aria-label="Ignore list"></ul>
-      </div>
-    </section>
-    <section
-      id="smithing"
-      role="dialog"
-      aria-labelledby="smithing-title"
-      hidden
-    >
-      <h2>
-        <span id="smithing-title"></span>
-        <button id="smithing-close" type="button" aria-label="Close"></button>
-      </h2>
-      <div id="smithing-rows"></div>
-    </section>
-    <section id="pile" role="dialog" aria-labelledby="pile-title" hidden>
-      <h2>
-        <span id="pile-title">Pile</span>
-        <button id="pile-close" type="button" aria-label="Close"></button>
-      </h2>
-      <div id="pile-rows"></div>
-    </section>
+        <div id="sheet-panes">
+          <div id="sheet-gear" class="sheet-pane" role="tabpanel">
+            <div id="gear-slots"></div>
+            <p id="gear-details"></p>
+            Toolbelt
+            <div id="toolbelt"></div>
+          </div>
+          <div
+            id="sheet-skills"
+            class="sheet-pane"
+            role="tabpanel"
+            hidden
+          ></div>
+        </div>
+      </section>
+      <section id="social" role="dialog" aria-label="Social" hidden>
+        <h2>
+          Social
+          <button id="social-close" type="button" aria-label="Close"></button>
+        </h2>
+        <div id="social-tabs" role="tablist">
+          <button
+            id="social-tab-friends"
+            type="button"
+            role="tab"
+            aria-selected="true"
+          >
+            Friends
+          </button>
+          <button
+            id="social-tab-ignores"
+            type="button"
+            role="tab"
+            aria-selected="false"
+          >
+            Ignore
+          </button>
+        </div>
+        <div id="social-friends" role="tabpanel">
+          <ul id="friends" aria-label="Friends list"></ul>
+        </div>
+        <div id="social-ignores" role="tabpanel" hidden>
+          <ul id="ignores" aria-label="Ignore list"></ul>
+        </div>
+      </section>
+      <section
+        id="smithing"
+        role="dialog"
+        aria-labelledby="smithing-title"
+        hidden
+      >
+        <h2>
+          <span id="smithing-title"></span>
+          <button id="smithing-close" type="button" aria-label="Close"></button>
+        </h2>
+        <div id="smithing-rows"></div>
+      </section>
+      <section id="pile" role="dialog" aria-labelledby="pile-title" hidden>
+        <h2>
+          <span id="pile-title">Pile</span>
+          <button id="pile-close" type="button" aria-label="Close"></button>
+        </h2>
+        <div id="pile-rows"></div>
+      </section>
+    </div>
     <section id="bar" hidden>
       <div id="chat">
         <div id="chat-lines" role="log" aria-label="Chat"></div>

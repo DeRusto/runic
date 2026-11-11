@@ -12,6 +12,8 @@ import { showSocialPanel } from "./socialPanel.ts";
 
 class FakeInput {}
 vi.stubGlobal("HTMLInputElement", FakeInput);
+vi.stubGlobal("innerWidth", 1000);
+vi.stubGlobal("innerHeight", 700);
 
 const element = () => ({
   append(...children: any[]) {
@@ -26,6 +28,9 @@ const element = () => ({
   },
   children: [] as any[],
   dataset: {} as Record<string, string>,
+  style: {} as Record<string, string>,
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   textContent: "",
   onclick: undefined as undefined | (() => void),
@@ -112,12 +117,12 @@ test("lists each friend with whether they are online", () => {
   expect(rows()).toEqual([]);
 });
 
-test("opens from its button and from O, and closes with Escape", () => {
+test("opens and closes from its button and with O", () => {
   expect(isOpen()).toBe(false);
   el("social-button").onclick!();
   expect(isOpen()).toBe(true);
   expect(el("social-button").attributes["aria-pressed"]).toBe("true");
-  press("Escape");
+  el("social-button").onclick!();
   expect(isOpen()).toBe(false);
   press("o");
   expect(isOpen()).toBe(true);

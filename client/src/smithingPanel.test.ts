@@ -27,6 +27,8 @@ const element = () => ({
   type: "",
   style: {} as Record<string, string>,
   dataset: {} as Record<string, string>,
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   onclick: undefined as undefined | (() => void),
 });
 
@@ -336,7 +338,6 @@ describe("clicking a station from afar", () => {
       "a press elsewhere",
       () => listeners.get("pointerdown")!({ target: element() }),
     ],
-    ["Esc", () => listeners.get("keydown")!({ key: "Escape" })],
     ["death", () => patch(me([], { ...far, dead: true }))],
   ])("%s cancels it, so it never opens later", (_, cancel) => {
     walkingToAnvil();
@@ -348,18 +349,10 @@ describe("clicking a station from afar", () => {
   test("opens only once, so closing it next to the station stays closed", () => {
     walkingToAnvil();
     patch(me([], { x: 7, y: 1 }));
-    listeners.get("keydown")!({ key: "Escape" });
+    byId.get("smithing-close")!.onclick!();
     patch(me([], { x: 7, y: 1 }));
     expect(panel().hidden).toBe(true);
   });
-});
-
-test("Esc closes it", () => {
-  open("furnace");
-  listeners.get("keydown")!({ key: "a" });
-  expect(panel().hidden).toBe(false);
-  listeners.get("keydown")!({ key: "Escape" });
-  expect(panel().hidden).toBe(true);
 });
 
 test("a press anywhere else closes it, and a press inside doesn't", () => {

@@ -26,6 +26,8 @@ const element = () => ({
   children: [] as any[],
   dataset: {} as Record<string, string>,
   style: {} as Record<string, string>,
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   disabled: false,
   textContent: "",
@@ -251,24 +253,18 @@ describe("opening and closing", () => {
     expect(el("character").attributes["aria-pressed"]).toBe("false");
   });
 
-  test("Esc and the close button shut it, and never open it", () => {
-    press("Escape");
-    expect(isOpen()).toBe(false);
-    press("c");
-    press("Escape");
-    expect(isOpen()).toBe(false);
+  test("the close button shuts it", () => {
     press("c");
     el("sheet-close").onclick!();
     expect(isOpen()).toBe(false);
   });
 
-  test("typing in chat never does either", () => {
+  test("typing C in chat never toggles it", () => {
     const target = new FakeInput();
     press("c", { target });
     expect(isOpen()).toBe(false);
     press("c");
     press("c", { target });
-    press("Escape", { target });
     expect(isOpen()).toBe(true);
   });
 

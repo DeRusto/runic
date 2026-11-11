@@ -19,11 +19,17 @@ const element = () => ({
     );
   },
   children: [] as any[],
+  style: {} as Record<string, string>,
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   textContent: "",
   type: "",
   onclick: undefined as undefined | (() => void),
 });
+
+vi.stubGlobal("innerWidth", 1000);
+vi.stubGlobal("innerHeight", 700);
 
 let byId: Map<string, ReturnType<typeof element>>;
 let listeners: Map<string, (event: any) => void>;
@@ -154,7 +160,6 @@ test("walking off the tile closes it, and coming back doesn't reopen it", () => 
 
 test.each([
   ["its X", () => byId.get("pile-close")!.onclick!()],
-  ["Esc", () => listeners.get("keydown")!({ key: "Escape" })],
   [
     "a press elsewhere",
     () => listeners.get("pointerdown")!({ target: element() }),

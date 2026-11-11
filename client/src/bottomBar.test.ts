@@ -32,6 +32,8 @@ const element = () => ({
       return this[name] ?? "";
     },
   }),
+  classList: { toggle() {} },
+  querySelector: () => ({ setPointerCapture() {} }),
   hidden: false,
   textContent: "",
   offsetWidth: 100,
