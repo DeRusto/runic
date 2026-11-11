@@ -165,6 +165,8 @@ export function showGroundItems(room: WorldConnection) {
   // Off the canvas the pointer is on the UI, whose own tips share the one tooltip.
   const onPointerLeave = () => {
     lastPointer = undefined;
+    hovered?.scale.setScalar(1);
+    hovered = undefined;
     hideTip();
   };
   renderer.domElement.addEventListener("pointermove", onPointerMove);
