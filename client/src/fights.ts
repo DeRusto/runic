@@ -177,7 +177,7 @@ export function showFights(room: WorldConnection) {
         const figure = playerFigures.get(event.player);
         if (!figure) continue;
         const hammer = event.station === "anvil";
-        figure.work = { tile: stationTile(event.station), hammer };
+        figure.work = { tile: stationTile(event.station, figure.tile), hammer };
         figure.onceWithin(
           hammer ? "Hammering" : "Working_A",
           event.ticks * TICK_MS,

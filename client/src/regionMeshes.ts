@@ -33,7 +33,8 @@ const VEIN_TINT: Record<VeinTier, THREE.Color> = {
 export const ORE_SCALE = 0.45;
 const STATIONS: Record<StationKind, { file: string; width: number }> = {
   // Kenney's building-smelter didn't read as a furnace at a tile's scale, so this is spec §15's first fallback.
-  furnace: { file: "building_blacksmith_red.gltf", width: 1.1 },
+  // House scale, on its 2×2 footprint.
+  furnace: { file: "building_blacksmith_red.gltf", width: 2 },
   anvil: { file: "anvil.gltf", width: 0.8 },
 };
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
@@ -152,6 +153,10 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ]),
   ]);
   const stations = { furnace, anvil };
+  const footprints = {
+    furnace: [] as THREE.Vector3[],
+    anvil: [] as THREE.Vector3[],
+  };
   const ore = oreParts(oreModel.scene);
   const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
@@ -235,10 +240,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       );
 
       const { bush, prop, vein, station, house } = tile;
-      if (station) {
-        stations[station].position.set(x, top, y);
-        scene.add(stations[station]);
-      }
+      if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
         for (const { part, angle, height } of houseParts(tiles, x, y)) {
           place(
@@ -298,6 +300,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     }),
   );
   scene.add(slabs);
+  // One model per station, at the middle of the tiles it covers.
+  for (const [kind, tilesUnder] of Object.entries(footprints)) {
+    if (!tilesUnder.length) continue;
+    const model = stations[kind as StationKind];
+    new THREE.Box3().setFromPoints(tilesUnder).getCenter(model.position);
+    scene.add(model);
+  }
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
   for (const [geometry, list] of placements) {
