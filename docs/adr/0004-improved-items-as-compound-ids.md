@@ -6,5 +6,5 @@ An improved item carries its Quality and Virtue in its id: the base id, then the
 
 - One shared helper splits an id into its base id, Quality and Virtue. Every lookup that reads gear stats, stack size, gates, names, icons or the worn look goes through it and reads the base id.
 - An improved item meets the same gate, wears the same look and keeps the same base stats as its common form. Only the Virtue and how the item is named and framed differ.
-- Worn gear syncs to everyone nearby, so other players see a player's Quality and Virtue. This is intended.
+- Worn gear syncs to every player in the room, so they all see a player's Quality and Virtue. This is intended.
 - Gear stacks to 1, so stacking never compares Virtues. A stackable item that could be improved would need stacking to match the whole id.
