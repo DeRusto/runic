@@ -7,6 +7,7 @@ import {
   virtueDoes,
   virtueOf,
 } from "./gear.ts";
+import { TIERS } from "./region.ts";
 import { xpForLevel } from "./skills.ts";
 
 const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
@@ -140,22 +141,20 @@ test("an improved piece has its common form's base stats and gate", () => {
   ).toBe(6);
 });
 
-const TIER_NAMES = ["copper", "bronze", "iron", "steel", "emberite"];
-
 test.each([
   ["fortitude", [20, 40, 60, 80, 100]],
   ["might", [3, 6, 9, 12, 15]],
-  ["avoidance", [0.1, 0.2, 0.3, 0.4, 0.5]],
+  ["avoidance", [1, 2, 3, 4, 5]],
 ] as const)(
   "%s is its unit × the tier on an uncommon piece, doubled on a rare",
   (virtue, sizes) => {
-    TIER_NAMES.forEach((tier, i) => {
+    TIERS.forEach((tier, i) => {
       for (const piece of ["Sword", "Shield", "Helmet", "Chestplate"]) {
         const worn = (quality: string) => ({
           body: `${tier}${piece}:${quality}:${virtue}`,
         });
-        expect(virtueOf(worn("uncommon"), virtue)).toBeCloseTo(sizes[i]!);
-        expect(virtueOf(worn("rare"), virtue)).toBeCloseTo(2 * sizes[i]!);
+        expect(virtueOf(worn("uncommon"), virtue)).toBe(sizes[i]!);
+        expect(virtueOf(worn("rare"), virtue)).toBe(2 * sizes[i]!);
       }
     });
   },

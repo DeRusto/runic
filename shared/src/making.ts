@@ -292,9 +292,11 @@ export const RECIPES = {
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
 
-// The chance a made piece of gear is improved, in tenths of a percent so it adds up exactly (spec §3).
+/** The chance, in tenths of a percent, that gear made at its recipe's level is improved (spec §3). */
 export const IMPROVED_PER_MILLE_AT_GATE = 40;
+/** Added to the improved chance, in tenths of a percent, per Smithing level above the recipe's (spec §3). */
 export const IMPROVED_PER_MILLE_PER_LEVEL = 2;
+/** The most the improved chance reaches, in tenths of a percent (spec §3). */
 export const IMPROVED_PER_MILLE_CAP = 200;
 /** One improved item in five is rare; the rest are uncommon (spec §3). */
 export const RARE_SHARE_OF_IMPROVED = 1 / 5;

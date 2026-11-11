@@ -1,6 +1,6 @@
 # Runic: Improved items
 
-**Status: decided, not yet built.** Terms are defined in `GLOSSARY.md`. Decisions come from the closed tickets on [Map: Improved items](https://github.com/DeRusto/runic/issues/143), and how an item carries its Quality and Virtue is recorded in `docs/adr/0004-improved-items-as-compound-ids.md`.
+**Status: reviewed.** This spec records improved items as built. Terms are defined in `GLOSSARY.md`. Decisions come from the closed tickets on [Map: Improved items](https://github.com/DeRusto/runic/issues/143), and how an item carries its Quality and Virtue is recorded in `docs/adr/0004-improved-items-as-compound-ids.md`.
 
 This spec adds to the [second slice spec](second-slice.md) and the [Mining and Smithing rebalance](mining-smithing-rebalance.md). Everything there still holds.
 

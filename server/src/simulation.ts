@@ -53,6 +53,7 @@ import {
   tilesApart,
   SWING_INTERVAL_TICKS,
   virtueOf,
+  AVOIDANCE_TENTHS_PER_HIT_CHANCE,
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
@@ -1188,7 +1189,7 @@ export class Simulation {
     const rolled = this.rollDamage(
       hitChance +
         hitChancePerDefenseLevel * (defense - 1) -
-        virtueOf(player, "avoidance") / 100,
+        virtueOf(player, "avoidance") / AVOIDANCE_TENTHS_PER_HIT_CHANCE,
       maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
