@@ -1,0 +1,444 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway: three variants of the square bottom-bar buttons (map ticket "How do the
+  square bottom-bar buttons look, and what does each show on hover?"), switchable with
+  ?variant=A|B|C or the arrows. D swaps the bar between today's navy and the panels' dark brown.
+  Run `npm run dev -w client`, then open http://localhost:5173/prototype-bar-buttons.html
+  A: brown tiles, today's button art. B: dark slots like the panels, hotkey on the face.
+  C: raised wooden keys with pressed art, grouped by job.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>PROTOTYPE bar buttons</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(#2c4a33, #1b2330);
+        color: #eee;
+        font: 12px system-ui;
+      }
+      #state {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        margin: 0;
+        padding: 6px 8px;
+        background: #0008;
+        color: #9fe;
+        font: 11px ui-monospace, monospace;
+        white-space: pre;
+      }
+      #switcher {
+        position: fixed;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 99px;
+        background: #fff;
+        color: #000;
+        box-shadow: 0 2px 8px #0008;
+        font: 600 13px system-ui;
+      }
+      #switcher button {
+        border: 0;
+        background: #eee;
+        border-radius: 99px;
+        cursor: pointer;
+      }
+
+      /* ---------- the bar, as today ---------- */
+      #bar {
+        position: fixed;
+        inset: auto 0 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(272px, 1fr);
+        gap: 8px;
+        height: 160px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: #232c3a;
+      }
+      body.dark #bar {
+        background: linear-gradient(#1d1610, #120d09);
+        border-top: 1px solid #8a6a44;
+      }
+      #chat {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        opacity: 0.8;
+      }
+      #chat div {
+        flex: 1;
+      }
+      #slots {
+        display: grid;
+        grid-template-columns: repeat(10, 36px);
+        grid-auto-rows: 36px;
+        gap: 2px;
+      }
+      #slots i {
+        background: #151b25;
+      }
+      #player-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      #skills {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-content: start;
+        gap: 4px 8px;
+      }
+      #skills progress {
+        display: block;
+        width: 100%;
+        height: 8px;
+      }
+      #bar-buttons {
+        display: flex;
+        align-items: end;
+      }
+      .btn {
+        position: relative;
+        padding: 0;
+        border: 0;
+        cursor: pointer;
+        background: none;
+      }
+      .btn .icon {
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        -webkit-mask: var(--icon) center / contain no-repeat;
+        mask: var(--icon) center / contain no-repeat;
+      }
+      .sep {
+        flex: none;
+      }
+
+      /* ---------- A: brown tiles ---------- */
+      .A #bar-buttons {
+        gap: 4px;
+      }
+      .A .sep {
+        width: 8px;
+      }
+      .A .btn {
+        width: 40px;
+        height: 40px;
+        border: 8px solid;
+        border-image: url(/ui/button_brown.png) 8 fill;
+        box-sizing: border-box;
+      }
+      .A .btn .icon {
+        width: 26px;
+        height: 26px;
+        inset: -8px;
+        background: #4a3018;
+      }
+      .A .btn:hover {
+        filter: brightness(1.12);
+      }
+      .A .btn:active,
+      .A .btn.flash {
+        transform: translateY(1px);
+      }
+      .A .btn[aria-pressed="true"] {
+        outline: 2px solid #ffd27a;
+        outline-offset: 1px;
+      }
+      .A .btn[aria-pressed="true"] .icon {
+        background: #2a1a0b;
+      }
+
+      /* ---------- B: dark slots, hotkey on the face ---------- */
+      .B #bar-buttons {
+        gap: 2px;
+      }
+      .B .sep {
+        width: 10px;
+      }
+      .B .btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 3px;
+        background: linear-gradient(#1d1610, #120d09);
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #8a6a44;
+      }
+      .B .btn .icon {
+        width: 22px;
+        height: 22px;
+        background: #cdb48c;
+      }
+      .B .btn kbd {
+        position: absolute;
+        top: 1px;
+        left: 3px;
+        font: 600 9px system-ui;
+        color: #8a6a44;
+      }
+      .B .btn:hover {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #b08a5a;
+      }
+      .B .btn:hover .icon {
+        background: #efdcbc;
+      }
+      .B .btn:active,
+      .B .btn.flash {
+        background: #0b0806;
+      }
+      .B .btn:active .icon,
+      .B .btn.flash .icon {
+        transform: translateY(1px);
+      }
+      .B .btn[aria-pressed="true"] {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #d2a86a,
+          inset 0 0 8px #d2a86a55;
+      }
+      .B .btn[aria-pressed="true"] .icon,
+      .B .btn[aria-pressed="true"] kbd {
+        background-color: #d2a86a;
+        color: #d2a86a;
+      }
+      .B #logout:hover .icon {
+        background: #e06a5a;
+      }
+
+      /* ---------- C: raised wooden keys, grouped ---------- */
+      .C #bar-buttons {
+        gap: 3px;
+      }
+      .C .sep {
+        width: 14px;
+      }
+      .C .sep.push {
+        flex: 1;
+      }
+      .C .btn {
+        width: 44px;
+        height: 48px;
+        background: url(/ui/proto/buttonSquare_brown.png) top / 44px 48px
+          no-repeat;
+      }
+      .C .btn .icon {
+        width: 28px;
+        height: 28px;
+        bottom: 4px;
+        background: #3b2410;
+      }
+      .C .btn:hover {
+        filter: brightness(1.1);
+      }
+      .C .btn:active,
+      .C .btn.flash,
+      .C .btn[aria-pressed="true"] {
+        background-image: url(/ui/proto/buttonSquare_brown_pressed.png);
+        background-position: bottom;
+        background-size: 44px 44px;
+      }
+      .C .btn:active .icon,
+      .C .btn.flash .icon,
+      .C .btn[aria-pressed="true"] .icon {
+        bottom: 0;
+        top: 4px;
+      }
+      .C .btn[aria-pressed="true"] .icon {
+        background: #1d1005;
+      }
+      .C #logout .icon {
+        background: #7a2a1a;
+      }
+      .C #turn-left {
+        margin-right: -2px;
+      }
+
+      /* ---------- the one tooltip, plain line (map ticket on the tooltip) ---------- */
+      #tip {
+        position: fixed;
+        z-index: 10;
+        max-width: 280px;
+        padding: 4px 8px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #120d09f2;
+        box-shadow: 0 2px 8px #000a;
+        color: #fff;
+        font: 12px system-ui;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      #tip[hidden] {
+        display: none;
+      }
+      #tip kbd {
+        margin-left: 6px;
+        padding: 0 4px;
+        border: 1px solid #8a6a44;
+        border-radius: 2px;
+        color: #d2a86a;
+        font: 600 11px system-ui;
+      }
+    </style>
+  </head>
+  <body>
+    <pre id="state"></pre>
+    <div id="switcher">
+      <button id="prev">←</button><span id="label"></span
+      ><button id="next">→</button>
+    </div>
+    <section id="bar">
+      <div id="chat">
+        <div>DeRusto: hello<br />Alice: hi there</div>
+        <input />
+      </div>
+      <div id="slots"></div>
+      <div id="player-panel">
+        <div>Health 10 / 10</div>
+        <div id="skills">
+          <label>Mining 12<progress value="0.4"></progress></label
+          ><label>Smithing 8<progress value="0.7"></progress></label>
+        </div>
+        <div id="bar-buttons"></div>
+      </div>
+    </section>
+    <div id="tip" hidden></div>
+    <script>
+      const BUTTONS = {
+        "turn-left": ["Turn view left", "Q", "arrow_counterclockwise"],
+        "turn-right": ["Turn view right", "E", "arrow_clockwise"],
+        character: ["Character sheet", "C", "singleplayer"],
+        social: ["Social", "O", "multiplayer"],
+        logout: ["Log out", "", "exitRight"],
+      };
+      // Order and grouping per variant; "|" is a gap, ">" pushes the rest to the far end.
+      const LAYOUT = {
+        A: ["turn-left", "turn-right", "|", "character", "social", "|", "logout"],
+        B: ["character", "social", "|", "turn-left", "turn-right", "|", "logout"],
+        C: ["turn-left", "turn-right", "|", "character", "social", ">", "logout"],
+      };
+      const NAMES = {
+        A: "Brown tiles",
+        B: "Dark slots, key on face",
+        C: "Wooden keys, grouped",
+      };
+      const KEYS = Object.keys(LAYOUT);
+      const params = new URLSearchParams(location.search);
+      let variant = KEYS.includes(params.get("variant"))
+        ? params.get("variant")
+        : "A";
+      const open = { character: false, social: false };
+      let last = "";
+
+      document.getElementById("slots").append(
+        ...Array.from({ length: 30 }, () => document.createElement("i")),
+      );
+
+      const tip = document.getElementById("tip");
+      function moveTip(event) {
+        const r = tip.getBoundingClientRect();
+        let x = event.clientX + 12;
+        let y = event.clientY - 12 - r.height;
+        if (x + r.width > innerWidth) x = event.clientX - 12 - r.width;
+        if (y < 0) y = event.clientY + 12;
+        tip.style.left = `${x}px`;
+        tip.style.top = `${y}px`;
+      }
+
+      function press(id) {
+        last = id;
+        if (id in open) open[id] = !open[id];
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.add("flash");
+          setTimeout(() => el.classList.remove("flash"), 120);
+        }
+        draw();
+      }
+
+      function draw() {
+        tip.hidden = true;
+        document.body.className =
+          variant + (document.body.classList.contains("dark") ? " dark" : "");
+        document.getElementById("label").textContent =
+          `${variant} (${NAMES[variant]})`;
+        const bar = document.getElementById("bar-buttons");
+        bar.replaceChildren(
+          ...LAYOUT[variant].map((id) => {
+            if (id === "|" || id === ">") {
+              const s = document.createElement("span");
+              s.className = id === ">" ? "sep push" : "sep";
+              return s;
+            }
+            const [name, key, icon] = BUTTONS[id];
+            const b = document.createElement("button");
+            b.type = "button";
+            b.id = id;
+            b.className = "btn";
+            b.ariaLabel = name;
+            if (key) b.setAttribute("aria-keyshortcuts", key);
+            if (id in open) b.setAttribute("aria-pressed", open[id]);
+            b.style.setProperty("--icon", `url(/ui/proto/${icon}.png)`);
+            b.innerHTML = `<span class="icon"></span>${
+              variant === "B" && key ? `<kbd>${key}</kbd>` : ""
+            }`;
+            b.onclick = () => press(id);
+            b.onpointerenter = (e) => {
+              tip.innerHTML = name + (key ? `<kbd>${key}</kbd>` : "");
+              tip.hidden = false;
+              moveTip(e);
+            };
+            b.onpointermove = moveTip;
+            b.onpointerleave = b.onpointerdown = () => (tip.hidden = true);
+            return b;
+          }),
+        );
+        document.getElementById("state").textContent = [
+          `variant   ${variant} (${NAMES[variant]})`,
+          `bar       ${document.body.classList.contains("dark") ? "dark brown" : "today's navy"}  (D)`,
+          `character ${open.character ? "open" : "closed"}  (C)`,
+          `social    ${open.social ? "open" : "closed"}  (O)`,
+          `last      ${last || "-"}`,
+        ].join("\n");
+      }
+
+      function go(step) {
+        variant = KEYS[(KEYS.indexOf(variant) + step + KEYS.length) % KEYS.length];
+        history.replaceState(null, "", `?variant=${variant}`);
+        draw();
+      }
+      document.getElementById("prev").onclick = () => go(-1);
+      document.getElementById("next").onclick = () => go(1);
+      addEventListener("keydown", (e) => {
+        if (e.target.matches("input")) return;
+        const k = e.key.toLowerCase();
+        if (e.key === "ArrowLeft") go(-1);
+        else if (e.key === "ArrowRight") go(1);
+        else if (k === "d") {
+          document.body.classList.toggle("dark");
+          draw();
+        } else {
+          const id = { q: "turn-left", e: "turn-right", c: "character", o: "social" }[k];
+          if (id) press(id);
+        }
+      });
+      draw();
+    </script>
+  </body>
+</html>
