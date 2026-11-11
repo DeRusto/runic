@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { countOf, makeRefusal, RECIPES, stationRefusal } from "./making.ts";
+import {
+  countOf,
+  levelRefusal,
+  makeRefusal,
+  RECIPES,
+  stationRefusal,
+} from "./making.ts";
 import { xpForLevel } from "./skills.ts";
 
 const holding = (held: [string, number][], smithingXp = 0, miningXp = 0) => ({
@@ -387,6 +393,18 @@ test("a furnace row is refused on Mining, whatever the Smithing level", () => {
   expect(
     makeRefusal("ironBar", holding([["ironOre", 1]], 0, xpForLevel(10))),
   ).toBeUndefined();
+});
+
+test("the level refusal looks only at the level, never the materials", () => {
+  expect(levelRefusal("steelSword", holding([], xpForLevel(14)))).toBe(
+    "Needs Smithing 15",
+  );
+  expect(
+    levelRefusal("steelSword", holding([], xpForLevel(15))),
+  ).toBeUndefined();
+  expect(levelRefusal("steelBar", holding([], xpForLevel(50)))).toBe(
+    "Needs Mining 15",
+  );
 });
 
 test("too few materials are refused", () => {
