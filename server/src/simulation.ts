@@ -174,10 +174,10 @@ export const Player = schema(
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint32"),
     tools: t.array("string"),
-    /** Like `inventory`, `BANK_SLOTS` long (#197). */
-    bank: t.array("string"),
+    /** Like `inventory`, `BANK_SLOTS` long. Tagged for views: the room adds each player to their own view only, so nobody else sees it. */
+    bank: t.array("string").view(),
     /** Parallel to `bank`, and uncapped. */
-    bankCounts: t.array("uint32"),
+    bankCounts: t.array("uint32").view(),
     /** The item id worn in each gear slot, or "". */
     weapon: t.string().default(""),
     shield: t.string().default(""),

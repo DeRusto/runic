@@ -197,6 +197,35 @@ test("a move intent drags a stack to another slot", async () => {
   await sorter.leave();
 });
 
+test("a player's bank reaches only that player", async () => {
+  const owner = new Client(`http://localhost:${PORT}`);
+  owner.auth.token = await testToken(PORT, "Saver");
+  const saver = await owner.join(WORLD_ROOM);
+  const other = new Client(`http://localhost:${PORT}`);
+  other.auth.token = await testToken(PORT, "Snoop");
+  const snoop = await other.join(WORLD_ROOM);
+  const { sim } = matchMaker.getLocalRoomById(saver.roomId) as WorldRoom;
+  await vi.waitFor(() => {
+    expect(sim.state.players.has(saver.sessionId)).toBe(true);
+    expect(sim.state.players.has(snoop.sessionId)).toBe(true);
+  });
+  const banked = sim.state.players.get(saver.sessionId)!;
+  banked.bank[0] = "coins";
+  banked.bankCounts[0] = 500;
+  const waitFor = { timeout: TICK_MS * 6, interval: 50 };
+
+  await vi.waitFor(() => {
+    const own = saver.state.players.get(saver.sessionId);
+    expect([own.bank[0], own.bankCounts[0]]).toEqual(["coins", 500]);
+  }, waitFor);
+  const seen = snoop.state.players.get(saver.sessionId);
+  expect(seen.username).toBe("Saver");
+  expect(seen.bank?.length ?? 0).toBe(0);
+  expect(seen.bankCounts?.length ?? 0).toBe(0);
+  await saver.leave();
+  await snoop.leave();
+});
+
 test("a public ground item leaves another viewer's state when taken and when it despawns", async () => {
   const owner = new Client(`http://localhost:${PORT}`);
   owner.auth.token = await testToken(PORT, "Giver");
