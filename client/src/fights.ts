@@ -11,7 +11,7 @@ import {
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
-import { itemName } from "./itemIcons.ts";
+import { colouredNames, itemName } from "./itemIcons.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -191,7 +191,10 @@ export function showFights(room: WorldConnection) {
         const name = itemName(event.item);
         // shortcut: a vowel letter stands for a vowel sound, which holds for every tier name today; upgrade if one starts otherwise.
         printChatLine(
-          `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} ${name}!`,
+          ...colouredNames(
+            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} ${name}!`,
+            [event.item],
+          ),
         );
       } else if (event.type === "eaten") {
         const figure = playerFigures.get(event.player);

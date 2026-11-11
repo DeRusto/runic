@@ -1,7 +1,7 @@
 import { ITEMS } from "@runic/shared";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { describe, expect, test } from "vitest";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { describe, expect, test, vi } from "vitest";
+import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
 
 const ICONS_DIR = "client/public/icons";
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47];
@@ -23,6 +23,53 @@ test("an improved item shows its common form's icon", () => {
   expect(iconUrl("copperChestplate:rare:avoidance")).toBe(
     iconUrl("copperChestplate"),
   );
+});
+
+describe("coloured names", () => {
+  vi.stubGlobal("document", {
+    createElement: () => ({ className: "", textContent: "" }),
+  });
+  /** A part as `[class]text`, or the plain text. */
+  const shown = (parts: ReturnType<typeof colouredNames>) =>
+    parts.map((part) =>
+      typeof part === "string"
+        ? part
+        : `[${part.className}]${part.textContent}`,
+    );
+
+  test("an improved item's name takes its Quality's colour, and a common one stays plain (spec §5)", () => {
+    expect(
+      shown(
+        colouredNames("You make a Copper sword of Might!", [
+          "copperSword:uncommon:might",
+        ]),
+      ),
+    ).toEqual(["You make a ", "[uncommon]Copper sword of Might", "!"]);
+    expect(shown(colouredNames("Copper sword (1)", ["copperSword"]))).toEqual([
+      "Copper sword (1)",
+    ]);
+  });
+
+  test("each name in a pile takes its own item's colour, in order", () => {
+    expect(
+      shown(
+        colouredNames(
+          "Copper sword (1)\nCopper sword of Might (1)\nCopper sword of Might (1)",
+          [
+            "copperSword",
+            "copperSword:rare:might",
+            "copperSword:uncommon:might",
+          ],
+        ),
+      ),
+    ).toEqual([
+      "Copper sword (1)\n",
+      "[rare]Copper sword of Might",
+      " (1)\n",
+      "[uncommon]Copper sword of Might",
+      " (1)",
+    ]);
+  });
 });
 
 describe("the committed icons", () => {

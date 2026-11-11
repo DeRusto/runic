@@ -31,6 +31,35 @@
         white-space: pre;
         transform: translate(-50%, -100%);
       }
+      /* The bar's and the Gear tab's slots show this in place of title, so a name can be coloured (spec §5). */
+      #slot-tip {
+        position: fixed;
+        z-index: 1;
+        pointer-events: none;
+        padding: 3px 6px;
+        border: 1px solid #555;
+        background: #111;
+        color: #fff;
+        font: 12px system-ui;
+        white-space: nowrap;
+      }
+      /* An improved item's name: dark shades on the brown panels, light ones on the dark bar and over the world (spec §5). */
+      .uncommon,
+      .rare {
+        font-weight: 600;
+      }
+      .uncommon {
+        color: #1f9a2c;
+      }
+      .rare {
+        color: #2563c9;
+      }
+      :is(#bar, #slot-tip, #ground-label) .uncommon {
+        color: #5fe36a;
+      }
+      :is(#bar, #slot-tip, #ground-label) .rare {
+        color: #6fb0ff;
+      }
       #overheads {
         position: fixed;
         inset: 0;
@@ -707,6 +736,7 @@
     <p id="status">Connecting…</p>
     <div id="overheads"></div>
     <div id="ground-label" role="tooltip" hidden></div>
+    <div id="slot-tip" role="tooltip" hidden></div>
     <!-- Before the bar, so the bar's right-click menu shows above it. -->
     <section id="sheet" role="dialog" aria-label="Character" hidden>
       <h2>

@@ -2,7 +2,7 @@ import { Callbacks } from "@colyseus/sdk";
 import * as THREE from "three";
 import { groundItemsLabel, type SeenGroundItem } from "./groundItems.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
-import { iconUrl } from "./itemIcons.ts";
+import { colouredNames, iconUrl } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 
@@ -155,7 +155,12 @@ export function showGroundItems(room: WorldConnection) {
     hovered?.scale.setScalar(HOVER_SCALE);
     label.hidden = !tile;
     if (!tile) return;
-    label.textContent = groundItemsLabel(tile.items, me());
+    label.replaceChildren(
+      ...colouredNames(
+        groundItemsLabel(tile.items, me()),
+        tile.items.map(({ item }) => item),
+      ),
+    );
     label.style.left = `${event.clientX}px`;
     label.style.top = `${event.clientY - 14}px`;
   };
