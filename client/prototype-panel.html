@@ -231,6 +231,98 @@
         border-color: #8a6a4488;
       }
 
+      /* B polish pass: inner hairline, title band, square close, hover states, dark-friendly content. */
+      .vB .panel {
+        border: 1px solid #000;
+        outline: 1px solid #8a6a44;
+        outline-offset: -3px;
+        border-radius: 5px;
+        background: linear-gradient(#1d1610, #120d09) padding-box;
+      }
+      .vB .panel.front {
+        outline-color: #d2a86a;
+      }
+      .vB .panel:not(.front) header {
+        filter: saturate(0.6) brightness(0.8);
+      }
+      .vB header {
+        margin: 3px 3px 0;
+        padding: 5px 5px 5px 10px;
+        border-radius: 3px 3px 0 0;
+        background: linear-gradient(#3a2a1a, #261b11);
+      }
+      .vB header:active {
+        cursor: grabbing;
+      }
+      .vB h2 {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .vB .close {
+        width: 20px;
+        height: 20px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #1d1610;
+        font-size: 11px;
+        line-height: 18px;
+      }
+      .vB .close:hover {
+        border-color: #e06a50;
+        background: #5a1d12;
+      }
+      .vB .main {
+        margin: 0 3px 3px;
+      }
+      .vB .tabs {
+        width: 76px;
+        padding-top: 4px;
+        background: #0e0a07;
+      }
+      .vB .tabs button {
+        padding: 7px 10px;
+      }
+      .vB .tabs button:hover:not([aria-selected="true"]) {
+        background: #1d1610;
+        color: #f0d9b0;
+      }
+      .vB .body {
+        padding: 10px;
+        scrollbar-width: thin;
+        scrollbar-color: #8a6a44 transparent;
+      }
+      .vB .gear span {
+        background: #2a1f14;
+        outline: 1px solid #8a6a44;
+        border-radius: 2px;
+      }
+      .vB .row {
+        padding: 5px 4px;
+      }
+      .vB .row:hover {
+        background: #2a1f14;
+      }
+      .vB progress {
+        appearance: none;
+        height: 6px;
+        border: 1px solid #000;
+        border-radius: 3px;
+        background: #2a1f14;
+      }
+      .vB progress::-webkit-progress-bar {
+        background: #2a1f14;
+        border-radius: 3px;
+      }
+      .vB progress::-webkit-progress-value {
+        background: linear-gradient(#e8c06a, #b8862e);
+        border-radius: 3px;
+      }
+      .vB progress::-moz-progress-bar {
+        background: linear-gradient(#e8c06a, #b8862e);
+      }
+
       /* ---------- C: one at a time, a book with a ribbon title and bookmark tabs ---------- */
       .vC .panel {
         left: 24px;
