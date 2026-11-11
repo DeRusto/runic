@@ -79,10 +79,12 @@ export type HasShelf = {
   shelfCounts: Iterable<number>;
 };
 
-/** One line of a counter's tray. */
+/** One line of a tray. */
 export type DealLine = { item: string; count: number };
+/** A line of the buy tray, with how many of the item the shelf held when the player set it out. */
+export type BuyLine = DealLine & { stock: number };
 /** What a player buys from the shelf and sells from their inventory in one deal; the deal intent's payload. */
-export type Deal = { buy: DealLine[]; sell: DealLine[] };
+export type Deal = { buy: BuyLine[]; sell: DealLine[] };
 
 /** What a deal costs the player and what its sales bring them, in coins. */
 export function dealTotals({ buy, sell }: Deal) {
@@ -94,6 +96,10 @@ export function dealTotals({ buy, sell }: Deal) {
   };
 }
 
+/** Why the store won't buy `item` at all, or undefined if it will. */
+export const sellRefusal = (item: string) =>
+  item === COINS ? "The store doesn't buy coins." : undefined;
+
 /**
  * Why `deal` can't go through, or undefined if it can. It is tried on a copy, sales first so
  * their coins pay for the buys, as the deal itself runs (#198).
@@ -104,15 +110,19 @@ export function dealRefusal(deal: Deal, player: HasInventory, shelf: HasShelf) {
   const shelfItems = [...shelf.shelf];
   const shelfCounts = [...shelf.shelfCounts];
   for (const { item, count } of deal.sell) {
-    if (item === COINS) return "The store doesn't buy coins.";
+    const refusal = sellRefusal(item);
+    if (refusal) return refusal;
     if (heldCount(items, counts, item) < count)
       return "You don't have that many to sell.";
     removeItems(items, counts, item, count);
   }
-  for (const { item, count } of deal.buy) {
+  for (const { item, count, stock } of deal.buy) {
     const at = shelfItems.indexOf(item);
     if (at < 0 || shelfCounts[at]! < count)
       return "The store doesn't have that many left.";
+    // So nobody pays for what another player's deal or a refill has just changed (#202).
+    if (shelfCounts[at] !== stock)
+      return "The shelf has changed since you set out this deal.";
     shelfCounts[at]! -= count;
   }
   const { pay, get } = dealTotals(deal);

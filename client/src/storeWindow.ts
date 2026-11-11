@@ -1,6 +1,5 @@
 import {
   CLOSE_STORE_INTENT,
-  COINS,
   DEAL_INTENT,
   dealRefusal,
   dealTotals,
@@ -8,6 +7,7 @@ import {
   heldCount,
   itemParts,
   SHELF_SLOTS,
+  sellRefusal,
   storePaysFor,
   valueOf,
   type Deal,
@@ -38,6 +38,8 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
   const dealButton = document.getElementById("store-deal") as HTMLButtonElement;
   const status = document.getElementById("store-status")!;
   const buying = new Map<string, number>();
+  /** How many of each item on the buy tray the shelf held when it was last put there, which the server checks is unchanged. */
+  const seen = new Map<string, number>();
   const selling = new Map<string, number>();
   /** The last line from outside the trays, such as why coins can't be sold. */
   let note = "";
@@ -55,7 +57,11 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
       : 0;
   };
   const dealOf = (): Deal => ({
-    buy: [...buying].map(([item, count]) => ({ item, count })),
+    buy: [...buying].map(([item, count]) => ({
+      item,
+      count,
+      stock: seen.get(item)!,
+    })),
     sell: [...selling].map(([item, count]) => ({ item, count })),
   });
   /** Adds `amount` to a tray line, up to `max`. */
@@ -77,7 +83,9 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     slot.type = "button";
     const buy = (amount: number) => {
       const item = slot.dataset.item;
-      if (item) put(buying, item, amount, stockOf(item));
+      if (!item) return;
+      seen.set(item, stockOf(item));
+      put(buying, item, amount, stockOf(item));
     };
     slot.onclick = () => buy(1);
     slot.oncontextmenu = (event) => {
@@ -172,11 +180,10 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
 
   /** Puts `amount` of an inventory item on the sell tray. */
   const sell = (item: string, amount: number) => {
-    if (item === COINS) {
-      note = "The store doesn't buy coins.";
-      return drawDeal();
-    }
-    put(selling, item, amount, heldOf(item));
+    const refusal = sellRefusal(item);
+    if (!refusal) return put(selling, item, amount, heldOf(item));
+    note = refusal;
+    drawDeal();
   };
 
   const shut = () => {
