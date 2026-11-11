@@ -5,7 +5,7 @@ export function panelKey(event: KeyboardEvent) {
   return event.key;
 }
 
-/** The bottom bar's height in index.html; panels stay above it (spec §6). */
+/** The height of `#bar` in client/index.html; panels stay above it (spec §6). Change both together. */
 const BOTTOM_BAR_PX = 160;
 /** How far a first opening sits from the screen's edges. */
 const EDGE_PX = 8;
@@ -84,7 +84,8 @@ export function addPanel(
     titleBar.setPointerCapture(event.pointerId);
     titleBar.onpointermove = (move) =>
       moveTo(element, move.clientX - grabX, move.clientY - grabY);
-    titleBar.onpointerup = () => (titleBar.onpointermove = null);
+    // Not pointerup alone: a pointercancel, as when the window loses focus, also ends the drag.
+    titleBar.onlostpointercapture = () => (titleBar.onpointermove = null);
   };
   return {
     opened: () => {
