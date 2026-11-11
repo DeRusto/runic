@@ -1,4 +1,5 @@
 import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
+import type { VillagerId } from "./dialogue.ts";
 import type { ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
 
@@ -11,8 +12,12 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
 export const MAKE_INTENT = "make";
-/** The visit intent's message type, for clicking the Blacksmith; it has no payload. */
+/** The visit intent's message type, for clicking the Blacksmith; it has no payload. Arriving opens the conversation. */
 export const VISIT_INTENT = "visit";
+/** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
+export const CHOOSE_INTENT = "choose";
+/** The end talk intent's message type, for closing a conversation; it has no payload. */
+export const END_TALK_INTENT = "endTalk";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
 /** The drop intent's message type; its payload is `{ slot, amount }`, and an amount over the stack drops it all. */
@@ -156,8 +161,13 @@ export type WorldEvent =
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
-  | { type: "told"; player: string; line: string };
+  | { type: "told"; player: string; line: string }
+  /** A conversation opened or moved on: the client shows `node`'s lines, then the choices that follow them. */
+  | { type: "talk"; player: string; villager: VillagerId; node: string }
+  /** The server ended a conversation the client may still be showing, on a walk away or a hit. */
+  | { type: "talkEnded"; player: string };
 
+export * from "./dialogue.ts";
 export * from "./enemies.ts";
 export * from "./foraging.ts";
 export * from "./gathering.ts";

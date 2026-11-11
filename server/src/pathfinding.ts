@@ -12,7 +12,7 @@ export function legalSteps(tiles: TileKind[][], from: Tile): Tile[] {
  * The clear tiles next to `to` (spec D1), even when `to` itself blocks, as a bush does.
  * Same corner rule as legalSteps, which can't start on a blocking tile.
  */
-function tilesNextTo(tiles: TileKind[][], to: Tile): Tile[] {
+export function tilesNextTo(tiles: TileKind[][], to: Tile): Tile[] {
   const clear = (x: number, y: number) => tiles[y]?.[x]?.blocks === false;
   return neighbours(to).filter(
     ({ x, y }) =>
