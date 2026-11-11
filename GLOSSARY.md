@@ -161,15 +161,19 @@ Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
 _Avoid_: Pile, bundle
 
 **Chat command**:
-A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud. Most mistakes get a line in the sender's own chat box only; a line past the length limit is dropped without one.
+A chat line that starts with `/`, such as `/pm`. The server reads it as an instruction instead of saying it aloud. Most mistakes get a line in the sender's own chat box only; a line past the length limit is dropped without one. `/help` lists every command with its usage, and `/who` lists every online player.
 _Avoid_: Slash command
+
+**Emote**:
+A chat line sent with `/e <text>` that acts something out. It reads `<name> <text>` in bold, such as "**DeRusto dances**", in the chat box of every player who doesn't ignore the sender. Otherwise it behaves exactly like public chat: the same length limit, sent while dead, and shown over the sender's head.
+_Avoid_: Action, `/me`
 
 **Online**:
 Said of a player whose character is in the world, including one whose connection dropped while a combat lock holds them there. A login still waiting to enter the world is not online yet. Private messages, follow and the friends list all use this one meaning.
 _Avoid_: Connected, logged in
 
 **Private message**:
-A chat line sent with `/pm <name> <message>` to one online player. It shows in the sender's chat box (`To <name>:`) and in that player's (`From <name>:`), unless that player ignores the sender, and nowhere else, never over anyone's head.
+A chat line sent with `/pm <name> <message>` to one online player. It shows in the sender's chat box (`To <name>:`) and in that player's (`From <name>:`), unless that player ignores the sender, and nowhere else, never over anyone's head. `/r <message>` sends one to the last player whose private message reached you during this login.
 _Avoid_: PM (outside the command), whisper, DM
 
 **Friends list**:
@@ -259,6 +263,14 @@ _Avoid_: Protection, plate
 **Gear slot**:
 Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
 _Avoid_: Equipment slot
+
+**Panel**:
+A window that opens over the world: the character sheet, the smithing panel, the social panel or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.
+_Avoid_: Window (alone), dialog, menu
+
+**Tooltip**:
+The one dark box that shows beside the cursor on every hover in the game. An item's tooltip gives its name and kind, then its stats if it has any.
+_Avoid_: Slot tip, hover text, title
 
 **Character sheet**:
 The panel a player opens to see their gear slots, Toolbelt and all their skills.
