@@ -1,5 +1,6 @@
 import {
   CHAT,
+  COINS,
   DROP_INTENT,
   EAT_INTENT,
   EQUIP_INTENT,
@@ -32,6 +33,14 @@ import { addTip } from "./tooltip.ts";
 
 const MAX_CHAT_LINES = 200;
 
+/** A slot's count of coins in short form: `999`, `12K`, `3.4M` (#193). */
+export const shortCount = (count: number) =>
+  count < 1e3
+    ? String(count)
+    : count < 1e6
+      ? `${Math.floor(count / 1e3)}K`
+      : `${Math.floor(count / 1e5) / 10}M`;
+
 const chatLines = document.getElementById("chat-lines")!;
 
 /** Adds a line to the chat box from its text and coloured names. It's other players' words, so only ever text nodes, never HTML. */
@@ -43,6 +52,16 @@ export function printChatLine(...parts: (string | Node)[]) {
     chatLines.firstElementChild!.remove();
   chatLines.scrollTop = chatLines.scrollHeight;
 }
+
+/** What a slot's clicks do while the store window is open: put its item on the counter (#198). */
+type Counter = {
+  click: (item: string) => void;
+  menu: (item: string) => ReturnType<typeof amountChoices>;
+};
+let counter: Counter | undefined;
+
+/** Hands the slots' clicks to the store's counter while it is open, and back with undefined. */
+export const useSlotsForCounter = (to: Counter | undefined) => (counter = to);
 
 let holdingResult = false;
 let showHeld = () => {};
@@ -96,6 +115,7 @@ export function showBottomBar(
     // Only food and gear do anything on a left-click, so a material's slot sends nothing.
     slot.onclick = () => {
       const item = slot.dataset.item!;
+      if (counter) return item && counter.click(item);
       if (FOOD_HEALS.has(item)) eat();
       if (gearOf(item)) equip();
     };
@@ -103,17 +123,23 @@ export function showBottomBar(
       event.preventDefault();
       const item = slot.dataset.item;
       if (!item) return;
+      if (counter) return openMenu(event, counter.menu(item));
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
-        ...amountChoices("Drop", Number(slot.dataset.count) || 1, (amount) =>
+        ...amountChoices("Drop", shown?.inventoryCounts[i] ?? 1, (amount) =>
           room.send(DROP_INTENT, { slot: i, amount }),
         ),
       ]);
     };
     addTip(slot, () => {
       const item = slot.dataset.item;
-      return item && shown ? itemTipParts(itemTip(item, shown)) : "";
+      if (!item || !shown) return "";
+      const tip = itemTip(item, shown);
+      // The slot shows a short form, so the tip gives the exact count.
+      const count = shown.inventoryCounts[i] ?? 0;
+      if (item === COINS) tip.kind = `${count.toLocaleString("en")} coins`;
+      return itemTipParts(tip);
     });
     return slot;
   });
@@ -215,7 +241,8 @@ export function showBottomBar(
         slot.ariaDisabled = String(!item);
         slot.draggable = !!item;
         const count = me.inventoryCounts[i] ?? 0;
-        slot.dataset.count = count > 1 ? String(count) : "";
+        slot.dataset.count =
+          item === COINS ? shortCount(count) : count > 1 ? String(count) : "";
       });
       for (const skill of skills) {
         const xp = me[skill.field];

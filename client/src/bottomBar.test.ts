@@ -363,6 +363,19 @@ describe("a slot's stack count", () => {
     expect(slot(0).dataset.count).toBe("");
     expect(slot(1).dataset.count).toBe("");
   });
+
+  test("of coins shows in short form, and the tooltip gives the exact count", () => {
+    room.onStateChange.invoke(
+      stateHolding(["coins", 999], ["coins", 12_345], ["coins", 3_456_789]),
+    );
+    nextFrame();
+    expect([0, 1, 2].map((i) => slot(i).dataset.count)).toEqual([
+      "999",
+      "12K",
+      "3.4M",
+    ]);
+    expect(pointAt(2)).toBe("[tip-name common]Coins[tip-kind]3,456,789 coins");
+  });
 });
 
 test("a left-click eats food, and does nothing on a material", () => {

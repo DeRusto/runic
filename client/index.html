@@ -396,6 +396,7 @@
       #social,
       #smithing,
       #pile,
+      #store,
       #logout-confirm {
         box-sizing: border-box;
         padding: 3px;
@@ -456,7 +457,9 @@
       #social-friends,
       #social-ignores,
       #smithing-rows,
-      #pile-rows {
+      #pile-rows,
+      #store-buy,
+      #store-sell {
         scrollbar-width: thin;
         scrollbar-color: #8a6a44 transparent;
       }
@@ -481,7 +484,7 @@
         opacity: 0.6;
       }
       /* The title bar: a dark band with a grip mark, the title in small caps and a square X (spec §6). */
-      :is(#sheet, #social, #smithing, #pile) > h2 {
+      :is(#sheet, #social, #smithing, #pile, #store) > h2 {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -500,7 +503,7 @@
         user-select: none;
         touch-action: none;
       }
-      :is(#sheet, #social, #smithing, #pile) > h2::before {
+      :is(#sheet, #social, #smithing, #pile, #store) > h2::before {
         content: "⠿" / "";
         color: #8a6a44;
         font-weight: 400;
@@ -508,7 +511,8 @@
       #sheet-close,
       #social-close,
       #smithing-close,
-      #pile-close {
+      #pile-close,
+      #store-close {
         width: 20px;
         height: 20px;
         margin-left: auto;
@@ -519,10 +523,22 @@
         color: #c9a77c;
         font: 11px/18px system-ui;
       }
-      :is(#sheet-close, #social-close, #smithing-close, #pile-close)::before {
+      :is(
+        #sheet-close,
+        #social-close,
+        #smithing-close,
+        #pile-close,
+        #store-close
+      )::before {
         content: "✕" / "";
       }
-      :is(#sheet-close, #social-close, #smithing-close, #pile-close):hover {
+      :is(
+        #sheet-close,
+        #social-close,
+        #smithing-close,
+        #pile-close,
+        #store-close
+      ):hover {
         border-color: #e06a50;
         background: #5a1d12;
         color: #fff;
@@ -837,6 +853,145 @@
       #smithing-rows > :first-child {
         border-top: 0;
       }
+      /* A fixed size that doesn't grow as the trays fill; only the trays scroll (#198). */
+      #store {
+        position: fixed;
+        display: flex;
+        flex-direction: column;
+        width: 360px;
+        height: 420px;
+        max-height: calc(100vh - 176px);
+      }
+      #store[hidden] {
+        display: none;
+      }
+      #store-body {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        flex: 1;
+        padding: 8px 10px 10px;
+      }
+      #store-shelf {
+        display: grid;
+        grid-template-columns: repeat(10, 30px);
+        grid-auto-rows: 30px;
+        gap: 2px;
+        justify-content: center;
+      }
+      #store-shelf button {
+        position: relative;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        background:
+          var(--icon, none) center / 26px no-repeat,
+          linear-gradient(#1d1610, #120d09);
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #8a6a44;
+        color: inherit;
+        font-size: 10px;
+      }
+      #store-shelf button:hover {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #b08a5a;
+      }
+      #store-shelf button::after {
+        content: attr(data-count);
+        position: absolute;
+        right: 2px;
+        bottom: 1px;
+        color: #fff;
+        font-weight: 700;
+        text-shadow:
+          -1px 0 #000,
+          1px 0 #000,
+          0 -1px #000,
+          0 1px #000;
+      }
+      #store-shelf button[data-empty="true"] {
+        filter: grayscale(1);
+        opacity: 0.45;
+      }
+      #store-trays {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 10px;
+      }
+      #store-trays section {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 6px;
+        border: 1px dashed #8a6a44;
+        border-radius: 3px;
+      }
+      #store-trays h3 {
+        margin: 0 0 4px;
+        color: #f0d9b0;
+        font: 700 11px system-ui;
+        letter-spacing: 0.06em;
+        font-variant: small-caps;
+      }
+      #store-buy,
+      #store-sell {
+        min-height: 0;
+        overflow-y: auto;
+      }
+      #store-buy p,
+      #store-sell p {
+        margin: 0;
+        opacity: 0.7;
+      }
+      #store-buy div,
+      #store-sell div {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 6px;
+        align-items: center;
+        padding: 2px 0;
+      }
+      #store-buy button,
+      #store-sell button {
+        padding: 0 4px;
+        border: 0;
+        background: none;
+        color: #c9a77c;
+      }
+      #store-buy button::before,
+      #store-sell button::before {
+        content: "✕" / "";
+      }
+      #store-sum {
+        margin: 8px 0 6px;
+        color: #f0c860;
+      }
+      #store-deal {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #2a1f14;
+        color: #eee;
+        font: inherit;
+        font-weight: 700;
+      }
+      #store-deal:disabled {
+        opacity: 0.4;
+      }
+      #store-status {
+        min-height: 1.3em;
+        margin: 6px 0 0;
+        color: #b9d98a;
+      }
+      #store-status.refused {
+        color: #ff8a70;
+      }
       /* Only the rows scroll, so the X stays in reach in a short window. */
       #smithing-rows {
         min-height: 0;
@@ -1124,6 +1279,28 @@
           <button id="pile-close" type="button" aria-label="Close"></button>
         </h2>
         <div id="pile-rows"></div>
+      </section>
+      <section id="store" role="dialog" aria-labelledby="store-title" hidden>
+        <h2>
+          <span id="store-title">General store</span>
+          <button id="store-close" type="button" aria-label="Close"></button>
+        </h2>
+        <div id="store-body">
+          <div id="store-shelf" aria-label="Shelf"></div>
+          <div id="store-trays">
+            <section aria-labelledby="store-buy-title">
+              <h3 id="store-buy-title">You buy</h3>
+              <div id="store-buy"></div>
+            </section>
+            <section aria-labelledby="store-sell-title">
+              <h3 id="store-sell-title">You sell</h3>
+              <div id="store-sell"></div>
+            </section>
+          </div>
+          <p id="store-sum"></p>
+          <button id="store-deal" type="button">Deal</button>
+          <p id="store-status" role="status"></p>
+        </div>
       </section>
     </div>
     <div
