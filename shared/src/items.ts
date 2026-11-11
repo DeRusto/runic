@@ -95,3 +95,28 @@ export function slotFor(item: string, player: HasInventory) {
 /** Why a take of `item` from the ground, or any gain of one, is refused, or undefined if one fits. The rest of a stack that does not fit stays where it is. */
 export const takeRefusal = (item: string, player: HasInventory) =>
   slotFor(item, player) < 0 ? "Your inventory is full." : undefined;
+
+/**
+ * Drags the stack in slot `from` onto slot `to` of the same slots (#193). Onto the same item
+ * with room, it fills the target and the rest stays in `from`; anything else swaps, which moves
+ * onto an empty slot. Nothing splits into an empty slot.
+ */
+export function moveStack(
+  items: string[],
+  counts: number[],
+  from: number,
+  to: number,
+) {
+  const item = items[from]!;
+  if (item === EMPTY_SLOT || from === to) return;
+  const room = ITEMS[itemParts(item).base].stack - counts[to]!;
+  if (items[to] === item && room > 0) {
+    const moved = Math.min(room, counts[from]!);
+    counts[to]! += moved;
+    counts[from]! -= moved;
+    if (!counts[from]) items[from] = EMPTY_SLOT;
+    return;
+  }
+  [items[from], items[to]] = [items[to]!, item];
+  [counts[from], counts[to]] = [counts[to]!, counts[from]!];
+}

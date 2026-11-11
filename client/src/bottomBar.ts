@@ -12,6 +12,7 @@ import {
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MAX_LEVEL,
+  MOVE_INTENT,
   PRIVATE_LINE,
   SKILLS,
   xpForLevel,
@@ -25,6 +26,7 @@ import {
 } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
+import { amountChoices, dragToReorder } from "./movingItems.ts";
 import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
@@ -104,7 +106,9 @@ export function showBottomBar(
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
-        ["Drop", () => room.send(DROP_INTENT, i)],
+        ...amountChoices("Drop", Number(slot.dataset.count) || 1, (amount) =>
+          room.send(DROP_INTENT, { slot: i, amount }),
+        ),
       ]);
     };
     addTip(slot, () => {
@@ -114,6 +118,7 @@ export function showBottomBar(
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
+  dragToReorder(slots, (from, to) => room.send(MOVE_INTENT, { from, to }));
 
   const menu = document.getElementById("slot-menu")!;
   const openMenu: OpenMenu = (event, choices) => {
@@ -206,7 +211,9 @@ export function showBottomBar(
             : null;
         // A custom property, so the CSS can lay the icon over the slot's face.
         slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
-        slot.disabled = !item;
+        // Not disabled: a disabled slot can't catch a drag, and an empty one must.
+        slot.ariaDisabled = String(!item);
+        slot.draggable = !!item;
         const count = me.inventoryCounts[i] ?? 0;
         slot.dataset.count = count > 1 ? String(count) : "";
       });

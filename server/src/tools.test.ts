@@ -159,7 +159,7 @@ test("tools are kept through dying", () => {
 test("dropping every slot leaves tools alone", () => {
   askForTools();
   for (let slot = 0; slot < 30; slot++) {
-    sim.queueDrop("a", slot);
+    sim.queueDrop("a", slot, 20);
     ticks(1);
   }
   expect(tools()).toEqual(BOTH);

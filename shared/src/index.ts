@@ -20,8 +20,10 @@ export const CHOOSE_INTENT = "choose";
 export const END_TALK_INTENT = "endTalk";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
-/** The drop intent's message type; its payload is the inventory slot's index. */
+/** The drop intent's message type; its payload is `{ slot, amount }`, and an amount over the stack drops it all. */
 export const DROP_INTENT = "drop";
+/** The move intent's message type, for a drag in the inventory; its payload is `{ from, to }`, two slots' indexes. */
+export const MOVE_INTENT = "move";
 /** The take intent's message type; its payload is the ground item's id. */
 export const TAKE_INTENT = "take";
 /** The equip intent's message type; its payload is the inventory slot's index. */
