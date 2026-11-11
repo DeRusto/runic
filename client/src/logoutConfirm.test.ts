@@ -15,6 +15,7 @@ const el = (id: string) => {
   return byId.get(id)!;
 };
 let keyListeners: ((event: unknown) => void)[];
+vi.stubGlobal("HTMLInputElement", class {});
 vi.stubGlobal("document", {
   getElementById: el,
   addEventListener: (type: string, listener: (event: unknown) => void) =>
@@ -24,9 +25,11 @@ vi.stubGlobal("document", {
 });
 
 /** Presses a key and says whether the box kept it from the panels. */
-const press = (key: string) => {
+const press = (key: string, target: unknown = {}) => {
   const stopPropagation = vi.fn();
-  keyListeners.forEach((listener) => listener({ key, stopPropagation }));
+  keyListeners.forEach((listener) =>
+    listener({ key, target, stopPropagation }),
+  );
   return stopPropagation.mock.calls.length > 0;
 };
 
@@ -81,4 +84,10 @@ test("leaving the room shuts the box and stops listening", () => {
   room.leave();
   expect(box().hidden).toBe(true);
   expect(keyListeners).toHaveLength(0);
+});
+
+test("Escape typed in the chat box leaves the box open", () => {
+  el("logout").onclick!();
+  expect(press("Escape", new HTMLInputElement())).toBe(false);
+  expect(box().hidden).toBe(false);
 });
