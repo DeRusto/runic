@@ -60,10 +60,16 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     ...more,
   }) as unknown as SyncedPlayer;
 
-/** Points at a row, and reads the one plain line its tooltip shows. */
+/** Points at a row, and reads its tooltip line by line. */
 const tipOf = (row: any) => {
   row.onpointermove({ clientX: 0, clientY: 0 });
-  return byId.get("tooltip")!.children.join("");
+  return byId
+    .get("tooltip")!
+    .children.map((part: any) =>
+      typeof part === "string" ? part : part.textContent,
+    )
+    .filter(Boolean)
+    .join("\n");
 };
 
 const send = vi.fn();
@@ -169,7 +175,14 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
     "3 bars + 2 Emberbone · Needs Smithing 20",
   ]);
   expect(tipOf(sword)).toBe(
-    "3 Emberite bar (have 3), 2 Emberbone (have 1) · 108 Smithing experience · Needs Smithing 20",
+    [
+      "Emberite sword",
+      "Weapon, needs Combat 20",
+      "Adds 300 to your minimum and maximum hit.",
+      "3 Emberite bar (have 3), 2 Emberbone (have 1)",
+      "108 Smithing experience",
+      "Needs Smithing 20",
+    ].join("\n"),
   );
   expect(buttons(sword).every((b: any) => b.disabled)).toBe(true);
 
@@ -193,7 +206,15 @@ test("a row shows its icon, piece and short cost, with the full cost and experie
   const [sword] = shownRows();
   expect(sword.children[0].src).toBe("/icons/copperSword.png");
   expect(line(sword)).toEqual(["Sword", "3 bars"]);
-  expect(tipOf(sword)).toBe("3 Copper bar (have 5) · 18 Smithing experience");
+  expect(tipOf(sword)).toBe(
+    [
+      "Copper sword",
+      "Weapon, needs Combat 1",
+      "Adds 100 to your minimum and maximum hit.",
+      "3 Copper bar (have 5)",
+      "18 Smithing experience",
+    ].join("\n"),
+  );
   expect(sword.className).toBe("");
   expect(buttons(sword).map((b: any) => b.textContent)).toEqual([
     "Make 1",

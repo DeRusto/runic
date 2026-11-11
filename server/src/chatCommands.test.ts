@@ -124,6 +124,57 @@ test("a dead player can still send a private message", async () => {
   expect(target.lines).toEqual(["From PmSender: boo"]);
 });
 
+/** Spec §2's `/help` lines, in order. */
+const HELP = [
+  "/e <text>: Act something out, shown in bold to everyone as your name then the text.",
+  "/follow <name>: Walk after an online player.",
+  "/friend <name>: Add an account to your friends list.",
+  "/help: List every chat command.",
+  "/ignore <name>: Add an account to your ignore list.",
+  "/pm <name> <message>: Send a private message to an online player.",
+  "/r <message>: Reply to the last player who sent you a private message.",
+  "/unfollow: Stop following.",
+  "/unfriend <name>: Take an account off your friends list.",
+  "/unignore <name>: Take an account off your ignore list.",
+  "/who: List every online player.",
+];
+
+test("/help tells only the sender every command, in order, ignoring what follows", async () => {
+  await say("/HELP me please");
+  expect(sender.lines).toEqual(HELP);
+  expect([...target.lines, ...bystander.lines]).toEqual([]);
+});
+
+test("/who tells only the sender everyone online by name ignoring case, a dropped player held by a combat lock included", async () => {
+  const held = await joinAs("pmHeld");
+  const world = matchMaker.getLocalRoomById(held.room.roomId) as WorldRoom;
+  // Until the client has its player, a drop leaves at once instead of being held.
+  await vi.waitFor(() =>
+    expect(
+      (held.room.state as any).players?.get(held.room.sessionId),
+    ).toBeDefined(),
+  );
+  world.sim.lock(held.room.sessionId);
+  // The connection dies with no close handshake, as when the network goes.
+  (world.clients.getById(held.room.sessionId)!.ref as any).terminate();
+  await vi.waitFor(() =>
+    expect(world.clients.getById(held.room.sessionId)).toBeUndefined(),
+  );
+  await say("/WHO is here");
+  expect(sender.lines).toEqual([
+    "Online (4): PmBystander, pmHeld, PmSender, PmTarget",
+  ]);
+  expect([...target.lines, ...bystander.lines]).toEqual([]);
+});
+
+test("an ignored player still shows in /who", async () => {
+  await say("/ignore PmTarget");
+  onTestFinished(() => say("/unignore PmTarget"));
+  sender.lines.length = 0;
+  await say("/who");
+  expect(sender.lines[0]).toContain("PmTarget");
+});
+
 test("an emote reaches every player, the sender too, as their name then the text", async () => {
   await say("/e  dances ");
   for (const { lines } of [sender, target, bystander])

@@ -1,13 +1,9 @@
 import { Client, CloseCode } from "@colyseus/sdk";
-import {
-  loadRegion,
-  LOGOUT_INTENT,
-  respawnTile,
-  TAKEN_OVER_CLOSE_CODE,
-} from "@runic/shared";
+import { loadRegion, respawnTile, TAKEN_OVER_CLOSE_CODE } from "@runic/shared";
 import { DefaultLoadingManager } from "three";
 import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
+import { addBarButtons } from "./barButtons.ts";
 import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
@@ -17,6 +13,7 @@ import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
 import { showGroundItems } from "./groundItemSacks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
+import { showLogoutConfirm } from "./logoutConfirm.ts";
 import { watchPanels } from "./panels.ts";
 import { showPileWindow } from "./pileWindow.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
@@ -65,6 +62,7 @@ watchPanels();
 const status = document.getElementById("status")!;
 const logout = document.getElementById("logout")!;
 const client = new Client(location.origin);
+addBarButtons();
 
 /** Everything that shows a room tidies up after itself in that room's onLeave. */
 function enterWorld(room: WorldConnection) {
@@ -88,7 +86,7 @@ function enterWorld(room: WorldConnection) {
   showFights(room);
 
   logout.hidden = false;
-  logout.onclick = () => room.send(LOGOUT_INTENT);
+  showLogoutConfirm(room);
   // If the SDK can't get back in, onLeave rejoins.
   room.onDrop(() => (status.textContent = "Reconnecting…"));
   room.onReconnect(() => (status.textContent = ""));

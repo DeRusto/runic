@@ -86,10 +86,15 @@ const rows = () =>
     .map(({ children: [name, pin, bar] }) => ({ name, pin, bar }));
 const row = (skill: string) =>
   rows().find(({ pin }) => pin.attributes["aria-label"].includes(skill))!;
-/** Points at an element, and reads the plain line its tooltip shows. */
+/** Points at an element, and reads its tooltip line by line. */
 const tipOf = (target: any) => {
   target.onpointermove({ clientX: 0, clientY: 0 });
-  return el("tooltip").children.join("");
+  return el("tooltip")
+    .children.map((part: any) =>
+      typeof part === "string" ? part : part.textContent,
+    )
+    .filter(Boolean)
+    .join("\n");
 };
 
 beforeEach(() => {
@@ -172,10 +177,11 @@ describe("the Gear tab", () => {
     expect(box("body").attributes["aria-label"]).toMatch(
       /^Body: Copper chestplate of Fortitude\. /,
     );
-    expect(pointAt("body")).toBe(
-      "Take off [uncommon]Copper chestplate of Fortitude",
+    // The "Take off" goes, since a click still takes it off (spec §5).
+    expect(pointAt("body")).toMatch(
+      /^\[tip-name uncommon\]Copper chestplate of Fortitude\[tip-kind\]Body armour/,
     );
-    expect(pointAt()).toBe("Take off [rare]Iron sword of Might");
+    expect(pointAt()).toMatch(/^\[tip-name rare\]Iron sword of Might\[/);
   });
 
   test("worn armour says what it takes off", () => {
@@ -304,8 +310,8 @@ describe("the Toolbelt", () => {
         alt: icon.alt,
       })),
     ).toEqual([
-      { src: "/icons/pickaxe.png", tip: "Pickaxe", alt: "Pickaxe" },
-      { src: "/icons/hammer.png", tip: "Hammer", alt: "Hammer" },
+      { src: "/icons/pickaxe.png", tip: "Pickaxe\nTool", alt: "Pickaxe" },
+      { src: "/icons/hammer.png", tip: "Hammer\nTool", alt: "Hammer" },
     ]);
   });
 

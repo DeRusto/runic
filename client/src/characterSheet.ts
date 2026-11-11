@@ -15,6 +15,7 @@ import {
 import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
 import { addPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
+import { itemTip, itemTipParts } from "./itemTip.ts";
 import { addTip } from "./tooltip.ts";
 
 export type SyncedPlayer = NonNullable<
@@ -111,7 +112,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     };
     addTip(box, () => {
       const item = worn[gearSlot];
-      return item ? `Take off ${itemName(item)}` : itemName(gearSlot);
+      return item ? itemTipParts(itemTip(item)) : itemName(gearSlot);
     });
     return { gearSlot, box };
   });
@@ -152,7 +153,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
           const icon = document.createElement("img");
           icon.src = iconUrl(tool);
           icon.alt = itemName(tool);
-          addTip(icon, () => icon.alt);
+          addTip(icon, () => itemTipParts(itemTip(tool)));
           return icon;
         }),
       );
