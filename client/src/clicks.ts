@@ -80,6 +80,9 @@ export function walkOnClick(
       };
       return openMenu(event, [
         ["Talk-to", visit()],
+        ...(offers(villager.villager, "openStore")
+          ? ([["Trade", visit("openStore")]] as const)
+          : []),
         ...(offers(villager.villager, "openBank")
           ? ([["Bank", visit("openBank")]] as const)
           : []),

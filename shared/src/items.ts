@@ -49,8 +49,13 @@ export const ITEMS = {
   emberiteHelmet: SINGLE,
   emberiteChestplate: SINGLE,
   emberiteLeggings: SINGLE,
+  /** All of a player's coins share one slot with no cap (#193). */
+  coins: { stack: Infinity },
 } as const;
 export type ItemId = keyof typeof ITEMS;
+
+/** The id of coins, which the general store pays in (#193). */
+export const COINS = "coins";
 
 /** The Qualities an item can be made at, lowest first; common is a plain id (spec §2). */
 export const QUALITIES = ["common", "uncommon", "rare"] as const;
@@ -119,4 +124,50 @@ export function moveStack(
   }
   [items[from], items[to]] = [items[to]!, item];
   [counts[from], counts[to]] = [counts[to]!, counts[from]!];
+}
+
+/** How many of `item` the slots hold, across every stack of it. */
+export const heldCount = (items: string[], counts: number[], item: string) =>
+  items.reduce(
+    (total, held, slot) => total + (held === item ? counts[slot]! : 0),
+    0,
+  );
+
+/**
+ * Puts `count` of `item` into the same slots, topping up its stacks before filling empty slots,
+ * and returns how many didn't fit. Mutates both arrays, so an `ArraySchema` works.
+ */
+export function addItems(
+  items: string[],
+  counts: number[],
+  item: string,
+  count: number,
+) {
+  const stack = ITEMS[itemParts(item).base].stack;
+  for (const fill of [item, EMPTY_SLOT]) {
+    items.forEach((held, slot) => {
+      if (held !== fill || !count) return;
+      const put = Math.min(count, stack - counts[slot]!);
+      items[slot] = item;
+      counts[slot]! += put;
+      count -= put;
+    });
+  }
+  return count;
+}
+
+/** Takes `count` of `item` out of the same slots, last slot first; the caller has checked they hold that many. */
+export function removeItems(
+  items: string[],
+  counts: number[],
+  item: string,
+  count: number,
+) {
+  for (let slot = items.length - 1; slot >= 0 && count; slot--) {
+    if (items[slot] !== item) continue;
+    const taken = Math.min(count, counts[slot]!);
+    counts[slot]! -= taken;
+    count -= taken;
+    if (!counts[slot]) items[slot] = EMPTY_SLOT;
+  }
 }

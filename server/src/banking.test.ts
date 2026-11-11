@@ -133,6 +133,22 @@ test("depositing part of a stack puts it in the bank, and more of it joins the s
   ]);
 });
 
+test("coins deposit into one uncapped bank slot and withdraw back into one inventory slot", () => {
+  banking([["coins", 300]], [["coins", 70_000]]);
+  sim.deposit("a", 0, 120);
+  expect(inventoryOf(1)).toEqual([["coins", 180]]);
+  expect(bankOf(2)).toEqual([
+    ["coins", 70_120],
+    ["", 0],
+  ]);
+  sim.withdraw("a", 0, 70_000);
+  expect(inventoryOf(2)).toEqual([
+    ["coins", 70_180],
+    ["", 0],
+  ]);
+  expect(bankOf(1)).toEqual([["coins", 120]]);
+});
+
 test("each piece of gear takes its own bank slot", () => {
   banking(
     [

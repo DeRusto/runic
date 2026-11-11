@@ -24,6 +24,7 @@ import { addRegionMeshes } from "./regionMeshes.ts";
 import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 import { showSocialPanel } from "./socialPanel.ts";
+import { showStoreWindow } from "./storeWindow.ts";
 import { addStations } from "./stations.ts";
 
 const loading = document.getElementById("loading")!;
@@ -87,6 +88,7 @@ function enterWorld(room: WorldConnection) {
   showSocialPanel(room);
   showFights(room);
   showDialogueBox(room);
+  showStoreWindow(room, openMenu);
   showBankWindow(room, openMenu);
 
   logout.hidden = false;
