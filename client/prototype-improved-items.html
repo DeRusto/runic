@@ -1,0 +1,366 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway (wayfinder ticket DeRusto/runic#147). Never merged to main.
+  Three ways an improved item could look and read, on a mock of the real bar and Character sheet.
+  Switch with ?variant=A|B|C, the arrows below, or ← →. The pills pick the item being shown.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Prototype: improved items</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: #3b5a3a;
+        font: 12px system-ui;
+      }
+      #ground {
+        position: fixed;
+        top: 140px;
+        left: 30%;
+        text-align: center;
+        color: #fff;
+        text-shadow: 0 0 3px #000;
+      }
+      #ground img {
+        width: 40px;
+        display: block;
+        margin: 4px auto 0;
+      }
+      #overhead {
+        position: fixed;
+        top: 115px;
+        left: 30%;
+        font: 700 16px system-ui;
+        text-shadow: 0 0 3px #000;
+      }
+      #bar {
+        position: fixed;
+        inset: auto 0 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(272px, 1fr);
+        gap: 8px;
+        height: 160px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: #232c3a;
+        color: #eee;
+      }
+      #chat-lines {
+        overflow-y: auto;
+        height: 120px;
+      }
+      #slots {
+        display: grid;
+        grid-template-columns: repeat(10, 36px);
+        grid-auto-rows: 36px;
+        gap: 2px;
+      }
+      #slots > button {
+        position: relative;
+        padding: 0;
+        border: 0;
+        background: #151b25 center / 32px no-repeat;
+      }
+      #tip {
+        position: fixed;
+        bottom: 170px;
+        left: 50%;
+        padding: 3px 6px;
+        background: #fffbe8;
+        color: #000;
+        border: 1px solid #777;
+        white-space: pre;
+      }
+      #sheet {
+        position: fixed;
+        right: 8px;
+        bottom: 168px;
+        width: 340px;
+        height: 400px;
+        box-sizing: border-box;
+        padding: 8px;
+        border: 16px solid transparent;
+        border-image: url(/ui/panel_brown.png) 20 fill stretch;
+        color: #4a3018;
+      }
+      #sheet h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+      #gear-slots {
+        display: grid;
+        grid-template-areas:
+          "cape head neck"
+          "weapon body shield"
+          "hands legs ring"
+          ". feet .";
+        grid-template-columns: repeat(3, 64px);
+        grid-auto-rows: 64px;
+        gap: 8px;
+        justify-content: center;
+      }
+      .gear-slot {
+        position: relative;
+        border: 0;
+        background: #6d4a28 center / 52px no-repeat;
+        outline: 2px solid #a26a35;
+        color: #c9a77c;
+        font-size: 11px;
+      }
+      #gear-details {
+        min-height: 2.6em;
+        margin: 8px 0;
+        text-align: center;
+      }
+      #switcher {
+        position: fixed;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #000;
+        color: #fff;
+        box-shadow: 0 2px 8px #0008;
+      }
+      #switcher button {
+        border: 0;
+        border-radius: 999px;
+        padding: 2px 8px;
+        background: #444;
+        color: #fff;
+        font: inherit;
+      }
+      #switcher button[aria-pressed="true"] {
+        background: #ffd27a;
+        color: #000;
+      }
+      #note {
+        position: fixed;
+        top: 48px;
+        left: 8px;
+        max-width: 46%;
+        padding: 6px 8px;
+        background: #000a;
+        color: #fff;
+      }
+
+      /* Variant A: the name carries the colour, everywhere a name shows. */
+      .A .uncommon {
+        --q: #1f9a2c;
+        --q-dark: #5fe36a;
+      }
+      .A .rare {
+        --q: #2563c9;
+        --q-dark: #6fb0ff;
+      }
+      .A #sheet .name {
+        color: var(--q);
+        font-weight: 600;
+      }
+      .A #bar .name,
+      .A #ground .name {
+        color: var(--q-dark);
+        font-weight: 600;
+      }
+
+      /* Variant B: no colour at all; the quality is a word, and a gem pip marks the icon. */
+      .B .pip {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 8px;
+        height: 8px;
+        transform: rotate(45deg);
+        background: #ddd;
+        outline: 1px solid #000;
+      }
+      .B .rare .pip {
+        background: #ffd27a;
+        box-shadow: 0 0 4px #ffd27a;
+      }
+
+      /* Variant C: the frame carries the quality; names stay plain. */
+      .C .framed.uncommon {
+        box-shadow: inset 0 0 0 2px #5fe36a;
+      }
+      .C .framed.rare {
+        box-shadow:
+          inset 0 0 0 2px #6fb0ff,
+          inset 0 0 10px #6fb0ff;
+      }
+      .C .badge {
+        display: inline-block;
+        margin-top: 4px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        color: #fff;
+        font-weight: 600;
+      }
+      .C .badge.uncommon {
+        background: #1f7a2a;
+      }
+      .C .badge.rare {
+        background: #1f4f9a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="switcher">
+      <button id="prev" aria-label="Previous variant">←</button>
+      <span id="label"></span>
+      <button id="next" aria-label="Next variant">→</button>
+      <span>|</span>
+      <span id="qualities"></span>
+      <span>|</span>
+      <span id="virtues"></span>
+    </div>
+    <p id="note"></p>
+    <div id="overhead"></div>
+    <div id="ground"></div>
+    <section id="sheet">
+      <h2>Character · Gear</h2>
+      <div id="gear-slots"></div>
+      <p id="gear-details"></p>
+    </section>
+    <div id="tip"></div>
+    <section id="bar">
+      <div id="chat-lines"></div>
+      <div id="slots"></div>
+      <div></div>
+    </section>
+    <script type="module">
+      const VARIANTS = {
+        A: "Coloured name",
+        B: "Quality word, no colour",
+        C: "Coloured frame and badge",
+      };
+      const NOTES = {
+        A: "The name itself is green (uncommon) or blue (rare) in chat, the Gear tab, the ground label and the overhead. Dark shades on the brown panel, light ones on the dark bar. Native title tooltips can't be coloured, so the slot tooltip would need a custom one.",
+        B: "Plain text everywhere: the quality is spelled out (\"Rare copper chestplate of Might\"). A small gem pip on the icon marks any improved item, gold for rare. Works in native tooltips and for colour-blind players.",
+        C: "Names stay \"Copper chestplate of Fortitude\" with no quality word. The icon frame glows by quality, and the Gear tab shows a badge with the Virtue's number. Chat says it once, plainly; a pop over your head celebrates a rare.",
+      };
+      const UNIT = { Fortitude: [20, "max health"], Might: [3, "hit"], Avoidance: [0.1, "points off an enemy's chance to hit you"] };
+      const tier = 1; // Copper
+
+      const params = new URLSearchParams(location.search);
+      let variant = VARIANTS[params.get("variant")] ? params.get("variant") : "A";
+      let quality = "uncommon";
+      let virtue = "Fortitude";
+
+      const size = () => {
+        const [unit, what] = UNIT[virtue];
+        const n = +(unit * tier * (quality === "rare" ? 2 : 1)).toFixed(1);
+        return virtue === "Avoidance" ? `Takes ${n} ${what}` : virtue === "Might" ? `Adds ${n} to your minimum and maximum hit` : `Adds ${n} to your ${what}`;
+      };
+      const name = () => {
+        const base = `copper chestplate of ${virtue}`;
+        return variant === "B"
+          ? `${quality[0].toUpperCase()}${quality.slice(1)} ${base}`
+          : `C${base.slice(1)}`;
+      };
+      const chat = () =>
+        ({
+          A: [`You make a <span class="name">${name()}</span>!`],
+          B: [`You make ${quality === "rare" ? "a" : "an"} ${name().toLowerCase().replace(virtue.toLowerCase(), virtue)}.`],
+          C: [`You make a copper chestplate.`, `It came out ${quality}: ${size().toLowerCase()}.`],
+        })[variant];
+      const BASE = "Takes 4% off each hit you take";
+
+      function draw() {
+        document.body.className = variant;
+        history.replaceState(null, "", `?variant=${variant}`);
+        document.getElementById("label").textContent = `${variant} (${VARIANTS[variant]})`;
+        document.getElementById("note").textContent = NOTES[variant];
+        for (const [id, list, now, set] of [
+          ["qualities", ["uncommon", "rare"], quality, (v) => (quality = v)],
+          ["virtues", Object.keys(UNIT), virtue, (v) => (virtue = v)],
+        ]) {
+          const box = document.getElementById(id);
+          box.replaceChildren(
+            ...list.map((v) => {
+              const b = document.createElement("button");
+              b.textContent = v;
+              b.setAttribute("aria-pressed", String(v === now));
+              b.onclick = () => (set(v), draw());
+              return b;
+            }),
+          );
+        }
+
+        const q = quality;
+        const pip = variant === "B" ? '<i class="pip"></i>' : "";
+        const framed = variant === "C" ? "framed" : "";
+
+        // Gear tab: the improved chestplate is worn, a common sword beside it.
+        const slots = ["cape", "head", "neck", "weapon", "body", "shield", "hands", "legs", "ring", "feet"];
+        document.getElementById("gear-slots").innerHTML = slots
+          .map((s) => {
+            const icon = s === "body" ? "copperChestplate" : s === "weapon" ? "copperSword" : "";
+            const style = icon ? `background-image:url(/icons/${icon}.png)` : "";
+            const cls = s === "body" ? `${framed} ${q}` : "";
+            return `<button class="gear-slot ${cls}" style="grid-area:${s};${style}">${icon ? (s === "body" ? pip : "") : s[0].toUpperCase() + s.slice(1)}</button>`;
+          })
+          .join("");
+        const details = {
+          A: `Body: <span class="${q}"><span class="name">${name()}</span></span>. ${BASE}. ${size()}.`,
+          B: `Body: ${name()}. ${BASE}.<br>${virtue}: ${size().toLowerCase()}.`,
+          C: `Body: ${name()}. ${BASE}.<br><span class="badge ${q}">${q[0].toUpperCase() + q.slice(1)} · ${size()}</span>`,
+        };
+        document.getElementById("gear-details").innerHTML = details[variant];
+
+        // Inventory: a second improved item in hand, of the other quality, plus ore.
+        const other = q === "rare" ? "uncommon" : "rare";
+        const held = [
+          ["copperChestplate", q],
+          ["copperHelmet", other],
+          ["copperShield", ""],
+          ["copperOre", ""],
+        ];
+        document.getElementById("slots").innerHTML = Array.from({ length: 30 }, (_, i) => {
+          const [icon, iq] = held[i] ?? [];
+          if (!icon) return "<button></button>";
+          return `<button class="${iq && framed} ${iq}" style="background-image:url(/icons/${icon}.png)">${iq && variant === "B" ? '<i class="pip"></i>' : ""}</button>`;
+        }).join("");
+        const tip = document.getElementById("tip");
+        tip.className = q;
+        tip.innerHTML = `Hover tooltip for slot 1:\n${variant === "A" ? `<span class="name" style="color:var(--q)">${name()}</span>` : name()}`;
+
+        document.getElementById("chat-lines").innerHTML = [
+          "Welcome to Runic.",
+          "You make a copper chestplate.",
+          ...chat(),
+        ]
+          .map((l) => `<div class="${q}">${l}</div>`)
+          .join("");
+
+        const ground = document.getElementById("ground");
+        ground.className = q;
+        ground.innerHTML = `${variant === "A" ? `<span class="name">${name()}</span>` : name()} (1)<img src="/icons/copperChestplate.png" />`;
+
+        const overhead = document.getElementById("overhead");
+        overhead.textContent = variant === "C" && q === "rare" ? "Rare!" : "";
+        overhead.style.color = "#6fb0ff";
+      }
+
+      const keys = Object.keys(VARIANTS);
+      const step = (by) => {
+        variant = keys[(keys.indexOf(variant) + by + keys.length) % keys.length];
+        draw();
+      };
+      document.getElementById("prev").onclick = () => step(-1);
+      document.getElementById("next").onclick = () => step(1);
+      addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") step(-1);
+        if (e.key === "ArrowRight") step(1);
+      });
+      draw();
+    </script>
+  </body>
+</html>
