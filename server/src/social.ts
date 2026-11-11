@@ -116,56 +116,114 @@ const listCommand =
     AFTER_LIST_CHANGE[list](world, client, account.id, adding);
   };
 
-/** Chat commands by lower-cased name; each gets the trimmed text after the name. */
-const COMMANDS: Record<
-  string,
-  (world: World, client: Client, args: string) => void
-> = {
-  pm: (world, client, args) => {
-    const [, name = "", message = ""] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
-    const to = name ? onlineNamed(world, name) : undefined;
-    const refusal = pmRefusal(
-      name,
-      message,
-      to && { username: to.auth.username, self: to.auth.id === client.auth.id },
-    );
-    if (refusal) return tell(client, refusal);
-    if (!to) return;
-    // The same limit as public chat, on the message alone.
-    if (message.length > MAX_CHAT_LENGTH) return;
-    // Silent: the sender still sees their own copy and no error (Phase 4 map).
-    if (!isIgnoring(to.auth.id, client.auth.id))
-      tell(to, `From ${client.auth.username}: ${message}`);
-    tell(client, `To ${to.auth.username}: ${message}`);
+type Command = {
+  /** What `/help` shows before the colon, as in "/pm <name> <message>". */
+  usage: string;
+  description: string;
+  /** Gets the trimmed text after the name. */
+  run: (world: World, client: Client, args: string) => void;
+};
+
+/** Chat commands by lower-cased name. `/help` lists this table, so a command can't run without a help line (Spec §2). */
+const COMMANDS: Record<string, Command> = {
+  help: {
+    usage: "/help",
+    description: "List every chat command.",
+    run: (_world, client) => {
+      for (const name of Object.keys(COMMANDS).sort()) {
+        const { usage, description } = COMMANDS[name]!;
+        tell(client, `${usage}: ${description}`);
+      }
+    },
   },
-  friend: listCommand("friend", true),
-  unfriend: listCommand("friend", false),
-  ignore: listCommand("ignore", true),
-  unignore: listCommand("ignore", false),
-  // Silent: the target is never told (Phase 4 map). The walking is the simulation's.
-  follow: (world, client, name) => {
-    const account = named(client, name);
-    const target = account && onlineNamed(world, name);
-    const player = target && world.sim.state.players.get(target.sessionId);
-    const refusal = followRefusal(
-      name,
-      account && {
-        ...account,
-        online: !!target,
-        barred: !!player?.dead || isIgnoring(account.id, client.auth.id),
-        alreadyFollowed:
-          !!target &&
-          world.sim.following(client.sessionId) === target.sessionId,
-      },
-    );
-    if (refusal) return tell(client, refusal);
-    if (!target) return;
-    world.sim.follow(client.sessionId, target.sessionId);
+  who: {
+    usage: "/who",
+    description: "List every online player.",
+    // Ignore lists hide no one here (Spec §2).
+    run: (world, client) => {
+      const names = world
+        .onlinePlayers()
+        .map((other) => other.auth.username)
+        .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+      tell(client, `Online (${names.length}): ${names.join(", ")}`);
+    },
   },
-  unfollow: (world, client) => {
-    const refusal = unfollowRefusal(!!world.sim.following(client.sessionId));
-    if (refusal) return tell(client, refusal);
-    world.sim.unfollow(client.sessionId);
+  pm: {
+    usage: "/pm <name> <message>",
+    description: "Send a private message to an online player.",
+    run: (world, client, args) => {
+      const [, name = "", message = ""] = args.match(/^(\S+)\s+(.+)$/s) ?? [];
+      const to = name ? onlineNamed(world, name) : undefined;
+      const refusal = pmRefusal(
+        name,
+        message,
+        to && {
+          username: to.auth.username,
+          self: to.auth.id === client.auth.id,
+        },
+      );
+      if (refusal) return tell(client, refusal);
+      if (!to) return;
+      // The same limit as public chat, on the message alone.
+      if (message.length > MAX_CHAT_LENGTH) return;
+      // Silent: the sender still sees their own copy and no error (Phase 4 map).
+      if (!isIgnoring(to.auth.id, client.auth.id))
+        tell(to, `From ${client.auth.username}: ${message}`);
+      tell(client, `To ${to.auth.username}: ${message}`);
+    },
+  },
+  friend: {
+    usage: "/friend <name>",
+    description: "Add an account to your friends list.",
+    run: listCommand("friend", true),
+  },
+  unfriend: {
+    usage: "/unfriend <name>",
+    description: "Take an account off your friends list.",
+    run: listCommand("friend", false),
+  },
+  ignore: {
+    usage: "/ignore <name>",
+    description: "Add an account to your ignore list.",
+    run: listCommand("ignore", true),
+  },
+  unignore: {
+    usage: "/unignore <name>",
+    description: "Take an account off your ignore list.",
+    run: listCommand("ignore", false),
+  },
+  follow: {
+    usage: "/follow <name>",
+    description: "Walk after an online player.",
+    // Silent: the target is never told (Phase 4 map). The walking is the simulation's.
+    run: (world, client, name) => {
+      const account = named(client, name);
+      const target = account && onlineNamed(world, name);
+      const player = target && world.sim.state.players.get(target.sessionId);
+      const refusal = followRefusal(
+        name,
+        account && {
+          ...account,
+          online: !!target,
+          barred: !!player?.dead || isIgnoring(account.id, client.auth.id),
+          alreadyFollowed:
+            !!target &&
+            world.sim.following(client.sessionId) === target.sessionId,
+        },
+      );
+      if (refusal) return tell(client, refusal);
+      if (!target) return;
+      world.sim.follow(client.sessionId, target.sessionId);
+    },
+  },
+  unfollow: {
+    usage: "/unfollow",
+    description: "Stop following.",
+    run: (world, client) => {
+      const refusal = unfollowRefusal(!!world.sim.following(client.sessionId));
+      if (refusal) return tell(client, refusal);
+      world.sim.unfollow(client.sessionId);
+    },
   },
 };
 
@@ -175,5 +233,5 @@ export function runCommand(world: World, client: Client, line: string) {
   const known = Object.hasOwn(COMMANDS, name.toLowerCase());
   const refusal = commandRefusal(name, known);
   if (refusal) return tell(client, refusal);
-  COMMANDS[name.toLowerCase()]!(world, client, args.trim());
+  COMMANDS[name.toLowerCase()]!.run(world, client, args.trim());
 }
