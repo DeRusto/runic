@@ -71,6 +71,7 @@ test.each([
   close();
   expect(box().hidden).toBe(true);
   expect(room.send).not.toHaveBeenCalled();
+  expect(el("logout").focus).toHaveBeenCalledOnce();
 });
 
 test("Escape closes the box before any panel, and reaches the panels once it is shut", () => {
@@ -84,6 +85,7 @@ test("leaving the room shuts the box and stops listening", () => {
   room.leave();
   expect(box().hidden).toBe(true);
   expect(keyListeners).toHaveLength(0);
+  expect(el("logout").focus).not.toHaveBeenCalled();
 });
 
 test("Escape typed in the chat box leaves the box open", () => {

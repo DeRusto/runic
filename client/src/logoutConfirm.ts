@@ -9,18 +9,24 @@ export function showLogoutConfirm(room: WorldConnection) {
     box.hidden = !open;
     if (open) document.getElementById("logout-confirm-no")!.focus();
   };
-  setOpen(false);
-  document.getElementById("logout")!.onclick = () => setOpen(!!box.hidden);
-  document.getElementById("logout-confirm-no")!.onclick = () => setOpen(false);
-  // The server decides, so a refusal shows its usual line and the player stays in.
-  document.getElementById("logout-confirm-yes")!.onclick = () => {
+  const logout = document.getElementById("logout")!;
+  // Back to the button that opened it, so a keyboard player keeps their place.
+  const close = () => {
     setOpen(false);
+    logout.focus();
+  };
+  setOpen(false);
+  logout.onclick = () => (box.hidden ? setOpen(true) : close());
+  document.getElementById("logout-confirm-no")!.onclick = close;
+  // The server decides: a log out refused during a combat lock is silent, and the player stays in.
+  document.getElementById("logout-confirm-yes")!.onclick = () => {
+    close();
     room.send(LOGOUT_INTENT);
   };
   // In the capture phase, so the box takes Escape before any panel's listener sees it.
   const onKey = (event: KeyboardEvent) => {
     if (panelKey(event) !== "Escape" || box.hidden) return;
-    setOpen(false);
+    close();
     event.stopPropagation();
   };
   document.addEventListener("keydown", onKey, true);
