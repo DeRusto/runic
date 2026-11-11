@@ -426,3 +426,25 @@ test("what was made and its experience are saved", () => {
   expect(sim.saveOf("a")).toMatchObject({ miningXp: 2 });
   expect(sim.saveOf("a")!.inventory![0]).toBe("copperBar");
 });
+
+test("a piece of gear can come out improved, for the same experience, and says what was made", () => {
+  sim = new Simulation(TILES, () => 0);
+  add([["copperBar", 3]]);
+  sim.queueMake("a", { item: "copperSword", all: false });
+  run(13);
+  expect(items()).toEqual([["copperSword:rare:fortitude", 1]]);
+  expect(player().smithingXp).toBe(18);
+  expect(seen.map(({ event }) => event)).toContainEqual({
+    type: "made",
+    player: "a",
+    item: "copperSword:rare:fortitude",
+  });
+});
+
+test("a bar is never improved, even on the luckiest roll", () => {
+  sim = new Simulation(TILES, () => 0);
+  add([["copperOre", 1]]);
+  sim.queueMake("a", { item: "copperBar", all: false });
+  run(7);
+  expect(items()).toEqual([["copperBar", 1]]);
+});

@@ -1,6 +1,6 @@
 import {
   combatLevel,
-  GEAR,
+  gearOf,
   GEAR_SLOTS,
   levelFor,
   levelProgress,
@@ -78,7 +78,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   let pointedAt: GearSlot | undefined;
   const describe = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
-    const does = GEAR.get(item)?.does;
+    const does = gearOf(item)?.does;
     return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}`;
   };
   const showDetails = () => {

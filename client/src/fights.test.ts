@@ -91,6 +91,28 @@ test("a told line prints only for the player it's for", () => {
   expect(printChatLine.mock.calls).toEqual([["For you."]]);
 });
 
+test("making an improved item prints a line for its maker, and a common one stays silent (spec §5)", () => {
+  const onMessage = vi.fn();
+  showFights({
+    onReconnect: vi.fn(),
+    onMessage,
+    sessionId: "a",
+  } as unknown as WorldConnection);
+  const made: WorldEvent[] = [
+    { type: "made", player: "a", item: "copperChestplate:uncommon:fortitude" },
+    { type: "made", player: "a", item: "ironSword:rare:might" },
+    { type: "made", player: "a", item: "emberiteHelmet:uncommon:avoidance" },
+    { type: "made", player: "a", item: "copperSword" },
+    { type: "made", player: "b", item: "copperSword:rare:might" },
+  ];
+  onMessage.mock.calls[0]![1](made);
+  expect(printChatLine.mock.calls).toEqual([
+    ["You make a Copper chestplate of Fortitude!"],
+    ["You make an Iron sword of Might!"],
+    ["You make an Emberite helmet of Avoidance!"],
+  ]);
+});
+
 test("eating plays Use_Item and shows no number until a healing tick", () => {
   const onMessage = vi.fn();
   showFights({ onReconnect: vi.fn(), onMessage } as unknown as WorldConnection);

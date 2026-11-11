@@ -1,3 +1,4 @@
+import { itemParts } from "./items.ts";
 import { levelFor } from "./skills.ts";
 
 /** The names of a player's synced gear fields, which are also their save columns. */
@@ -95,10 +96,13 @@ export const GEAR = new Map<string, Gear>([
   ["emberiteLeggings", armour("legs", 20, 6)],
 ]);
 
+/** The gear an item id is, improved or not, or undefined if it isn't gear. An improved piece has its common form's stats and gate (spec §2). */
+export const gearOf = (item: string) => GEAR.get(itemParts(item).base);
+
 /** The percentage all worn armour takes off a hit. */
 export const armourPercentOf = (player: Partial<Record<GearSlot, string>>) =>
   GEAR_SLOTS.reduce(
-    (total, slot) => total + (GEAR.get(player[slot] ?? "")?.armourPercent ?? 0),
+    (total, slot) => total + (gearOf(player[slot] ?? "")?.armourPercent ?? 0),
     0,
   );
 
@@ -107,7 +111,7 @@ export function gearRefusal(
   item: string,
   player: { combatXp: number; defenseXp: number },
 ) {
-  const gear = GEAR.get(item);
+  const gear = gearOf(item);
   if (!gear) return undefined;
   const { skill, xp } = GATES[gear.slot];
   return levelFor(player[xp]) < gear.level

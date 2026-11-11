@@ -12,9 +12,17 @@ describe("an item's name", () => {
     ["emberbone", "Emberbone"],
     ["copperOre", "Copper ore"],
     ["emberiteShield", "Emberite shield"],
+    ["copperChestplate:uncommon:fortitude", "Copper chestplate of Fortitude"],
+    ["ironSword:rare:might", "Iron sword of Might"],
   ])("%s reads as %s", (id, name) => {
     expect(itemName(id)).toBe(name);
   });
+});
+
+test("an improved item shows its common form's icon", () => {
+  expect(iconUrl("copperChestplate:rare:avoidance")).toBe(
+    iconUrl("copperChestplate"),
+  );
 });
 
 describe("the committed icons", () => {

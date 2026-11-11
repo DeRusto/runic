@@ -314,6 +314,19 @@ describe("gear in the bar", () => {
   });
 });
 
+test("improved gear equips from the bar like its common form, and names its Virtue", () => {
+  room.onStateChange.invoke(stateHolding(["copperSword:uncommon:might", 1]));
+  nextFrame();
+  room.send.mockClear();
+  slot(0).onclick!();
+  expect(room.send).toHaveBeenCalledWith(EQUIP_INTENT, 0);
+  rightClick(0);
+  expect(menuChoices()).toEqual(["Equip", "Drop"]);
+  expect((slot(0) as unknown as { title: string }).title).toBe(
+    "Copper sword of Might",
+  );
+});
+
 describe("the right-click menu", () => {
   beforeEach(() => {
     room.onStateChange.invoke(

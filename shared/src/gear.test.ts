@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { armourPercentOf, GEAR, gearRefusal } from "./gear.ts";
+import { armourPercentOf, GEAR, gearOf, gearRefusal } from "./gear.ts";
 import { xpForLevel } from "./skills.ts";
 
 const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
@@ -116,4 +116,19 @@ test("each tier's armour is gated at its Defense level", () => {
     "You need Defense 20 to equip this.",
   );
   expect(gearRefusal("emberiteChestplate", defense(18050))).toBeUndefined();
+});
+
+test("an improved piece has its common form's base stats and gate", () => {
+  expect(gearOf("copperChestplate:rare:fortitude")).toBe(
+    GEAR.get("copperChestplate"),
+  );
+  expect(gearRefusal("ironSword:uncommon:might", combat(0))).toBe(
+    "You need Combat 10 to equip this.",
+  );
+  expect(
+    armourPercentOf({
+      head: "copperHelmet:uncommon:avoidance",
+      body: "copperChestplate",
+    }),
+  ).toBe(6);
 });

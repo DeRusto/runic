@@ -1,7 +1,8 @@
-import { expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   countOf,
   levelRefusal,
+  madeItem,
   makeRefusal,
   RECIPES,
   stationRefusal,
@@ -418,4 +419,63 @@ test("the anvil needs a hammer and the furnace needs nothing", () => {
   );
   expect(stationRefusal("anvil", { tools: ["hammer"] })).toBeUndefined();
   expect(stationRefusal("furnace", { tools: [] })).toBeUndefined();
+});
+
+/** A random source that returns `rolls` in order. */
+const rolling =
+  (...rolls: number[]) =>
+  () =>
+    rolls.shift()!;
+
+describe("making improved gear (spec §2, §3)", () => {
+  test("at the gate, 4% of pieces are improved", () => {
+    expect(madeItem("ironSword", 10, rolling(0.0399, 0.5, 0))).toBe(
+      "ironSword:uncommon:fortitude",
+    );
+    expect(madeItem("ironSword", 10, rolling(0.04))).toBe("ironSword");
+  });
+
+  test("each Smithing level above the gate adds 0.2%: Copper gear at 20 is 7.8%", () => {
+    expect(madeItem("copperHelmet", 20, rolling(0.0779, 0.5, 0))).toBe(
+      "copperHelmet:uncommon:fortitude",
+    );
+    expect(madeItem("copperHelmet", 20, rolling(0.078))).toBe("copperHelmet");
+  });
+
+  test("the chance stops at 20%", () => {
+    expect(madeItem("copperSword", 99, rolling(0.1999, 0.5, 0))).toBe(
+      "copperSword:uncommon:fortitude",
+    );
+    expect(madeItem("copperSword", 99, rolling(0.2))).toBe("copperSword");
+  });
+
+  test("one improved piece in five is rare", () => {
+    expect(madeItem("copperShield", 1, rolling(0, 0.1999, 0))).toBe(
+      "copperShield:rare:fortitude",
+    );
+    expect(madeItem("copperShield", 1, rolling(0, 0.2, 0))).toBe(
+      "copperShield:uncommon:fortitude",
+    );
+  });
+
+  test("each Virtue is a third of improved pieces, whatever the slot", () => {
+    expect(madeItem("copperLeggings", 1, rolling(0, 0.5, 0.3333))).toBe(
+      "copperLeggings:uncommon:fortitude",
+    );
+    expect(madeItem("copperLeggings", 1, rolling(0, 0.5, 0.3334))).toBe(
+      "copperLeggings:uncommon:might",
+    );
+    expect(madeItem("copperLeggings", 1, rolling(0, 0.5, 0.6667))).toBe(
+      "copperLeggings:uncommon:avoidance",
+    );
+    expect(madeItem("copperLeggings", 1, rolling(0, 0.5, 0.9999))).toBe(
+      "copperLeggings:uncommon:avoidance",
+    );
+  });
+
+  test("bars are never improved, and roll nothing", () => {
+    const random = vi.fn(() => 0);
+    expect(madeItem("copperBar", 1, random)).toBe("copperBar");
+    expect(random).not.toHaveBeenCalled();
+  });
 });

@@ -289,3 +289,18 @@ test("when the first of two same-tick takers leaves part of a stack, the second 
     { x: 1, y: 1, item: "copperOre", count: 7 },
   ]);
 });
+
+test("an improved piece is dropped and taken back whole", () => {
+  const sim = world();
+  const alice = sim.state.players.get("a")!;
+  alice.inventory[1] = "copperSword:uncommon:might";
+  sim.queueDrop("a", 1);
+  sim.tick();
+  expect(groundItems(sim)).toEqual([
+    { x: 1, y: 1, item: "copperSword:uncommon:might", count: 1 },
+  ]);
+  sim.queueTake("a", [...sim.state.groundItems.keys()][0]!);
+  sim.tick();
+  expect(alice.inventory[1]).toBe("copperSword:uncommon:might");
+  expect(groundItems(sim)).toEqual([]);
+});

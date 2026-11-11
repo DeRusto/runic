@@ -4,7 +4,7 @@ import {
   EAT_INTENT,
   EQUIP_INTENT,
   FOOD_HEALS,
-  GEAR,
+  gearOf,
   gearRefusal,
   INVENTORY_SLOTS,
   levelFor,
@@ -80,7 +80,7 @@ export function showBottomBar(
     slot.onclick = () => {
       const item = slot.dataset.item!;
       if (FOOD_HEALS.has(item)) eat();
-      if (GEAR.has(item)) equip();
+      if (gearOf(item)) equip();
     };
     slot.oncontextmenu = (event) => {
       event.preventDefault();
@@ -88,7 +88,7 @@ export function showBottomBar(
       if (!item) return;
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
-        ...(GEAR.has(item) ? ([["Equip", equip]] as const) : []),
+        ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
         ["Drop", () => room.send(DROP_INTENT, i)],
       ]);
     };

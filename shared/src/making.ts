@@ -1,4 +1,5 @@
-import type { HasInventory, ItemId } from "./items.ts";
+import { GEAR } from "./gear.ts";
+import { VIRTUES, type HasInventory, type ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
 import { levelFor, type XpField } from "./skills.ts";
 
@@ -290,6 +291,31 @@ export const RECIPES = {
   },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
+
+// The chance a made piece of gear is improved, in tenths of a percent so it adds up exactly (spec §3).
+export const IMPROVED_PER_MILLE_AT_GATE = 40;
+export const IMPROVED_PER_MILLE_PER_LEVEL = 2;
+export const IMPROVED_PER_MILLE_CAP = 200;
+/** One improved item in five is rare; the rest are uncommon (spec §3). */
+export const RARE_SHARE_OF_IMPROVED = 1 / 5;
+
+/** The id of one `item` made at this Smithing level: gear rolls whether it is improved, then rare, then its Virtue (spec §2). Anything else is never improved. */
+export function madeItem(
+  item: RecipeItem,
+  level: number,
+  random: () => number,
+): string {
+  if (!GEAR.has(item)) return item;
+  const perMille = Math.min(
+    IMPROVED_PER_MILLE_AT_GATE +
+      IMPROVED_PER_MILLE_PER_LEVEL * (level - RECIPES[item].level),
+    IMPROVED_PER_MILLE_CAP,
+  );
+  if (random() >= perMille / 1000) return item;
+  const quality = random() < RARE_SHARE_OF_IMPROVED ? "rare" : "uncommon";
+  const virtue = VIRTUES[Math.floor(random() * VIRTUES.length)];
+  return `${item}:${quality}:${virtue}`;
+}
 
 export const costsOf = (item: RecipeItem) =>
   Object.entries(RECIPES[item].costs) as [ItemId, number][];

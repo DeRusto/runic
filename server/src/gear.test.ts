@@ -541,3 +541,31 @@ describe("anything invalid off the network is ignored", () => {
     expect(me().weapon).toBe("copperSword");
   });
 });
+
+describe("improved gear", () => {
+  test("is equipped at its common form's gate", () => {
+    start({ held: ["ironSword:uncommon:might"], combatXp: LEVEL_10_XP - 1 });
+    sim.equip("a", 0);
+    expect(me().weapon).toBe("");
+    expect(told()).toEqual(["You need Combat 10 to equip this."]);
+    start({ held: ["ironSword:uncommon:might"], combatXp: LEVEL_10_XP });
+    sim.equip("a", 0);
+    expect(me().weapon).toBe("ironSword:uncommon:might");
+    expect(me().inventory[0]).toBe(EMPTY_SLOT);
+  });
+
+  test("swings with its common form's hit bonus", () => {
+    start({ weapon: "emberiteSword:rare:might", combatXp: LEVEL_20_XP });
+    rolls = [0, 0, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([600]);
+  });
+
+  test("takes off back into the inventory whole", () => {
+    start({ body: "copperChestplate:rare:avoidance" });
+    sim.takeOff("a", "body");
+    expect(me().body).toBe("");
+    expect(me().inventory[0]).toBe("copperChestplate:rare:avoidance");
+  });
+});

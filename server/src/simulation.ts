@@ -20,7 +20,7 @@ import {
   gatherRefusal,
   GATHERING,
   GATHERING_SKILLS,
-  GEAR,
+  gearOf,
   GEAR_SLOTS,
   gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
@@ -28,6 +28,7 @@ import {
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
+  madeItem,
   makeRefusal,
   MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
@@ -577,7 +578,7 @@ export class Simulation {
     if (!isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
-    const gear = GEAR.get(item);
+    const gear = gearOf(item);
     if (!gear) return;
     const refusal = gearRefusal(item, player);
     if (refusal) {
@@ -885,9 +886,10 @@ export class Simulation {
       });
     }
     // On the copy, so the last ore in a full inventory leaves room for its bar.
-    const slot = slotFor(item, { inventory, inventoryCounts });
+    const made = madeItem(item, levelFor(player.smithingXp), this.random);
+    const slot = slotFor(made, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
-    inventory[slot] = item;
+    inventory[slot] = made;
     inventoryCounts[slot]!++;
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
@@ -895,6 +897,7 @@ export class Simulation {
     });
     for (const [field, gained] of xpOf(item))
       this.earnXp(player, field, gained);
+    this.events.push({ type: "made", player: id, item: made });
     return true;
   }
 
@@ -929,7 +932,7 @@ export class Simulation {
       if (takenThisTick.has(action.groundItem)) continue;
       // With no way there, the path ran out short of the tile.
       if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
-      const item = groundItem.item as ItemId;
+      const { item } = groundItem;
       const line = takeRefusal(item, player);
       if (line) {
         this.events.push({ type: "told", player: id, line });
@@ -1029,7 +1032,7 @@ export class Simulation {
           Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
     );
     // Only on a hit, as 0 means a miss.
-    const hit = rolled && rolled + (GEAR.get(player.weapon)?.hitBonus ?? 0);
+    const hit = rolled && rolled + (gearOf(player.weapon)?.hitBonus ?? 0);
     const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
       critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
@@ -1199,7 +1202,7 @@ export class Simulation {
   }
 
   private rollBlock(player: InstanceType<typeof Player>) {
-    const base = GEAR.get(player.shield)?.blockChance;
+    const base = gearOf(player.shield)?.blockChance;
     if (base === undefined) return false;
     const levelsAbove1 = levelFor(player.blockingXp) - 1;
     return (
