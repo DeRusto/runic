@@ -4,6 +4,7 @@ import {
   EMPTY_SLOT,
   EQUIP_INTENT,
   INVENTORY_SLOTS,
+  CHAT,
   PRIVATE_LINE,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -49,7 +50,7 @@ const fakeDocument = {
             : id === "skills"
               ? skillsBox
               : element(),
-  createElement: element,
+  createElement: (tagName: string) => Object.assign(element(), { tagName }),
   onpointerdown: undefined as undefined | ((event: unknown) => void),
 };
 vi.stubGlobal("document", fakeDocument);
@@ -429,4 +430,36 @@ test("a private line from the server prints as it came, with nothing overhead", 
     "From Ada: hi",
   ]);
   expect(said).not.toHaveBeenCalled();
+});
+
+test("public chat prints with a colon and says the text overhead", () => {
+  const said = vi.fn();
+  showBottomBar(room as unknown as WorldConnection, said);
+  chatLines.children = [];
+  room.messages.get(CHAT)!({
+    id: "ada",
+    username: "Ada",
+    text: "hi",
+    emote: false,
+  });
+  expect(chatLines.children.map((line) => line.children.join(""))).toEqual([
+    "Ada: hi",
+  ]);
+  expect(said).toHaveBeenCalledWith("ada", "hi");
+});
+
+test("an emote prints bold as the name then the text, and says the text alone overhead", () => {
+  const said = vi.fn();
+  showBottomBar(room as unknown as WorldConnection, said);
+  chatLines.children = [];
+  room.messages.get(CHAT)!({
+    id: "ada",
+    username: "DeRusto",
+    text: "dances",
+    emote: true,
+  });
+  const [bold] = chatLines.children[0].children;
+  expect(bold.tagName).toBe("b");
+  expect(bold.textContent).toBe("DeRusto dances");
+  expect(said).toHaveBeenCalledWith("ada", "dances");
 });

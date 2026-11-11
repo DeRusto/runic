@@ -32,7 +32,13 @@ export const CHAT = "chat";
 export const MAX_CHAT_LENGTH = 120;
 /** How long a chat line stays over the speaker's head. */
 export const CHAT_OVERHEAD_MS = 3000;
-export type ChatLine = { id: string; username: string; text: string };
+/** `emote` marks a line from `/e`, which reads `<username> <text>` in bold. */
+export type ChatLine = {
+  id: string;
+  username: string;
+  text: string;
+  emote: boolean;
+};
 /** A chat-box line the server sends to one player only, payload the finished line: a private message or a chat command's error. */
 export const PRIVATE_LINE = "privateLine";
 /** The longest username an account can have. */

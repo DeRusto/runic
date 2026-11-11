@@ -52,8 +52,12 @@ export function showBottomBar(
   room: WorldConnection,
   sayOverhead: (id: string, text: string) => void,
 ) {
-  room.onMessage(CHAT, ({ id, username, text }: ChatLine) => {
-    printChatLine(`${username}: ${text}`);
+  room.onMessage(CHAT, ({ id, username, text, emote }: ChatLine) => {
+    if (emote) {
+      const bold = document.createElement("b");
+      bold.textContent = `${username} ${text}`;
+      printChatLine(bold);
+    } else printChatLine(`${username}: ${text}`);
     sayOverhead(id, text);
   });
   room.onMessage(PRIVATE_LINE, printChatLine);
