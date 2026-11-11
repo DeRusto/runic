@@ -21,7 +21,15 @@ const element = () => ({
   focus() {},
   children: [] as any[],
   dataset: {} as Record<string, string>,
-  style: {} as Record<string, string>,
+  // The methods sit on the prototype, so a style still equals a plain object of its properties.
+  style: Object.create({
+    setProperty(this: Record<string, string>, name: string, value: string) {
+      this[name] = value;
+    },
+    getPropertyValue(this: Record<string, string>, name: string) {
+      return this[name] ?? "";
+    },
+  }),
   hidden: false,
   textContent: "",
   offsetWidth: 100,
@@ -225,7 +233,9 @@ describe("a filled slot", () => {
   test("shows its item's icon, with its name as a tooltip and label and no text", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 2]));
     nextFrame();
-    expect(slot().style.backgroundImage).toBe('url("/icons/copperOre.png")');
+    expect(slot().style.getPropertyValue("--icon")).toBe(
+      'url("/icons/copperOre.png")',
+    );
     expect(slot().ariaLabel).toBe("Copper ore");
     expect(pointAt()).toBe("Copper ore");
     expect(slot().textContent).toBe("");
@@ -236,7 +246,7 @@ describe("a filled slot", () => {
     nextFrame();
     room.onStateChange.invoke(stateHolding());
     nextFrame();
-    expect(slot().style.backgroundImage).toBe("");
+    expect(slot().style.getPropertyValue("--icon")).toBe("");
     expect(slot().ariaLabel).toBe(null);
     expect(pointAt()).toBe(undefined);
   });
