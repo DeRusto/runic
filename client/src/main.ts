@@ -8,6 +8,7 @@ import {
 import { DefaultLoadingManager } from "three";
 import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
+import { addBarButtons } from "./barButtons.ts";
 import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
@@ -63,6 +64,7 @@ const stationUnder = addStations(tiles);
 const status = document.getElementById("status")!;
 const logout = document.getElementById("logout")!;
 const client = new Client(location.origin);
+addBarButtons();
 
 /** Everything that shows a room tidies up after itself in that room's onLeave. */
 function enterWorld(room: WorldConnection) {

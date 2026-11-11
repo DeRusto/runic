@@ -243,7 +243,9 @@
       #bar-buttons {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
+        /* Room for the buttons' outer black edge. */
+        padding: 1px;
       }
       #skills {
         flex: 1;
@@ -277,18 +279,92 @@
         width: 100%;
         height: 8px;
       }
-      #character,
+      /* The square buttons: the inventory slots' face, an icon mask and the hotkey in the corner (spec §7). */
+      #bar-buttons button {
+        position: relative;
+        flex: none;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        background: linear-gradient(#1d1610, #120d09);
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #8a6a44;
+        --tint: #cdb48c;
+      }
+      #bar-buttons button[hidden] {
+        display: none;
+      }
+      #bar-buttons button::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: 22px;
+        height: 22px;
+        margin: auto;
+        background: var(--tint);
+        mask: var(--icon) center / contain no-repeat;
+      }
+      #bar-buttons kbd {
+        position: absolute;
+        top: 1px;
+        left: 3px;
+        color: #8a6a44;
+        font: 600 9px system-ui;
+      }
+      #bar-buttons button:hover {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #b08a5a;
+        --tint: #efdcbc;
+      }
+      #bar-buttons button:is(:active, .pressed) {
+        background: #0b0806;
+      }
+      #bar-buttons button:is(:active, .pressed)::before {
+        transform: translateY(1px);
+      }
+      /* An open panel's button turns gold, as the front panel's edge does. */
+      #bar-buttons button[aria-pressed="true"] {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 1px #d2a86a,
+          inset 0 0 8px #d2a86a55;
+        --tint: #d2a86a;
+      }
+      #bar-buttons button[aria-pressed="true"] kbd {
+        color: #d2a86a;
+      }
+      #turn-left {
+        --icon: url(/ui/arrow_counterclockwise.png);
+      }
+      #turn-right {
+        --icon: url(/ui/arrow_clockwise.png);
+      }
+      #character {
+        --icon: url(/ui/singleplayer.png);
+        margin-left: 8px;
+      }
       #social-button {
-        white-space: nowrap;
+        --icon: url(/ui/multiplayer.png);
       }
-      #character[aria-pressed="true"],
-      #social-button[aria-pressed="true"] {
-        outline: 2px solid #ffd27a;
+      #logout {
+        --icon: url(/ui/exitRight.png);
+        margin-left: auto;
       }
-      #character kbd,
-      #social-button kbd {
-        font: inherit;
-        opacity: 0.7;
+      #bar-buttons #logout:hover {
+        --tint: #e06a5a;
+      }
+      /* The bar button tips' hotkey, in a small key box (spec §7). */
+      #tooltip kbd {
+        margin-left: 6px;
+        padding: 0 4px;
+        border: 1px solid #8a6a44;
+        border-radius: 2px;
+        color: #d2a86a;
+        font: 600 11px system-ui;
       }
       /*
        * Hidden by visibility, not display, on the window and its panes: a box that goes away
@@ -717,24 +793,6 @@
           display: block;
         }
       }
-      #turn {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0 4px;
-        text-align: center;
-      }
-      #turn button {
-        width: 100%;
-        padding: 0;
-        font-size: 16px;
-      }
-      #turn kbd {
-        font: inherit;
-        opacity: 0.7;
-      }
-      #logout {
-        white-space: nowrap;
-      }
       #splash {
         position: fixed;
         inset: 0;
@@ -936,43 +994,41 @@
         <div id="health"></div>
         <div id="skills"></div>
         <div id="bar-buttons">
-          <div id="turn">
-            <button
-              id="turn-left"
-              type="button"
-              aria-label="Turn view left"
-              aria-keyshortcuts="Q"
-            >
-              ⟲
-            </button>
-            <button
-              id="turn-right"
-              type="button"
-              aria-label="Turn view right"
-              aria-keyshortcuts="E"
-            >
-              ⟳
-            </button>
-            <kbd>Q</kbd>
-            <kbd>E</kbd>
-          </div>
+          <button
+            id="turn-left"
+            type="button"
+            aria-label="Turn view left"
+            aria-keyshortcuts="Q"
+          >
+            <kbd aria-hidden="true">Q</kbd>
+          </button>
+          <button
+            id="turn-right"
+            type="button"
+            aria-label="Turn view right"
+            aria-keyshortcuts="E"
+          >
+            <kbd aria-hidden="true">E</kbd>
+          </button>
           <button
             id="character"
             type="button"
+            aria-label="Character sheet"
             aria-pressed="false"
             aria-keyshortcuts="C"
           >
-            Character <kbd>C</kbd>
+            <kbd aria-hidden="true">C</kbd>
           </button>
           <button
             id="social-button"
             type="button"
+            aria-label="Social"
             aria-pressed="false"
             aria-keyshortcuts="O"
           >
-            Social <kbd>O</kbd>
+            <kbd aria-hidden="true">O</kbd>
           </button>
-          <button id="logout" type="button">Log out</button>
+          <button id="logout" type="button" aria-label="Log out"></button>
         </div>
       </div>
     </section>
