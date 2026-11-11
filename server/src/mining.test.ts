@@ -213,26 +213,30 @@ test("over many mines each find's share matches its vein's chance, and none on t
   expect(share(copper, "tin", 500)).toBeLessThan(1 / 3 + 0.07);
   expect(copper.get("coal")).toBeUndefined();
   expect(copper.get("ashstone")).toBeUndefined();
+  expect(copper.get("cinderglass")).toBeUndefined();
+  expect(copper.get("heartflame")).toBeUndefined();
   const iron = mineMany(IRON, 6, 2, 500).finds;
   expect(share(iron, "tin", 500)).toBeGreaterThan(1 / 6 - 0.05);
   expect(share(iron, "tin", 500)).toBeLessThan(1 / 6 + 0.05);
   expect(share(iron, "coal", 500)).toBeGreaterThan(1 / 2 - 0.07);
   expect(share(iron, "coal", 500)).toBeLessThan(1 / 2 + 0.07);
   expect(iron.get("ashstone")).toBeUndefined();
-  const emberite = mineMany(EMBERITE, 7, 2, 2000).finds;
+  expect(iron.get("cinderglass")).toBeUndefined();
+  expect(iron.get("heartflame")).toBeUndefined();
+  const emberite = mineMany(EMBERITE, 7, 2, 5000).finds;
   const gems =
     (emberite.get("ashstone") ?? 0) +
     (emberite.get("cinderglass") ?? 0) +
     (emberite.get("heartflame") ?? 0);
-  expect(gems / 2000).toBeGreaterThan(1 / 20 - 0.015);
-  expect(gems / 2000).toBeLessThan(1 / 20 + 0.015);
+  expect(gems / 5000).toBeGreaterThan(1 / 20 - 0.015);
+  expect(gems / 5000).toBeLessThan(1 / 20 + 0.015);
   expect((emberite.get("ashstone") ?? 0) / gems).toBeGreaterThan(0.7 - 0.15);
   expect((emberite.get("ashstone") ?? 0) / gems).toBeLessThan(0.7 + 0.15);
   expect((emberite.get("cinderglass") ?? 0) / gems).toBeGreaterThan(
     0.25 - 0.15,
   );
   expect((emberite.get("cinderglass") ?? 0) / gems).toBeLessThan(0.25 + 0.15);
-  expect((emberite.get("heartflame") ?? 0) / gems).toBeGreaterThan(0.05 - 0.1);
+  expect((emberite.get("heartflame") ?? 0) / gems).toBeGreaterThan(0.05 - 0.04);
   expect((emberite.get("heartflame") ?? 0) / gems).toBeLessThan(0.05 + 0.1);
   expect(emberite.get("tin")).toBeUndefined();
   expect(emberite.get("coal")).toBeUndefined();
