@@ -77,7 +77,7 @@ test("each player who damaged it rolls their own 1 in 4", () => {
   expect(bones(s, "b")).toBe(1);
   expect(toldTo(events, "a")).toEqual([]);
   expect(toldTo(events, "b")).toEqual([
-    "You find an Emberbone. It is on the ground.",
+    "You find an [Emberbone]. It is on the ground.",
   ]);
 });
 
@@ -166,7 +166,7 @@ test("a full inventory still gets it on the ground, with the same line", () => {
   const events = run(s);
   expect(bones(s, "a")).toBe(1);
   expect(toldTo(events, "a")).toEqual([
-    "You find an Emberbone. It is on the ground.",
+    "You find an [Emberbone]. It is on the ground.",
   ]);
 });
 
