@@ -213,8 +213,7 @@ describe("the region", () => {
   });
 
   it.each([
-    // The smithy's move to the crossroads (#204) cut Iron and Emberite below the second slice's 25 s and 45 s,
-    // but made Copper slower: its farthest vein is now 13.2 s away, past the old 12 s bound.
+    // The walks from the Smithy at the crossroads, which the owner accepted (second slice §3).
     ["Copper", "copper", 8, 14],
     ["Iron", "iron", 17, 20],
     ["Emberite", "emberite", 33, 38],

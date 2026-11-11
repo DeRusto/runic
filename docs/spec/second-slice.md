@@ -44,7 +44,7 @@ This spec records the slice as built. Phase 3 later replaced Discard with Drop e
 | `B` | Blacksmith on grass | yes |
 
 - **Smithy:** the furnace, anvil and Blacksmith stand together at the village's edge.
-- **Veins get farther away with each tier:** about 10 s from the Smithy for Copper, about 25 s for Iron (in the old region, past the thicket or field), and about 45 s for Emberite (a pocket behind the Boneyard). A straight tile takes 0.6 s.
+- **Veins get farther away with each tier:** about 8–14 s from the Smithy for Copper, about 18 s for Iron (in the old region, past the thicket or field), and about 35 s for Emberite (a pocket behind the Boneyard). These are the walks from the Smithy's spot at the crossroads, which the owner accepted when it moved there ([Move the smithy](https://github.com/DeRusto/runic/issues/204)). A straight tile takes 0.6 s.
 - **Boneyard:** a tree line with one gap surrounds it. The road that stops at about x=48 extends to the gap, and the old region's east wall gets an opening. The only route to the Emberite veins is through the Boneyard.
 - **Reach rule:** a Skeleton's reach is home + wander + notice range + leash, which comes to 10 tiles. It must never touch the village, Smithy, thicket, Spider field or any vein, so mining is always safe once a player gets there. This matters because a player who is mining doesn't fight back.
 - **Old region:** it changes only where something new goes: Copper and Iron veins, the Smithy, the road and the wall's opening. Anyone saved on a tile that now blocks goes to the respawn tile at login, which the code already does.
