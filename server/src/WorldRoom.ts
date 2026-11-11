@@ -8,8 +8,10 @@ import {
 import { StateView } from "@colyseus/schema";
 import {
   CHAT,
+  CHOOSE_INTENT,
   DROP_INTENT,
   EAT_INTENT,
+  END_TALK_INTENT,
   EQUIP_INTENT,
   EVENTS,
   FORAGE_INTENT,
@@ -69,6 +71,9 @@ export class WorldRoom extends Room {
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
     [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
+    [CHOOSE_INTENT]: (client: Client, choice: number) =>
+      this.sim.choose(client.sessionId, choice),
+    [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
     [DROP_INTENT]: (client: Client, slot: number) =>

@@ -732,6 +732,83 @@
       #logout-confirm button:focus-visible {
         border-color: #d2a86a;
       }
+      /* Above the 160 px bar, with a gap (#195). */
+      #dialogue {
+        position: fixed;
+        z-index: 2;
+        left: 50%;
+        bottom: 172px;
+        transform: translateX(-50%);
+        width: min(560px, 90vw);
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        gap: 6px 12px;
+        box-sizing: border-box;
+        padding: 12px;
+        border: 1px solid #8a6a44;
+        border-radius: 4px;
+        background: linear-gradient(#1d1610, #120d09);
+        box-shadow: 0 4px 16px #000c;
+        color: #eee;
+        font: 14px system-ui;
+        cursor: pointer;
+      }
+      #dialogue[hidden] {
+        display: none;
+      }
+      #dialogue-portrait {
+        width: 64px;
+        height: 64px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #3a2a1a;
+        color: #d2a86a;
+        font: 700 26px system-ui;
+      }
+      #dialogue-portrait.you {
+        background: #1a2a3a;
+        color: #9fd0ff;
+        font-size: 16px;
+      }
+      #dialogue-who {
+        color: #d2a86a;
+        font-weight: 600;
+      }
+      #dialogue-text {
+        min-height: 2.6em;
+        margin: 4px 0 0;
+        line-height: 1.3;
+      }
+      #dialogue-foot {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        color: #999;
+        font-size: 11px;
+        text-align: right;
+      }
+      #dialogue-foot button {
+        padding: 5px 8px;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #2a1f14;
+        color: inherit;
+        font: 13px system-ui;
+        text-align: left;
+        cursor: pointer;
+      }
+      #dialogue-foot button:hover,
+      #dialogue-foot button:focus-visible {
+        border-color: #d2a86a;
+        color: #d2a86a;
+      }
+      #dialogue-foot kbd {
+        margin-right: 6px;
+        color: #d2a86a;
+      }
       #pile {
         width: 220px;
       }
@@ -1059,6 +1136,14 @@
       <button id="logout-confirm-yes" type="button">Log out</button>
       <button id="logout-confirm-no" type="button">Cancel</button>
     </div>
+    <section id="dialogue" role="dialog" hidden>
+      <div id="dialogue-portrait" aria-hidden="true"></div>
+      <div>
+        <div id="dialogue-who"></div>
+        <p id="dialogue-text"></p>
+      </div>
+      <div id="dialogue-foot"></div>
+    </section>
     <section id="bar" hidden>
       <div id="chat">
         <div id="chat-lines" role="log" aria-label="Chat"></div>

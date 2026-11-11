@@ -8,6 +8,7 @@ import { addBlacksmith } from "./blacksmith.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
+import { showDialogueBox } from "./dialogueBox.ts";
 import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
@@ -84,6 +85,7 @@ function enterWorld(room: WorldConnection) {
   );
   showSocialPanel(room);
   showFights(room);
+  showDialogueBox(room);
 
   logout.hidden = false;
   showLogoutConfirm(room);

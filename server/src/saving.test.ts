@@ -14,6 +14,7 @@ import {
   TAKEN_OVER_CLOSE_CODE,
   TICK_MS,
   VISIT_INTENT,
+  CHOOSE_INTENT,
   WALK_INTENT,
   WORLD_ROOM,
 } from "@runic/shared";
@@ -191,7 +192,7 @@ test("a sword equipped over the network is synced, and worn again after logging 
   expect(synced(back).weapon).toBe("");
 });
 
-test("the Blacksmith's tools reach the client with a told line, and survive logging out", async () => {
+test("the Blacksmith's tools, asked for in conversation, reach the client with a told line, and survive logging out", async () => {
   const tiles = loadWorldRegion();
   const y = tiles.findIndex((row) => row.some((tile) => tile.blacksmith));
   const x = tiles[y]!.findIndex((tile) => tile.blacksmith);
@@ -201,13 +202,22 @@ test("the Blacksmith's tools reach the client with a told line, and survive logg
   // Already beside the Blacksmith, so the test doesn't wait out the walk.
   Object.assign(world.sim.state.players.get(room.sessionId)!, { x: x - 1, y });
   const lines: unknown[] = [];
-  room.onMessage(EVENTS, (events: { type: string }[]) =>
-    lines.push(...events.filter(({ type }) => type === "told")),
-  );
+  let talking = false;
+  room.onMessage(EVENTS, (events: { type: string }[]) => {
+    lines.push(...events.filter(({ type }) => type === "told"));
+    talking ||= events.some(({ type }) => type === "talk");
+  });
   const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
   const BOTH = ["pickaxe", "hammer"];
 
   room.send(VISIT_INTENT);
+  await vi.waitFor(() => expect(talking).toBe(true), {
+    timeout: TICK_MS * 4,
+    interval: 20,
+  });
+  expect([...synced(room).tools]).toEqual([]);
+  // "Have you got any tools?"
+  room.send(CHOOSE_INTENT, 2);
   await vi.waitFor(() => expect([...synced(room).tools]).toEqual(BOTH), {
     timeout: TICK_MS * 4,
     interval: 20,

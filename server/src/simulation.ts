@@ -59,7 +59,12 @@ import {
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
   TOOLS,
+  VILLAGERS,
   WALK_TICKS_PER_TILE,
+  choicesNodeOf,
+  type DialogueAction,
+  type Villager,
+  type VillagerId,
   xpOf,
   type GatheringLeftField,
   type GatheringSkill,
@@ -77,7 +82,12 @@ import {
   type XpField,
 } from "@runic/shared";
 import { GroundItem, GroundItems } from "./groundItems.ts";
-import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
+import {
+  findPath,
+  legalSteps,
+  pathNextTo,
+  tilesNextTo,
+} from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
 /** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
@@ -175,7 +185,7 @@ type GatheringSite = Tile & {
 type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
-  | { kind: "visiting" }
+  | { kind: "visiting"; villager: VillagerId }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
   /** `doneTick` stays unset until arrival starts the first wait. */
@@ -190,7 +200,7 @@ export class Simulation {
     | { to: Tile }
     | { enemy: string }
     | { gather: GatheringSkill; site: string }
-    | { blacksmith: Tile }
+    | { villager: VillagerId }
     | { make: RecipeItem; all: boolean }
     | { take: string }
     | { follow: string }
@@ -238,7 +248,14 @@ export class Simulation {
   >();
   /** Bushes and veins, by the tile that keys them. */
   private sites = new Map<string, GatheringSite>();
-  private blacksmith?: Tile;
+  private villagers = new Map<VillagerId, Tile>();
+  /** Each talking player's villager, and the node whose choices they can pick from. */
+  private talks = new Map<string, { villager: VillagerId; node: string }>();
+  /** What each choice's action does; the choice has already been checked. */
+  private readonly dialogueActions: Record<
+    DialogueAction,
+    (id: string) => void
+  > = { giveTools: (id) => this.giveTools(id) };
   private stations: Partial<Record<StationKind, Tile>> = {};
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
@@ -254,7 +271,7 @@ export class Simulation {
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { enemy, blacksmith, station } = kind;
-        if (blacksmith) this.blacksmith = { x, y };
+        if (blacksmith) this.villagers.set("odo", { x, y });
         if (station) this.stations[station] = { x, y };
         for (const skill of GATHERING_SKILLS) {
           const { site, stateField, leftField } = GATHERING[skill];
@@ -423,6 +440,7 @@ export class Simulation {
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
+    this.talks.delete(id);
     this.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     for (const enemy of this.unsyncedEnemies.values())
@@ -433,6 +451,7 @@ export class Simulation {
   dropPlayer(id: string) {
     this.clearAction(id);
     this.unsyncedPlayers.get(id)!.dropped = true;
+    this.talks.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
@@ -542,8 +561,54 @@ export class Simulation {
   }
 
   queueVisit(id: string) {
-    if (this.alive(id) && this.blacksmith)
-      this.queuedActions.set(id, { blacksmith: this.blacksmith });
+    if (this.alive(id) && this.villagers.has("odo"))
+      this.queuedActions.set(id, { villager: "odo" });
+  }
+
+  /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
+  choose(id: string, choice: number) {
+    const talk = this.talks.get(id);
+    if (!talk || !Number.isInteger(choice)) return;
+    const { nodes } = VILLAGERS[talk.villager] as Villager;
+    const picked = nodes[talk.node]!.choices![choice];
+    if (!picked || !this.beside(id, talk.villager)) return;
+    this.moveTalk(id, talk.villager, picked.to);
+    if (picked.action) this.dialogueActions[picked.action](id);
+  }
+
+  /** The player closed the conversation, so walking away later says nothing. */
+  endTalk(id: string) {
+    this.talks.delete(id);
+  }
+
+  private moveTalk(id: string, villager: VillagerId, node: string) {
+    this.events.push({ type: "talk", player: id, villager, node });
+    const choicesAt = choicesNodeOf(villager, node);
+    if (choicesAt) this.talks.set(id, { villager, node: choicesAt });
+    else this.talks.delete(id);
+  }
+
+  /** Ends a conversation from the server's side, with the line saying why. */
+  private stopTalk(id: string, line: string) {
+    this.talks.delete(id);
+    this.events.push({ type: "told", player: id, line });
+    this.events.push({ type: "talkEnded", player: id });
+  }
+
+  private beside(id: string, villager: VillagerId) {
+    const player = this.state.players.get(id)!;
+    return tilesNextTo(this.tiles, this.villagers.get(villager)!).some(
+      ({ x, y }) => x === player.x && y === player.y,
+    );
+  }
+
+  private giveTools(id: string) {
+    const player = this.state.players.get(id)!;
+    const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
+    if (!lacking.length) return;
+    player.tools.push(...lacking);
+    const line = `The Blacksmith gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
+    this.events.push({ type: "told", player: id, line });
   }
 
   /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
@@ -728,8 +793,11 @@ export class Simulation {
           item: intent.make,
           all: intent.all,
         });
-      } else if ("blacksmith" in intent) {
-        goNextTo(intent.blacksmith, { kind: "visiting" });
+      } else if ("villager" in intent) {
+        goNextTo(this.villagers.get(intent.villager)!, {
+          kind: "visiting",
+          villager: intent.villager,
+        });
       } else if ("take" in intent) {
         // Onto its tile, not next to it. It may have gone since the intent arrived.
         const groundItem = this.state.groundItems.get(intent.take);
@@ -968,20 +1036,17 @@ export class Simulation {
     }
   }
 
-  /** After the steps, so the tools come on the tick of arrival. */
+  /** After the steps, so a conversation opens on the tick of arrival, and one walked away from ends on the tick of the step. */
   private advanceVisits() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
-      if (unsynced.action?.kind !== "visiting" || unsynced.path.length) {
-        continue;
-      }
+      const { action } = unsynced;
+      if (action?.kind !== "visiting" || unsynced.path.length) continue;
       unsynced.action = undefined;
-      const player = this.state.players.get(id)!;
-      const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
-      player.tools.push(...lacking);
-      const line = lacking.length
-        ? `The Blacksmith gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`
-        : "You already have every tool.";
-      this.events.push({ type: "told", player: id, line });
+      this.moveTalk(id, action.villager, VILLAGERS[action.villager].start);
+    }
+    for (const [id, { villager }] of this.talks) {
+      if (!this.beside(id, villager))
+        this.stopTalk(id, `You walk away from ${VILLAGERS[villager].name}.`);
     }
   }
 
@@ -1222,6 +1287,12 @@ export class Simulation {
       damage,
       blocked,
     });
+    const talk = this.talks.get(enemy.target);
+    if (landed && talk)
+      this.stopTalk(
+        enemy.target,
+        `You're hit, and ${VILLAGERS[talk.villager].name} stops talking.`,
+      );
     if (player.health === 0) this.die(enemy.target, player);
     else if (player.action === "") this.fightBack(enemy.target, player, id);
   }

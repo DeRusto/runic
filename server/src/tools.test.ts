@@ -20,6 +20,14 @@ const ticks = (n: number) => {
   }
 };
 const arrive = () => ticks(20);
+/** Its index among the Blacksmith's first choices. */
+const ASK_FOR_TOOLS = 2;
+/** Walks over to the Blacksmith and asks for tools. */
+const askForTools = (id = "a") => {
+  sim.queueVisit(id);
+  arrive();
+  sim.choose(id, ASK_FOR_TOOLS);
+};
 
 beforeEach(() => {
   told = [];
@@ -29,31 +37,6 @@ beforeEach(() => {
 
 test("a new player has no tools", () => {
   expect(tools()).toEqual([]);
-});
-
-test("clicking the Blacksmith walks next to them, and gives the tools on arrival", () => {
-  sim.queueVisit("a");
-  ticks(1);
-  expect(me().action).toBe("walking");
-  expect(tools()).toEqual([]);
-  expect(told).toEqual([]);
-  arrive();
-  expect(me()).toMatchObject({ ...NEXT_TO, action: "" });
-  expect(tools()).toEqual(BOTH);
-  expect(told).toEqual([
-    {
-      type: "told",
-      player: "a",
-      line: "The Blacksmith gives you a pickaxe and a hammer.",
-    },
-  ]);
-});
-
-test("a player already next to them gets the tools on the next tick", () => {
-  Object.assign(me(), NEXT_TO);
-  sim.queueVisit("a");
-  ticks(1);
-  expect(tools()).toEqual(BOTH);
 });
 
 test("a player gets only the tools they lack", () => {
@@ -67,7 +50,7 @@ test("a player gets only the tools they lack", () => {
     inventory: [],
     tools: ["hammer"],
   });
-  sim.queueVisit("b");
+  askForTools("b");
   ticks(1);
   expect([...sim.state.players.get("b")!.tools]).toEqual(["hammer", "pickaxe"]);
   expect(told).toEqual([
@@ -79,27 +62,10 @@ test("a player gets only the tools they lack", () => {
   ]);
 });
 
-test("a player with every tool gets a line saying so, and no more tools", () => {
-  sim.queueVisit("a");
-  arrive();
-  told = [];
-  sim.queueVisit("a");
-  ticks(1);
-  expect(tools()).toEqual(BOTH);
-  expect(told).toEqual([
-    {
-      type: "told",
-      player: "a",
-      line: "You already have every tool.",
-    },
-  ]);
-});
-
 test("the click replaces what the player was doing", () => {
   sim.queueWalk("a", { x: 1, y: 2 });
   ticks(1);
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   expect(me()).toMatchObject(NEXT_TO);
   expect(tools()).toEqual(BOTH);
 });
@@ -143,15 +109,13 @@ test("tools take no inventory slot, and a full inventory still gets them", () =>
     me().inventory[slot] = "berry";
     me().inventoryCounts[slot] = 20;
   }
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   expect(tools()).toEqual(BOTH);
   expect([...me().inventory].every((item) => item === "berry")).toBe(true);
 });
 
 test("tools are saved, and come back at login", () => {
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   const save = sim.saveOf("a")!;
   expect(save.tools).toEqual(BOTH);
   sim.addPlayer("b", save);
@@ -193,8 +157,7 @@ test("tools are kept through dying", () => {
 });
 
 test("dropping every slot leaves tools alone", () => {
-  sim.queueVisit("a");
-  arrive();
+  askForTools();
   for (let slot = 0; slot < 30; slot++) {
     sim.queueDrop("a", slot);
     ticks(1);

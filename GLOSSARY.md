@@ -55,8 +55,12 @@ A named person who stands on one tile in the village and talks to players. Each 
 _Avoid_: NPC, townsfolk, character
 
 **Blacksmith**:
-The villager at the smithy, who gives players the tools they don't have yet, for free.
+Odo, the villager at the smithy, who gives players the tools they don't have yet, for free, when they ask in conversation.
 _Avoid_: Smith, vendor
+
+**Conversation**:
+A talk with a villager in the dialogue box above the bar: the villager's lines and the player's choices, which the server checks the player is still beside the villager to carry out. Walking away or being hit ends it.
+_Avoid_: Chat (that is the chat box), dialog
 
 **Storekeeper**:
 The villager who runs the general store.
