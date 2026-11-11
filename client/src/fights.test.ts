@@ -91,7 +91,10 @@ test("a told line prints only for the player it's for", () => {
   expect(printChatLine.mock.calls).toEqual([["For you."]]);
 });
 
-test("making an improved item prints a line for its maker, and a common one stays silent (spec §5)", () => {
+test("making an improved item prints a line for its maker, with the name in its Quality's colour, and a common one stays silent (spec §5)", () => {
+  vi.stubGlobal("document", {
+    createElement: () => ({ className: "", textContent: "" }),
+  });
   const onMessage = vi.fn();
   showFights({
     onReconnect: vi.fn(),
@@ -107,10 +110,23 @@ test("making an improved item prints a line for its maker, and a common one stay
   ];
   onMessage.mock.calls[0]![1](made);
   expect(printChatLine.mock.calls).toEqual([
-    ["You make a Copper chestplate of Fortitude!"],
-    ["You make an Iron sword of Might!"],
-    ["You make an Emberite helmet of Avoidance!"],
+    [
+      "You make a ",
+      { className: "uncommon", textContent: "Copper chestplate of Fortitude" },
+      "!",
+    ],
+    [
+      "You make an ",
+      { className: "rare", textContent: "Iron sword of Might" },
+      "!",
+    ],
+    [
+      "You make an ",
+      { className: "uncommon", textContent: "Emberite helmet of Avoidance" },
+      "!",
+    ],
   ]);
+  vi.unstubAllGlobals();
 });
 
 test("eating plays Use_Item and shows no number until a healing tick", () => {

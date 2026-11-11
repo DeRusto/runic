@@ -40,7 +40,7 @@ const room = {
 } as unknown as WorldConnection;
 const choose = (label: string) =>
   playerMenuChoices(room, "ada").find(([option]) => option === label)![1]();
-const printed = () => chatLines.children.map((line) => line.textContent);
+const printed = () => chatLines.children.map((line) => line.children.join(""));
 
 beforeEach(() => {
   chatLines.children = [];

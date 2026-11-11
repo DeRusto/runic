@@ -14,3 +14,26 @@ export function itemName(id: string) {
   );
   return virtue ? `${name} of ${capitalised(virtue)}` : name;
 }
+
+/**
+ * `text` with each improved item's name in a span classed by its Quality, which the page
+ * colours (spec §5). Names are found in the order `ids` gives; common ones stay plain text.
+ */
+export function colouredNames(text: string, ids: string[]) {
+  const parts: (string | HTMLElement)[] = [];
+  let from = 0;
+  for (const id of ids) {
+    const { quality } = itemParts(id);
+    if (quality === "common") continue;
+    const name = itemName(id);
+    const at = text.indexOf(name, from);
+    if (at < 0) continue;
+    const span = document.createElement("span");
+    span.className = quality;
+    span.textContent = name;
+    parts.push(text.slice(from, at), span);
+    from = at + name.length;
+  }
+  parts.push(text.slice(from));
+  return parts;
+}

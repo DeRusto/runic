@@ -9,6 +9,7 @@ import type { WorldConnection } from "./players.ts";
 
 class FakeInput {}
 vi.stubGlobal("HTMLInputElement", FakeInput);
+vi.stubGlobal("innerHeight", 700);
 
 const element = () => ({
   append(...children: any[]) {
@@ -99,7 +100,21 @@ describe("the Gear tab", () => {
     el("gear-slots").children.find(
       (child: any) => child.style.gridArea === gearSlot,
     );
-  const details = () => el("gear-details").textContent;
+  /** A coloured name reads as `[quality]name`. */
+  const shown = (parts: any[]) =>
+    parts
+      .map((part) =>
+        typeof part === "string"
+          ? part
+          : `[${part.className}]${part.textContent}`,
+      )
+      .join("");
+  const details = () => shown(el("gear-details").children);
+  /** Points at a slot, and reads the tooltip it shows, or undefined when hidden. */
+  const pointAt = (gearSlot = "weapon") => {
+    box(gearSlot).onpointermove({ clientX: 0, clientY: 0 });
+    return el("slot-tip").hidden ? undefined : shown(el("slot-tip").children);
+  };
 
   test("lays out all ten slots as a body", () => {
     expect(el("gear-slots").children.map((b: any) => b.style.gridArea)).toEqual(
@@ -120,6 +135,7 @@ describe("the Gear tab", () => {
     expect(openMenu).not.toHaveBeenCalled();
     box("ring").onmouseenter();
     expect(details()).toBe("Ring: Empty");
+    expect(pointAt("ring")).toBe(undefined);
   });
 
   test("a worn sword shows its icon, and pointing at it gives its name and what it does", () => {
@@ -135,6 +151,23 @@ describe("the Gear tab", () => {
     );
     box().onblur();
     expect(details()).toBe("Point at a slot to see what's in it.");
+  });
+
+  test("worn improved gear names itself in its Quality's colour, in the line and the tooltip (spec §5)", () => {
+    wearing("ironSword:rare:might", "", {
+      body: "copperChestplate:uncommon:fortitude",
+    });
+    box("body").onmouseenter();
+    expect(details()).toMatch(
+      /^Body: \[uncommon\]Copper chestplate of Fortitude\. Takes 4% off each hit you take/,
+    );
+    expect(box("body").attributes["aria-label"]).toMatch(
+      /^Body: Copper chestplate of Fortitude\. /,
+    );
+    expect(pointAt("body")).toBe(
+      "Take off [uncommon]Copper chestplate of Fortitude",
+    );
+    expect(pointAt()).toBe("Take off [rare]Iron sword of Might");
   });
 
   test("worn armour says what it takes off", () => {
@@ -182,9 +215,9 @@ describe("the Gear tab", () => {
 
   test("patches with no change to the gear don't redraw", () => {
     wearing("ironSword");
-    box().title = "untouched";
+    box().style.backgroundImage = "untouched";
     wearing("ironSword");
-    expect(box().title).toBe("untouched");
+    expect(box().style.backgroundImage).toBe("untouched");
   });
 });
 
