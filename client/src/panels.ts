@@ -1,3 +1,5 @@
+import { hideTip } from "./tooltip.ts";
+
 /** The key a panel hotkey sees: none while typing in chat, held down, or with a modifier. */
 export function panelKey(event: KeyboardEvent) {
   if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return "";
@@ -104,6 +106,8 @@ export function addPanel(
     closed: () => {
       without(element);
       restack();
+      // A hidden element gets no pointerleave, so its tip would stay up.
+      hideTip();
     },
   };
 }

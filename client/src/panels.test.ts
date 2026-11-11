@@ -8,6 +8,8 @@ vi.stubGlobal("innerHeight", 700);
 let keydown: (event: object) => void;
 let resize: () => void;
 vi.stubGlobal("document", {
+  // The one tooltip, which closing a panel hides.
+  getElementById: () => ({}),
   addEventListener: (_: string, listener: typeof keydown) =>
     (keydown = listener),
 });

@@ -143,6 +143,17 @@ test("rows follow the patches in place: taken ones vanish, counts shrink, new on
   expect(pile().hidden).toBe(false);
 });
 
+test("a row taken or a window closed under the pointer takes its tip with it", () => {
+  const tip = () => document.getElementById("tooltip") as { hidden: boolean };
+  open({ x: 3, y: 1 });
+  tip().hidden = false;
+  patch(3, { s: sword });
+  expect(tip().hidden).toBe(true);
+  tip().hidden = false;
+  byId.get("pile-close")!.onclick!();
+  expect(tip().hidden).toBe(true);
+});
+
 test("the pile emptying closes it", () => {
   open({ x: 3, y: 1 });
   patch(3, { e: elsewhere });

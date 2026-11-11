@@ -3,7 +3,7 @@ import { groundItemLine } from "./groundItems.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
-import { addTip } from "./tooltip.ts";
+import { addTip, hideTip } from "./tooltip.ts";
 
 /**
  * The window a click on a pile opens, once the player stands on its tile. It lists only the
@@ -51,6 +51,8 @@ export function showPileWindow(room: WorldConnection) {
     }
     for (const [id, row] of rows) {
       if (here.has(id)) continue;
+      // A removed row gets no pointerleave, so its tip would stay up.
+      hideTip();
       row.remove();
       rows.delete(id);
     }
