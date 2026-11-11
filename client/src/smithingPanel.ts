@@ -17,6 +17,7 @@ import { iconUrl, itemName } from "./itemIcons.ts";
 import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
+import { addTip } from "./tooltip.ts";
 
 const part = () => document.createElement("span");
 
@@ -75,7 +76,10 @@ export function showSmithingPanel(room: WorldConnection) {
           )
           .join(" + ");
         const xp = `${xpOf(item)[0]![1]} ${RECIPES[item].skill} experience`;
-        return { item, row, cost, short, xp, buttons };
+        // Filled in on each draw, from the full cost, experience and any refusal.
+        const entry = { item, row, cost, short, xp, buttons, tip: "" };
+        addTip(row, () => entry.tip);
+        return entry;
       });
       section.append(header, ...rows.map(({ row }) => row));
       return { station, section, gate, first: recipes[0]!, rows };
@@ -87,7 +91,8 @@ export function showSmithingPanel(room: WorldConnection) {
     .replaceChildren(...sections.map(({ section }) => section));
 
   const draw = (me: SyncedPlayer) => {
-    for (const { item, row, cost, short, xp, buttons } of rows) {
+    for (const entry of rows) {
+      const { item, row, cost, short, xp, buttons } = entry;
       const refusal = makeRefusal(item, me);
       const full = costsOf(item)
         .map(
@@ -97,7 +102,7 @@ export function showSmithingPanel(room: WorldConnection) {
         .join(", ");
       row.className = refusal ? "cant" : "";
       cost.textContent = [short, refusal].filter(Boolean).join(" · ");
-      row.title = [full, xp, refusal].filter(Boolean).join(" · ");
+      entry.tip = [full, xp, refusal].filter(Boolean).join(" · ");
       for (const make of buttons) make.disabled = !!refusal;
     }
     for (const { gate, first } of sections)

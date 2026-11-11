@@ -18,7 +18,7 @@ import {
 import { showCharacterSheet, type OpenMenu } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
-import { addSlotTip } from "./slotTip.ts";
+import { addTip } from "./tooltip.ts";
 
 const MAX_CHAT_LINES = 200;
 
@@ -93,7 +93,7 @@ export function showBottomBar(
         ["Drop", () => room.send(DROP_INTENT, i)],
       ]);
     };
-    addSlotTip(slot, () => slot.ariaLabel ?? "");
+    addTip(slot, () => slot.ariaLabel ?? "");
     return slot;
   });
   document.getElementById("slots")!.replaceChildren(...slots);
@@ -142,7 +142,9 @@ export function showBottomBar(
     const text = document.createElement("span");
     const bar = document.createElement("progress");
     row.append(text, bar);
-    return { name, field, text, bar, row };
+    const skill = { name, field, text, bar, row, xp: 0 };
+    addTip(bar, () => `${skill.xp.toLocaleString("en")} XP`);
+    return skill;
   });
   const noPins = document.createElement("p");
   noPins.textContent = "Pin skills from the sheet";
@@ -192,7 +194,7 @@ export function showBottomBar(
         const xp = me[skill.field];
         skill.text.textContent = `${skill.name} ${levelFor(xp)}`;
         skill.bar.value = levelProgress(xp);
-        skill.bar.title = `${xp} XP`;
+        skill.xp = xp;
       }
       sheet.drawSkills(me);
     };
