@@ -3,7 +3,7 @@ import { beforeEach, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 const TILES = parseRegion(
-  ["TTTTTTTTT", "TR.....BT", "T.......T", "TTTTTTTTT"].join("\n"),
+  ["TTTTTTTTT", "TR.....BT", "T.......T", "TM......T", "TTTTTTTTT"].join("\n"),
 );
 const NEXT_TO = { x: 6, y: 1 };
 const WORK = 0;
@@ -40,7 +40,7 @@ const talk = (node: string) => ({
 /** Opens a conversation with Odo, already beside him. */
 const talkToOdo = () => {
   Object.assign(me(), NEXT_TO);
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   events = [];
 };
@@ -52,7 +52,7 @@ beforeEach(() => {
 });
 
 test("clicking Odo walks next to him, and the conversation opens on arrival with nothing given", () => {
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   expect(me().action).toBe("walking");
   expect(events).toEqual([]);
@@ -60,6 +60,16 @@ test("clicking Odo walks next to him, and the conversation opens on arrival with
   expect(me()).toMatchObject({ ...NEXT_TO, action: "" });
   expect(events).toEqual([talk("greet")]);
   expect([...me().tools]).toEqual([]);
+});
+
+test("clicking Marta opens her own conversation, and a villager who isn't there is ignored", () => {
+  sim.queueVisit("a", "nobody");
+  ticks(1);
+  expect(me().action).toBe("");
+  sim.queueVisit("a", "marta");
+  ticks(20);
+  expect(me()).toMatchObject({ x: 1, y: 2, action: "" });
+  expect(events).toEqual([{ ...talk("greet"), villager: "marta" }]);
 });
 
 test("a conversation walks through its choices to its last line, and then takes no more", () => {
@@ -125,7 +135,7 @@ test("closing the conversation ends it quietly", () => {
 test("being hit ends the conversation", () => {
   sim = new Simulation(parseRegion("TTTTT\nTBRST\nTTTTT"), () => 0);
   sim.addPlayer("a");
-  sim.queueVisit("a");
+  sim.queueVisit("a", "odo");
   ticks(1);
   sim.queueTarget("a", "0");
   events = [];

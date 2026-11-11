@@ -18,11 +18,11 @@ Whether a tile blocks walking comes from the `blocks` property on its tile in th
 
 An object's class is one of these:
 
-| Class       | Needs                                            |
-| ----------- | ------------------------------------------------ |
-| `respawn`   | Nothing. There's exactly one                     |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton` |
-| `npc`       | Its name, currently only `Blacksmith`            |
+| Class       | Needs                                             |
+| ----------- | ------------------------------------------------- |
+| `respawn`   | Nothing. There's exactly one                      |
+| `enemyHome` | An `enemy` string property: `spider`, `skeleton`  |
+| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous` |
 
 ## Before committing
 

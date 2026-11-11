@@ -51,7 +51,7 @@ describe("loadRegion", () => {
           ...at(1, 1),
           properties: [property("enemy", "spider")],
         },
-        { type: "npc", name: "Blacksmith", ...at(2, 1) },
+        { type: "npc", name: "marta", ...at(2, 1) },
       ]),
     );
     expect(tiles).toEqual([
@@ -63,7 +63,7 @@ describe("loadRegion", () => {
       [
         { ground: "grass", vein: "copper", blocks: true },
         { ground: "grass", enemy: "spider", blocks: false },
-        { ground: "grass", blacksmith: true, blocks: true },
+        { ground: "grass", villager: "marta", blocks: true },
       ],
     ]);
   });
@@ -187,7 +187,7 @@ describe("loadRegion", () => {
     ],
     [
       "two placements on one tile",
-      mapWith({}, [respawn, { type: "npc", name: "Blacksmith", ...at(0, 0) }]),
+      mapWith({}, [respawn, { type: "npc", name: "odo", ...at(0, 0) }]),
       "share",
     ],
   ])("refuses %s", (_, map, message) => {

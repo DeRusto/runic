@@ -71,7 +71,8 @@ export class WorldRoom extends Room {
       this.sim.queueGather(client.sessionId, "mining", vein),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
-    [VISIT_INTENT]: (client: Client) => this.sim.queueVisit(client.sessionId),
+    [VISIT_INTENT]: (client: Client, villager: string) =>
+      this.sim.queueVisit(client.sessionId, villager),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),

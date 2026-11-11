@@ -96,6 +96,37 @@ export const VILLAGERS = {
       bye: { lines: [you("Bye."), villager("Mind how you go.")] },
     },
   },
+  // Their jobs arrive as choices with the store (#202) and the bank (#203).
+  marta: {
+    name: "Marta",
+    role: "storekeeper",
+    start: "greet",
+    nodes: {
+      greet: {
+        lines: [
+          villager("Marta. I keep the store, for my sins."),
+          villager("If it's not nailed down, I'll buy it off you."),
+        ],
+        choices: [{ text: "Bye.", to: "bye" }],
+      },
+      bye: { lines: [you("Bye."), villager("Don't track mud in next time.")] },
+    },
+  },
+  aldous: {
+    name: "Aldous",
+    role: "banker",
+    start: "greet",
+    nodes: {
+      greet: {
+        lines: [
+          villager("Aldous, banker. Whatever you leave with me stays put."),
+          villager("Spiders don't rob banks. Not yet, anyway."),
+        ],
+        choices: [{ text: "Bye.", to: "bye" }],
+      },
+      bye: { lines: [you("Bye."), villager("Safe roads.")] },
+    },
+  },
 } satisfies Record<string, Villager>;
 
 export type VillagerId = keyof typeof VILLAGERS;

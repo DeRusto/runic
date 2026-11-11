@@ -194,8 +194,10 @@ test("a sword equipped over the network is synced, and worn again after logging 
 
 test("the Blacksmith's tools, asked for in conversation, reach the client with a told line, and survive logging out", async () => {
   const tiles = loadWorldRegion();
-  const y = tiles.findIndex((row) => row.some((tile) => tile.blacksmith));
-  const x = tiles[y]!.findIndex((tile) => tile.blacksmith);
+  const y = tiles.findIndex((row) =>
+    row.some((tile) => tile.villager === "odo"),
+  );
+  const x = tiles[y]!.findIndex((tile) => tile.villager === "odo");
   const client = await clientFor("Toolman");
   const room = await joined(client);
   const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
@@ -210,7 +212,7 @@ test("the Blacksmith's tools, asked for in conversation, reach the client with a
   const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
   const BOTH = ["pickaxe", "hammer"];
 
-  room.send(VISIT_INTENT);
+  room.send(VISIT_INTENT, "odo");
   await vi.waitFor(() => expect(talking).toBe(true), {
     timeout: TICK_MS * 4,
     interval: 20,
