@@ -140,16 +140,20 @@ export const VILLAGERS = {
 
 export type VillagerId = keyof typeof VILLAGERS;
 
+/** A villager's conversation nodes, looked up by any node name. */
+export const nodesOf = (villager: VillagerId): Villager["nodes"] =>
+  VILLAGERS[villager].nodes;
+
 /** The node whose choices a conversation offers once `node`'s lines are said, or undefined when it ends there. */
 export function choicesNodeOf(villager: VillagerId, node: string) {
-  const { nodes } = VILLAGERS[villager] as Villager;
+  const nodes = nodesOf(villager);
   if (nodes[node]?.choices) return node;
   return nodes[node]?.then;
 }
 
 /** Whether some choice in `villager`'s conversation runs `action`, so a shortcut to it may skip the talk. */
 export function offers(villager: VillagerId, action: unknown) {
-  const { nodes } = VILLAGERS[villager] as Villager;
+  const nodes = nodesOf(villager);
   return Object.values(nodes).some(({ choices }) =>
     choices?.some((choice) => choice.action === action),
   );

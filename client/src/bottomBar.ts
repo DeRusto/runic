@@ -53,18 +53,15 @@ export function printChatLine(...parts: (string | Node)[]) {
   chatLines.scrollTop = chatLines.scrollHeight;
 }
 
-/** What a slot's clicks do while the store window is open: put its item on the counter (#198). */
-type Counter = {
-  click: (item: string) => void;
-  menu: (item: string) => ReturnType<typeof amountChoices>;
+/** What an inventory slot's clicks do while a window takes them over: the store window sells (#198), and the bank deposits (#197). */
+type SlotTakeover = {
+  click: (slot: number, item: string) => void;
+  menu: (slot: number, item: string) => ReturnType<typeof amountChoices>;
 };
-let counter: Counter | undefined;
+let takeover: SlotTakeover | undefined;
 
-/** Hands the slots' clicks to the store's counter while it is open, and back with undefined. */
-export const useSlotsForCounter = (to: Counter | undefined) => (counter = to);
-/** While the bank is open, an inventory slot deposits instead (#197). */
-let deposit: ((slot: number, amount: number) => void) | undefined;
-export const depositOnClick = (send: typeof deposit) => (deposit = send);
+/** Hands the inventory slots' clicks to an open store window or bank, and back with undefined. */
+export const takeOverSlots = (to: SlotTakeover | undefined) => (takeover = to);
 
 let holdingResult = false;
 let showHeld = () => {};
@@ -120,8 +117,7 @@ export function showBottomBar(
     const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
-      if (counter) return item && counter.click(item);
-      if (deposit) return item && deposit(i, count());
+      if (takeover) return item && takeover.click(i, item);
       if (FOOD_HEALS.has(item)) eat();
       if (gearOf(item)) equip();
     };
@@ -129,12 +125,7 @@ export function showBottomBar(
       event.preventDefault();
       const item = slot.dataset.item;
       if (!item) return;
-      if (counter) return openMenu(event, counter.menu(item));
-      if (deposit)
-        return openMenu(
-          event,
-          amountChoices("Deposit", count(), (amount) => deposit?.(i, amount)),
-        );
+      if (takeover) return openMenu(event, takeover.menu(i, item));
       openMenu(event, [
         ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),

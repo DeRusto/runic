@@ -77,7 +77,7 @@ import {
   type Deal,
   offers,
   type DialogueAction,
-  type Villager,
+  nodesOf,
   type VillagerId,
   xpOf,
   type GatheringLeftField,
@@ -660,8 +660,7 @@ export class Simulation {
   choose(id: string, choice: number) {
     const talk = this.windowOf(id, "talk");
     if (!talk || !Number.isInteger(choice)) return;
-    const { nodes } = VILLAGERS[talk.villager] as Villager;
-    const picked = nodes[talk.node!]!.choices![choice];
+    const picked = nodesOf(talk.villager)[talk.node!]!.choices![choice];
     if (!picked || !this.beside(id, talk.villager)) return;
     this.moveTalk(id, talk.villager, picked.to);
     if (picked.action) this.dialogueActions[picked.action](id, talk.villager);
@@ -785,16 +784,10 @@ export class Simulation {
       this.events.push({ type: "told", player: id, line: refusal });
       return;
     }
-    const { stack } = ITEMS[itemParts(item).base];
-    let left = Math.min(amount, player.bankCounts[slot]!);
-    for (let to = slotFor(item, player); left && to >= 0;) {
-      const moved = Math.min(left, stack - player.inventoryCounts[to]!);
-      player.inventory[to] = item;
-      player.inventoryCounts[to]! += moved;
-      player.bankCounts[slot]! -= moved;
-      left -= moved;
-      to = slotFor(item, player);
-    }
+    const { inventory, inventoryCounts } = player;
+    const count = Math.min(amount, player.bankCounts[slot]!);
+    player.bankCounts[slot]! -=
+      count - addItems(inventory, inventoryCounts, item, count);
     if (!player.bankCounts[slot]) player.bank[slot] = EMPTY_SLOT;
   }
 
@@ -871,7 +864,7 @@ export class Simulation {
   queueDrop(id: string, slot: number, amount: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
-    if (!Number.isInteger(amount) || amount < 1) return;
+    if (!isAmount(amount)) return;
     this.queuedDrops.set(id, { slot, amount });
   }
 

@@ -6,7 +6,7 @@ import {
   choicesNodeOf,
   type DialogueChoice,
   type DialogueLine,
-  type Villager,
+  nodesOf,
   type VillagerId,
   type WorldEvent,
 } from "@runic/shared";
@@ -22,7 +22,7 @@ export function shownAt(
   node: string,
   line: number,
 ): { line: DialogueLine } | { choices: DialogueChoice[] } | undefined {
-  const { nodes } = VILLAGERS[villager] as Villager;
+  const nodes = nodesOf(villager);
   const said = nodes[node]!.lines[line];
   if (said) return { line: said };
   const choicesAt = choicesNodeOf(villager, node);

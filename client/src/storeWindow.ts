@@ -13,7 +13,7 @@ import {
   type Deal,
   type WorldEvent,
 } from "@runic/shared";
-import { useSlotsForCounter } from "./bottomBar.ts";
+import { takeOverSlots } from "./bottomBar.ts";
 import type { OpenMenu } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
@@ -190,7 +190,7 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     if (panel.hidden) return;
     panel.hidden = true;
     placed.closed();
-    useSlotsForCounter(undefined);
+    takeOverSlots(undefined);
     buying.clear();
     selling.clear();
   };
@@ -204,9 +204,10 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
 
   const open = () => {
     note = "";
-    useSlotsForCounter({
-      click: (item) => sell(item, 1),
-      menu: (item) => amountChoices("Sell", heldOf(item), (n) => sell(item, n)),
+    takeOverSlots({
+      click: (_, item) => sell(item, 1),
+      menu: (_, item) =>
+        amountChoices("Sell", heldOf(item), (n) => sell(item, n)),
     });
     drawTrays();
     if (!panel.hidden) return;
