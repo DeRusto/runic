@@ -2,6 +2,7 @@ import {
   BANK_MOVE_INTENT,
   BANK_SLOTS,
   CLOSE_BANK_INTENT,
+  COINS,
   DEPOSIT_INTENT,
   DEPOSIT_INVENTORY_INTENT,
   EMPTY_SLOT,
@@ -9,7 +10,7 @@ import {
   WITHDRAW_INTENT,
   type WorldEvent,
 } from "@runic/shared";
-import { takeOverSlots } from "./bottomBar.ts";
+import { shortCount, takeOverSlots } from "./bottomBar.ts";
 import type { OpenMenu, SyncedPlayer } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
@@ -60,7 +61,11 @@ export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {
     };
     addTip(slot, () => {
       const item = me?.bank[i];
-      return item && me ? itemTipParts(itemTip(item, me)) : "";
+      if (!item || !me) return "";
+      const tip = itemTip(item, me);
+      // The slot shows a short form, so the tip gives the exact count (village spec §3).
+      if (item === COINS) tip.kind = `${count().toLocaleString("en")} coins`;
+      return itemTipParts(tip);
     });
     return slot;
   });
@@ -78,7 +83,12 @@ export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {
       slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
       slot.ariaDisabled = String(!item);
       slot.draggable = !!item;
-      slot.dataset.count = count > 1 ? count.toLocaleString("en") : "";
+      slot.dataset.count =
+        item === COINS
+          ? shortCount(count)
+          : count > 1
+            ? count.toLocaleString("en")
+            : "";
     });
     used.textContent = `${filled} / ${BANK_SLOTS}`;
   };

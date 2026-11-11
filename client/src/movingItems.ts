@@ -54,7 +54,11 @@ export function dragToReorder(
       picked = to;
       slot.dataset.moving = "true";
     };
-    slot.ondragstart = () => (from = to);
+    slot.ondragstart = (event) => {
+      from = to;
+      // Some browsers cancel a drag that carries no data before its drop fires.
+      event.dataTransfer?.setData("text/plain", String(to));
+    };
     slot.ondragend = () => (from = -1);
     slot.ondragover = (event) => event.preventDefault();
     slot.ondrop = (event) => {

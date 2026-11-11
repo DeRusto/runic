@@ -50,3 +50,14 @@ test("Escape lets go of a picked-up slot without closing the window", () => {
   expect(press(0, "Escape")).toBe(true);
   expect(press(0, "Escape")).toBe(false);
 });
+
+test("a drag carries a payload, so the browser doesn't cancel it before the drop", () => {
+  const setData = vi.fn();
+  const slot = slots[0] as unknown as HTMLElement;
+  slot.ondragstart!({ dataTransfer: { setData } } as unknown as DragEvent);
+  expect(setData).toHaveBeenCalledWith("text/plain", "0");
+  (slots[1] as unknown as HTMLElement).ondrop!({
+    preventDefault: () => {},
+  } as unknown as DragEvent);
+  expect(move).toHaveBeenCalledWith(0, 1);
+});

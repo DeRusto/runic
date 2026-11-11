@@ -253,7 +253,7 @@ describe("a filled slot", () => {
     room.onStateChange.invoke(stateHolding());
     nextFrame();
     expect(slot().style.getPropertyValue("--icon")).toBe("");
-    expect(slot().ariaLabel).toBe(null);
+    expect(slot().ariaLabel).toBe("Empty slot");
     expect(pointAt()).toBe(undefined);
   });
 
@@ -535,7 +535,7 @@ describe("dragging", () => {
   });
 
   const drag = (from: number, to: number) => {
-    slot(from).ondragstart!();
+    slot(from).ondragstart!({});
     slot(to).ondragover!({ preventDefault() {} });
     slot(to).ondrop!({ preventDefault() {} });
     slot(from).ondragend!();

@@ -236,7 +236,7 @@ export function showBottomBar(
           ? `${itemName(item)}. ${refusal}`
           : item
             ? itemName(item)
-            : null;
+            : "Empty slot";
         // A custom property, so the CSS can lay the icon over the slot's face.
         slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
         // Not disabled: a disabled slot can't catch a drag, and an empty one must.
