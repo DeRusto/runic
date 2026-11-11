@@ -111,3 +111,22 @@ export function addPanel(
     },
   };
 }
+
+/**
+ * Registers a panel that a bar button opens and shuts (spec §6), keeping the panel shown,
+ * the button's `aria-pressed` and the front order together. Returns how to open or shut it.
+ */
+export function addButtonPanel(
+  element: HTMLElement,
+  button: HTMLElement,
+  side?: "left" | "right",
+) {
+  const setOpen = (open: boolean) => {
+    element.hidden = !open;
+    button.setAttribute("aria-pressed", String(open));
+    if (open) placed.opened();
+    else placed.closed();
+  };
+  const placed = addPanel(element, () => setOpen(false), side);
+  return setOpen;
+}

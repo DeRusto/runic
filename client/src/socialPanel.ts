@@ -6,7 +6,7 @@ import {
   LIST_IGNORES_INTENT,
   type Friend,
 } from "@runic/shared";
-import { addPanel, panelKey } from "./panels.ts";
+import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 
 /** The floating window of friends and ignored players, opened from the bar or with O. */
@@ -14,13 +14,7 @@ export function showSocialPanel(room: WorldConnection) {
   const panel = document.getElementById("social")!;
   const button = document.getElementById("social-button")!;
   const list = document.getElementById("friends")!;
-  const setOpen = (open: boolean) => {
-    panel.hidden = !open;
-    button.setAttribute("aria-pressed", String(open));
-    if (open) placed.opened();
-    else placed.closed();
-  };
-  const placed = addPanel(panel, () => setOpen(false));
+  const setOpen = addButtonPanel(panel, button);
   const toggle = () => setOpen(!!panel.hidden);
   setOpen(false);
   button.onclick = toggle;

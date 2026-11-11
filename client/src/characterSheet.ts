@@ -13,7 +13,7 @@ import {
   virtueDoes,
 } from "@runic/shared";
 import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
-import { addPanel, panelKey } from "./panels.ts";
+import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { addTip } from "./tooltip.ts";
@@ -40,13 +40,7 @@ const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1
 export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const sheet = document.getElementById("sheet")!;
   const button = document.getElementById("character")!;
-  const setOpen = (open: boolean) => {
-    sheet.hidden = !open;
-    button.setAttribute("aria-pressed", String(open));
-    if (open) placed.opened();
-    else placed.closed();
-  };
-  const placed = addPanel(sheet, () => setOpen(false), "right");
+  const setOpen = addButtonPanel(sheet, button, "right");
   const toggle = () => setOpen(!!sheet.hidden);
   setOpen(false);
   button.onclick = toggle;
