@@ -1,4 +1,4 @@
-import { parseRegion, type WorldEvent } from "@runic/shared";
+import { parseRegion, VILLAGERS, type WorldEvent } from "@runic/shared";
 import { beforeEach, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
@@ -21,7 +21,9 @@ const ticks = (n: number) => {
 };
 const arrive = () => ticks(20);
 /** Its index among the Blacksmith's first choices. */
-const ASK_FOR_TOOLS = 2;
+const ASK_FOR_TOOLS = VILLAGERS.odo.nodes.greet.choices.findIndex(
+  (choice) => "action" in choice && choice.action === "giveTools",
+);
 /** Walks over to the Blacksmith and asks for tools. */
 const askForTools = (id = "a") => {
   sim.queueVisit(id, "odo");
@@ -159,8 +161,13 @@ test("tools are kept through dying", () => {
 test("dropping every slot leaves tools alone", () => {
   askForTools();
   for (let slot = 0; slot < 30; slot++) {
+    me().inventory[slot] = "berry";
+    me().inventoryCounts[slot] = 20;
+  }
+  for (let slot = 0; slot < 30; slot++) {
     sim.queueDrop("a", slot, 20);
     ticks(1);
   }
+  expect([...me().inventory].every((item) => item === "")).toBe(true);
   expect(tools()).toEqual(BOTH);
 });

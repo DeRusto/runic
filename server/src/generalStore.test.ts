@@ -138,7 +138,7 @@ describe("opening the store", () => {
     sim.addPlayer("a");
     openStore();
     sim.queueTarget("a", "0");
-    while (me().health === me().maxHealth) ticks(1);
+    for (let i = 0; i < 50 && me().health === me().maxHealth; i++) ticks(1);
     expect(events).toEqual([
       {
         type: "told",
