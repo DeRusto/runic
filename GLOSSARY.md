@@ -51,11 +51,11 @@ A furnace or an anvil: a fixed spot where a player makes something. It never run
 _Avoid_: Workstation, crafting table
 
 **Villager**:
-A named person who stands on one tile and talks to players: most in the village, some at their work outside it, such as the Forester at the edge of the forest. Each has one job they offer while talking. Never an enemy, and can't be attacked.
+A named person who stands on one tile and talks to players: most in the village, some at their work outside it, such as the Forester at the edge of the thicket. Each has one job they offer while talking. Never an enemy, and can't be attacked.
 _Avoid_: NPC, townsfolk, character
 
 **Blacksmith**:
-Odo, the villager at the smithy, who gives players a pickaxe and a hammer if they don't have one, for free, when they ask in conversation.
+Odo, the villager at the smithy, who gives players whichever of a pickaxe and a hammer they don't have, for free, when they ask in conversation.
 _Avoid_: Smith, vendor
 
 **Conversation**:
@@ -63,8 +63,8 @@ A talk with a villager in the dialogue box above the bar: the villager's lines a
 _Avoid_: Chat (that is the chat box), dialog
 
 **Forester**:
-The villager at the edge of the forest, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
-_Avoid_: Woodcutter (that is the skill), woodsman
+The villager at the edge of the thicket, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
+_Avoid_: Woodcutter (too close to Woodcutting, the skill), woodsman
 
 **Fisher**:
 The villager by the water who gives players a fishing rod if they don't have one, for free, when they ask in conversation.
