@@ -23,10 +23,19 @@ const element = () => ({
   focus() {},
   children: [] as any[],
   dataset: {} as Record<string, string>,
-  style: {} as Record<string, string>,
+  // The methods sit on the prototype, so a style still equals a plain object of its properties.
+  style: Object.create({
+    setProperty(this: Record<string, string>, name: string, value: string) {
+      this[name] = value;
+    },
+    getPropertyValue(this: Record<string, string>, name: string) {
+      return this[name] ?? "";
+    },
+  }),
   hidden: false,
   textContent: "",
   offsetWidth: 100,
+  offsetHeight: 20,
   onclick: undefined as undefined | (() => void),
   oncontextmenu: undefined as undefined | ((event: unknown) => void),
   get firstElementChild() {
@@ -42,7 +51,7 @@ const fakeDocument = {
   getElementById: (id: string) =>
     id === "chat-lines"
       ? chatLines
-      : id === "slot-tip"
+      : id === "tooltip"
         ? tip
         : id === "slots"
           ? slotsBox
@@ -227,7 +236,9 @@ describe("a filled slot", () => {
   test("shows its item's icon, with its name as a tooltip and label and no text", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 2]));
     nextFrame();
-    expect(slot().style.backgroundImage).toBe('url("/icons/copperOre.png")');
+    expect(slot().style.getPropertyValue("--icon")).toBe(
+      'url("/icons/copperOre.png")',
+    );
     expect(slot().ariaLabel).toBe("Copper ore");
     expect(pointAt()).toBe("Copper ore");
     expect(slot().textContent).toBe("");
@@ -238,7 +249,7 @@ describe("a filled slot", () => {
     nextFrame();
     room.onStateChange.invoke(stateHolding());
     nextFrame();
-    expect(slot().style.backgroundImage).toBe("");
+    expect(slot().style.getPropertyValue("--icon")).toBe("");
     expect(slot().ariaLabel).toBe(null);
     expect(pointAt()).toBe(undefined);
   });
@@ -247,16 +258,16 @@ describe("a filled slot", () => {
     room.onStateChange.invoke(stateHolding(["copperSword:rare:might", 1]));
     nextFrame();
     expect(pointAt()).toBe("[rare]Copper sword of Might");
-    expect(tip.style).toEqual({ left: "62px", bottom: "112px" });
+    expect(tip.style).toEqual({ left: "62px", top: "568px" });
     slot().onpointerleave!();
     expect(tip.hidden).toBe(true);
   });
 
-  test("the tooltip stays inside the window at its right edge", () => {
+  test("the tooltip flips to the left of the cursor at the window's right edge", () => {
     room.onStateChange.invoke(stateHolding(["copperOre", 1]));
     nextFrame();
     slot().onpointermove!({ clientX: 990, clientY: 600 });
-    expect(tip.style.left).toBe("900px");
+    expect(tip.style.left).toBe("878px");
   });
 
   test("a click hides the tooltip, so it never names what the slot held before", () => {
@@ -284,6 +295,16 @@ describe("the skills column", () => {
     room.onStateChange.invoke(statePinning("Smithing", "Blocking", "Combat"));
     nextFrame();
     expect(shown()).toEqual(["Combat 1", "Smithing 1", "Blocking 1"]);
+  });
+
+  test("a skill's bar shows its total experience in the tooltip (spec §5)", () => {
+    const state = statePinning("Combat");
+    state.players.get("me")!.combatXp = 12345;
+    room.onStateChange.invoke(state);
+    nextFrame();
+    const bar = skillsBox.children[0].children.at(-1);
+    bar.onpointermove({ clientX: 50, clientY: 600 });
+    expect(tip.children).toEqual(["12,345 XP"]);
   });
 
   test("asks for pins when there are none", () => {

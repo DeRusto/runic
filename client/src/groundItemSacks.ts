@@ -5,6 +5,7 @@ import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { colouredNames, iconUrl } from "./itemIcons.ts";
 import type { WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
+import { hideTip, showTip } from "./tooltip.ts";
 
 const HOVER_SCALE = 1.15;
 const SACK_HIT_HEIGHT = 0.4;
@@ -77,7 +78,6 @@ function sackFor(items: SeenGroundItem[], mine: boolean) {
  */
 export function showGroundItems(room: WorldConnection) {
   const callbacks = Callbacks.get(room);
-  const label = document.getElementById("ground-label")!;
   const tiles = new Map<
     string,
     {
@@ -153,24 +153,31 @@ export function showGroundItems(room: WorldConnection) {
     hovered?.scale.setScalar(1);
     hovered = tile?.sack;
     hovered?.scale.setScalar(HOVER_SCALE);
-    label.hidden = !tile;
-    if (!tile) return;
-    label.replaceChildren(
-      ...colouredNames(
+    if (!tile) return hideTip();
+    showTip(
+      colouredNames(
         groundItemsLabel(tile.items, me()),
         tile.items.map(({ item }) => item),
       ),
+      event,
     );
-    label.style.left = `${event.clientX}px`;
-    label.style.top = `${event.clientY - 14}px`;
+  };
+  // Off the canvas the pointer is on the UI, whose own tips share the one tooltip.
+  const onPointerLeave = () => {
+    lastPointer = undefined;
+    hideTip();
   };
   renderer.domElement.addEventListener("pointermove", onPointerMove);
+  renderer.domElement.addEventListener("pointerleave", onPointerLeave);
+  renderer.domElement.addEventListener("pointerdown", hideTip);
 
   room.onLeave(() => {
     renderer.domElement.removeEventListener("pointermove", onPointerMove);
+    renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
+    renderer.domElement.removeEventListener("pointerdown", hideTip);
     for (const { sack, hitBox } of tiles.values()) scene.remove(sack, hitBox);
     tiles.clear();
-    label.hidden = true;
+    hideTip();
   });
 
   return (raycaster: THREE.Raycaster) => {

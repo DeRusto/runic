@@ -138,18 +138,10 @@ const HELP = [
   "/unignore <name>: Take an account off your ignore list.",
   "/who: List every online player.",
 ];
-// `/r` lands in its own ticket; its line must appear once the command does.
-const NOT_YET_BUILT = ["/r "];
 
 test("/help tells only the sender every command, in order, ignoring what follows", async () => {
   await say("/HELP me please");
-  expect(sender.lines).toEqual(
-    HELP.filter(
-      (line) =>
-        sender.lines.includes(line) ||
-        !NOT_YET_BUILT.some((start) => line.startsWith(start)),
-    ),
-  );
+  expect(sender.lines).toEqual(HELP);
   expect([...target.lines, ...bystander.lines]).toEqual([]);
 });
 

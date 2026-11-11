@@ -9,6 +9,7 @@ import {
   followRefusal,
   listRefusal,
   pmRefusal,
+  replyRefusal,
   unfollowRefusal,
   type Friend,
   type SocialList,
@@ -69,6 +70,9 @@ export const isIgnoring = (accountId: number, otherId: number) =>
 
 /** The ids of the accounts that ignore this one. */
 export const ignoredBy = (accountId: number) => listedBy("ignore", accountId);
+
+/** Per login, the name of whoever's private message last reached that player. Never saved. */
+const replyTo = new WeakMap<Client, string>();
 
 const onlineNamed = (world: World, name: string) =>
   world
@@ -159,6 +163,16 @@ const COMMANDS: Record<string, Command> = {
       world.say(client, text, true);
     },
   },
+  r: {
+    usage: "/r <message>",
+    description: "Reply to the last player who sent you a private message.",
+    run: (world, client, message) => {
+      const name = replyTo.get(client);
+      const refusal = replyRefusal(name, message);
+      if (refusal) return tell(client, refusal);
+      COMMANDS.pm!.run(world, client, `${name} ${message}`);
+    },
+  },
   pm: {
     usage: "/pm <name> <message>",
     description: "Send a private message to an online player.",
@@ -178,8 +192,10 @@ const COMMANDS: Record<string, Command> = {
       // The same limit as public chat, on the message alone.
       if (message.length > MAX_CHAT_LENGTH) return;
       // Silent: the sender still sees their own copy and no error (Phase 4 map).
-      if (!isIgnoring(to.auth.id, client.auth.id))
+      if (!isIgnoring(to.auth.id, client.auth.id)) {
         tell(to, `From ${client.auth.username}: ${message}`);
+        replyTo.set(to, client.auth.username);
+      }
       tell(client, `To ${to.auth.username}: ${message}`);
     },
   },

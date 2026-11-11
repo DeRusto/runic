@@ -84,6 +84,11 @@ const rows = () =>
     .map(({ children: [name, pin, bar] }) => ({ name, pin, bar }));
 const row = (skill: string) =>
   rows().find(({ pin }) => pin.attributes["aria-label"].includes(skill))!;
+/** Points at an element, and reads the plain line its tooltip shows. */
+const tipOf = (target: any) => {
+  target.onpointermove({ clientX: 0, clientY: 0 });
+  return el("tooltip").children.join("");
+};
 
 beforeEach(() => {
   byId = new Map();
@@ -114,7 +119,7 @@ describe("the Gear tab", () => {
   /** Points at a slot, and reads the tooltip it shows, or undefined when hidden. */
   const pointAt = (gearSlot = "weapon") => {
     box(gearSlot).onpointermove({ clientX: 0, clientY: 0 });
-    return el("slot-tip").hidden ? undefined : shown(el("slot-tip").children);
+    return el("tooltip").hidden ? undefined : shown(el("tooltip").children);
   };
 
   test("lays out all ten slots as a body", () => {
@@ -136,7 +141,7 @@ describe("the Gear tab", () => {
     expect(openMenu).not.toHaveBeenCalled();
     box("ring").onmouseenter();
     expect(details()).toBe("Ring: Empty");
-    expect(pointAt("ring")).toBe(undefined);
+    expect(pointAt("ring")).toBe("Ring");
   });
 
   test("a worn sword shows its icon, and pointing at it gives its name and what it does", () => {
@@ -294,17 +299,17 @@ describe("the Toolbelt", () => {
   const drawn = (tools: string[]) =>
     sheet.drawTools(me([], { tools } as unknown as Partial<SyncedPlayer>));
 
-  test("is an icon per tool, each with its name as a tooltip", () => {
+  test("is an icon per tool, each with its name as its tooltip and alt text", () => {
     drawn(["pickaxe", "hammer"]);
     expect(
-      el("toolbelt").children.map(({ src, title, alt }) => ({
-        src,
-        title,
-        alt,
+      el("toolbelt").children.map((icon) => ({
+        src: icon.src,
+        tip: tipOf(icon),
+        alt: icon.alt,
       })),
     ).toEqual([
-      { src: "/icons/pickaxe.png", title: "Pickaxe", alt: "Pickaxe" },
-      { src: "/icons/hammer.png", title: "Hammer", alt: "Hammer" },
+      { src: "/icons/pickaxe.png", tip: "Pickaxe", alt: "Pickaxe" },
+      { src: "/icons/hammer.png", tip: "Hammer", alt: "Hammer" },
     ]);
   });
 
@@ -345,7 +350,9 @@ describe("the Skills tab", () => {
     ]);
     // Level 2 runs from 50 to 200 experience.
     expect(row("Mining").bar.value).toBeCloseTo(25 / 150);
-    expect(row("Mining").bar.title).toBe("75 XP");
+    expect(tipOf(row("Mining").bar)).toBe("75 XP");
+    sheet.drawSkills(me(TODAY, { miningXp: 12345 }));
+    expect(tipOf(row("Mining").bar)).toBe("12,345 XP");
   });
 
   test("shows the combat and total levels, and updates them as experience lands", () => {
@@ -362,11 +369,14 @@ describe("the Skills tab", () => {
     expect(row("Combat").pin.disabled).toBe(false);
     expect(row("Combat").pin.attributes["aria-pressed"]).toBe("true");
     expect(row("Blocking").pin.attributes["aria-pressed"]).toBe("false");
+    expect(tipOf(row("Blocking").pin)).toBe("The bar holds 6: unpin one first");
+    expect(tipOf(row("Combat").pin)).toBe("Unpin from the bar");
   });
 
   test("under six pins every pin works", () => {
     sheet.drawPins(me(TODAY.slice(1)));
     expect(rows().every(({ pin }) => !pin.disabled)).toBe(true);
+    expect(tipOf(row("Combat").pin)).toBe("Pin to the bar");
   });
 
   test("a pin sends what it would become", () => {
