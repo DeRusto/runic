@@ -192,7 +192,7 @@
         grid-auto-rows: 36px;
         gap: 2px;
       }
-      :is(#slots, #bank-slots) > button {
+      :is(#slots, #bank-slots, #store-shelf) > button {
         position: relative;
         overflow: hidden;
         padding: 0;
@@ -208,12 +208,12 @@
         color: inherit;
         font-size: 10px;
       }
-      :is(#slots, #bank-slots) > button:hover {
+      :is(#slots, #bank-slots, #store-shelf) > button:hover {
         box-shadow:
           0 0 0 1px #000,
           inset 0 0 0 1px #b08a5a;
       }
-      :is(#slots, #bank-slots) > button::after {
+      :is(#slots, #bank-slots, #store-shelf) > button::after {
         content: attr(data-count);
         position: absolute;
         right: 2px;
@@ -922,37 +922,9 @@
         gap: 2px;
         justify-content: center;
       }
-      #store-shelf button {
-        position: relative;
-        padding: 0;
-        border: 0;
-        border-radius: 3px;
-        background:
-          var(--icon, none) center / 26px no-repeat,
-          linear-gradient(#1d1610, #120d09);
-        box-shadow:
-          0 0 0 1px #000,
-          inset 0 0 0 1px #8a6a44;
-        color: inherit;
-        font-size: 10px;
-      }
-      #store-shelf button:hover {
-        box-shadow:
-          0 0 0 1px #000,
-          inset 0 0 0 1px #b08a5a;
-      }
-      #store-shelf button::after {
-        content: attr(data-count);
-        position: absolute;
-        right: 2px;
-        bottom: 1px;
-        color: #fff;
-        font-weight: 700;
-        text-shadow:
-          -1px 0 #000,
-          1px 0 #000,
-          0 -1px #000,
-          0 1px #000;
+      /* The shelf's slots share the inventory's face, with smaller icons. */
+      #store-shelf > button {
+        background-size: 26px, auto;
       }
       #store-shelf button[data-empty="true"] {
         filter: grayscale(1);
