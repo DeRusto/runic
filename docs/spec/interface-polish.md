@@ -154,7 +154,7 @@ A **panel** is a window that opens over the world: the character sheet, the smit
 - A panel reopens where it was last left during this login. Positions aren't saved across logins.
 - The first time in a login, the character sheet opens on the right and the other panels open on the left. Each is offset a little from the one before, so they cascade rather than stack exactly.
 - Escape closes the front panel only. C and O still toggle their own panel. Hotkeys and Escape don't fire while the chat box has focus.
-- A click or press outside a panel never closes it. The smithing panel and the pile window close only by Escape while in front, by their close button, by death, or by the player walking out of reach: more than one tile from the station, or off the pile's tile. A click in the world still does what it normally does.
+- A click or press outside a panel never closes it. The smithing panel and the pile window close by Escape while in front, by their close button, or by the player walking out of reach: more than one tile from the station, or off the pile's tile. Death closes them too, and so does the pile emptying. A click in the world still does what it normally does, so a click on another station or pile moves the panel or window over to it.
 
 ### Look
 
