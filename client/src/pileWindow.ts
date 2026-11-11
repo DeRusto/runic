@@ -1,7 +1,7 @@
 import { TAKE_INTENT, WALK_INTENT, type Tile } from "@runic/shared";
 import { groundItemLine } from "./groundItems.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
-import { addPanel, onOpenPanel } from "./panels.ts";
+import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
@@ -80,11 +80,10 @@ export function showPileWindow(room: WorldConnection) {
     else if (open) draw(open);
   });
 
-  // A press elsewhere on the way changes the player's mind, so the window doesn't open on arrival.
+  // A press on the way changes the player's mind, so the window doesn't open on arrival.
   // An open window stays through presses; walking off the tile closes it (spec §6).
-  const onPress = (event: PointerEvent) => {
-    if (!onOpenPanel(event.target as Node)) walkingTo = undefined;
-  };
+  // Any press counts, even on another panel: this window is shut on the way, so none lands on it.
+  const onPress = () => (walkingTo = undefined);
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();

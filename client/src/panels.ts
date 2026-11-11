@@ -43,10 +43,6 @@ const moveTo = (element: HTMLElement, left: number, top: number) => {
   leftAt.set(element, at);
 };
 
-/** Whether a press landed on an open panel, which shouldn't close the others (spec §6). */
-export const onOpenPanel = (target: Node) =>
-  open.some(({ element }) => element.contains(target));
-
 /** Listens once, for the whole page, for what every panel shares: Escape and the window's size. */
 export function watchPanels() {
   document.addEventListener("keydown", (event) => {

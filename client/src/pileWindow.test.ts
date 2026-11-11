@@ -1,5 +1,6 @@
 import { TAKE_INTENT, WALK_INTENT } from "@runic/shared";
 import { beforeEach, expect, test, vi } from "vitest";
+import { addPanel } from "./panels.ts";
 import { showPileWindow } from "./pileWindow.ts";
 import type { WorldConnection } from "./players.ts";
 
@@ -186,6 +187,18 @@ test("a press elsewhere on the way cancels it, so it never opens on arrival", ()
   patch(6, { o: ore, s: sword });
   open({ x: 3, y: 1 });
   listeners.get("pointerdown")!({ target: element() });
+  patch(3, { o: ore, s: sword });
+  expect(pile().hidden).toBe(true);
+});
+
+test("a press on another open panel on the way cancels it too", () => {
+  const other = element() as unknown as HTMLElement;
+  const placed = addPanel(other, () => {});
+  placed.opened();
+  patch(6, { o: ore, s: sword });
+  open({ x: 3, y: 1 });
+  listeners.get("pointerdown")!({ target: other });
+  placed.closed();
   patch(3, { o: ore, s: sword });
   expect(pile().hidden).toBe(true);
 });

@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
-import { addPanel, onOpenPanel, watchPanels } from "./panels.ts";
+import { addPanel, watchPanels } from "./panels.ts";
 
 class FakeInput {}
 vi.stubGlobal("HTMLInputElement", FakeInput);
@@ -136,10 +136,14 @@ test("a shrinking window pulls open panels back on screen", () => {
   drag(a.element, corner(a.element), [5000, 0]);
   vi.stubGlobal("innerWidth", 800);
   vi.stubGlobal("innerHeight", 500);
-  resize();
-  expect(at(a.element)).toEqual(["500px", "0px"]);
-  vi.stubGlobal("innerWidth", 1000);
-  vi.stubGlobal("innerHeight", 700);
+  // Not unstubAllGlobals, which would also drop the stubbed document; a failure here mustn't shrink later tests.
+  try {
+    resize();
+    expect(at(a.element)).toEqual(["500px", "0px"]);
+  } finally {
+    vi.stubGlobal("innerWidth", 1000);
+    vi.stubGlobal("innerHeight", 700);
+  }
 });
 
 test("a panel reopens where it was last left", () => {
@@ -149,16 +153,6 @@ test("a panel reopens where it was last left", () => {
   open(fakePanel());
   a.handle.opened();
   expect(at(a.element)).toEqual(["0px", "0px"]);
-});
-
-test("a press counts as on a panel only while that panel is open", () => {
-  const a = open();
-  const inside = {};
-  Object.assign(a.element, { contains: (other: unknown) => other === inside });
-  expect(onOpenPanel(inside as Node)).toBe(true);
-  expect(onOpenPanel({} as Node)).toBe(false);
-  a.close();
-  expect(onOpenPanel(inside as Node)).toBe(false);
 });
 
 test("Escape in the chat box closes nothing", () => {

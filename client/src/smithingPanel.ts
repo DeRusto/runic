@@ -12,7 +12,7 @@ import {
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
-import { addPanel, onOpenPanel } from "./panels.ts";
+import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
 import { itemTipParts, recipeTip, type ItemTip } from "./itemTip.ts";
@@ -144,10 +144,9 @@ export function showSmithingPanel(room: WorldConnection) {
     else if (at) draw(me);
   });
 
-  // A press elsewhere on the way changes the player's mind, so the panel doesn't open on arrival.
-  const onPress = (event: PointerEvent) => {
-    if (!onOpenPanel(event.target as Node)) walkingTo = undefined;
-  };
+  // A press on the way changes the player's mind, so the panel doesn't open on arrival.
+  // Any press counts, even on another panel: this panel is shut on the way, so none lands on it.
+  const onPress = () => (walkingTo = undefined);
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();

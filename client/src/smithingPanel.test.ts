@@ -1,6 +1,7 @@
 import { MAKE_INTENT, WALK_INTENT, xpForLevel } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { SyncedPlayer } from "./characterSheet.ts";
+import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 
@@ -375,6 +376,17 @@ describe("clicking a station from afar", () => {
   ])("%s cancels it, so it never opens later", (_, cancel) => {
     walkingToAnvil();
     cancel();
+    patch(me([], { x: 7, y: 1 }));
+    expect(panel().hidden).toBe(true);
+  });
+
+  test("a press on another open panel cancels it too", () => {
+    const other = element() as unknown as HTMLElement;
+    const placed = addPanel(other, () => {});
+    placed.opened();
+    walkingToAnvil();
+    listeners.get("pointerdown")!({ target: other });
+    placed.closed();
     patch(me([], { x: 7, y: 1 }));
     expect(panel().hidden).toBe(true);
   });
