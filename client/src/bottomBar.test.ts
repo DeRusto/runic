@@ -4,6 +4,7 @@ import {
   EMPTY_SLOT,
   EQUIP_INTENT,
   INVENTORY_SLOTS,
+  MAX_XP,
   PRIVATE_LINE,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -290,7 +291,7 @@ describe("the skills column", () => {
     state.players.get("me")!.combatXp = 12345;
     room.onStateChange.invoke(state);
     nextFrame();
-    const [, bar] = skillsBox.children[0].children;
+    const bar = skillsBox.children[0].children.at(-1);
     bar.onpointermove({ clientX: 50, clientY: 600 });
     expect(tip.children).toEqual(["12,345 XP"]);
   });
@@ -306,6 +307,29 @@ describe("the skills column", () => {
     room.onStateChange.invoke(statePinning("Blocking"));
     expect(shown()).toEqual(["Blocking 1"]);
     revealResult();
+  });
+
+  /** The right-hand label over Mining's bar, with this much Mining experience. */
+  const nextLevelLabel = (miningXp: number) => {
+    const state = statePinning("Mining");
+    Object.assign(state.players.get("me")!, { miningXp });
+    room.onStateChange.invoke(state);
+    nextFrame();
+    return skillsBox.children.find((child) => !child.hidden).children[1]
+      .textContent;
+  };
+
+  test("shows the experience its next level needs, with thousands separated by commas", () => {
+    expect(nextLevelLabel(1000)).toBe("250 XP to level 6");
+    expect(nextLevelLabel(5050)).toBe("1,000 XP to level 12");
+  });
+
+  test("counts the whole level at its first experience", () => {
+    expect(nextLevelLabel(5000)).toBe("1,050 XP to level 12");
+  });
+
+  test("reads Max level at the max level", () => {
+    expect(nextLevelLabel(MAX_XP)).toBe("Max level");
   });
 });
 
