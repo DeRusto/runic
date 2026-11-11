@@ -32,9 +32,9 @@ describe("ITEMS", () => {
     expect(ITEMS.emberiteShield.stack).toBe(1);
   });
 
-  test("every tier has its ore, bar, sword, shield, helmet, chestplate and leggings", () => {
-    // Food 2, Emberbone 1, finds 5, then seven per tier.
-    expect(Object.keys(ITEMS)).toHaveLength(29);
+  test("every tier has its bar, sword, shield, helmet, chestplate and leggings, and its ore if it has veins", () => {
+    // Food 2, Emberbone 1, finds 5, six per tier, and three ores.
+    expect(Object.keys(ITEMS)).toHaveLength(41);
   });
 });
 

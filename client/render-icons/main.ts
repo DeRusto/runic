@@ -11,7 +11,13 @@ const KNIGHT = "/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb";
 const CRAFTPIX_SWORD = "/sword-rpg-game-icon-set/PNG/without background/21.png";
 
 // Tier looks, as worn (spec §7).
-const { copper: COPPER, iron: IRON, emberite: EMBERITE } = TIER_LOOKS;
+const {
+  copper: COPPER,
+  bronze: BRONZE,
+  iron: IRON,
+  steel: STEEL,
+  emberite: EMBERITE,
+} = TIER_LOOKS;
 
 /** The model turned to face us: a slight three-quarter view, with long items leaning corner to corner. */
 const FLAT: Turn = [0.6, -0.5, 0];
@@ -32,7 +38,14 @@ const ICONS: Icon[] = [
     look: EMBERITE,
   },
   { id: "copperBar", url: `${RESOURCE}/Copper_Bar.gltf`, turn: FLAT },
+  {
+    id: "bronzeBar",
+    url: `${RESOURCE}/Copper_Bar.gltf`,
+    turn: FLAT,
+    look: BRONZE,
+  },
   { id: "ironBar", url: `${RESOURCE}/Iron_Bar.gltf`, turn: FLAT },
+  { id: "steelBar", url: `${RESOURCE}/Iron_Bar.gltf`, turn: FLAT, look: STEEL },
   {
     id: "emberiteBar",
     url: `${RESOURCE}/Iron_Bar.gltf`,
@@ -45,7 +58,19 @@ const ICONS: Icon[] = [
     turn: LEAN,
     look: COPPER,
   },
+  {
+    id: "bronzeSword",
+    url: `${WEAPONS}/sword_A.gltf`,
+    turn: LEAN,
+    look: BRONZE,
+  },
   { id: "ironSword", url: `${WEAPONS}/sword_B.gltf`, turn: LEAN, look: IRON },
+  {
+    id: "steelSword",
+    url: `${WEAPONS}/sword_B.gltf`,
+    turn: LEAN,
+    look: STEEL,
+  },
   {
     id: "copperShield",
     url: `${WEAPONS}/shield_A.gltf`,
@@ -53,10 +78,22 @@ const ICONS: Icon[] = [
     look: COPPER,
   },
   {
+    id: "bronzeShield",
+    url: `${WEAPONS}/shield_A.gltf`,
+    turn: SHIELD,
+    look: BRONZE,
+  },
+  {
     id: "ironShield",
     url: `${WEAPONS}/shield_B.gltf`,
     turn: SHIELD,
     look: IRON,
+  },
+  {
+    id: "steelShield",
+    url: `${WEAPONS}/shield_B.gltf`,
+    turn: SHIELD,
+    look: STEEL,
   },
   {
     id: "emberiteShield",
@@ -78,7 +115,7 @@ const ICONS: Icon[] = [
   },
   {
     id: "coal",
-    url: "/stylized-nature-megakit/glTF/Rock_1_E_Color1.gltf",
+    url: "/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_E_Color1.gltf",
     turn: FLAT,
     look: { tint: 0x2e2e2e },
   },

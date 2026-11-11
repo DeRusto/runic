@@ -4,13 +4,16 @@ import type { BushKind } from "./foraging.ts";
 export type GroundKind = "grass" | "thicket" | "path" | "ashen";
 export type PropKind =
   "tree" | "rock" | "tuft" | "well" | "lamp" | "barrel" | "crate";
-export type Tier = "copper" | "iron" | "emberite";
+/** One of the five metals, lowest first. */
+export type Tier = "copper" | "bronze" | "iron" | "steel" | "emberite";
+/** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
+export type VeinTier = Exclude<Tier, "bronze" | "steel">;
 export type StationKind = "furnace" | "anvil";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
   bush?: BushKind;
-  vein?: Tier;
+  vein?: VeinTier;
   station?: StationKind;
   blacksmith?: true;
   house?: "wall" | "door";

@@ -66,20 +66,30 @@ const armour = (
 /** Added to a shield's chance per Blocking level above 1 (spec §5). */
 export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
 
-/** Spec §5, by item id. Anything in here can be equipped. */
+/** Spec §5, with Bronze and Steel at the midpoints (rebalance spec §3 Gear), by item id. Anything in here can be equipped. */
 export const GEAR = new Map<string, Gear>([
   ["copperSword", sword(1, 100)],
+  ["bronzeSword", sword(5, 150)],
   ["ironSword", sword(10, 200)],
+  ["steelSword", sword(15, 250)],
   ["emberiteSword", sword(20, 300)],
   ["copperShield", shield(1, 10)],
+  ["bronzeShield", shield(5, 15)],
   ["ironShield", shield(10, 20)],
+  ["steelShield", shield(15, 25)],
   ["emberiteShield", shield(20, 30)],
   ["copperHelmet", armour("head", 1, 2)],
   ["copperChestplate", armour("body", 1, 4)],
   ["copperLeggings", armour("legs", 1, 2)],
+  ["bronzeHelmet", armour("head", 5, 3)],
+  ["bronzeChestplate", armour("body", 5, 6)],
+  ["bronzeLeggings", armour("legs", 5, 3)],
   ["ironHelmet", armour("head", 10, 4)],
   ["ironChestplate", armour("body", 10, 8)],
   ["ironLeggings", armour("legs", 10, 4)],
+  ["steelHelmet", armour("head", 15, 5)],
+  ["steelChestplate", armour("body", 15, 10)],
+  ["steelLeggings", armour("legs", 15, 5)],
   ["emberiteHelmet", armour("head", 20, 6)],
   ["emberiteChestplate", armour("body", 20, 12)],
   ["emberiteLeggings", armour("legs", 20, 6)],

@@ -5,7 +5,7 @@ import {
   type GroundKind,
   type PropKind,
   type StationKind,
-  type Tier,
+  type VeinTier,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -25,7 +25,7 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
 // Not gear's tints, which leave veins looking like plain or dark rock. They multiply the ore's near-white vein.
-const VEIN_TINT: Record<Tier, THREE.Color> = {
+const VEIN_TINT: Record<VeinTier, THREE.Color> = {
   copper: new THREE.Color(0xff8a3c),
   iron: new THREE.Color(0x4f8fd8),
   emberite: new THREE.Color(0xd42a1a),

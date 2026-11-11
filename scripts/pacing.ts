@@ -22,13 +22,13 @@ import {
   levelFor,
   pickIntervalTicks,
   type Tier,
+  type VeinTier,
   type Tile,
 } from "@runic/shared";
 import { pathNextTo } from "../server/src/pathfinding.ts";
 import { loadWorldRegion } from "../server/src/worldRegion.ts";
 
 type Find = "tin" | "coal";
-type Metal = "copper" | "bronze" | "iron" | "steel" | "emberite";
 
 const INPUTS = {
   /**
@@ -41,7 +41,7 @@ const INPUTS = {
     iron: { xp: 18, double: 0.25, finds: { tin: 1 / 6, coal: 1 / 2 } },
     emberite: { xp: 30, double: 0.2, finds: {} },
   } as Record<
-    Tier,
+    VeinTier,
     { xp: number; double: number; finds: Partial<Record<Find, number>> }
   >,
   /**
@@ -54,7 +54,7 @@ const INPUTS = {
     iron: { ore: "iron", level: 10, xp: 6 },
     steel: { ore: "iron", find: "coal", level: 15, xp: 9 },
     emberite: { ore: "emberite", level: 20, xp: 12 },
-  } as Record<Metal, { ore: Tier; find?: Find; level: number; xp: number }>,
+  } as Record<Tier, { ore: VeinTier; find?: Find; level: number; xp: number }>,
   barTicks: 6,
   /**
    * Smithing experience per bar at the anvil, by metal. Every metal's gear has the same costs and
@@ -67,7 +67,7 @@ const INPUTS = {
     iron: 18,
     steel: 27,
     emberite: 36,
-  } as Record<Metal, number>,
+  } as Record<Tier, number>,
   /** The Smithing level each metal's gear needs: the same as its bar's Mining level. */
   gear: { bars: 3, ticks: 12 },
   attemptChance,
@@ -81,15 +81,15 @@ const INPUTS = {
   maxHours: 300,
 };
 
-const TIERS = Object.keys(INPUTS.veins) as Tier[];
-const METALS = Object.keys(INPUTS.bars) as Metal[];
+const TIERS = Object.keys(INPUTS.veins) as VeinTier[];
+const METALS = Object.keys(INPUTS.bars) as Tier[];
 const FINDS: Find[] = ["tin", "coal"];
 const ticksToHours = (ticks: number) => (ticks * TICK_MS) / 3_600_000;
-const level = (tier: Tier) => VEINS[tier].level;
+const level = (tier: VeinTier) => VEINS[tier].level;
 
 const tiles = loadWorldRegion();
-type Vein = { tier: Tier; tile: Tile; left: number; regrowTick: number };
-const veinTiles: { tier: Tier; tile: Tile }[] = [];
+type Vein = { tier: VeinTier; tile: Tile; left: number; regrowTick: number };
+const veinTiles: { tier: VeinTier; tile: Tile }[] = [];
 let furnace: Tile | undefined;
 let anvil: Tile | undefined;
 tiles.forEach((line, y) =>
@@ -119,15 +119,15 @@ type Player = {
   at: Tile;
   xp: Record<Skill, number>;
   reached: Record<Skill, Map<number, number>>;
-  ore: Record<Tier, number>;
+  ore: Record<VeinTier, number>;
   finds: Record<Find, number>;
-  bars: Record<Metal, number>;
+  bars: Record<Tier, number>;
   /** Tin held when Mining 5 was reached, and coal when Mining 15 was. */
   stockAtUnlock: Partial<Record<Find, number>>;
   /** Bars smelted without a find although its metal was open, because the find ran out. */
   starved: Record<Find, { short: number; all: number }>;
   /** Successful mines per vein from Mining 20 on, to show which vein the top levels are trained on. */
-  minedFrom20: Record<Tier, number>;
+  minedFrom20: Record<VeinTier, number>;
   nextAttemptTick: number;
   busyUntil: number;
   mining?: Vein;
@@ -157,10 +157,10 @@ const full = (player: Player) =>
   INPUTS.inventorySlots;
 
 /** Metals the player can both smelt and smith, so no bar is smelted that would sit unused. */
-const canMake = (player: Player, metal: Metal) =>
+const canMake = (player: Player, metal: Tier) =>
   levelFor(player.xp.Mining) >= INPUTS.bars[metal].level &&
   levelFor(player.xp.Smithing) >= INPUTS.bars[metal].level;
-const smeltable = (player: Player, metal: Metal) => {
+const smeltable = (player: Player, metal: Tier) => {
   const { ore, find } = INPUTS.bars[metal];
   return (
     canMake(player, metal) &&
@@ -168,11 +168,11 @@ const smeltable = (player: Player, metal: Metal) => {
     (!find || player.finds[find] > 0)
   );
 };
-const smithable = (player: Player, metal: Metal) =>
+const smithable = (player: Player, metal: Tier) =>
   player.bars[metal] >= INPUTS.gear.bars && canMake(player, metal);
 
 /** Everything one ore of this vein is worth once smelted and smithed into the best metal the player can make with the finds they hold. */
-function valuePerOre(player: Player, tier: Tier) {
+function valuePerOre(player: Player, tier: VeinTier) {
   const best = [...METALS].reverse().find((m) => {
     const { ore, find } = INPUTS.bars[m];
     return (
