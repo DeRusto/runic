@@ -12,7 +12,7 @@ import {
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
-import { leftPanel } from "./leftPanels.ts";
+import { addPanel, onOpenPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
 import { itemTipParts, recipeTip, type ItemTip } from "./itemTip.ts";
@@ -33,8 +33,9 @@ export function showSmithingPanel(room: WorldConnection) {
   const close = () => {
     walkingTo = undefined;
     panel.hidden = true;
+    placed.closed();
   };
-  const left = leftPanel(close);
+  const placed = addPanel(panel, close);
 
   const items = Object.keys(RECIPES) as RecipeItem[];
   const sections = (["furnace", "anvil"] as const).flatMap((station) =>
@@ -119,8 +120,8 @@ export function showSmithingPanel(room: WorldConnection) {
       s.section.open = !levelRefusal(s.first, me);
     }
     draw(me);
-    left.opening();
     panel.hidden = false;
+    placed.opened();
   };
 
   close();
@@ -134,19 +135,13 @@ export function showSmithingPanel(room: WorldConnection) {
     else if (!panel.hidden) draw(me);
   });
 
-  const onKey = (event: KeyboardEvent) => {
-    if (event.key === "Escape") close();
-  };
   // A press, so it closes before the click it belongs to can open it again or act on the world.
   const onPress = (event: PointerEvent) => {
-    if (!panel.contains(event.target as Node)) close();
+    if (!onOpenPanel(event.target as Node)) close();
   };
-  document.addEventListener("keydown", onKey);
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();
-    left.forget();
-    document.removeEventListener("keydown", onKey);
     document.removeEventListener("pointerdown", onPress);
   });
 

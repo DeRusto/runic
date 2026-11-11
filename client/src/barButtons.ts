@@ -1,4 +1,4 @@
-import { panelKey } from "./characterSheet.ts";
+import { panelKey } from "./panels.ts";
 import { addTip, type TipContent } from "./tooltip.ts";
 
 /** The square buttons at the bar's right end, in bar order (spec §7). */

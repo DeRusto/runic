@@ -14,6 +14,7 @@ import { showGatheringSites } from "./gatheringSites.ts";
 import { showGroundItems } from "./groundItemSacks.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showLogoutConfirm } from "./logoutConfirm.ts";
+import { watchPanels } from "./panels.ts";
 import { showPileWindow } from "./pileWindow.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
@@ -56,6 +57,7 @@ const [newFigure, newSpider, newSkeleton, setRunOut, blacksmithUnder] =
 // The splash stays behind the login form until the first join settles.
 loading.remove();
 const stationUnder = addStations(tiles);
+watchPanels();
 
 const status = document.getElementById("status")!;
 const logout = document.getElementById("logout")!;
