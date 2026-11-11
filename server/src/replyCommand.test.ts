@@ -1,3 +1,4 @@
+import { matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import { CHAT, PRIVATE_LINE, WORLD_ROOM, type ChatLine } from "@runic/shared";
 import {
@@ -11,6 +12,7 @@ import {
 } from "vitest";
 import { startServer } from "./server.ts";
 import { testToken } from "./testToken.ts";
+import type { WorldRoom } from "./WorldRoom.ts";
 
 const PORT = 35000 + (process.pid % 5000);
 let server: Awaited<ReturnType<typeof startServer>>;
@@ -132,4 +134,21 @@ test("a fresh login has nobody to reply to", async () => {
   await say(fresh, "/r hi", [fresh]);
   expect(fresh.lines).toEqual(["You have nobody to reply to."]);
   await leave(fresh);
+});
+
+test("reconnecting after a dropped connection keeps the reply target", async () => {
+  const held = await joinAs("ReHeld");
+  held.room.reconnection.minUptime = 0;
+  await say(first, "/pm ReHeld hello", [first, held]);
+  const world = matchMaker.getLocalRoomById(held.room.roomId) as WorldRoom;
+  // A combat lock holds the seat, so the drop reconnects instead of logging out.
+  world.sim.lock(held.room.sessionId);
+  const back = new Promise<void>((resolve) =>
+    held.room.onReconnect(() => resolve()),
+  );
+  (world.clients.getById(held.room.sessionId)!.ref as any).terminate();
+  await back;
+  await say(held, "/r still here", [first, held]);
+  expect(first.lines.at(-1)).toBe("From ReHeld: still here");
+  await leave(held);
 });

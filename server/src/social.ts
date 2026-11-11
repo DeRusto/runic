@@ -71,8 +71,12 @@ export const isIgnoring = (accountId: number, otherId: number) =>
 /** The ids of the accounts that ignore this one. */
 export const ignoredBy = (accountId: number) => listedBy("ignore", accountId);
 
-/** Per login, the name of whoever's private message last reached that player. Never saved. */
-const replyTo = new WeakMap<Client, string>();
+/**
+ * Per login, the name of whoever's private message last reached that player. Never saved.
+ * In `userData`, not a map keyed by the Client: a reconnect gets a new Client, and Colyseus
+ * carries `userData` over to it.
+ */
+const replyTo = (client: Client): string | undefined => client.userData?.replyTo;
 
 const onlineNamed = (world: World, name: string) =>
   world
@@ -167,7 +171,7 @@ const COMMANDS: Record<string, Command> = {
     usage: "/r <message>",
     description: "Reply to the last player who sent you a private message.",
     run: (world, client, message) => {
-      const name = replyTo.get(client);
+      const name = replyTo(client);
       const refusal = replyRefusal(name, message);
       if (refusal) return tell(client, refusal);
       COMMANDS.pm!.run(world, client, `${name} ${message}`);
@@ -194,7 +198,7 @@ const COMMANDS: Record<string, Command> = {
       // Silent: the sender still sees their own copy and no error (Phase 4 map).
       if (!isIgnoring(to.auth.id, client.auth.id)) {
         tell(to, `From ${client.auth.username}: ${message}`);
-        replyTo.set(to, client.auth.username);
+        to.userData = { ...to.userData, replyTo: client.auth.username };
       }
       tell(client, `To ${to.auth.username}: ${message}`);
     },
