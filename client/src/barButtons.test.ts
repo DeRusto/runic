@@ -75,6 +75,14 @@ describe("the square bar buttons (spec §7)", () => {
       expect(buttons["turn-right"].classList.has("pressed")).toBe(true);
     });
 
+    test("leaving the window lets go of every held button", () => {
+      key("keydown", "q");
+      key("keydown", "c");
+      listeners.get("blur")!({});
+      expect(buttons["turn-left"].classList.has("pressed")).toBe(false);
+      expect(buttons.character.classList.has("pressed")).toBe(false);
+    });
+
     test("typing in chat presses nothing", () => {
       key("keydown", "o", { target: new HTMLInputElement() });
       key("keydown", "o", { ctrlKey: true });

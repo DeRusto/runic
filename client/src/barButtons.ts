@@ -34,4 +34,8 @@ export function addBarButtons() {
   addEventListener("keydown", (event) => press(panelKey(event), true));
   // Any release lets go, even one in chat, so a button never sticks pressed.
   addEventListener("keyup", (event) => press(event.key, false));
+  // A window that loses focus gets no keyup for a key still held.
+  addEventListener("blur", () =>
+    buttons.forEach((button) => button.classList.toggle("pressed", false)),
+  );
 }
