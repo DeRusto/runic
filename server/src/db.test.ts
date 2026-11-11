@@ -21,13 +21,15 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, and the ignores table.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table and the bank.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
   ...GEAR_SLOTS.slice(2),
+  "bank",
+  "bank_counts",
 ];
-const LATEST_MIGRATIONS = 5;
+const LATEST_MIGRATIONS = 6;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
@@ -151,6 +153,8 @@ describe("a save from the first slice, written before the stacks migration", () 
         "Mining",
         "Smithing",
       ],
+      bank: [],
+      bankCounts: [],
     });
     await database.shutdown();
   });
@@ -204,6 +208,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     expect(player.inventoryCounts[4]).toBe(1);
     expect(player.inventoryCounts[9]).toBe(1);
     expect(player.combatXp).toBe(1234);
+    expect(player.bank.every((item) => item === "")).toBe(true);
     await database.shutdown();
   });
 });

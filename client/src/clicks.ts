@@ -1,5 +1,6 @@
 import {
   GATHERING,
+  offers,
   gatherRefusal,
   stationRefusal,
   TAKE_INTENT,
@@ -7,6 +8,7 @@ import {
   TICK_MS,
   VISIT_INTENT,
   WALK_INTENT,
+  type DialogueAction,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -25,7 +27,7 @@ import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on another player opens the player menu. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on another player it opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -70,6 +72,19 @@ export function walkOnClick(
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
     aim(event);
+    const villager = villagerUnder(raycaster);
+    if (villager) {
+      const visit = (then?: DialogueAction) => () => {
+        showMarker(villager.x, villager.y);
+        room.send(VISIT_INTENT, { villager: villager.villager, then });
+      };
+      return openMenu(event, [
+        ["Talk-to", visit()],
+        ...(offers(villager.villager, "openBank")
+          ? ([["Bank", visit("openBank")]] as const)
+          : []),
+      ]);
+    }
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
   };
@@ -116,7 +131,7 @@ export function walkOnClick(
     const villager = villagerUnder(raycaster);
     if (villager) {
       showMarker(villager.x, villager.y);
-      room.send(VISIT_INTENT, villager.villager);
+      room.send(VISIT_INTENT, { villager: villager.villager });
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;

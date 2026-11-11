@@ -3,6 +3,7 @@ import { loadRegion, respawnTile, TAKEN_OVER_CLOSE_CODE } from "@runic/shared";
 import { DefaultLoadingManager } from "three";
 import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
+import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
 import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
@@ -86,6 +87,7 @@ function enterWorld(room: WorldConnection) {
   showSocialPanel(room);
   showFights(room);
   showDialogueBox(room);
+  showBankWindow(room, openMenu);
 
   logout.hidden = false;
   showLogoutConfirm(room);

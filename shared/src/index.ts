@@ -12,7 +12,10 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
 export const MAKE_INTENT = "make";
-/** The visit intent's message type, for clicking a villager; its payload is the villager's id. Arriving opens the conversation. */
+/**
+ * The visit intent's message type, for clicking a villager; its payload is `{ villager, then }`.
+ * Arriving opens the conversation, or with `then`, a `DialogueAction` the conversation offers, runs that instead.
+ */
 export const VISIT_INTENT = "visit";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
@@ -24,6 +27,16 @@ export const EAT_INTENT = "eat";
 export const DROP_INTENT = "drop";
 /** The move intent's message type, for a drag in the inventory; its payload is `{ from, to }`, two slots' indexes. */
 export const MOVE_INTENT = "move";
+/** The deposit intent's message type; its payload is `{ slot, amount }` for an inventory slot, and an amount over the stack deposits it all. */
+export const DEPOSIT_INTENT = "deposit";
+/** The withdraw intent's message type; its payload is `{ slot, amount }` for a bank slot, and the server takes as many as fit. */
+export const WITHDRAW_INTENT = "withdraw";
+/** The deposit inventory intent's message type; it has no payload. */
+export const DEPOSIT_INVENTORY_INTENT = "depositInventory";
+/** The bank move intent's message type, for a drag in the bank; its payload is `{ from, to }`, two bank slots' indexes. */
+export const BANK_MOVE_INTENT = "bankMove";
+/** The close bank intent's message type; it has no payload. */
+export const CLOSE_BANK_INTENT = "closeBank";
 /** The take intent's message type; its payload is the ground item's id. */
 export const TAKE_INTENT = "take";
 /** The equip intent's message type; its payload is the inventory slot's index. */
@@ -165,8 +178,13 @@ export type WorldEvent =
   /** A conversation opened or moved on: the client shows `node`'s lines, then the choices that follow them. */
   | { type: "talk"; player: string; villager: VillagerId; node: string }
   /** The server ended a conversation the client may still be showing, on a walk away or a hit. */
-  | { type: "talkEnded"; player: string };
+  | { type: "talkEnded"; player: string }
+  /** The player's bank window opens (#197). */
+  | { type: "bankOpened"; player: string }
+  /** The server shut the bank window, on a walk away or a hit. */
+  | { type: "bankClosed"; player: string };
 
+export * from "./bank.ts";
 export * from "./dialogue.ts";
 export * from "./enemies.ts";
 export * from "./foraging.ts";
