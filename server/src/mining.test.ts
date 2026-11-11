@@ -106,7 +106,7 @@ test("a success gives one ore and its experience, uses the vein and ends the act
   expect(attempts(40)).toEqual([
     {
       tick: ARRIVAL_TICK,
-      event: { type: "mine", player: "a", success: true, count: 1 },
+      event: { type: "mine", player: "a", success: true, count: 1, finds: [] },
     },
   ]);
   expect(player().miningXp).toBe(6);
@@ -122,12 +122,20 @@ test("a double gives two ore for one success's experience, and uses one hold", (
   expect(attempts(8)).toEqual([
     {
       tick: ARRIVAL_TICK,
-      event: { type: "mine", player: "a", success: true, count: 2 },
+      event: {
+        type: "mine",
+        player: "a",
+        success: true,
+        count: 2,
+        finds: ["tin"],
+      },
     },
   ]);
   expect(player().miningXp).toBe(6);
   expect(player().inventory[0]).toBe("copperOre");
   expect(player().inventoryCounts[0]).toBe(2);
+  expect(player().inventory[1]).toBe("tin");
+  expect(player().inventoryCounts[1]).toBe(1);
   expect(minesLeft(COPPER)).toBe(2);
   expect(player().action).toBe("");
 });
@@ -145,10 +153,12 @@ test("a vein that holds 3 runs out after 3 successes, whatever they gave", () =>
 /** A deterministic stream of rolls in [0, 1): Park–Miller, the same generator simulation.test.ts uses. */
 const seededRandom = (seed: number) => () =>
   (seed = (seed * 16807) % 2147483647) / 2147483647;
-const doubleShare = (vein: string, x: number, y: number, mines: number) => {
+/** The share of `mines` successes on `vein` that gave 2 ore, and how many of each find they gave, driving a fresh simulation per mine so the vein is always full. */
+const mineMany = (vein: string, x: number, y: number, mines: number) => {
   const random = seededRandom(12345);
   let doubles = 0;
   let successes = 0;
+  const finds = new Map<string, number>();
   for (let i = 0; i < mines; i++) {
     const fresh = new Simulation(TILES, random);
     fresh.addPlayer(
@@ -174,11 +184,13 @@ const doubleShare = (vein: string, x: number, y: number, mines: number) => {
         if (event.type !== "mine" || !event.success) continue;
         successes++;
         if (event.count === 2) doubles++;
+        for (const found of event.finds)
+          finds.set(found, (finds.get(found) ?? 0) + 1);
       }
     }
   }
   expect(successes).toBe(mines);
-  return doubles / mines;
+  return { doubles: doubles / mines, finds };
 };
 
 test("over many mines the share of doubles matches each tier's chance", () => {
@@ -187,10 +199,43 @@ test("over many mines the share of doubles matches each tier's chance", () => {
     [IRON, 6, 2, 0.25],
     [EMBERITE, 7, 2, 0.2],
   ] as const) {
-    const share = doubleShare(vein, x, y, 500);
-    expect(share).toBeGreaterThan(chance - 0.07);
-    expect(share).toBeLessThan(chance + 0.07);
+    const { doubles } = mineMany(vein, x, y, 500);
+    expect(doubles).toBeGreaterThan(chance - 0.07);
+    expect(doubles).toBeLessThan(chance + 0.07);
   }
+});
+
+test("over many mines each find's share matches its vein's chance, and none on the others", () => {
+  const share = (found: Map<string, number>, item: string, mines: number) =>
+    (found.get(item) ?? 0) / mines;
+  const copper = mineMany(COPPER, 4, 1, 500).finds;
+  expect(share(copper, "tin", 500)).toBeGreaterThan(1 / 3 - 0.07);
+  expect(share(copper, "tin", 500)).toBeLessThan(1 / 3 + 0.07);
+  expect(copper.get("coal")).toBeUndefined();
+  expect(copper.get("ashstone")).toBeUndefined();
+  const iron = mineMany(IRON, 6, 2, 500).finds;
+  expect(share(iron, "tin", 500)).toBeGreaterThan(1 / 6 - 0.05);
+  expect(share(iron, "tin", 500)).toBeLessThan(1 / 6 + 0.05);
+  expect(share(iron, "coal", 500)).toBeGreaterThan(1 / 2 - 0.07);
+  expect(share(iron, "coal", 500)).toBeLessThan(1 / 2 + 0.07);
+  expect(iron.get("ashstone")).toBeUndefined();
+  const emberite = mineMany(EMBERITE, 7, 2, 2000).finds;
+  const gems =
+    (emberite.get("ashstone") ?? 0) +
+    (emberite.get("cinderglass") ?? 0) +
+    (emberite.get("heartflame") ?? 0);
+  expect(gems / 2000).toBeGreaterThan(1 / 20 - 0.015);
+  expect(gems / 2000).toBeLessThan(1 / 20 + 0.015);
+  expect((emberite.get("ashstone") ?? 0) / gems).toBeGreaterThan(0.7 - 0.15);
+  expect((emberite.get("ashstone") ?? 0) / gems).toBeLessThan(0.7 + 0.15);
+  expect((emberite.get("cinderglass") ?? 0) / gems).toBeGreaterThan(
+    0.25 - 0.15,
+  );
+  expect((emberite.get("cinderglass") ?? 0) / gems).toBeLessThan(0.25 + 0.15);
+  expect((emberite.get("heartflame") ?? 0) / gems).toBeGreaterThan(0.05 - 0.1);
+  expect((emberite.get("heartflame") ?? 0) / gems).toBeLessThan(0.05 + 0.1);
+  expect(emberite.get("tin")).toBeUndefined();
+  expect(emberite.get("coal")).toBeUndefined();
 });
 
 test("a double with one free slot puts one ore in it and one on the ground, owned by the miner", () => {
@@ -204,21 +249,57 @@ test("a double with one free slot puts one ore in it and one on the ground, owne
   expect(attempts(8)).toEqual([
     {
       tick: 1,
-      event: { type: "mine", player: "b", success: true, count: 2 },
+      event: {
+        type: "mine",
+        player: "b",
+        success: true,
+        count: 2,
+        finds: ["tin"],
+      },
     },
   ]);
   expect(player("b").inventory[INVENTORY_SLOTS - 1]).toBe("copperOre");
   expect(player("b").inventoryCounts[INVENTORY_SLOTS - 1]).toBe(1);
   expect(minesLeft(COPPER)).toBe(2);
   const ground = [...sim.state.groundItems.values()];
-  expect(ground).toHaveLength(1);
-  expect(ground[0]).toMatchObject({
-    item: "copperOre",
-    count: 1,
-    x: 4,
-    y: 1,
-    owner: "b",
-  });
+  expect(ground).toHaveLength(2);
+  for (const item of ["copperOre", "tin"]) {
+    expect(ground).toContainEqual(
+      expect.objectContaining({ item, count: 1, x: 4, y: 1, owner: "b" }),
+    );
+  }
+});
+
+test("a find goes to the ground when the ore tops up a stack and there is no room for it", () => {
+  addAt("b", 0);
+  roll = DOUBLE;
+  player("b").inventory[0] = "copperOre";
+  player("b").inventoryCounts[0] = 19;
+  for (let slot = 1; slot < INVENTORY_SLOTS; slot++) {
+    player("b").inventory[slot] = "herb";
+    player("b").inventoryCounts[slot] = 20;
+  }
+  sim.queueGather("b", "mining", COPPER);
+  expect(attempts(8)).toEqual([
+    {
+      tick: 1,
+      event: {
+        type: "mine",
+        player: "b",
+        success: true,
+        count: 2,
+        finds: ["tin"],
+      },
+    },
+  ]);
+  expect(player("b").inventoryCounts[0]).toBe(20);
+  const ground = [...sim.state.groundItems.values()];
+  expect(ground).toHaveLength(2);
+  for (const item of ["copperOre", "tin"]) {
+    expect(ground).toContainEqual(
+      expect.objectContaining({ item, count: 1, x: 4, y: 1, owner: "b" }),
+    );
+  }
 });
 
 test("a double tops up a stack with room for two, and none reaches the ground", () => {
@@ -229,6 +310,35 @@ test("a double tops up a stack with room for two, and none reaches the ground", 
   mine(COPPER, "b");
   expect(player("b").inventoryCounts[0]).toBe(20);
   expect(sim.state.groundItems.size).toBe(0);
+});
+
+test("a find lands in the inventory and stacks", () => {
+  addAt("b", 0);
+  roll = DOUBLE;
+  mine(COPPER, "b");
+  mine(COPPER, "b");
+  expect(player("b").inventory[1]).toBe("tin");
+  expect(player("b").inventoryCounts[1]).toBe(2);
+  expect(player("b").inventoryCounts[0]).toBe(4);
+});
+
+test("a save from before finds loads unchanged", () => {
+  addAt("b", 0);
+  player("b").inventory[0] = "copperOre";
+  player("b").inventoryCounts[0] = 5;
+  player("b").inventory[1] = "ironOre";
+  player("b").inventoryCounts[1] = 3;
+  const save = sim.saveOf("b")!;
+  const restarted = new Simulation(TILES, () => FAIL);
+  restarted.addPlayer("b", save, "b");
+  const loaded = restarted.state.players.get("b")!;
+  expect([...loaded.inventory].slice(0, 3)).toEqual([
+    "copperOre",
+    "ironOre",
+    "",
+  ]);
+  expect([...loaded.inventoryCounts].slice(0, 3)).toEqual([5, 3, 0]);
+  expect(loaded.inventory).not.toContain("tin");
 });
 
 test("ore tops up its stack", () => {

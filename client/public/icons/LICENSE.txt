@@ -1,6 +1,6 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-25 are rendered by client/render-icons, 24 from the CC0 models below and one from
+30 are rendered by client/render-icons, 25 from the CC0 models below and five from
 our own geometry. The other is a Craftpix file.
 
 ------------------------------------------------------------------------
@@ -27,7 +27,7 @@ a licence to anyone else: this file is not CC0, and if you want it for your own
 project, get it from Craftpix under their terms.
 
 ------------------------------------------------------------------------
-2. The rendered 25: CC0 1.0 models
+2. The rendered 30
 ------------------------------------------------------------------------
 
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
@@ -46,6 +46,7 @@ berry
     Kenney Food Kit 2.0 (www.kenney.nl), the model grapes.glb
 herb
     Stylized Nature MegaKit, free version, by Quaternius (quaternius.com), the model Plant_1
+coal
+    Stylized Nature MegaKit, free version, by Quaternius (quaternius.com), the model Rock_1_E
 
-emberbone.png is from no pack: it is Runic's own, drawn by three.js geometry in
-client/render-icons/main.ts.
+emberbone.png, tin.png, ashstone.png, cinderglass.png and heartflame.png are from no pack: they are Runic's own, drawn by three.js geometry in client/render-icons/main.ts.

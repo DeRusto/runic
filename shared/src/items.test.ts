@@ -23,13 +23,18 @@ describe("ITEMS", () => {
     expect(ITEMS.copperOre.stack).toBe(20);
     expect(ITEMS.emberiteBar.stack).toBe(20);
     expect(ITEMS.emberbone.stack).toBe(20);
+    expect(ITEMS.tin.stack).toBe(20);
+    expect(ITEMS.coal.stack).toBe(20);
+    expect(ITEMS.ashstone.stack).toBe(20);
+    expect(ITEMS.cinderglass.stack).toBe(20);
+    expect(ITEMS.heartflame.stack).toBe(20);
     expect(ITEMS.ironSword.stack).toBe(1);
     expect(ITEMS.emberiteShield.stack).toBe(1);
   });
 
   test("every tier has its ore, bar, sword, shield, helmet, chestplate and leggings", () => {
-    // Food 2, Emberbone 1, then seven per tier.
-    expect(Object.keys(ITEMS)).toHaveLength(24);
+    // Food 2, Emberbone 1, finds 5, then seven per tier.
+    expect(Object.keys(ITEMS)).toHaveLength(29);
   });
 });
 

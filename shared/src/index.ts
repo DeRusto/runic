@@ -1,4 +1,5 @@
 import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
+import type { ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
 
 export const SERVER_PORT = 2567;
@@ -123,8 +124,14 @@ export type WorldEvent =
   | { type: "playerDied"; player: string }
   | { type: "playerRespawned"; player: string }
   | { type: "enemyReturned"; enemy: string }
-  /** A success carries how many it gave; a failure carries none. */
-  | { type: GatheringVerb; player: string; success: true; count: 1 | 2 }
+  /** A success carries how many it gave and what it found; a failure carries none. */
+  | {
+      type: GatheringVerb;
+      player: string;
+      success: true;
+      count: 1 | 2;
+      finds: ItemId[];
+    }
   | { type: GatheringVerb; player: string; success: false; count?: never }
   /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }

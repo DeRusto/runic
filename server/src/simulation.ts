@@ -42,6 +42,7 @@ import {
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
   respawnTile,
+  rollFinds,
   siteId,
   SKILLS,
   slotFor,
@@ -793,9 +794,10 @@ export class Simulation {
         this.random() < source.doubleChance
           ? DOUBLE_YIELD
           : 1;
+      const finds = success ? rollFinds(source, this.random) : [];
       this.events.push(
         success
-          ? { type: verb, player: id, success, count }
+          ? { type: verb, player: id, success, count, finds }
           : { type: verb, player: id, success },
       );
       if (!success) continue;
@@ -810,6 +812,20 @@ export class Simulation {
           this.groundItems.spawn(
             player,
             source.item,
+            1,
+            player.username,
+            this.state.tick,
+          );
+      }
+      // Each find rolls on its own; one with no room goes to the ground, owned
+      // by the miner, like the second ore.
+      for (const found of finds) {
+        if (this.roomFor(found, player) > 0)
+          this.addToSlot(player, slotFor(found, player), found);
+        else
+          this.groundItems.spawn(
+            player,
+            found,
             1,
             player.username,
             this.state.tick,

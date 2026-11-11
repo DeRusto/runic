@@ -76,6 +76,12 @@ const ICONS: Icon[] = [
     url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
     turn: [0.3, 0, 0],
   },
+  {
+    id: "coal",
+    url: "/stylized-nature-megakit/glTF/Rock_1_E_Color1.gltf",
+    turn: FLAT,
+    look: { tint: 0x2e2e2e },
+  },
 ];
 
 /** Each armour piece is the Knight's meshes for it, as no pack has armour on its own (spec §7). */
@@ -210,10 +216,56 @@ for (const [piece, meshes] of Object.entries(ARMOUR)) {
     pngs.set(`${tier}${piece}`, await toPng(renderer.domElement));
   }
 }
+/** A pile of small lumps: no pack has a tin nugget on its own. */
+function nuggets() {
+  const group = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xcfd4da,
+    roughness: 0.45,
+    metalness: 0.25,
+  });
+  for (const [x, y, z, s] of [
+    [0, 0, 0, 0.55],
+    [-0.5, 0.1, 0.1, 0.42],
+    [0.5, 0.05, -0.05, 0.45],
+    [0.1, 0.45, 0, 0.38],
+    [-0.15, -0.35, 0.15, 0.4],
+  ] as const) {
+    const blob = new THREE.Mesh(new THREE.SphereGeometry(0.5), material);
+    blob.position.set(x, y, z);
+    blob.scale.set(s * 2, s * 1.4, s * 1.6);
+    group.add(blob);
+  }
+  return group;
+}
+
+/** A cut gem, elongated: no pack has gems in the free tier. */
+function gem(color: number, emissive?: number) {
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.25,
+    metalness: 0.1,
+    flatShading: true,
+    emissive: emissive ?? 0x000000,
+    emissiveIntensity: GLOW_INTENSITY,
+  });
+  const mesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.75), material);
+  mesh.scale.y = 1.3;
+  return mesh;
+}
+
 const bone = emberbone();
 applyLook(bone, EMBERITE);
 draw(bone, LEAN);
 pngs.set("emberbone", await toPng(renderer.domElement));
+draw(nuggets(), FLAT);
+pngs.set("tin", await toPng(renderer.domElement));
+draw(gem(0x8a8d90), FLAT);
+pngs.set("ashstone", await toPng(renderer.domElement));
+draw(gem(0xd86a1e, 0x7a2a00), FLAT);
+pngs.set("cinderglass", await toPng(renderer.domElement));
+draw(gem(0xe83a10, 0xff4a10), FLAT);
+pngs.set("heartflame", await toPng(renderer.domElement));
 pngs.set("emberiteSword", await craftpixSword());
 
 const shown = document.getElementById("icons")!;

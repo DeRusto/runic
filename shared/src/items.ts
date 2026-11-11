@@ -10,6 +10,12 @@ export const ITEMS = {
   berry: STACKS,
   herb: STACKS,
   emberbone: STACKS,
+  /** Finds from veins (spec §3): tin from Copper and Iron, coal from Iron, a gem from Emberite. */
+  tin: STACKS,
+  coal: STACKS,
+  ashstone: STACKS,
+  cinderglass: STACKS,
+  heartflame: STACKS,
   copperOre: STACKS,
   copperBar: STACKS,
   copperSword: SINGLE,

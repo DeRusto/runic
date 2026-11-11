@@ -537,7 +537,7 @@ describe("the mine event", () => {
   });
 
   test("holds a success's result until 0.4 of the clip", () => {
-    send({ type: "mine", player: "a", success: true, count: 1 });
+    send({ type: "mine", player: "a", success: true, count: 1, finds: [] });
     expect(holdResult).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(0.4 * 2400 - 1);
     expect(revealResult).not.toHaveBeenCalled();
@@ -548,11 +548,38 @@ describe("the mine event", () => {
   });
 
   test("a double says so at the same moment", () => {
-    send({ type: "mine", player: "a", success: true, count: 2 });
+    send({ type: "mine", player: "a", success: true, count: 2, finds: [] });
     expect(holdResult).toHaveBeenCalledOnce();
     vi.advanceTimersByTime(0.4 * 2400);
     expect(revealResult).toHaveBeenCalledOnce();
     expect(overhead.pop).toHaveBeenCalledWith("Mined 2!", "pick");
+  });
+
+  test("a double with finds names them, as the spec's example reads", () => {
+    send({
+      type: "mine",
+      player: "a",
+      success: true,
+      count: 2,
+      finds: ["tin", "coal"],
+    });
+    vi.advanceTimersByTime(0.4 * 2400);
+    expect(overhead.pop).toHaveBeenCalledWith(
+      "Mined 2! Found tin and coal.",
+      "pick",
+    );
+  });
+
+  test("one find is named on its own, and none leaves the line as it was", () => {
+    send({
+      type: "mine",
+      player: "a",
+      success: true,
+      count: 1,
+      finds: ["ashstone"],
+    });
+    vi.advanceTimersByTime(0.4 * 2400);
+    expect(overhead.pop).toHaveBeenCalledWith("Mined! Found ashstone.", "pick");
   });
 
   test("a failure holds nothing, and says so at the same moment", () => {
@@ -563,7 +590,11 @@ describe("the mine event", () => {
   });
 
   test("someone else's success doesn't hold our bar", () => {
-    send({ type: "mine", player: "a", success: true, count: 1 }, 0, "me");
+    send(
+      { type: "mine", player: "a", success: true, count: 1, finds: [] },
+      0,
+      "me",
+    );
     expect(holdResult).not.toHaveBeenCalled();
     vi.advanceTimersByTime(0.4 * 2400);
     expect(revealResult).not.toHaveBeenCalled();
