@@ -264,6 +264,14 @@ _Avoid_: Protection, plate
 Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
 _Avoid_: Equipment slot
 
+**Panel**:
+A window that opens over the world: the character sheet, the smithing panel, the social panel or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.
+_Avoid_: Window (alone), dialog, menu
+
+**Tooltip**:
+The one dark box that shows beside the cursor on every hover in the game. An item's tooltip gives its name, kind and stats.
+_Avoid_: Slot tip, hover text, title
+
 **Character sheet**:
 The panel a player opens to see their gear slots, Toolbelt and all their skills.
 _Avoid_: Equipment screen, paper doll
