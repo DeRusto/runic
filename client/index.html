@@ -43,21 +43,15 @@
         font: 12px system-ui;
         white-space: nowrap;
       }
-      /* An improved item's name: dark shades on the brown panels, light ones on the dark bar and over the world (spec §5). */
+      /* An improved item's name, in the light shades: every surface it shows on is dark (spec §5, §6). */
       .uncommon,
       .rare {
         font-weight: 600;
       }
       .uncommon {
-        color: #1f9a2c;
-      }
-      .rare {
-        color: #2563c9;
-      }
-      :is(#bar, #slot-tip, #ground-label) .uncommon {
         color: #5fe36a;
       }
-      :is(#bar, #slot-tip, #ground-label) .rare {
+      .rare {
         color: #6fb0ff;
       }
       #overheads {
@@ -274,22 +268,37 @@
        * Hidden by visibility, not display, on the window and its panes: a box that goes away
        * can lose its scroll position, and each tab keeps its own (spec §7).
        */
+      /* Every panel is the tooltip's box: a black edge, a brown hairline inside it (spec §6). */
+      #sheet,
+      #social,
+      #smithing,
+      #pile {
+        box-sizing: border-box;
+        padding: 3px;
+        border: 1px solid #000;
+        border-radius: 5px;
+        outline: 1px solid #8a6a44;
+        outline-offset: -3px;
+        background: linear-gradient(#1d1610, #120d09) padding-box;
+        box-shadow: 0 6px 18px #000a;
+        color: #eee;
+        font: 12px system-ui;
+      }
+      /* The tabs run down a column on the left, beside the content (spec §6). */
       #sheet,
       #social {
         position: fixed;
         right: 8px;
         bottom: 168px;
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: 76px minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
         width: 340px;
         height: 400px;
         max-height: calc(100vh - 176px);
-        box-sizing: border-box;
-        padding: 8px;
-        border: 16px solid transparent;
-        border-image: url(/ui/panel_brown.png) 20 fill stretch;
-        color: #4a3018;
-        font: 12px system-ui;
+      }
+      :is(#sheet, #social) > h2 {
+        grid-column: 1 / -1;
       }
       #sheet[hidden] {
         visibility: hidden;
@@ -298,7 +307,7 @@
       #social {
         right: auto;
         left: 8px;
-        width: 240px;
+        width: 280px;
       }
       #social[hidden] {
         display: none;
@@ -306,9 +315,20 @@
       /* Only the list scrolls, so the tabs and the X stay in reach. */
       #social-friends,
       #social-ignores {
-        flex: 1;
+        grid-column: 2;
+        grid-row: 2;
         min-height: 0;
+        padding: 6px 10px;
         overflow-y: auto;
+      }
+      /* Every scrolling part of a panel takes the thin brown bar (spec §6). */
+      .sheet-pane,
+      #social-friends,
+      #social-ignores,
+      #smithing-rows,
+      #pile-rows {
+        scrollbar-width: thin;
+        scrollbar-color: #8a6a44 transparent;
       }
       #friends,
       #ignores {
@@ -319,57 +339,94 @@
       #friends li,
       #ignores li {
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        padding: 2px 0;
+        padding: 5px 4px;
+      }
+      #friends li:hover,
+      #ignores li:hover {
+        background: #2a1f14;
       }
       #friends li[data-online="false"] {
         opacity: 0.6;
       }
-      #sheet h2,
-      #social h2,
-      #smithing h2,
-      #pile h2 {
+      /* The title bar: a dark band with a grip mark, the title in small caps and a square X (spec §6). */
+      :is(#sheet, #social, #smithing, #pile) > h2 {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin: 0 0 8px;
-        font-size: 14px;
+        gap: 6px;
+        margin: 0;
+        padding: 5px 5px 5px 10px;
+        border-bottom: 1px solid #8a6a44;
+        border-radius: 3px 3px 0 0;
+        background: linear-gradient(#3a2a1a, #261b11);
+        color: #f0d9b0;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      :is(#sheet, #social, #smithing, #pile) > h2::before {
+        content: "⠿" / "";
+        color: #8a6a44;
+        font-weight: 400;
       }
       #sheet-close,
       #social-close,
       #smithing-close,
       #pile-close {
-        width: 24px;
-        height: 24px;
+        width: 20px;
+        height: 20px;
+        margin-left: auto;
         padding: 0;
-        border: 0;
-        background: url(/ui/button_brown_close.png) center / 100% 100%;
+        border: 1px solid #8a6a44;
+        border-radius: 3px;
+        background: #1d1610;
+        color: #c9a77c;
+        font: 11px/18px system-ui;
+      }
+      :is(#sheet-close, #social-close, #smithing-close, #pile-close)::before {
+        content: "✕" / "";
+      }
+      :is(#sheet-close, #social-close, #smithing-close, #pile-close):hover {
+        border-color: #e06a50;
+        background: #5a1d12;
+        color: #fff;
       }
       #sheet-tabs,
       #social-tabs {
+        grid-row: 2;
         display: flex;
-        gap: 2px;
-        margin-bottom: 8px;
-        border-bottom: 2px solid #a26a35;
+        flex-direction: column;
+        padding-top: 4px;
+        border-right: 1px solid #8a6a44;
+        border-radius: 0 0 0 3px;
+        background: #0e0a07;
       }
       #sheet-tabs button,
       #social-tabs button {
-        flex: 1;
-        padding: 3px;
+        padding: 7px 10px;
         border: 0;
-        background: #c9a06a;
-        color: #4a3018;
+        background: none;
+        color: #c9a77c;
         font: inherit;
+        text-align: left;
+      }
+      #sheet-tabs button:hover:not([aria-selected="true"]),
+      #social-tabs button:hover:not([aria-selected="true"]) {
+        background: #1d1610;
+        color: #f0d9b0;
       }
       #sheet-tabs button[aria-selected="true"],
       #social-tabs button[aria-selected="true"] {
-        background: #a26a35;
-        color: #fff4dc;
-        font-weight: 600;
+        background: #2a1f14;
+        color: #fff;
+        box-shadow: inset 3px 0 #d2a86a;
       }
       #sheet-panes {
         position: relative;
-        flex: 1;
+        grid-column: 2;
+        grid-row: 2;
         min-height: 0;
       }
       .sheet-pane {
@@ -378,8 +435,7 @@
         overflow-y: auto;
         /* The bar's space is always kept, so content never shifts. */
         scrollbar-gutter: stable;
-        scrollbar-width: thin;
-        padding-right: 10px;
+        padding: 10px;
       }
       .sheet-pane[hidden] {
         display: block;
@@ -402,14 +458,15 @@
         height: 64px;
         padding: 0;
         border: 0;
-        background: #6d4a28 center / 52px no-repeat;
-        outline: 2px solid #a26a35;
+        border-radius: 2px;
+        background: #2a1f14 center / 52px no-repeat;
+        outline: 1px solid #8a6a44;
         color: inherit;
         font: inherit;
         font-size: 11px;
       }
       .gear-slot[aria-disabled="true"] {
-        color: #c9a77c;
+        color: #a58a68;
         cursor: default;
       }
       .gear-slot:focus-visible {
@@ -434,9 +491,10 @@
         height: 100%;
         box-sizing: border-box;
         padding: 4px;
-        background: #6d4a28;
-        outline: 2px solid #a26a35;
-        outline-offset: -2px;
+        border-radius: 2px;
+        background: #2a1f14;
+        outline: 1px solid #8a6a44;
+        outline-offset: -1px;
       }
       #sheet-skills p {
         margin: 0 0 6px;
@@ -449,10 +507,26 @@
         align-items: center;
         margin-bottom: 4px;
       }
+      /* Gold bars on a dark track (spec §6). */
       #sheet-skills progress {
         grid-column: 1;
         width: 100%;
-        height: 8px;
+        height: 6px;
+        appearance: none;
+        border: 1px solid #000;
+        border-radius: 3px;
+        background: #2a1f14;
+      }
+      #sheet-skills progress::-webkit-progress-bar {
+        border-radius: 3px;
+        background: #2a1f14;
+      }
+      #sheet-skills progress::-webkit-progress-value {
+        border-radius: 3px;
+        background: linear-gradient(#e8c06a, #b8862e);
+      }
+      #sheet-skills progress::-moz-progress-bar {
+        background: linear-gradient(#e8c06a, #b8862e);
       }
       .pin {
         grid-row: 1 / span 2;
@@ -472,10 +546,10 @@
         fill: currentColor;
       }
       .pin:hover:not(:disabled) {
-        background: #e8d3ae;
+        background: #2a1f14;
       }
       .pin[aria-pressed="true"] {
-        color: #a8341f;
+        color: #e06a50;
       }
       .pin:disabled {
         opacity: 0.35;
@@ -490,12 +564,6 @@
         flex-direction: column;
         width: 340px;
         max-height: calc(100vh - 176px);
-        box-sizing: border-box;
-        padding: 8px;
-        border: 16px solid transparent;
-        border-image: url(/ui/panel_brown.png) 20 fill stretch;
-        color: #4a3018;
-        font: 12px system-ui;
       }
       #smithing[hidden],
       #pile[hidden] {
@@ -508,12 +576,13 @@
         display: flex;
         flex-direction: column;
         min-height: 0;
+        padding: 6px 10px 10px;
         overflow-y: auto;
       }
       #pile-rows button {
-        padding: 4px;
+        padding: 5px 4px;
         border: 0;
-        border-top: 1px solid #a26a35;
+        border-top: 1px solid #8a6a4488;
         background: none;
         color: inherit;
         font: inherit;
@@ -521,17 +590,23 @@
       }
       #pile-rows button:hover,
       #pile-rows button:focus-visible {
-        background: #e8d3ae;
+        background: #2a1f14;
+      }
+      /* The title bar's line already sits above the first row. */
+      #pile-rows > :first-child,
+      #smithing-rows > :first-child {
+        border-top: 0;
       }
       /* Only the rows scroll, so the X stays in reach in a short window. */
       #smithing-rows {
         min-height: 0;
+        padding: 6px 10px 10px;
         overflow-y: auto;
       }
       /* One folding section per tier: the header names it, and a locked one its gate. */
       #smithing-rows details {
         padding: 2px 0;
-        border-top: 1px solid #a26a35;
+        border-top: 1px solid #8a6a4488;
       }
       #smithing-rows details[hidden] {
         display: none;
@@ -545,7 +620,7 @@
       #smithing-rows summary span + span {
         margin-left: 6px;
         font-weight: 400;
-        color: #7a5a38;
+        color: #a58a68;
       }
       /* One line per item: icon, piece over its short cost, then the two buttons. */
       #smithing-rows details > div {
@@ -555,6 +630,9 @@
         column-gap: 6px;
         align-items: center;
         padding: 2px 0;
+      }
+      #smithing-rows details > div:hover {
+        background: #2a1f14;
       }
       #smithing-rows details > div.cant {
         opacity: 0.55;
@@ -571,7 +649,7 @@
         grid-column: 2;
         grid-row: 2;
         font-size: 11px;
-        color: #7a5a38;
+        color: #a58a68;
       }
       #smithing-rows button {
         grid-row: 1 / span 2;
