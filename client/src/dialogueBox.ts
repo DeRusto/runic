@@ -30,8 +30,9 @@ export function shownAt(
 }
 
 /**
- * The box above the bar where a villager talks (village spec §2). The server opens and moves each
- * conversation; the box types out the node's lines, then sends the picked choice.
+ * The box above the bar where a villager talks (village spec §2). The server opens, moves and ends each
+ * conversation; the box types out the node's lines, then sends the picked choice, or endTalk once
+ * the last lines are read.
  */
 export function showDialogueBox(room: WorldConnection) {
   const box = document.getElementById("dialogue")!;
@@ -51,8 +52,13 @@ export function showDialogueBox(room: WorldConnection) {
   };
   const render = () => {
     clearInterval(typing);
-    const shown = talk && shownAt(talk.villager, talk.node, talk.line);
-    if (!talk || !shown) return close();
+    if (!talk) return close();
+    const shown = shownAt(talk.villager, talk.node, talk.line);
+    // The last lines are read, so the server can stop watching for a walk away or a hit.
+    if (!shown) {
+      close();
+      return room.send(END_TALK_INTENT);
+    }
     const { name, role } = VILLAGERS[talk.villager];
     box.setAttribute("aria-label", `${name}, ${role}`);
     box.hidden = false;

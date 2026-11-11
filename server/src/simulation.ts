@@ -309,7 +309,7 @@ export class Simulation {
   private villagers = new Map<VillagerId, Tile>();
   /**
    * Each player's open villager window, the villager they must stay beside, and for a
-   * conversation the node whose choices they can pick from. A player has at most one.
+   * conversation the node whose choices they can pick from, if any. A player has at most one.
    */
   private windows = new Map<
     string,
@@ -659,8 +659,8 @@ export class Simulation {
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
   choose(id: string, choice: number) {
     const talk = this.windowOf(id, "talk");
-    if (!talk || !Number.isInteger(choice)) return;
-    const picked = nodesOf(talk.villager)[talk.node!]!.choices![choice];
+    if (!talk?.node || !Number.isInteger(choice)) return;
+    const picked = nodesOf(talk.villager)[talk.node]!.choices![choice];
     if (!picked || !this.beside(id, talk.villager)) return;
     this.moveTalk(id, talk.villager, picked.to);
     if (picked.action) this.dialogueActions[picked.action](id, talk.villager);
@@ -671,21 +671,32 @@ export class Simulation {
     this.closeWindow(id, "talk");
   }
 
+  /**
+   * A conversation with no choices left stays open, with no node, until the box has shown its
+   * last lines and sends endTalk, so walking away or a hit still closes the box.
+   */
   private moveTalk(id: string, villager: VillagerId, node: string) {
+    this.replaceWindow(id, "talk");
     this.events.push({ type: "talk", player: id, villager, node });
-    const choicesAt = choicesNodeOf(villager, node);
-    if (choicesAt)
-      this.windows.set(id, { kind: "talk", villager, node: choicesAt });
-    else this.closeWindow(id, "talk");
+    this.windows.set(id, {
+      kind: "talk",
+      villager,
+      node: choicesNodeOf(villager, node),
+    });
   }
 
-  /** Opens a store or bank window; a conversation still open elsewhere ends quietly. */
+  /** Opens a store or bank window. */
   private openWindow(id: string, kind: "store" | "bank", villager: VillagerId) {
+    this.replaceWindow(id, kind);
+    this.windows.set(id, { kind, villager });
+    this.events.push({ type: WINDOWS[kind].opened, player: id });
+  }
+
+  /** A window of another kind still open closes quietly, so the client shuts it (village spec §2). */
+  private replaceWindow(id: string, kind: VillagerWindow) {
     const open = this.windows.get(id);
     if (open && open.kind !== kind)
       this.events.push({ type: WINDOWS[open.kind].closed, player: id });
-    this.windows.set(id, { kind, villager });
-    this.events.push({ type: WINDOWS[kind].opened, player: id });
   }
 
   /** The player's window, if it is of this kind. */
@@ -874,8 +885,11 @@ export class Simulation {
     if (!isInventorySlot(from) || !isInventorySlot(to)) return;
     const player = this.state.players.get(id)!;
     moveStack(player.inventory, player.inventoryCounts, from, to);
+    // What waited on a slot meant what was there before.
     const drop = this.queuedDrops.get(id)?.slot;
     if (drop === from || drop === to) this.queuedDrops.delete(id);
+    const eat = this.queuedEats.get(id);
+    if (eat === from || eat === to) this.queuedEats.delete(id);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */

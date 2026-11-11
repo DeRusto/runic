@@ -106,6 +106,17 @@ describe("dragging in the inventory", () => {
     ]);
   });
 
+  test("an eat waiting on a dragged slot doesn't eat what lands there", () => {
+    const sim = holding(["berry", 4], ["herb", 3]);
+    sim.queueEat("a", 0);
+    sim.moveItem("a", 0, 1);
+    sim.tick();
+    expect(slotsOf(sim, 2)).toEqual([
+      ["herb", 3],
+      ["berry", 4],
+    ]);
+  });
+
   test.each([
     [-1, 1],
     [0, 30],

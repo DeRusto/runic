@@ -151,8 +151,12 @@ export function choicesNodeOf(villager: VillagerId, node: string) {
   return nodes[node]?.then;
 }
 
-/** Whether some choice in `villager`'s conversation runs `action`, so a shortcut to it may skip the talk. */
+/** The actions a right-click shortcut may run without the talk: Trade and Bank. Tools are given only when asked (village spec §2). */
+const SHORTCUT_ACTIONS: readonly unknown[] = ["openStore", "openBank"];
+
+/** Whether `action` is a shortcut and some choice in `villager`'s conversation runs it, so the shortcut may skip the talk. */
 export function offers(villager: VillagerId, action: unknown) {
+  if (!SHORTCUT_ACTIONS.includes(action)) return false;
   const nodes = nodesOf(villager);
   return Object.values(nodes).some(({ choices }) =>
     choices?.some((choice) => choice.action === action),

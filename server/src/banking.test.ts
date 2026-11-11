@@ -55,6 +55,7 @@ test("Aldous's conversation offers the bank", () => {
   ticks(1);
   expect(events).toEqual([
     { type: "talk", player: "a", villager: "aldous", node: "bank" },
+    { type: "talkEnded", player: "a" },
     opened,
   ]);
 });
@@ -62,6 +63,8 @@ test("Aldous's conversation offers the bank", () => {
 test("a shortcut the villager's conversation doesn't offer is ignored", () => {
   for (const [villager, then] of [
     ["odo", "openBank"],
+    // Tools are given only when asked in conversation (village spec §2).
+    ["odo", "giveTools"],
     ["aldous", "giveTools"],
     ["aldous", "nothing"],
     ["aldous", ["openBank"]],
@@ -70,6 +73,7 @@ test("a shortcut the villager's conversation doesn't offer is ignored", () => {
     ticks(1);
     expect(me().action).toBe("");
   }
+  expect([...me().tools]).toEqual([]);
 });
 
 /** A player beside Aldous with the bank open, holding these [item, count] stacks from inventory slot 0 and bank slot 0. */
@@ -293,6 +297,17 @@ test("walking away from Aldous shuts the bank with a line", () => {
   expect(bankOf(1)).toEqual([["", 0]]);
 });
 
+test("talking to Aldous with the bank open closes the bank", () => {
+  banking([]);
+  events = [];
+  sim.queueVisit("a", "aldous");
+  ticks(1);
+  expect(events).toEqual([
+    { type: "bankClosed", player: "a" },
+    { type: "talk", player: "a", villager: "aldous", node: "greet" },
+  ]);
+});
+
 test("closing the bank shuts it quietly", () => {
   banking([]);
   sim.closeBank("a");
@@ -308,7 +323,7 @@ test("being hit shuts the bank", () => {
   ticks(1);
   sim.queueTarget("a", "0");
   events = [];
-  while (me().health === me().maxHealth) ticks(1);
+  for (let i = 0; i < 50 && me().health === me().maxHealth; i++) ticks(1);
   expect(events).toEqual([
     told("You're hit, and Aldous shuts the bank."),
     { type: "bankClosed", player: "a" },

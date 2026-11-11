@@ -79,6 +79,28 @@ test("a conversation walks through its choices to its last line, and then takes 
   expect(choose(0)).toEqual([]);
 });
 
+test("a conversation still showing its last lines ends when the player walks away", () => {
+  talkToOdo();
+  choose(BYE);
+  events = [];
+  sim.queueWalk("a", { x: 1, y: 1 });
+  ticks(20);
+  expect(events).toEqual([
+    { type: "told", player: "a", line: "You walk away from Odo." },
+    { type: "talkEnded", player: "a" },
+  ]);
+});
+
+test("a conversation whose last lines the player has read ends quietly", () => {
+  talkToOdo();
+  choose(BYE);
+  sim.endTalk("a");
+  events = [];
+  sim.queueWalk("a", { x: 1, y: 1 });
+  ticks(20);
+  expect(events).toEqual([]);
+});
+
 test("a node with no choices of its own offers the ones it leads back to", () => {
   talkToOdo();
   expect(choose(FURNACE)).toEqual([talk("furnace")]);
@@ -139,7 +161,7 @@ test("being hit ends the conversation", () => {
   ticks(1);
   sim.queueTarget("a", "0");
   events = [];
-  while (me().health === me().maxHealth) ticks(1);
+  for (let i = 0; i < 50 && me().health === me().maxHealth; i++) ticks(1);
   expect(events).toEqual([
     {
       type: "told",
@@ -165,7 +187,11 @@ describe.each([
     sim.queueTarget("a", "0");
     sim.events.splice(0);
     const sent: WorldEvent[] = [];
-    while (!sent.some(({ type }) => type === "enemySwing")) {
+    for (
+      let i = 0;
+      i < 50 && !sent.some(({ type }) => type === "enemySwing");
+      i++
+    ) {
       sim.tick();
       sent.push(...sim.events.splice(0));
     }
