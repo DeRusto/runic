@@ -110,7 +110,7 @@ From [How does an improved item look and read?](https://github.com/DeRusto/runic
 
 ### Where the name shows
 
-- **Inventory and Gear tab slots** replace the browser's `title` tooltip with a custom tooltip, so the coloured name shows on hover. Each slot keeps its `aria-label`. Refusal text, such as a level gate, shows in the same tooltip after the name.
+- **Inventory and Gear tab slots** replace the browser's `title` tooltip with a custom tooltip, so the coloured name shows on hover. Each slot keeps its `aria-label`. Refusal text, such as a level gate, shows in the same tooltip after the name. The tooltip is a near-black box with a thin border and white 12px system-ui text, like the ground label, so names in it take the light shades. It shows at once, beside the cursor.
 - **Gear tab:** "Body: Copper chestplate of Fortitude. Takes 4% off each hit you take. Adds 20 to your max health." The base stat comes first, then the Virtue line at its size for the tier and Quality, in the same wording as the base stats:
   - Fortitude: "Adds N to your max health."
   - Might: "Adds N to your minimum and maximum hit."
