@@ -77,7 +77,7 @@ import {
   type Deal,
   offers,
   type DialogueAction,
-  type Villager,
+  nodesOf,
   type VillagerId,
   xpOf,
   type GatheringLeftField,
@@ -105,6 +105,14 @@ import {
 } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 
+/** What opens and closes each kind of villager window, and what a hit makes the villager do. */
+const WINDOWS = {
+  talk: { closed: "talkEnded", hit: "stops talking" },
+  store: { opened: "storeOpened", closed: "storeClosed", hit: "stops trading" },
+  bank: { opened: "bankOpened", closed: "bankClosed", hit: "shuts the bank" },
+} as const;
+type VillagerWindow = keyof typeof WINDOWS;
+
 /** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
 const maxHealthOf = (
   player: { hitpointsXp: number } & Partial<Record<GearSlot, string>>,
@@ -112,15 +120,28 @@ const maxHealthOf = (
   levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL +
   virtueOf(player, "fortitude");
 
-/** A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most `max` items, each with a whole count above 0. */
-function dealLines(list: unknown, max: number) {
+/**
+ * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
+ * `max` items, each with a whole count above 0 and, on the buy tray, a whole shelf stock it saw.
+ */
+function dealLines<Line extends Deal["sell"][number]>(
+  list: unknown,
+  max: number,
+  withStock: boolean,
+) {
   if (!Array.isArray(list) || list.length > max) return undefined;
-  const lines = list.map((line) => ({ item: line?.item, count: line?.count }));
+  const lines = list.map((line) => ({
+    item: line?.item,
+    count: line?.count,
+    ...(withStock && { stock: line?.stock }),
+  }));
   return lines.every(
-    ({ item, count }) =>
-      typeof item === "string" && Number.isInteger(count) && count > 0,
+    (line) =>
+      typeof line.item === "string" &&
+      isAmount(line.count) &&
+      (!withStock || (Number.isInteger(line.stock) && line.stock >= 0)),
   )
-    ? (lines as Deal["buy"])
+    ? (lines as Line[])
     : undefined;
 }
 
@@ -153,10 +174,10 @@ export const Player = schema(
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint32"),
     tools: t.array("string"),
-    /** Like `inventory`, `BANK_SLOTS` long (#197). */
-    bank: t.array("string"),
+    /** Like `inventory`, `BANK_SLOTS` long. Tagged for views: the room adds each player to their own view only, so nobody else sees it. */
+    bank: t.array("string").view(),
     /** Parallel to `bank`, and uncapped. */
-    bankCounts: t.array("uint32"),
+    bankCounts: t.array("uint32").view(),
     /** The item id worn in each gear slot, or "". */
     weapon: t.string().default(""),
     shield: t.string().default(""),
@@ -286,22 +307,24 @@ export class Simulation {
   /** Bushes and veins, by the tile that keys them. */
   private sites = new Map<string, GatheringSite>();
   private villagers = new Map<VillagerId, Tile>();
-  /** Each talking player's villager, and the node whose choices they can pick from. */
-  private talks = new Map<string, { villager: VillagerId; node: string }>();
+  /**
+   * Each player's open villager window, the villager they must stay beside, and for a
+   * conversation the node whose choices they can pick from. A player has at most one.
+   */
+  private windows = new Map<
+    string,
+    { kind: VillagerWindow; villager: VillagerId; node?: string }
+  >();
   /** What each choice's action does, with the villager who offered it; the choice has already been checked. */
   private readonly dialogueActions: Record<
     DialogueAction,
     (id: string, villager: VillagerId) => void
   > = {
-    giveTools: (id) => this.giveTools(id),
-    openStore: (id, villager) => this.openStore(id, villager),
-    openBank: (id, villager) => this.openBank(id, villager),
+    giveTools: (id, villager) => this.giveTools(id, villager),
+    openStore: (id, villager) => this.openWindow(id, "store", villager),
+    openBank: (id, villager) => this.openWindow(id, "bank", villager),
   };
-  /** Each player with the store window open, and the storekeeper they must stay beside. */
-  private shoppers = new Map<string, VillagerId>();
   private readonly shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
-  /** Each player with their bank open, and the banker they must stay beside. */
-  private banks = new Map<string, VillagerId>();
   /** Each station's tiles: the furnace covers four. */
   private stations: Partial<Record<StationKind, Tile[]>> = {};
   private queuedLogouts = new Set<string>();
@@ -379,7 +402,7 @@ export class Simulation {
         item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
       ),
     );
-    // A save from before the bank has none, so it starts empty (#197).
+    // A save from before the bank has none, so it starts empty (village spec §6).
     player.bank = new ArraySchema(
       ...Array.from(
         { length: BANK_SLOTS },
@@ -501,9 +524,7 @@ export class Simulation {
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
-    this.talks.delete(id);
-    this.shoppers.delete(id);
-    this.banks.delete(id);
+    this.windows.delete(id);
     this.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     for (const enemy of this.unsyncedEnemies.values())
@@ -514,9 +535,7 @@ export class Simulation {
   dropPlayer(id: string) {
     this.clearAction(id);
     this.unsyncedPlayers.get(id)!.dropped = true;
-    this.talks.delete(id);
-    this.shoppers.delete(id);
-    this.banks.delete(id);
+    this.windows.delete(id);
     this.queuedActions.delete(id);
     this.queuedEats.delete(id);
     this.queuedDrops.delete(id);
@@ -639,10 +658,9 @@ export class Simulation {
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
   choose(id: string, choice: number) {
-    const talk = this.talks.get(id);
+    const talk = this.windowOf(id, "talk");
     if (!talk || !Number.isInteger(choice)) return;
-    const { nodes } = VILLAGERS[talk.villager] as Villager;
-    const picked = nodes[talk.node]!.choices![choice];
+    const picked = nodesOf(talk.villager)[talk.node!]!.choices![choice];
     if (!picked || !this.beside(id, talk.villager)) return;
     this.moveTalk(id, talk.villager, picked.to);
     if (picked.action) this.dialogueActions[picked.action](id, talk.villager);
@@ -650,21 +668,44 @@ export class Simulation {
 
   /** The player closed the conversation, so walking away later says nothing. */
   endTalk(id: string) {
-    this.talks.delete(id);
+    this.closeWindow(id, "talk");
   }
 
   private moveTalk(id: string, villager: VillagerId, node: string) {
     this.events.push({ type: "talk", player: id, villager, node });
     const choicesAt = choicesNodeOf(villager, node);
-    if (choicesAt) this.talks.set(id, { villager, node: choicesAt });
-    else this.talks.delete(id);
+    if (choicesAt)
+      this.windows.set(id, { kind: "talk", villager, node: choicesAt });
+    else this.closeWindow(id, "talk");
   }
 
-  /** Ends a conversation from the server's side, with the line saying why. */
-  private stopTalk(id: string, line: string) {
-    this.talks.delete(id);
+  /** Opens a store or bank window; a conversation still open elsewhere ends quietly. */
+  private openWindow(id: string, kind: "store" | "bank", villager: VillagerId) {
+    const open = this.windows.get(id);
+    if (open && open.kind !== kind)
+      this.events.push({ type: WINDOWS[open.kind].closed, player: id });
+    this.windows.set(id, { kind, villager });
+    this.events.push({ type: WINDOWS[kind].opened, player: id });
+  }
+
+  /** The player's window, if it is of this kind. */
+  private windowOf(id: string, kind: VillagerWindow) {
+    const open = this.windows.get(id);
+    return open?.kind === kind ? open : undefined;
+  }
+
+  /** The player closed it, so walking away later says nothing. */
+  private closeWindow(id: string, kind: VillagerWindow) {
+    if (this.windowOf(id, kind)) this.windows.delete(id);
+  }
+
+  /** Closes the player's window from the server's side, with the line saying why. */
+  private shutWindow(id: string, line: string) {
+    const open = this.windows.get(id);
+    if (!open) return;
+    this.windows.delete(id);
     this.events.push({ type: "told", player: id, line });
-    this.events.push({ type: "talkEnded", player: id });
+    this.events.push({ type: WINDOWS[open.kind].closed, player: id });
   }
 
   private beside(id: string, villager: VillagerId) {
@@ -674,26 +715,13 @@ export class Simulation {
     );
   }
 
-  private openBank(id: string, villager: VillagerId) {
-    this.banks.set(id, villager);
-    this.events.push({ type: "bankOpened", player: id });
-  }
-
-  /** The player shut the bank window, so walking away later says nothing. */
   closeBank(id: string) {
-    this.banks.delete(id);
-  }
-
-  /** Shuts the bank from the server's side, with the line saying why. */
-  private shutBank(id: string, line: string) {
-    this.banks.delete(id);
-    this.events.push({ type: "told", player: id, line });
-    this.events.push({ type: "bankClosed", player: id });
+    this.closeWindow(id, "bank");
   }
 
   /** The player, if their bank is open and no combat lock refuses it; the refusal is told. */
-  private banker(id: string) {
-    if (!this.banks.has(id) || !this.alive(id)) return undefined;
+  private playerAtBank(id: string) {
+    if (!this.windowOf(id, "bank") || !this.alive(id)) return undefined;
     const refusal = bankRefusal(this.lockRunning(id));
     if (refusal) this.events.push({ type: "told", player: id, line: refusal });
     return refusal ? undefined : this.state.players.get(id)!;
@@ -705,14 +733,14 @@ export class Simulation {
    */
   deposit(id: string, slot: number, amount: number) {
     if (!isInventorySlot(slot) || !isAmount(amount)) return;
-    const player = this.banker(id);
+    const player = this.playerAtBank(id);
     const line = player && this.depositSlot(id, player, slot, amount);
     if (line) this.events.push({ type: "told", player: id, line });
   }
 
-  /** Whatever fits goes in, and one line says when anything didn't (#197). */
+  /** Whatever fits goes in, and one line says when anything didn't (village spec §6). */
   depositInventory(id: string) {
-    const player = this.banker(id);
+    const player = this.playerAtBank(id);
     if (!player) return;
     const refusals = Array.from({ length: INVENTORY_SLOTS }, (_, slot) =>
       this.depositSlot(id, player, slot, Infinity),
@@ -744,11 +772,11 @@ export class Simulation {
 
   /**
    * Both come straight off the network, as for deposit. Takes as many as fit, topping up the
-   * inventory's stacks before filling free slots, and the rest stays in the bank (#197).
+   * inventory's stacks before filling free slots, and the rest stays in the bank (village spec §6).
    */
   withdraw(id: string, slot: number, amount: number) {
     if (!isBankSlot(slot) || !isAmount(amount)) return;
-    const player = this.banker(id);
+    const player = this.playerAtBank(id);
     const item = player?.bank[slot];
     if (!player || !item) return;
     const refusal = takeRefusal(item, player);
@@ -756,62 +784,43 @@ export class Simulation {
       this.events.push({ type: "told", player: id, line: refusal });
       return;
     }
-    const { stack } = ITEMS[itemParts(item).base];
-    let left = Math.min(amount, player.bankCounts[slot]!);
-    for (let to = slotFor(item, player); left && to >= 0;) {
-      const moved = Math.min(left, stack - player.inventoryCounts[to]!);
-      player.inventory[to] = item;
-      player.inventoryCounts[to]! += moved;
-      player.bankCounts[slot]! -= moved;
-      left -= moved;
-      to = slotFor(item, player);
-    }
+    const { inventory, inventoryCounts } = player;
+    const count = Math.min(amount, player.bankCounts[slot]!);
+    player.bankCounts[slot]! -=
+      count - addItems(inventory, inventoryCounts, item, count);
     if (!player.bankCounts[slot]) player.bank[slot] = EMPTY_SLOT;
   }
 
   /** A drag in the bank, under the inventory's rules; both come straight off the network. */
   moveBankItem(id: string, from: number, to: number) {
     if (!isBankSlot(from) || !isBankSlot(to)) return;
-    const player = this.banks.has(id) && this.state.players.get(id);
+    const player = this.windowOf(id, "bank") && this.state.players.get(id);
     if (player) moveStack(player.bank, player.bankCounts, from, to);
   }
 
-  private giveTools(id: string) {
+  private giveTools(id: string, villager: VillagerId) {
     const player = this.state.players.get(id)!;
     const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
     if (!lacking.length) return;
     player.tools.push(...lacking);
-    const line = `The Blacksmith gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
+    const line = `${VILLAGERS[villager].name} gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
     this.events.push({ type: "told", player: id, line });
   }
 
-  private openStore(id: string, villager: VillagerId) {
-    this.shoppers.set(id, villager);
-    this.events.push({ type: "storeOpened", player: id });
-  }
-
-  /** The player closed the store window, so walking away later says nothing. */
   closeStore(id: string) {
-    this.shoppers.delete(id);
-  }
-
-  /** Closes the store window from the server's side, with the line saying why. */
-  private stopShopping(id: string, line: string) {
-    this.shoppers.delete(id);
-    this.events.push({ type: "told", player: id, line });
-    this.events.push({ type: "storeClosed", player: id });
+    this.closeWindow(id, "store");
   }
 
   /**
-   * Settles both trays at once, sales first so their coins pay for the buys (#198). It comes
+   * Settles both trays at once, sales first so their coins pay for the buys (village spec §5). It comes
    * straight off the network, so anything of the wrong shape, or from a player without the
    * store open, is ignored. Like a drag it skips the queue and touches no action.
    */
   deal(id: string, intent: Deal) {
     const player = this.state.players.get(id);
-    if (!player || player.dead || !this.shoppers.has(id)) return;
-    const buy = dealLines(intent?.buy, SHELF_SLOTS);
-    const sell = dealLines(intent?.sell, INVENTORY_SLOTS);
+    if (!player || player.dead || !this.windowOf(id, "store")) return;
+    const buy = dealLines<Deal["buy"][number]>(intent?.buy, SHELF_SLOTS, true);
+    const sell = dealLines(intent?.sell, INVENTORY_SLOTS, false);
     if (!buy || !sell || (!buy.length && !sell.length)) return;
     const deal = { buy, sell };
     const tell = (line: string) =>
@@ -855,11 +864,11 @@ export class Simulation {
   queueDrop(id: string, slot: number, amount: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
-    if (!Number.isInteger(amount) || amount < 1) return;
+    if (!isAmount(amount)) return;
     this.queuedDrops.set(id, { slot, amount });
   }
 
-  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (#193). */
+  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (village spec §4). */
   moveItem(id: string, from: number, to: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(from) || !isInventorySlot(to)) return;
@@ -1285,20 +1294,9 @@ export class Simulation {
       if (action.then) this.dialogueActions[action.then](id, action.villager);
       else this.moveTalk(id, action.villager, VILLAGERS[action.villager].start);
     }
-    for (const [id, { villager }] of this.talks) {
+    for (const [id, { villager }] of this.windows) {
       if (!this.beside(id, villager))
-        this.stopTalk(id, `You walk away from ${VILLAGERS[villager].name}.`);
-    }
-    for (const [id, villager] of this.shoppers) {
-      if (!this.beside(id, villager))
-        this.stopShopping(
-          id,
-          `You walk away from ${VILLAGERS[villager].name}.`,
-        );
-    }
-    for (const [id, villager] of this.banks) {
-      if (!this.beside(id, villager))
-        this.shutBank(id, `You walk away from ${VILLAGERS[villager].name}.`);
+        this.shutWindow(id, `You walk away from ${VILLAGERS[villager].name}.`);
     }
   }
 
@@ -1539,24 +1537,15 @@ export class Simulation {
       damage,
       blocked,
     });
-    const talk = this.talks.get(enemy.target);
-    if (landed && talk)
-      this.stopTalk(
+    // A blocked swing still hits; only a miss leaves the window open.
+    const open = this.windows.get(enemy.target);
+    if (rolled && open) {
+      const { name } = VILLAGERS[open.villager];
+      this.shutWindow(
         enemy.target,
-        `You're hit, and ${VILLAGERS[talk.villager].name} stops talking.`,
+        `You're hit, and ${name} ${WINDOWS[open.kind].hit}.`,
       );
-    const keeper = this.shoppers.get(enemy.target);
-    if (landed && keeper)
-      this.stopShopping(
-        enemy.target,
-        `You're hit, and ${VILLAGERS[keeper].name} stops trading.`,
-      );
-    const banker = this.banks.get(enemy.target);
-    if (landed && banker)
-      this.shutBank(
-        enemy.target,
-        `You're hit, and ${VILLAGERS[banker].name} shuts the bank.`,
-      );
+    }
     if (player.health === 0) this.die(enemy.target, player);
     else if (player.action === "") this.fightBack(enemy.target, player, id);
   }

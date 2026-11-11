@@ -9,7 +9,7 @@ import {
   WITHDRAW_INTENT,
   type WorldEvent,
 } from "@runic/shared";
-import { depositOnClick } from "./bottomBar.ts";
+import { takeOverSlots } from "./bottomBar.ts";
 import type { OpenMenu, SyncedPlayer } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
@@ -19,18 +19,21 @@ import type { WorldConnection } from "./players.ts";
 import { addTip } from "./tooltip.ts";
 
 /**
- * The bank window (#197): a 12×8 grid the server opens beside Aldous. A click withdraws a whole
+ * The bank window (village spec §6): a 12×8 grid the server opens beside Aldous. A click withdraws a whole
  * slot and the inventory's slots deposit while it is open; right-click asks how many.
  */
 export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {
   const panel = document.getElementById("bank")!;
   const used = document.getElementById("bank-used")!;
   let me: SyncedPlayer | undefined;
+  const heldAt = (slot: number) => me?.inventoryCounts[slot] ?? 0;
+  const deposit = (slot: number, amount: number) =>
+    room.send(DEPOSIT_INTENT, { slot, amount });
 
   const hide = () => {
     panel.hidden = true;
     placed.closed();
-    depositOnClick(undefined);
+    takeOverSlots(undefined);
   };
   /** The player shut it, so the server stops expecting them beside Aldous. */
   const close = () => {
@@ -71,7 +74,7 @@ export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {
       const item = me!.bank[i] ?? EMPTY_SLOT;
       const count = me!.bankCounts[i] ?? 0;
       if (item) filled++;
-      slot.ariaLabel = item ? itemName(item) : null;
+      slot.ariaLabel = item ? itemName(item) : "Empty slot";
       slot.style.setProperty("--icon", item && `url("${iconUrl(item)}")`);
       slot.ariaDisabled = String(!item);
       slot.draggable = !!item;
@@ -91,9 +94,11 @@ export function showBankWindow(room: WorldConnection, openMenu: OpenMenu) {
         panel.hidden = false;
         draw();
         placed.opened();
-        depositOnClick((slot, amount) =>
-          room.send(DEPOSIT_INTENT, { slot, amount }),
-        );
+        takeOverSlots({
+          click: (slot) => deposit(slot, heldAt(slot)),
+          menu: (slot) =>
+            amountChoices("Deposit", heldAt(slot), (n) => deposit(slot, n)),
+        });
       } else if (event.type === "bankClosed") hide();
     }
   });

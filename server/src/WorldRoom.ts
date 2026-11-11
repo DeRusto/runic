@@ -166,7 +166,7 @@ export class WorldRoom extends Room {
         }
         if (this.sim.state.tick % SAVE_INTERVAL_TICKS === 0)
           this.saveEveryone();
-        this.showGroundItems();
+        this.updateViews();
         this.broadcastPatch();
         const events = this.sim.events.splice(0);
         if (events.length) this.broadcast(EVENTS, events);
@@ -236,13 +236,16 @@ export class WorldRoom extends Room {
   }
 
   /**
-   * Visibility only grows until a ground item goes. No view.remove is needed then: a view
+   * Adds to each view its own player and the ground items it can see. Visibility only grows until a ground item goes. No view.remove is needed then: a view
    * keeps no list of what it holds, and leaving the map clears the item's view bits.
    */
-  private showGroundItems() {
+  private updateViews() {
     for (const client of this.clients) {
+      const { view } = client;
+      // Their own player, so their bank reaches them alone. Here rather than on join, so a reconnect's view gets it too.
+      const own = this.sim.state.players.get(client.sessionId);
+      if (view && own && !view.has(own)) view.add(own);
       for (const [id, groundItem] of this.sim.state.groundItems) {
-        const { view } = client;
         if (
           view &&
           !view.has(groundItem) &&

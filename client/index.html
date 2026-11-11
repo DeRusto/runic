@@ -226,6 +226,12 @@
           0 -1px #000,
           0 1px #000;
       }
+      /* A slot picked up by keyboard (M) to move. */
+      :is(#slots, #bank-slots) > button[data-moving="true"] {
+        box-shadow:
+          0 0 0 1px #000,
+          inset 0 0 0 2px #e8c060;
+      }
       #slots > button[data-locked="true"] {
         filter: grayscale(1);
         opacity: 0.6;
@@ -832,7 +838,7 @@
       #pile {
         width: 220px;
       }
-      /* Twelve slots across, the inventory's size, with the count and Deposit inventory below (#197). */
+      /* Twelve slots across and eight down, the bank's 96, with the count and Deposit inventory below (village spec §6). */
       #bank {
         position: fixed;
         display: flex;
@@ -890,7 +896,7 @@
       #smithing-rows > :first-child {
         border-top: 0;
       }
-      /* A fixed size that doesn't grow as the trays fill; only the trays scroll (#198). */
+      /* A fixed size that doesn't grow as the trays fill; only the trays scroll (village spec §5). */
       #store {
         position: fixed;
         display: flex;

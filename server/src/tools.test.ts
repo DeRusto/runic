@@ -57,7 +57,7 @@ test("a player gets only the tools they lack", () => {
     {
       type: "told",
       player: "b",
-      line: "The Blacksmith gives you a pickaxe.",
+      line: "Odo gives you a pickaxe.",
     },
   ]);
 });

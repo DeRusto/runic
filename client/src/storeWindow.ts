@@ -1,6 +1,5 @@
 import {
   CLOSE_STORE_INTENT,
-  COINS,
   DEAL_INTENT,
   dealRefusal,
   dealTotals,
@@ -8,12 +7,13 @@ import {
   heldCount,
   itemParts,
   SHELF_SLOTS,
+  sellRefusal,
   storePaysFor,
   valueOf,
   type Deal,
   type WorldEvent,
 } from "@runic/shared";
-import { useSlotsForCounter } from "./bottomBar.ts";
+import { takeOverSlots } from "./bottomBar.ts";
 import type { OpenMenu } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
@@ -25,7 +25,7 @@ import { addTip } from "./tooltip.ts";
 const coins = (count: number) => `${count} coin${count === 1 ? "" : "s"}`;
 
 /**
- * The general store's window, the counter (#198): the shelf's slots at the top, and below them
+ * The store window (village spec §5): the shelf's slots at the top, and below them the counter, with
  * a tray of what the player buys and one of what they sell, which one Deal settles. Nothing
  * changes hands before Deal. The server opens it, and closes it on a walk away or a hit.
  */
@@ -38,6 +38,8 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
   const dealButton = document.getElementById("store-deal") as HTMLButtonElement;
   const status = document.getElementById("store-status")!;
   const buying = new Map<string, number>();
+  /** How many of each item on the buy tray the shelf held when it was last put there, which the server checks is unchanged. */
+  const seen = new Map<string, number>();
   const selling = new Map<string, number>();
   /** The last line from outside the trays, such as why coins can't be sold. */
   let note = "";
@@ -55,7 +57,11 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
       : 0;
   };
   const dealOf = (): Deal => ({
-    buy: [...buying].map(([item, count]) => ({ item, count })),
+    buy: [...buying].map(([item, count]) => ({
+      item,
+      count,
+      stock: seen.get(item)!,
+    })),
     sell: [...selling].map(([item, count]) => ({ item, count })),
   });
   /** Adds `amount` to a tray line, up to `max`. */
@@ -77,7 +83,9 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     slot.type = "button";
     const buy = (amount: number) => {
       const item = slot.dataset.item;
-      if (item) put(buying, item, amount, stockOf(item));
+      if (!item) return;
+      seen.set(item, stockOf(item));
+      put(buying, item, amount, stockOf(item));
     };
     slot.onclick = () => buy(1);
     slot.oncontextmenu = (event) => {
@@ -172,18 +180,17 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
 
   /** Puts `amount` of an inventory item on the sell tray. */
   const sell = (item: string, amount: number) => {
-    if (item === COINS) {
-      note = "The store doesn't buy coins.";
-      return drawDeal();
-    }
-    put(selling, item, amount, heldOf(item));
+    const refusal = sellRefusal(item);
+    if (!refusal) return put(selling, item, amount, heldOf(item));
+    note = refusal;
+    drawDeal();
   };
 
   const shut = () => {
     if (panel.hidden) return;
     panel.hidden = true;
     placed.closed();
-    useSlotsForCounter(undefined);
+    takeOverSlots(undefined);
     buying.clear();
     selling.clear();
   };
@@ -197,9 +204,10 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
 
   const open = () => {
     note = "";
-    useSlotsForCounter({
-      click: (item) => sell(item, 1),
-      menu: (item) => amountChoices("Sell", heldOf(item), (n) => sell(item, n)),
+    takeOverSlots({
+      click: (_, item) => sell(item, 1),
+      menu: (_, item) =>
+        amountChoices("Sell", heldOf(item), (n) => sell(item, n)),
     });
     drawTrays();
     if (!panel.hidden) return;

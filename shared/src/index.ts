@@ -105,10 +105,15 @@ export const EAT_INTERVAL_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 
-/** The server alone knows the lock, so only it asks; 34 ticks of 300 ms round to 10 seconds. */
+/** The combat lock as players are told it, rounded to whole seconds: 34 ticks of 300 ms are 10. */
+export const COMBAT_LOCK_SECONDS = Math.round(
+  (COMBAT_LOCK_TICKS * TICK_MS) / 1000,
+);
+
+/** The server alone knows the lock, so only it asks. */
 export function logoutRefusal(locked: boolean) {
   return locked
-    ? "You can't log out until 10 seconds after a fight."
+    ? `You can't log out until ${COMBAT_LOCK_SECONDS} seconds after a fight.`
     : undefined;
 }
 export const REGEN_INTERVAL_TICKS = 20;
@@ -187,7 +192,7 @@ export type WorldEvent =
   | { type: "storeOpened"; player: string }
   /** The server closed a store window, on a walk away or a hit. */
   | { type: "storeClosed"; player: string }
-  /** The player's bank window opens (#197). */
+  /** The player's bank window opens (village spec §6). */
   | { type: "bankOpened"; player: string }
   /** The server shut the bank window, on a walk away or a hit. */
   | { type: "bankClosed"; player: string };

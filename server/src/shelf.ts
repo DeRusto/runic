@@ -11,11 +11,11 @@ import {
 const startingOf = (item: string) => STARTING_STOCK[item as ItemId] ?? 0;
 
 /**
- * The general store's shelf, kept in the synced parallel arrays it is given (#196). Each item
+ * The general store's shelf, kept in the synced parallel arrays it is given (village spec §5). Each item
  * moves one at a time back to its starting stock: the store's own refill, and what players
- * sold drains away and then leaves its slot. Only the server's memory holds it, so a restart
- * resets it to the starting stock.
+ * sold drains away and then leaves its slot.
  */
+// shortcut: only the server's memory holds the shelf, so a restart resets it to the starting stock and loses what players sold; save it if players miss those items.
 export class Shelf {
   /** When each item off its starting stock next moves one toward it, by id. */
   private moves = new Map<string, { tick: number; rising: boolean }>();
@@ -28,12 +28,6 @@ export class Shelf {
       items.push(item);
       counts.push(count);
     }
-  }
-
-  /** How many of `item` are on the shelf. */
-  countOf(item: string) {
-    const at = this.items.indexOf(item);
-    return at < 0 ? 0 : this.counts[at]!;
   }
 
   /** Puts sold items on the shelf. With no slot of theirs and none free, they are gone. */
@@ -53,6 +47,15 @@ export class Shelf {
     const at = this.items.indexOf(item);
     this.counts[at]! -= count;
     this.timeMove(item, at, tick);
+    this.letGoIfGone(item, at);
+  }
+
+  /** A sold item with none left gives its slot back; the store's own keep theirs to refill. */
+  private letGoIfGone(item: string, at: number) {
+    if (this.counts[at] || startingOf(item)) return;
+    this.moves.delete(item);
+    this.items.splice(at, 1);
+    this.counts.splice(at, 1);
   }
 
   /** Starts the wait for the next move toward the starting stock, unless one in that direction is already running. */
@@ -75,10 +78,7 @@ export class Shelf {
       move.tick += this.waitOf(item, move.rising);
       if (this.counts[at] !== startingOf(item)) continue;
       this.moves.delete(item);
-      if (!startingOf(item)) {
-        this.items.splice(at, 1);
-        this.counts.splice(at, 1);
-      }
+      this.letGoIfGone(item, at);
     }
   }
 }

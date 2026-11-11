@@ -6,7 +6,7 @@ import {
   choicesNodeOf,
   type DialogueChoice,
   type DialogueLine,
-  type Villager,
+  nodesOf,
   type VillagerId,
   type WorldEvent,
 } from "@runic/shared";
@@ -22,7 +22,7 @@ export function shownAt(
   node: string,
   line: number,
 ): { line: DialogueLine } | { choices: DialogueChoice[] } | undefined {
-  const { nodes } = VILLAGERS[villager] as Villager;
+  const nodes = nodesOf(villager);
   const said = nodes[node]!.lines[line];
   if (said) return { line: said };
   const choicesAt = choicesNodeOf(villager, node);
@@ -30,7 +30,7 @@ export function shownAt(
 }
 
 /**
- * The box above the bar where a villager talks (#195). The server opens and moves each
+ * The box above the bar where a villager talks (village spec §2). The server opens and moves each
  * conversation; the box types out the node's lines, then sends the picked choice.
  */
 export function showDialogueBox(room: WorldConnection) {
