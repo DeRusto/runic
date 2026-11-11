@@ -51,16 +51,24 @@ A furnace or an anvil: a fixed spot where a player makes something. It never run
 _Avoid_: Workstation, crafting table
 
 **Villager**:
-A named person who stands on one tile in the village and talks to players. Each has one job they offer while talking. Never an enemy, and can't be attacked.
+A named person who stands on one tile and talks to players: most in the village, some at their work outside it, such as the Forester at the edge of the thicket. Each has one job they offer while talking. Never an enemy, and can't be attacked.
 _Avoid_: NPC, townsfolk, character
 
 **Blacksmith**:
-Odo, the villager at the smithy, who gives players the tools they don't have yet, for free, when they ask in conversation.
+Odo, the villager at the smithy, who gives players whichever of a pickaxe and a hammer they don't have, for free, when they ask in conversation.
 _Avoid_: Smith, vendor
 
 **Conversation**:
 A talk with a villager in the dialogue box above the bar: the villager's lines and the player's choices, which the server checks the player is still beside the villager to carry out. Walking away or being hit ends it, and a blocked hit counts.
 _Avoid_: Chat (that is the chat box), dialog
+
+**Forester**:
+The villager at the edge of the thicket, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
+_Avoid_: Woodcutter (too close to Woodcutting, the skill), woodsman
+
+**Fisher**:
+The villager by the water who gives players a fishing rod if they don't have one, for free, when they ask in conversation.
+_Avoid_: Fisherman, angler
 
 **Storekeeper**:
 Marta, the villager who runs the general store.
@@ -345,7 +353,7 @@ One of the five metals, from lowest to highest: Copper (1), Bronze (5), Iron (10
 _Avoid_: Grade, rank
 
 **Tool**:
-What a player must own to do some work: a pickaxe for Mining, a hammer at an anvil. A tool is never lost and takes no inventory slot.
+What a player must own to do some work: a pickaxe for Mining, an axe for Woodcutting, a fishing rod for Fishing, a hammer at an anvil. Owning one is enough: a tool has no tiers and never changes how fast work goes. A tool is never lost and takes no inventory slot.
 _Avoid_: Gear, equipment
 
 **Toolbelt**:
