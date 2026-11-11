@@ -306,13 +306,24 @@ export function countOf(item: string, player: HasInventory) {
   );
 }
 
+/** Why the player's level is too low to make this item, or undefined if it isn't. The panel folds a tier on it. */
+export function levelRefusal(
+  item: RecipeItem,
+  player: Record<Recipe["xpField"], number>,
+) {
+  const { level, skill, xpField } = RECIPES[item];
+  return levelFor(player[xpField]) < level
+    ? `Needs ${skill} ${level}`
+    : undefined;
+}
+
 /** Why this item can't be made right now, or undefined if it can. The panel's rows and the server's checks both read this. */
 export function makeRefusal(
   item: RecipeItem,
   player: HasInventory & Record<Recipe["xpField"], number>,
 ) {
-  const { level, skill, xpField } = RECIPES[item];
-  if (levelFor(player[xpField]) < level) return `Needs ${skill} ${level}`;
+  const tooLow = levelRefusal(item, player);
+  if (tooLow) return tooLow;
   if (costsOf(item).some(([cost, count]) => countOf(cost, player) < count))
     return "Not enough materials";
   return undefined;

@@ -61,9 +61,16 @@ let current: SyncedPlayer;
 let open: ReturnType<typeof showSmithingPanel>;
 
 const panel = () => byId.get("smithing")!;
-const shownRows = () =>
-  byId.get("smithing-rows")!.children.filter((row) => !row.hidden);
+/** The open station's tier sections, each a header then its rows. */
+const sections = () =>
+  byId.get("smithing-rows")!.children.filter((section) => !section.hidden);
+const shownRows = () => sections().flatMap((s: any) => s.children.slice(1));
 const texts = (row: any) => row.children.map((c: any) => c.textContent);
+/** A row's one line: the piece, then its short cost and any reason underneath. */
+const line = (row: any) => texts(row).slice(1, 3);
+/** What a tier's header reads, and whether its section is unfolded. */
+const headers = () =>
+  sections().map((s: any) => [...texts(s.children[0]), s.open]);
 const buttons = (row: any) => row.children.filter((c: any) => c.type);
 const patch = (next: SyncedPlayer) => {
   current = next;
@@ -96,6 +103,47 @@ test("starts closed, and opens at a station with that station's rows", () => {
   expect(shownRows()).toHaveLength(25);
 });
 
+test("the anvil at Smithing 1 opens Copper and folds the other tiers with their gates", () => {
+  open("anvil");
+  expect(headers()).toEqual([
+    ["Copper", "", true],
+    ["Bronze", "Smithing 5", false],
+    ["Iron", "Smithing 10", false],
+    ["Steel", "Smithing 15", false],
+    ["Emberite", "Smithing 20", false],
+  ]);
+});
+
+test("the furnace folds on Mining, whatever the Smithing level", () => {
+  patch(me([], { smithingXp: xpForLevel(50), miningXp: xpForLevel(15) }));
+  open("furnace");
+  expect(headers()).toEqual([
+    ["Copper", "", true],
+    ["Bronze", "", true],
+    ["Iron", "", true],
+    ["Steel", "", true],
+    ["Emberite", "Mining 20", false],
+  ]);
+});
+
+test("folding stays as the player left it while open, and starts over at the next opening", () => {
+  open("anvil");
+  const [copper, bronze] = sections();
+  copper.open = false;
+  bronze.open = true;
+  patch(me([["copperBar", 3]], { smithingXp: xpForLevel(5) }));
+  expect(headers().slice(0, 2)).toEqual([
+    ["Copper", "", false],
+    ["Bronze", "", true],
+  ]);
+  open("anvil");
+  expect(headers().slice(0, 3)).toEqual([
+    ["Copper", "", true],
+    ["Bronze", "", true],
+    ["Iron", "Smithing 10", false],
+  ]);
+});
+
 test("the Emberite rows show both materials, greyed until the player qualifies", () => {
   const held: [string, number][] = [
     ["emberiteBar", 3],
@@ -104,15 +152,17 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   patch(me(held, { smithingXp: xpForLevel(19) }));
   open("anvil");
   const sword = shownRows()[20];
-  expect(texts(sword).slice(0, 2)).toEqual([
-    "Emberite sword",
-    "3 Emberite bar (have 3), 2 Emberbone (have 1)",
+  expect(line(sword)).toEqual([
+    "Sword",
+    "3 bars + 2 Emberbone · Needs Smithing 20",
   ]);
-  expect(texts(sword)).toContain("Needs Smithing 20");
+  expect(sword.title).toBe(
+    "3 Emberite bar (have 3), 2 Emberbone (have 1) · 108 Smithing experience · Needs Smithing 20",
+  );
   expect(buttons(sword).every((b: any) => b.disabled)).toBe(true);
 
   patch(me(held, { smithingXp: xpForLevel(20) }));
-  expect(texts(sword)).toContain("Not enough materials");
+  expect(sword.title).toContain("Not enough materials");
 
   patch(me([held[0]!, ["emberbone", 2]], { smithingXp: xpForLevel(20) }));
   expect(sword.className).toBe("");
@@ -120,7 +170,7 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   expect(shownRows()[21].className).toBe("cant");
 });
 
-test("a row shows the name, cost, materials held and level", () => {
+test("a row shows its icon, piece and short cost, with the full cost and experience in its tooltip", () => {
   patch(
     me([
       ["copperBar", 2],
@@ -129,11 +179,9 @@ test("a row shows the name, cost, materials held and level", () => {
   );
   open("anvil");
   const [sword] = shownRows();
-  expect(texts(sword).slice(0, 3)).toEqual([
-    "Copper sword",
-    "3 Copper bar (have 5)",
-    "Smithing 1",
-  ]);
+  expect(sword.children[0].src).toBe("/icons/copperSword.png");
+  expect(line(sword)).toEqual(["Sword", "3 bars"]);
+  expect(sword.title).toBe("3 Copper bar (have 5) · 18 Smithing experience");
   expect(sword.className).toBe("");
   expect(buttons(sword).map((b: any) => b.textContent)).toEqual([
     "Make 1",
@@ -147,7 +195,7 @@ test("a row that can't be made is greyed with the reason, and its buttons are of
   open("anvil");
   const iron = shownRows()[10];
   expect(iron.className).toBe("cant");
-  expect(texts(iron)).toContain("Needs Smithing 10");
+  expect(iron.title).toContain("Needs Smithing 10");
   expect(buttons(iron).every((b: any) => b.disabled)).toBe(true);
 });
 
@@ -155,7 +203,7 @@ test("having too few materials greys a row too", () => {
   open("anvil");
   const [sword] = shownRows();
   expect(sword.className).toBe("cant");
-  expect(texts(sword)).toContain("Not enough materials");
+  expect(sword.title).toContain("Not enough materials");
 });
 
 test("an open panel follows the patches", () => {
@@ -165,13 +213,13 @@ test("an open panel follows the patches", () => {
   patch(me([["copperOre", 1]]));
   expect(shownRows()[0]).toBe(bar);
   expect(bar.className).toBe("");
-  expect(texts(bar)).toContain("1 Copper ore (have 1)");
+  expect(bar.title).toContain("1 Copper ore (have 1)");
 });
 
 test("a row opens right away, with no patch in between", () => {
   current = me([["copperOre", 4]]);
   open("furnace");
-  expect(texts(shownRows()[0])).toContain("1 Copper ore (have 4)");
+  expect(shownRows()[0].title).toContain("1 Copper ore (have 4)");
 });
 
 test.each([
@@ -207,8 +255,8 @@ test("the row greys itself as a pick uses up the materials, with the panel still
   patch(me([["copperBar", 1]], { smithingXp: 10 }));
   expect(panel().hidden).toBe(false);
   expect(bar.className).toBe("cant");
-  expect(texts(bar)).toContain("1 Copper ore (have 0)");
-  expect(texts(bar)).toContain("Not enough materials");
+  expect(bar.title).toContain("1 Copper ore (have 0)");
+  expect(bar.title).toContain("Not enough materials");
   expect(buttons(bar).every((b: any) => b.disabled)).toBe(true);
 });
 
@@ -216,10 +264,10 @@ test("a level gained while it's open lifts that row's level reason", () => {
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(9) }));
   open("anvil");
   const iron = shownRows()[10];
-  expect(texts(iron)).toContain("Needs Smithing 10");
+  expect(iron.title).toContain("Needs Smithing 10");
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(10) }));
   expect(iron.className).toBe("");
-  expect(texts(iron)).not.toContain("Needs Smithing 10");
+  expect(iron.title).not.toContain("Needs Smithing 10");
 });
 
 test("a furnace row names Mining as its gate, whatever the Smithing level", () => {
@@ -231,17 +279,13 @@ test("a furnace row names Mining as its gate, whatever the Smithing level", () =
   );
   open("furnace");
   const iron = shownRows()[2];
-  expect(texts(iron).slice(0, 3)).toEqual([
-    "Iron bar",
-    "1 Iron ore (have 1)",
-    "Mining 10",
-  ]);
-  expect(texts(iron)).toContain("Needs Mining 10");
+  expect(line(iron)).toEqual(["Iron bar", "1 Iron ore · Needs Mining 10"]);
+  expect(iron.title).toContain("Needs Mining 10");
   expect(buttons(iron).every((b: any) => b.disabled)).toBe(true);
 
   patch(me([["ironOre", 1]], { smithingXp: 0, miningXp: xpForLevel(10) }));
   expect(iron.className).toBe("");
-  expect(texts(iron)).not.toContain("Needs Mining 10");
+  expect(iron.title).not.toContain("Needs Mining 10");
   expect(buttons(iron).every((b: any) => !b.disabled)).toBe(true);
 });
 

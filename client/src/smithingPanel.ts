@@ -1,16 +1,19 @@
 import {
   costsOf,
   countOf,
+  levelRefusal,
   MAKE_INTENT,
   makeRefusal,
   RECIPES,
+  TIERS,
   tilesApart,
   WALK_INTENT,
+  xpOf,
   type RecipeItem,
   type StationKind,
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
-import { itemName } from "./itemIcons.ts";
+import { iconUrl, itemName } from "./itemIcons.ts";
 import { leftPanel } from "./leftPanels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";
@@ -33,46 +36,84 @@ export function showSmithingPanel(room: WorldConnection) {
   };
   const left = leftPanel(close);
 
-  const rows = (Object.keys(RECIPES) as RecipeItem[]).map((item) => {
-    const row = document.createElement("div");
-    const [name, cost, level, reason] = [part(), part(), part(), part()];
-    name.textContent = itemName(item);
-    level.textContent = `${RECIPES[item].skill} ${RECIPES[item].level}`;
-    const button = (label: string, all: boolean) => {
-      const make = document.createElement("button");
-      make.type = "button";
-      make.textContent = label;
-      make.onclick = () => room.send(MAKE_INTENT, { item, all });
-      return make;
-    };
-    const buttons = [button("Make 1", false), button("Make all", true)];
-    row.append(name, cost, level, reason, ...buttons);
-    return { item, row, cost, reason, buttons };
-  });
+  const items = Object.keys(RECIPES) as RecipeItem[];
+  const sections = (["furnace", "anvil"] as const).flatMap((station) =>
+    TIERS.map((tier) => {
+      const section = document.createElement("details");
+      const header = document.createElement("summary");
+      const [name, gate] = [part(), part()];
+      name.textContent = itemName(tier);
+      header.append(name, gate);
+      const recipes = items.filter(
+        (item) => RECIPES[item].station === station && item.startsWith(tier),
+      );
+      const rows = recipes.map((item) => {
+        const row = document.createElement("div");
+        const icon = document.createElement("img");
+        icon.src = iconUrl(item);
+        icon.alt = "";
+        const [name, cost] = [part(), part()];
+        // At the anvil the tier's header names the metal, so a row names only the piece.
+        name.textContent =
+          station === "anvil" ? item.slice(tier.length) : itemName(item);
+        const button = (label: string, all: boolean) => {
+          const make = document.createElement("button");
+          make.type = "button";
+          make.textContent = label;
+          make.ariaLabel = `${label} ${itemName(item)}`;
+          make.onclick = () => room.send(MAKE_INTENT, { item, all });
+          return make;
+        };
+        const buttons = [button("Make 1", false), button("Make all", true)];
+        row.append(icon, name, cost, ...buttons);
+        // Bars are always the tier's own, so the line can say just "bars".
+        const short = costsOf(item)
+          .map(([material, count]) =>
+            material === `${tier}Bar`
+              ? `${count} bars`
+              : `${count} ${itemName(material)}`,
+          )
+          .join(" + ");
+        const xp = `${xpOf(item)[0]![1]} ${RECIPES[item].skill} experience`;
+        return { item, row, cost, short, xp, buttons };
+      });
+      section.append(header, ...rows.map(({ row }) => row));
+      return { station, section, gate, first: recipes[0]!, rows };
+    }),
+  );
+  const rows = sections.flatMap((s) => s.rows);
   document
     .getElementById("smithing-rows")!
-    .replaceChildren(...rows.map(({ row }) => row));
+    .replaceChildren(...sections.map(({ section }) => section));
 
   const draw = (me: SyncedPlayer) => {
-    for (const { item, row, cost, reason, buttons } of rows) {
+    for (const { item, row, cost, short, xp, buttons } of rows) {
       const refusal = makeRefusal(item, me);
-      row.className = refusal ? "cant" : "";
-      reason.textContent = refusal ?? "";
-      cost.textContent = costsOf(item)
+      const full = costsOf(item)
         .map(
           ([material, count]) =>
             `${count} ${itemName(material)} (have ${countOf(material, me)})`,
         )
         .join(", ");
+      row.className = refusal ? "cant" : "";
+      cost.textContent = [short, refusal].filter(Boolean).join(" · ");
+      row.title = [full, xp, refusal].filter(Boolean).join(" · ");
       for (const make of buttons) make.disabled = !!refusal;
     }
+    for (const { gate, first } of sections)
+      gate.textContent = levelRefusal(first, me)
+        ? `${RECIPES[first].skill} ${RECIPES[first].level}`
+        : "";
   };
 
   const show = (station: StationKind, me: SyncedPlayer) => {
     walkingTo = undefined;
     title.textContent = itemName(station);
-    for (const { item, row } of rows)
-      row.hidden = RECIPES[item].station !== station;
+    // Folding starts over at each opening: the tiers the player has reached open, the rest fold.
+    for (const s of sections) {
+      s.section.hidden = s.station !== station;
+      s.section.open = !levelRefusal(s.first, me);
+    }
     draw(me);
     left.opening();
     panel.hidden = false;
