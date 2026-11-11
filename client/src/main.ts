@@ -16,6 +16,7 @@ import { forgetToken, joinWorld } from "./login.ts";
 import { showLogoutConfirm } from "./logoutConfirm.ts";
 import { watchPanels } from "./panels.ts";
 import { showPileWindow } from "./pileWindow.ts";
+import { storePrototype } from "./storePrototype.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
@@ -69,6 +70,8 @@ function enterWorld(room: WorldConnection) {
   status.textContent = "";
   const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure);
   const openMenu = showBottomBar(room, sayOverhead);
+  // PROTOTYPE (#198): the store window, on fake stock and coins.
+  storePrototype(openMenu);
   walkOnClick(
     room,
     tiles,
