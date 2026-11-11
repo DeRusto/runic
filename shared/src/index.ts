@@ -188,6 +188,8 @@ export type WorldEvent =
   | { type: "talk"; player: string; villager: VillagerId; node: string }
   /** The server ended a conversation the client may still be showing, on a walk away or a hit. */
   | { type: "talkEnded"; player: string }
+  /** The server's answer to a deal: `done` when it went through, or false when refused, with the reason told. */
+  | { type: "dealAnswered"; player: string; done: boolean }
   /** The store window opens for `player`. */
   | { type: "storeOpened"; player: string }
   /** The server closed a store window, on a walk away or a hit. */

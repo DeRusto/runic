@@ -38,11 +38,13 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
   const dealButton = document.getElementById("store-deal") as HTMLButtonElement;
   const status = document.getElementById("store-status")!;
   const buying = new Map<string, number>();
-  /** How many of each item on the buy tray the shelf held when it was last put there, which the server checks is unchanged. */
+  /** How many of each item on the buy tray the shelf held when it was first put there, which the server checks is unchanged. */
   const seen = new Map<string, number>();
   const selling = new Map<string, number>();
   /** The last line from outside the trays, such as why coins can't be sold. */
   let note = "";
+  /** A deal sent and not yet answered, so a second press can't send it twice. */
+  let dealing = false;
 
   const state = () => room.state;
   const me = () => state().players.get(room.sessionId);
@@ -84,7 +86,8 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     const buy = (amount: number) => {
       const item = slot.dataset.item;
       if (!item) return;
-      seen.set(item, stockOf(item));
+      // Stamped once, so a later click can't hide a change since the line was set out (village spec §5).
+      if (!buying.has(item)) seen.set(item, stockOf(item));
       put(buying, item, amount, stockOf(item));
     };
     slot.onclick = () => buy(1);
@@ -162,7 +165,7 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     sum.textContent = `You pay ${pay} · you get ${get} · ${net < 0 ? "−" : "+"}${coins(Math.abs(net))}`;
     const empty = !buying.size && !selling.size;
     const refusal = player && !empty && dealRefusal(deal, player, state());
-    dealButton.disabled = empty || !!refusal || !player;
+    dealButton.disabled = empty || !!refusal || !player || dealing;
     status.classList.toggle("refused", !!refusal);
     status.textContent =
       refusal ||
@@ -171,11 +174,11 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
         : "Press Deal to settle both trays.");
   };
 
+  // The trays stay until the server answers, so a refused deal can be fixed and sent again.
   dealButton.onclick = () => {
     room.send(DEAL_INTENT, dealOf());
-    buying.clear();
-    selling.clear();
-    drawTrays();
+    dealing = true;
+    drawDeal();
   };
 
   /** Puts `amount` of an inventory item on the sell tray. */
@@ -191,8 +194,11 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
     panel.hidden = true;
     placed.closed();
     takeOverSlots(undefined);
+    // Or an amount menu left open could put lines back on the cleared trays.
+    document.getElementById("slot-menu")!.hidden = true;
     buying.clear();
     selling.clear();
+    dealing = false;
   };
   const close = () => {
     if (panel.hidden) return;
@@ -221,6 +227,17 @@ export function showStoreWindow(room: WorldConnection, openMenu: OpenMenu) {
         open();
       else if (event.type === "storeClosed" && event.player === room.sessionId)
         shut();
+      else if (
+        event.type === "dealAnswered" &&
+        event.player === room.sessionId
+      ) {
+        dealing = false;
+        if (event.done) {
+          buying.clear();
+          selling.clear();
+        }
+        drawTrays();
+      }
     }
   });
   room.onStateChange(() => {

@@ -181,6 +181,21 @@ describe("a deal", () => {
     ]);
   });
 
+  test("is answered, so the client keeps its trays until the deal is done", () => {
+    addShopper("a", [COINS, 4]);
+    openStore();
+    const answers = () =>
+      sim.events.splice(0).filter(({ type }) => type === "dealAnswered");
+    sim.deal("a", { buy: [{ item: "berry", count: 2, stock: 20 }], sell: [] });
+    expect(answers()).toEqual([
+      { type: "dealAnswered", player: "a", done: false },
+    ]);
+    sim.deal("a", { buy: [{ item: "berry", count: 1, stock: 20 }], sell: [] });
+    expect(answers()).toEqual([
+      { type: "dealAnswered", player: "a", done: true },
+    ]);
+  });
+
   test("that the rules refuse changes nothing and says why", () => {
     addShopper("a", [COINS, 4]);
     openStore();

@@ -836,8 +836,13 @@ export class Simulation {
     const deal = { buy, sell };
     const tell = (line: string) =>
       this.events.push({ type: "told", player: id, line });
+    const answer = (done: boolean) =>
+      this.events.push({ type: "dealAnswered", player: id, done });
     const refusal = dealRefusal(deal, player, this.state);
-    if (refusal) return tell(refusal);
+    if (refusal) {
+      tell(refusal);
+      return answer(false);
+    }
     const { inventory, inventoryCounts } = player;
     const { tick } = this.state;
     for (const { item, count } of sell) {
@@ -855,6 +860,7 @@ export class Simulation {
     this.queuedDrops.delete(id);
     this.queuedEats.delete(id);
     tell(`Deal done: you paid ${pay} coins and got ${get}.`);
+    answer(true);
   }
 
   /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
