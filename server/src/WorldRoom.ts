@@ -9,6 +9,8 @@ import { StateView } from "@colyseus/schema";
 import {
   CHAT,
   CHOOSE_INTENT,
+  CLOSE_STORE_INTENT,
+  DEAL_INTENT,
   DROP_INTENT,
   MOVE_INTENT,
   EAT_INTENT,
@@ -34,6 +36,7 @@ import {
   VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
+  type Deal,
   type GearSlot,
   type Tile,
 } from "@runic/shared";
@@ -71,11 +74,17 @@ export class WorldRoom extends Room {
       this.sim.queueGather(client.sessionId, "mining", vein),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
-    [VISIT_INTENT]: (client: Client, villager: string) =>
-      this.sim.queueVisit(client.sessionId, villager),
+    [VISIT_INTENT]: (
+      client: Client,
+      visit: { villager: string; then?: string },
+    ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),
+    [DEAL_INTENT]: (client: Client, deal: Deal) =>
+      this.sim.deal(client.sessionId, deal),
+    [CLOSE_STORE_INTENT]: (client: Client) =>
+      this.sim.closeStore(client.sessionId),
     [EAT_INTENT]: (client: Client, slot: number) =>
       this.sim.queueEat(client.sessionId, slot),
     [DROP_INTENT]: (client: Client, drop: { slot: number; amount: number }) =>

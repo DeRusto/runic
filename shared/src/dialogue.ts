@@ -2,7 +2,7 @@
 export type DialogueLine = { speaker: "villager" | "you"; text: string };
 
 /** What the server does when a choice is picked, once it has checked the player is still beside the villager. */
-export type DialogueAction = "giveTools";
+export type DialogueAction = "giveTools" | "openStore";
 
 /** `to` is the node the conversation moves to. */
 export type DialogueChoice = {
@@ -96,7 +96,7 @@ export const VILLAGERS = {
       bye: { lines: [you("Bye."), villager("Mind how you go.")] },
     },
   },
-  // Their jobs arrive as choices with the store (#202) and the bank (#203).
+  // The banker's job arrives as a choice with the bank (#203).
   marta: {
     name: "Marta",
     role: "storekeeper",
@@ -107,7 +107,16 @@ export const VILLAGERS = {
           villager("Marta. I keep the store, for my sins."),
           villager("If it's not nailed down, I'll buy it off you."),
         ],
-        choices: [{ text: "Bye.", to: "bye" }],
+        choices: [
+          { text: "What have you got?", to: "store", action: "openStore" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      store: {
+        lines: [
+          you("What have you got?"),
+          villager("Have a look. No haggling."),
+        ],
       },
       bye: { lines: [you("Bye."), villager("Don't track mud in next time.")] },
     },

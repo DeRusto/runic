@@ -212,7 +212,7 @@ test("the Blacksmith's tools, asked for in conversation, reach the client with a
   const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
   const BOTH = ["pickaxe", "hammer"];
 
-  room.send(VISIT_INTENT, "odo");
+  room.send(VISIT_INTENT, { villager: "odo" });
   await vi.waitFor(() => expect(talking).toBe(true), {
     timeout: TICK_MS * 4,
     interval: 20,

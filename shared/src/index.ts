@@ -12,12 +12,16 @@ export const WALK_INTENT = "walk";
 export const TARGET_INTENT = "target";
 /** The make intent's message type; its payload is `{ item, all }`, with `all` false for Make 1. */
 export const MAKE_INTENT = "make";
-/** The visit intent's message type, for clicking a villager; its payload is the villager's id. Arriving opens the conversation. */
+/** The visit intent's message type, for clicking a villager; its payload is `{ villager, then? }`, the villager's id and a `DialogueAction` their conversation offers. Arriving runs `then`, or else opens the conversation. */
 export const VISIT_INTENT = "visit";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
 export const END_TALK_INTENT = "endTalk";
+/** The deal intent's message type, for the store window's Deal button; its payload is a `Deal`. */
+export const DEAL_INTENT = "deal";
+/** The close store intent's message type, for closing the store window; it has no payload. */
+export const CLOSE_STORE_INTENT = "closeStore";
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
 /** The drop intent's message type; its payload is `{ slot, amount }`, and an amount over the stack drops it all. */
@@ -165,13 +169,18 @@ export type WorldEvent =
   /** A conversation opened or moved on: the client shows `node`'s lines, then the choices that follow them. */
   | { type: "talk"; player: string; villager: VillagerId; node: string }
   /** The server ended a conversation the client may still be showing, on a walk away or a hit. */
-  | { type: "talkEnded"; player: string };
+  | { type: "talkEnded"; player: string }
+  /** The store window opens for `player`. */
+  | { type: "storeOpened"; player: string }
+  /** The server closed a store window, on a walk away or a hit. */
+  | { type: "storeClosed"; player: string };
 
 export * from "./dialogue.ts";
 export * from "./enemies.ts";
 export * from "./foraging.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";
+export * from "./generalStore.ts";
 export * from "./items.ts";
 export * from "./making.ts";
 export * from "./mining.ts";

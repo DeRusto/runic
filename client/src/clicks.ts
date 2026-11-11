@@ -7,7 +7,11 @@ import {
   TICK_MS,
   VISIT_INTENT,
   WALK_INTENT,
+  VILLAGERS,
+  type DialogueAction,
   type TileKind,
+  type Villager,
+  type VillagerId,
 } from "@runic/shared";
 import * as THREE from "three";
 import { printChatLine } from "./bottomBar.ts";
@@ -24,6 +28,22 @@ import { stationTile, type addStations } from "./stations.ts";
 import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
+
+/** The right-click menu's name for each action a villager's conversation can lead to, which the shortcut runs on arrival without talking. */
+const SHORTCUTS: Partial<Record<DialogueAction, string>> = {
+  openStore: "Trade",
+};
+
+/** The shortcuts a villager's right-click menu offers after Talk-to: those of the actions their conversation offers. */
+function shortcutsOf(villager: VillagerId) {
+  const { nodes } = VILLAGERS[villager] as Villager;
+  const actions = Object.values(nodes).flatMap(
+    (node) => node.choices?.map((choice) => choice.action) ?? [],
+  );
+  return Object.entries(SHORTCUTS).filter(([action]) =>
+    actions.includes(action as DialogueAction),
+  ) as [DialogueAction, string][];
+}
 
 /** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on another player opens the player menu. */
 export function walkOnClick(
@@ -70,6 +90,20 @@ export function walkOnClick(
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
     aim(event);
+    const villager = villagerUnder(raycaster);
+    if (villager) {
+      const visit = (then?: DialogueAction) => () => {
+        showMarker(villager.x, villager.y);
+        room.send(VISIT_INTENT, { villager: villager.villager, then });
+      };
+      openMenu(event, [
+        ["Talk-to", visit()],
+        ...shortcutsOf(villager.villager).map(
+          ([then, label]) => [label, visit(then)] as const,
+        ),
+      ]);
+      return;
+    }
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
   };
@@ -116,7 +150,7 @@ export function walkOnClick(
     const villager = villagerUnder(raycaster);
     if (villager) {
       showMarker(villager.x, villager.y);
-      room.send(VISIT_INTENT, villager.villager);
+      room.send(VISIT_INTENT, { villager: villager.villager });
       return;
     }
     if (!raycaster.ray.intersectPlane(ground, hit)) return;
