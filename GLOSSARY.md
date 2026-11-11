@@ -74,6 +74,10 @@ _Avoid_: Shop, market
 What the general store has for sale, the same for every player: its own stock, which refills over time, and the items players have sold to it, which run down over time.
 _Avoid_: Stock list, inventory
 
+**Bank**:
+Where a player keeps items they aren't carrying, opened through the banker. Each player has their own 96 slots, kept for good. A slot holds one piece of gear, or any number of one material, food or coins.
+_Avoid_: Vault, storage, chest
+
 **Value**:
 What an item costs at the general store, in coins. The store pays less than an item's value when it buys.
 _Avoid_: Price, worth
