@@ -35,19 +35,27 @@ The part of the village where the furnace, anvil and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
-A spot in a thicket that can be foraged; it runs out after use and grows back over time. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Foraging level.
+A tile in a thicket that can be foraged; it runs out after use and grows back over time. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Foraging level.
 _Avoid_: Node, resource, plant
 
 **Vein**:
-A spot in the world that can be mined for ore; it runs out after use and grows back over time. A vein is not a rock, which is a prop.
+A site that can be mined for ore. Every vein belongs to a site pool: one that runs out disappears from its spot, and after a while a full vein comes back at another. A vein is not a rock, which is a prop.
 _Avoid_: Ore rock, node, resource
 
+**Site pool**:
+An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins each have one.
+_Avoid_: Spawn area, zone
+
+**Spot**:
+One of the tiles in a site pool where a site can appear. With no site on it, a spot is plain ground that players can walk on.
+_Avoid_: Spawn point, node
+
 **Tree**:
-A spot in the world that can be chopped for logs with an axe; it runs out after use, shows as a **stump** that still blocks walking, and grows back in the same place. Comes in three kinds: **Birch** (Woodcutting 1), **Oak** (10) and **Charwood** (20). Only trees placed as trees can be chopped; the rows of trees that wall the region are props.
+A tile in the world that can be chopped for logs with an axe; it runs out after use, shows as a **stump** that still blocks walking, and grows back in the same place. Comes in three kinds: **Birch** (Woodcutting 1), **Oak** (10) and **Charwood** (20). Only trees placed as trees can be chopped; the rows of trees that wall the region are props.
 _Avoid_: Choppable tree, node, resource
 
 **Fishing spot**:
-A spot on the water at the edge of the bank, fished from the land beside it, that shows as rippling water. It runs out after use and comes back somewhere else along the shore.
+A site on the water at the edge of the bank, fished from the land beside it, that shows as rippling water. It sits on a spot of the shore's site pool, runs out after use, and comes back at another spot along the shore.
 _Avoid_: Fishing pool, fishing hole, school
 
 **Furnace**:
@@ -55,11 +63,11 @@ A small building in the smithy where a player turns ore into bars. Not a house.
 _Avoid_: Smelter, forge
 
 **Anvil**:
-A fixed spot where a player turns bars into gear.
+A fixed tile where a player turns bars into gear.
 _Avoid_: Forge, workbench
 
 **Station**:
-A furnace or an anvil: a fixed spot where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
+A furnace or an anvil: a fixed place where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -199,7 +207,7 @@ The skill trained by taking ore from veins and smelting it into bars at a furnac
 _Avoid_: Gathering, quarrying
 
 **Gathering skill**:
-A skill trained by taking items from a **site**, a spot that runs out and grows back: Foraging from bushes, Mining from veins. It names the family, and is no other name for either skill.
+A skill trained by taking items from a **site**, a tile that runs out and grows back, either where it was or at another spot of its site pool: Foraging from bushes, Mining from veins. It names the family, and is no other name for either skill.
 _Avoid_: Resource skill, harvesting
 
 **Smithing**:

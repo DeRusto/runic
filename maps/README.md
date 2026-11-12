@@ -10,19 +10,23 @@ Open `region.tmj` in Tiled to paint it, or edit it through the `tiled` MCP serve
 | ------------ | ------- | ----------------------------------------------------- | --------------------------- |
 | `ground`     | Tiles   | grass, thicket, path, ashen                           | Every cell is filled        |
 | `features`   | Tiles   | props, bushes, veins, stations, house walls and doors | At most one per tile        |
-| `placements` | Objects | the respawn, enemy homes, NPCs                        | One per tile, snapped to it |
+| `placements` | Objects | the respawn, enemy homes, NPCs, site pools and spots  | One per tile, snapped to it |
 
 If it's just what stands on a tile, it's a tile in `features`. If it has a name, its own settings, or something refers to it, it's an object in `placements`.
+
+A pooled site has no tile in `features`: its spot is plain ground, and the server puts a site on `active` of a pool's spots at random. When one runs out it disappears, and after its regrow time a full one comes back at a free spot of the same pool. The loader refuses a spot outside every pool and a pool with fewer spots than `active`.
 
 Whether a tile blocks walking comes from the `blocks` property on its tile in the tileset, so there's no collision layer to keep in step. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
 
 An object's class is one of these:
 
-| Class       | Needs                                             |
-| ----------- | ------------------------------------------------- |
-| `respawn`   | Nothing. There's exactly one                      |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`  |
-| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous` |
+| Class       | Needs                                                               |
+| ----------- | ------------------------------------------------------------------- |
+| `respawn`   | Nothing. There's exactly one                                        |
+| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                    |
+| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`                   |
+| `sitePool`  | A rectangle with `site` (`vein`), `kind` and `active` (an int)      |
+| `siteSpot`  | A point inside exactly one `sitePool`, on a tile that doesn't block |
 
 ## Before committing
 
