@@ -52,13 +52,6 @@ const pool = (
     property("active", active),
   ],
 });
-/** The 3×2 region with water (gid 6) in the middle of the bottom row, and `objects` placed. */
-const lake = (objects: object[]) =>
-  mapWith({
-    layers: mapWith({}, objects).layers.map((l) =>
-      l.name === "ground" ? { ...l, data: [2, 1, 1, 1, 6, 1] } : l,
-    ),
-  });
 const fishingPool = {
   type: "sitePool",
   ...at(0, 1),
@@ -76,9 +69,13 @@ const spot = (x: number, y: number, name?: string) => ({
   point: true,
   ...(name && { name }),
 });
-const withLayer = (name: string, data: unknown) => ({
-  layers: mapWith().layers.map((l) => (l.name === name ? { name, data } : l)),
+/** `base`'s layers, with the layer called `name` holding `data` instead. */
+const withLayer = (name: string, data: unknown, base = mapWith()) => ({
+  layers: base.layers.map((l) => (l.name === name ? { name, data } : l)),
 });
+/** The 3×2 region with water (gid 6) in the middle of the bottom row, unless `ground` says otherwise, and `objects` placed. */
+const lake = (objects: object[], ground = [2, 1, 1, 1, 6, 1]) =>
+  mapWith(withLayer("ground", ground, mapWith({}, objects)));
 
 describe("loadRegion", () => {
   it("merges ground, features and placements into one tile each", () => {
@@ -361,11 +358,7 @@ describe("loadRegion", () => {
     ],
     [
       "a fishing spot with no land beside it to fish from",
-      mapWith({
-        layers: lake([respawn, fishingPool, spot(1, 1)]).layers.map((l) =>
-          l.name === "ground" ? { ...l, data: [2, 1, 1, 1, 6, 6] } : l,
-        ),
-      }),
+      lake([respawn, fishingPool, spot(1, 1)], [2, 1, 1, 1, 6, 6]),
       "a fishing spot at 1,1 has no walkable tile beside it",
     ],
     [
