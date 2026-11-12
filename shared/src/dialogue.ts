@@ -1,3 +1,5 @@
+import type { Tool } from "./items.ts";
+
 /** A conversation's line, said by the villager or by the player, whose words the chosen choice puts in their mouth. */
 export type DialogueLine = { speaker: "villager" | "you"; text: string };
 
@@ -21,12 +23,13 @@ export type DialogueNode = {
   then?: string;
 };
 
-/** A villager's name and job, as the dialogue box titles them ("Odo, blacksmith"), and their conversation from `start`. */
+/** A villager's name and job, as the dialogue box titles them ("Odo, blacksmith"), their conversation from `start`, and the tools their `giveTools` choice gives. */
 export type Villager = {
   name: string;
   role: string;
   start: string;
   nodes: Record<string, DialogueNode>;
+  tools?: readonly Tool[];
 };
 
 const villager = (text: string): DialogueLine => ({
@@ -42,6 +45,7 @@ export const VILLAGERS = {
     name: "Odo",
     role: "blacksmith",
     start: "greet",
+    tools: ["pickaxe", "hammer"],
     nodes: {
       greet: {
         lines: [villager("Morning. Odo's the name. I keep the forge.")],
@@ -136,7 +140,49 @@ export const VILLAGERS = {
       bye: { lines: [you("Bye."), villager("Safe roads.")] },
     },
   },
+  // The Forester (#206). Bram is the build ticket's flavour name.
+  bram: {
+    name: "Bram",
+    role: "forester",
+    start: "greet",
+    tools: ["axe"],
+    nodes: {
+      greet: {
+        lines: [
+          villager("Bram. I look after the trees hereabouts."),
+          villager(
+            "Birch along the thicket, oak out east, and worse in the Boneyard.",
+          ),
+        ],
+        choices: [
+          { text: "Can I have an axe?", to: "axe", action: "giveTools" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      axe: {
+        lines: [
+          you("Can I have an axe?"),
+          villager("Here. Start on the birch, and let the stumps grow back."),
+        ],
+      },
+      bye: { lines: [you("Bye."), villager("Mind the roots.")] },
+    },
+  },
 } satisfies Record<string, Villager>;
+
+/** "a pickaxe", "an axe". */
+export const aTool = (tool: Tool) =>
+  `${/^[aeiou]/.test(tool) ? "an" : "a"} ${tool}`;
+
+/** Why a player without `tool` can't do what needs it, naming the villager who gives it, or undefined if they have it. */
+export function toolRefusal(tool: Tool, player: { tools: Iterable<string> }) {
+  if ([...player.tools].includes(tool)) return undefined;
+  const giver = Object.values(VILLAGERS as Record<string, Villager>).find(
+    (villager) => villager.tools?.includes(tool),
+  )!;
+  const role = giver.role[0]!.toUpperCase() + giver.role.slice(1);
+  return `You need ${aTool(tool)}. The ${role} will give you one.`;
+}
 
 export type VillagerId = keyof typeof VILLAGERS;
 

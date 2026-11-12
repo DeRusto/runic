@@ -1,6 +1,7 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { EnemyKind } from "./enemies.ts";
 import type { BushKind } from "./herblaw.ts";
+import type { TreeKind } from "./woodcutting.ts";
 
 export type GroundKind = "grass" | "thicket" | "path" | "ashen";
 export type PropKind =
@@ -16,6 +17,7 @@ export type TileKind = {
   prop?: PropKind;
   bush?: BushKind;
   vein?: VeinTier;
+  tree?: TreeKind;
   station?: StationKind;
   villager?: VillagerId;
   house?: "wall" | "door";
@@ -44,11 +46,15 @@ export const TILE_KINDS = {
   c: { ground: "grass", vein: "copper", blocks: true },
   i: { ground: "grass", vein: "iron", blocks: true },
   e: { ground: "ashen", vein: "emberite", blocks: true },
+  g: { ground: "thicket", tree: "birch", blocks: true },
+  k: { ground: "grass", tree: "oak", blocks: true },
+  C: { ground: "ashen", tree: "charwood", blocks: true },
   F: { ground: "grass", station: "furnace", blocks: true },
   N: { ground: "grass", station: "anvil", blocks: true },
   B: { ground: "grass", villager: "odo", blocks: true },
   M: { ground: "grass", villager: "marta", blocks: true },
   $: { ground: "grass", villager: "aldous", blocks: true },
+  f: { ground: "thicket", villager: "bram", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },
   W: { ground: "path", prop: "well", blocks: true },

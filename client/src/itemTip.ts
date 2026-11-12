@@ -41,7 +41,7 @@ function kindOf(item: string) {
   const food = FOOD_HEALS.get(item);
   if (food)
     return `Food, heals ${food.perTick * food.ticks} over ${food.ticks} ticks`;
-  if (TOOLS.includes(item)) return "Tool";
+  if ((TOOLS as readonly string[]).includes(item)) return "Tool";
   return GEMS.includes(item) ? "Gem" : "Material";
 }
 

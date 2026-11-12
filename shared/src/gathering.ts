@@ -1,20 +1,24 @@
 import { BUSHES } from "./herblaw.ts";
 import { takeRefusal, type HasInventory, type ItemId } from "./items.ts";
+import { toolRefusal } from "./dialogue.ts";
 import { VEINS } from "./mining.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";
+import { TREES } from "./woodcutting.ts";
 
 /** The pick intent's message type; its payload is the clicked bush's id in state. */
 export const PICK_INTENT = "pick";
 /** The mine intent's message type; its payload is the clicked vein's id in state. */
 export const MINE_INTENT = "mine";
+/** The chop intent's message type; its payload is the clicked tree's id in state. */
+export const CHOP_INTENT = "chop";
 
 /** One find a site can give on a successful gather: `chance` it rolls, and the one item it gives — `item`, or one of `split` by share. Each find rolls on its own, so one success can give several. */
 export type FindRoll =
   | { chance: number; item: ItemId }
   | { chance: number; split: { item: ItemId; share: number }[] };
 
-/** One row of `BUSHES` or `VEINS`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. `finds` are the finds a success can give; unset means none. */
+/** One row of `BUSHES`, `VEINS` or `TREES`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. `finds` are the finds a success can give; unset means none. */
 export type GatheringSource = {
   level: number;
   holds: number;
@@ -64,6 +68,21 @@ export const GATHERING = {
     success: "Mined!",
     successDouble: "Mined 2!",
   },
+  woodcutting: {
+    skill: "Woodcutting",
+    xpField: "woodcuttingXp",
+    tool: "axe",
+    runOutFirst: false,
+    sources: TREES,
+    site: "tree",
+    verb: "chop",
+    stateField: "trees",
+    leftField: "chopsLeft",
+    intent: CHOP_INTENT,
+    clip: "Chopping",
+    success: "Chopped!",
+    successDouble: undefined,
+  },
 } as const;
 
 export type GatheringSkill = keyof typeof GATHERING;
@@ -105,7 +124,7 @@ export const GATHERING_SKILLS = Object.keys(GATHERING) as GatheringSkill[];
 export const gatheringSource = (skill: GatheringSkill, kind: string) =>
   (GATHERING[skill].sources as Record<string, GatheringSource>)[kind]!;
 
-/** A bush's or vein's key in state: its tile, since its kind and place come from the grid. */
+/** A site's key in state: its tile, since its kind and place come from the grid. */
 export const siteId = ({ x, y }: Tile) => `${x},${y}`;
 
 /** 50% at the level needed, plus 2 points per level above it, up to 100% (spec §4). */
@@ -121,18 +140,17 @@ export function gatherRefusal(
   skill: GatheringSkill,
   kind: string,
   left: number,
-  player: HasInventory & { tools: Iterable<string> } & Record<
-      GatheringRow["xpField"],
-      number
+  player: HasInventory & { tools: Iterable<string> } & Partial<
+      Record<GatheringRow["xpField"], number>
     >,
 ) {
   const row = GATHERING[skill];
   const { level, item } = gatheringSource(skill, kind);
   const runOut = left === 0 ? `This ${row.site} has run out.` : undefined;
   if (runOut && row.runOutFirst) return runOut;
-  if (row.tool && ![...player.tools].includes(row.tool))
-    return `You need a ${row.tool}. The Blacksmith will give you one.`;
-  if (levelFor(player[row.xpField]) < level)
+  const noTool = row.tool && toolRefusal(row.tool, player);
+  if (noTool) return noTool;
+  if (levelFor(player[row.xpField] ?? 0) < level)
     return `You need ${row.skill} ${level} to ${row.verb} this.`;
   return runOut ?? takeRefusal(item, player);
 }

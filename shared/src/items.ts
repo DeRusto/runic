@@ -49,6 +49,10 @@ export const ITEMS = {
   emberiteHelmet: SINGLE,
   emberiteChestplate: SINGLE,
   emberiteLeggings: SINGLE,
+  /** From trees (#208). Nothing uses them until Phase 6. */
+  birchLog: STACKS,
+  oakLog: STACKS,
+  charwoodLog: STACKS,
   /** All of a player's coins share one slot with no cap (village spec §3). */
   coins: { stack: Infinity },
 } as const;
@@ -74,8 +78,9 @@ export function itemParts(id: string) {
   };
 }
 
-/** Every tool the Blacksmith gives. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). */
-export const TOOLS = ["pickaxe", "hammer"];
+/** Every tool. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). Each villager's `tools` says who gives which. */
+export const TOOLS = ["pickaxe", "hammer", "axe"] as const;
+export type Tool = (typeof TOOLS)[number];
 
 /** The rare finds from Emberite veins, rarest last. Nothing uses them yet (spec §3). */
 export const GEMS = ["ashstone", "cinderglass", "heartflame"];

@@ -30,6 +30,7 @@ import {
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MINE_INTENT,
+  CHOP_INTENT,
   PIN_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
@@ -79,6 +80,8 @@ export class WorldRoom extends Room {
       this.sim.queueGather(client.sessionId, "herblaw", bush),
     [MINE_INTENT]: (client: Client, vein: string) =>
       this.sim.queueGather(client.sessionId, "mining", vein),
+    [CHOP_INTENT]: (client: Client, tree: string) =>
+      this.sim.queueGather(client.sessionId, "woodcutting", tree),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
     [VISIT_INTENT]: (

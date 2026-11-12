@@ -70,7 +70,7 @@ import {
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
-  TOOLS,
+  aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
   choicesNodeOf,
@@ -79,6 +79,7 @@ import {
   offers,
   type DialogueAction,
   nodesOf,
+  type Villager,
   type VillagerId,
   xpOf,
   type GatheringLeftField,
@@ -153,6 +154,7 @@ export const Player = schema(
     hitpointsXp: t.uint32(),
     miningXp: t.uint32().default(0),
     smithingXp: t.uint32().default(0),
+    woodcuttingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -204,7 +206,9 @@ export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
 
 export const Vein = schema({ minesLeft: t.uint8() }, "Vein");
 
-const SITE_SCHEMAS = { bushes: Bush, veins: Vein };
+export const Tree = schema({ chopsLeft: t.uint8() }, "Tree");
+
+const SITE_SCHEMAS = { bushes: Bush, veins: Vein, trees: Tree };
 
 export const WorldState = schema(
   {
@@ -213,6 +217,7 @@ export const WorldState = schema(
     enemies: t.map(Enemy),
     bushes: t.map(Bush),
     veins: t.map(Vein),
+    trees: t.map(Tree),
     /** Tagged for views: the room adds each one to the views of the players who can see it. */
     groundItems: t.map(GroundItem).view(),
     /** The general store's shelf, the same for every player: item ids, and parallel to them how many. */
@@ -225,7 +230,7 @@ export const WorldState = schema(
 /** A site pool, with the ticks its run-out sites come back on, soonest first. */
 type SitePoolState = SitePool & { comebackTicks: number[] };
 
-/** A bush or vein: where it is and what it is, its synced entry, and when it grows back or which pool it comes back in. */
+/** A gathering site: where it is and what it is, its synced entry, and when it grows back or which pool it comes back in. */
 type GatheringSite = Tile & {
   skill: GatheringSkill;
   kind: string;
@@ -299,7 +304,7 @@ export class Simulation {
       damagers: Set<string>;
     }
   >();
-  /** Bushes and veins, by the tile that keys them. */
+  /** Every gathering site, by the tile that keys it. */
   private sites = new Map<string, GatheringSite>();
   private villagers = new Map<VillagerId, Tile>();
   /**
@@ -509,6 +514,7 @@ export class Simulation {
       hitpointsXp,
       miningXp,
       smithingXp,
+      woodcuttingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -533,6 +539,7 @@ export class Simulation {
       hitpointsXp,
       miningXp,
       smithingXp,
+      woodcuttingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -863,10 +870,11 @@ export class Simulation {
 
   private giveTools(id: string, villager: VillagerId) {
     const player = this.state.players.get(id)!;
-    const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
+    const { name, tools = [] }: Villager = VILLAGERS[villager];
+    const lacking = tools.filter((tool) => !player.tools.includes(tool));
     if (!lacking.length) return;
     player.tools.push(...lacking);
-    const line = `${VILLAGERS[villager].name} gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
+    const line = `${name} gives you ${lacking.map(aTool).join(" and ")}.`;
     this.events.push({ type: "told", player: id, line });
   }
 

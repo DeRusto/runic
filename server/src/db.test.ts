@@ -21,15 +21,16 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank and Herblaw, which renames Foraging's column.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, and Woodcutting.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
   ...GEAR_SLOTS.slice(2),
   "bank",
   "bank_counts",
+  "woodcutting_xp",
 ];
-const LATEST_MIGRATIONS = 7;
+const LATEST_MIGRATIONS = 8;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
@@ -125,7 +126,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     return openDatabase();
   }
 
-  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots, turn Foraging into Herblaw and change nothing else", async () => {
+  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots, turn Foraging into Herblaw, start Woodcutting at 0 and change nothing else", async () => {
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
@@ -139,6 +140,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       inventory: INVENTORY,
       miningXp: 0,
       smithingXp: 0,
+      woodcuttingXp: 0,
       blockingXp: 0,
       // 7% of 7,191.
       masteryXp: 503,

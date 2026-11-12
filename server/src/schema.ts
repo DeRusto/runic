@@ -35,6 +35,7 @@ export const players = sqliteTable("players", {
   inventory: text({ mode: "json" }).notNull().$type<string[]>(),
   // Every column below has a default, so a row from before them needs no conversion (spec D9).
   miningXp: integer("mining_xp").notNull().default(0),
+  woodcuttingXp: integer("woodcutting_xp").notNull().default(0),
   smithingXp: integer("smithing_xp").notNull().default(0),
   blockingXp: integer("blocking_xp").notNull().default(0),
   masteryXp: integer("mastery_xp").notNull().default(0),

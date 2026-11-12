@@ -8,6 +8,7 @@ import {
 } from "./gathering.ts";
 import { VEINS } from "./mining.ts";
 import type { Tile, TileKind } from "./region.ts";
+import { TREES } from "./woodcutting.ts";
 
 type TiledProperty = { name: string; value: unknown };
 type TiledObject = {
@@ -54,6 +55,7 @@ const FEATURE_VALUES = {
   } satisfies Record<NonNullable<TileKind["prop"]>, 1>,
   bush: BUSHES,
   vein: VEINS,
+  tree: TREES,
   station: { furnace: 1, anvil: 1 } satisfies Record<
     NonNullable<TileKind["station"]>,
     1

@@ -1,3 +1,4 @@
+import { toolRefusal } from "./dialogue.ts";
 import { GEAR } from "./gear.ts";
 import { VIRTUES, type HasInventory, type ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";
@@ -362,7 +363,5 @@ export function stationRefusal(
   station: StationKind,
   player: { tools: Iterable<string> },
 ) {
-  return station === "anvil" && ![...player.tools].includes("hammer")
-    ? "You need a hammer. The Blacksmith will give you one."
-    : undefined;
+  return station === "anvil" ? toolRefusal("hammer", player) : undefined;
 }

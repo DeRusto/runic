@@ -254,14 +254,14 @@ describe("loadRegion", () => {
         {
           ...pool(1),
           properties: [
-            property("site", "tree"),
-            property("kind", "oak"),
+            property("site", "altar"),
+            property("kind", "stone"),
             property("active", 1),
           ],
         },
         spot(1, 1),
       ]),
-      "tree",
+      "altar",
     ],
     [
       "a pool of an unknown kind",

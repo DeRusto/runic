@@ -33,8 +33,8 @@ describe("ITEMS", () => {
   });
 
   test("every tier has its bar, sword, shield, helmet, chestplate and leggings, and its ore if it has veins", () => {
-    // Food 2, Emberbone 1, finds 5, six per tier, three ores and coins.
-    expect(Object.keys(ITEMS)).toHaveLength(42);
+    // Food 2, Emberbone 1, finds 5, six per tier, three ores, three logs and coins.
+    expect(Object.keys(ITEMS)).toHaveLength(45);
   });
 });
 
