@@ -1,4 +1,5 @@
 import {
+  GATHERING,
   TICK_MS,
   WALK_TICKS_PER_TILE,
   type EnemyKind,
@@ -47,7 +48,9 @@ const CLIP_PACKS = [
   "Rig_Medium_CombatMelee",
   "Rig_Medium_Tools",
 ];
-const PICKAXE = "pickaxe";
+/** The tool each gathering skill shows in hand, by its node's name. */
+const GATHERING_TOOLS = { mining: "pickaxe", woodcutting: "axe" } as const;
+type ToolSkill = keyof typeof GATHERING_TOOLS;
 // Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
 const HAMMER = "hammer in hand";
 
@@ -163,9 +166,9 @@ export class Figure {
   private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
   fightTile?: Tile;
-  /** On the mining action, so the pickaxe stays in hand between attempts. */
-  mining = false;
-  private pickaxe?: THREE.Object3D;
+  /** The synced action, so a gathering tool stays in hand between attempts. */
+  action = "";
+  private tools: [ToolSkill, THREE.Object3D][] = [];
   /** The station it's working at. It faces the tile between moves, and `hammer` stays in hand between items. */
   work?: { tile: Tile; hammer: boolean };
   private hammer?: THREE.Object3D;
@@ -186,7 +189,10 @@ export class Figure {
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
-    this.pickaxe = model.getObjectByName(PICKAXE);
+    for (const [skill, name] of Object.entries(GATHERING_TOOLS)) {
+      const tool = model.getObjectByName(name);
+      if (tool) this.tools.push([skill as ToolSkill, tool]);
+    }
     this.hammer = model.getObjectByName(HAMMER);
     for (const item of Object.keys(GEAR_LOOKS)) {
       const held = model.getObjectByName(item);
@@ -368,15 +374,16 @@ export class Figure {
 
     // Off the clip too, since a success ends the action while its clip still plays.
     const clip = this.shot?.getClip().name;
-    if (this.pickaxe)
-      this.pickaxe.visible = clip === "Pickaxing" || (this.mining && !running);
+    for (const [skill, tool] of this.tools)
+      tool.visible =
+        clip === GATHERING[skill].clip || (this.action === skill && !running);
     if (this.hammer)
       this.hammer.visible =
         clip === "Hammering" || (!!this.work?.hammer && !running);
     // Off the swing too, since the killing blow ends the fight while its clip still plays.
     const inFight =
       !this.held &&
-      !this.pickaxe?.visible &&
+      !this.tools.some(([, tool]) => tool.visible) &&
       !this.hammer?.visible &&
       (GEAR_CLIPS.has(clip!) || (!!fightTile && !running));
     for (const [item, held] of this.gear)
@@ -521,19 +528,22 @@ export function paintGear(
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
   const gearLooks = Object.entries(GEAR_LOOKS);
-  const [knight, barbarian, pickaxe, hammer, clips, gear] = await Promise.all([
-    load("Knight"),
-    load("Barbarian"),
-    loadGltf("pickaxe"),
-    loadGltf("hammer"),
-    loadClips(),
-    Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
-  ]);
+  const [knight, barbarian, pickaxe, axe, hammer, clips, gear] =
+    await Promise.all([
+      load("Knight"),
+      load("Barbarian"),
+      loadGltf(GATHERING_TOOLS.mining),
+      loadGltf(GATHERING_TOOLS.woodcutting),
+      loadGltf("hammer"),
+      loadClips(),
+      Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
+    ]);
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
   // Every Figure's clone carries its own, and shows it only during the action.
   for (const [tool, name] of [
-    [pickaxe, PICKAXE],
+    [pickaxe, GATHERING_TOOLS.mining],
+    [axe, GATHERING_TOOLS.woodcutting],
     [hammer, HAMMER],
   ] as const) {
     tool.scene.name = name;
@@ -568,19 +578,27 @@ const VILLAGER_MODELS = {
   odo: "Ranger",
   marta: "Rogue",
   aldous: "Mage",
+  bram: "Rogue_Hooded",
 } satisfies Record<VillagerId, string>;
 
-/** A villager on their tile; the Blacksmith holds a hammer. */
+/** What a villager holds, by their model's node name for it. */
+const VILLAGER_TOOLS: Partial<Record<VillagerId, string>> = {
+  odo: "hammer",
+  bram: "axe",
+};
+
+/** A villager on their tile, holding their tool if they have one. */
 export async function loadVillager(tile: Tile, villager: VillagerId) {
   const [{ scene }, clips] = await Promise.all([
     load(VILLAGER_MODELS[villager]),
     loadClips(),
   ]);
   fit(scene, (size) => HEIGHT / size.y);
-  if (villager === "odo") {
-    const hammer = (await loadGltf("hammer")).scene;
-    castShadows(hammer);
-    scene.getObjectByName("handslotr")!.add(hammer);
+  const held = VILLAGER_TOOLS[villager];
+  if (held) {
+    const tool = (await loadGltf(held)).scene;
+    castShadows(tool);
+    scene.getObjectByName("handslotr")!.add(tool);
   }
   return new Figure(tile, scene, clips);
 }

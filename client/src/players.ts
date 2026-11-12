@@ -53,7 +53,7 @@ export function showPlayers(
       figure.weapon = itemParts(player?.weapon ?? "").base;
       figure.shield = itemParts(player?.shield ?? "").base;
       const action = player?.action;
-      figure.mining = action === "mining";
+      figure.action = action ?? "";
       if (action !== "smithing") figure.work = undefined;
       figure.update(now);
       hitBoxes

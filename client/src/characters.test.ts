@@ -598,13 +598,13 @@ describe("the pickaxe in hand", () => {
   test("stays out between attempts on the mining action, but not on the walk there", () => {
     const tile = { x: 1, y: 1 };
     const { figure, pickaxe } = miner(tile);
-    figure.mining = true;
+    figure.action = "mining";
     tile.x = 2;
     figure.update(1000);
     expect(pickaxe.visible).toBe(false);
     figure.update(2000);
     expect(pickaxe.visible).toBe(true);
-    figure.mining = false;
+    figure.action = "";
     figure.update(2010);
     expect(pickaxe.visible).toBe(false);
   });
@@ -631,6 +631,31 @@ describe("the pickaxe in hand", () => {
   test("the committed clip pack has Pickaxing", () => {
     const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
     expect(glb.toString("latin1")).toContain('"name":"Pickaxing"');
+  });
+});
+
+describe("the axe in hand", () => {
+  test("stays out on the woodcutting action only, and the pickaxe stays away", () => {
+    const axe = new THREE.Object3D();
+    axe.name = "axe";
+    const pickaxe = new THREE.Object3D();
+    pickaxe.name = "pickaxe";
+    const figure = new Figure(
+      { x: 1, y: 1 },
+      new THREE.Object3D().add(axe, pickaxe),
+      CLIPS,
+    );
+    figure.action = "woodcutting";
+    figure.update(1000);
+    expect([axe.visible, pickaxe.visible]).toEqual([true, false]);
+    figure.action = "mining";
+    figure.update(1010);
+    expect([axe.visible, pickaxe.visible]).toEqual([false, true]);
+  });
+
+  test("the committed clip pack has Chopping", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_Tools.glb");
+    expect(glb.toString("latin1")).toContain('"name":"Chopping"');
   });
 });
 
