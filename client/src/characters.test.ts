@@ -578,7 +578,7 @@ describe("working at a station", () => {
 describe("the pickaxe in hand", () => {
   const miner = (tile = { x: 1, y: 1 }) => {
     const pickaxe = new THREE.Object3D();
-    pickaxe.name = "pickaxe";
+    pickaxe.name = "pickaxe in hand";
     const model = new THREE.Object3D().add(pickaxe);
     return { pickaxe, figure: new Figure(tile, model, CLIPS) };
   };
@@ -637,9 +637,9 @@ describe("the pickaxe in hand", () => {
 describe("the axe in hand", () => {
   test("stays out on the woodcutting action only, and the pickaxe stays away", () => {
     const axe = new THREE.Object3D();
-    axe.name = "axe";
+    axe.name = "axe in hand";
     const pickaxe = new THREE.Object3D();
-    pickaxe.name = "pickaxe";
+    pickaxe.name = "pickaxe in hand";
     const figure = new Figure(
       { x: 1, y: 1 },
       new THREE.Object3D().add(axe, pickaxe),
@@ -651,6 +651,18 @@ describe("the axe in hand", () => {
     figure.action = "mining";
     figure.update(1010);
     expect([axe.visible, pickaxe.visible]).toEqual([false, true]);
+  });
+
+  test("a villager's own axe isn't the one that hides", () => {
+    const ownAxe = new THREE.Object3D();
+    ownAxe.name = "axe";
+    const figure = new Figure(
+      { x: 1, y: 1 },
+      new THREE.Object3D().add(ownAxe),
+      CLIPS,
+    );
+    figure.update(1000);
+    expect(ownAxe.visible).toBe(true);
   });
 
   test("the committed clip pack has Chopping", () => {
@@ -724,7 +736,7 @@ describe("gear in hand", () => {
     const sword = named("copperSword");
     const otherSword = named("ironSword");
     const shield = named("copperShield");
-    const pickaxe = named("pickaxe");
+    const pickaxe = named("pickaxe in hand");
     const hammer = named("hammer in hand");
     const model = new THREE.Object3D().add(
       sword,

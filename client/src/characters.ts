@@ -54,13 +54,14 @@ const CLIP_PACKS = [
 const TOOL_TURN: Readonly<Record<string, number>> = { axe: Math.PI };
 /** Tools with no model to show in hand. */
 const NO_MODEL: ReadonlySet<string> = new Set(["rod"]);
-/** Each gathering skill whose tool shows in hand, with that tool, which is also its node's name. */
+// Not the tool's own name: a villager's model holds a node of that name (Odo's hammer, Bram's axe), and it must never hide.
+const inHand = (tool: string) => `${tool} in hand`;
+/** Each gathering skill whose tool shows in hand, with that tool. */
 const HELD_TOOLS = GATHERING_SKILLS.flatMap((skill) => {
   const { tool } = GATHERING[skill];
   return tool && !NO_MODEL.has(tool) ? [[skill, tool] as const] : [];
 });
-// Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
-const HAMMER = "hammer in hand";
+const HAMMER = inHand("hammer");
 
 const {
   copper: COPPER,
@@ -198,7 +199,7 @@ export class Figure {
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
     for (const [skill, name] of HELD_TOOLS) {
-      const tool = model.getObjectByName(name);
+      const tool = model.getObjectByName(inHand(name));
       if (tool) this.tools.push([skill, tool]);
     }
     this.hammer = model.getObjectByName(HAMMER);
@@ -551,9 +552,9 @@ export async function loadCharacters() {
   // Every Figure's clone carries its own, and shows it only during the action.
   for (const [tool, name] of [
     ...HELD_TOOLS.map(([, name], i) => [heldTools[i]!, name] as const),
-    [hammer, HAMMER] as const,
+    [hammer, "hammer"] as const,
   ]) {
-    tool.scene.name = name;
+    tool.scene.name = inHand(name);
     tool.scene.rotation.y = TOOL_TURN[name] ?? 0;
     tool.scene.visible = false;
     castShadows(tool.scene);
