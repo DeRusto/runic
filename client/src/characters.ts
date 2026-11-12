@@ -50,6 +50,8 @@ const CLIP_PACKS = [
   "Rig_Medium_CombatMelee",
   "Rig_Medium_Tools",
 ];
+/** Tools whose model faces the other way from the pickaxe, turned about the handle to sit right in the hand. */
+const TOOL_TURN: Readonly<Record<string, number>> = { axe: Math.PI };
 /** Tools with no model to show in hand. */
 const NO_MODEL: ReadonlySet<string> = new Set(["rod"]);
 /** Each gathering skill whose tool shows in hand, with that tool, which is also its node's name. */
@@ -552,6 +554,7 @@ export async function loadCharacters() {
     [hammer, HAMMER] as const,
   ]) {
     tool.scene.name = name;
+    tool.scene.rotation.y = TOOL_TURN[name] ?? 0;
     tool.scene.visible = false;
     castShadows(tool.scene);
     Object.values(models).forEach((m) =>
@@ -604,6 +607,7 @@ export async function loadVillager(tile: Tile, villager: VillagerId) {
   const held = VILLAGER_TOOLS[villager];
   if (held) {
     const tool = (await loadGltf(held)).scene;
+    tool.rotation.y = TOOL_TURN[held] ?? 0;
     castShadows(tool);
     scene.getObjectByName("handslotr")!.add(tool);
   }
