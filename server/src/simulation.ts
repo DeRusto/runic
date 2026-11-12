@@ -504,12 +504,33 @@ export class Simulation {
       };
     }
     const tile = this.tiles[saved.y]?.[saved.x];
+    if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
-    const beside = this.sites.has(siteId(saved))
-      ? legalSteps(this.tiles, saved)[0]
+    const nearest = this.sites.has(siteId(saved))
+      ? this.nearestPastSites(saved)
       : undefined;
-    if (beside) return { ...saved, ...beside };
-    return !tile || tile.blocks ? { ...saved, ...respawn } : saved;
+    return { ...saved, ...(nearest ?? respawn) };
+  }
+
+  /** The fewest steps from `from` to a walkable tile, walking through sites as if they had run out: undefined if nothing else is in reach. */
+  private nearestPastSites(from: Tile): Tile | undefined {
+    const throughSites = this.tiles.map((row, y) =>
+      row.map((tile, x) =>
+        this.sites.has(siteId({ x, y })) ? { ...tile, blocks: false } : tile,
+      ),
+    );
+    const seen = new Set([siteId(from)]);
+    const queue = [from];
+    // Breadth-first, so the first walkable tile found is the fewest steps away.
+    for (const tile of queue) {
+      if (!this.tiles[tile.y]![tile.x]!.blocks) return tile;
+      for (const next of legalSteps(throughSites, tile)) {
+        if (seen.has(siteId(next))) continue;
+        seen.add(siteId(next));
+        queue.push(next);
+      }
+    }
+    return undefined;
   }
 
   /** What to write to the database for this player, if they're in the region. */

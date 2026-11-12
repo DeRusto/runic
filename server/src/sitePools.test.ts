@@ -192,6 +192,16 @@ test("a player saved on a tile that now holds a site logs in beside it, not at r
   expect(TILES[y]![x]!.blocks).toBe(false);
 });
 
+test("a player saved inside a cluster of sites logs in on the nearest walkable tile past them, not at respawn", () => {
+  const centre = { x: 5, y: 2 };
+  const cluster = [1, 2, 3].flatMap((y) => [4, 5, 6].map((x) => ({ x, y })));
+  start(pool(cluster.length, cluster));
+  addAt("back", centre);
+  const { x, y } = player("back");
+  expect(tilesApart({ x, y }, centre)).toBe(2);
+  expect(TILES[y]![x]!.blocks).toBe(false);
+});
+
 test("a gatherer whose destination grows a site mid-walk goes round to another tile next to the target before gathering", () => {
   // The target sits in the corner; D, the nearest tile next to it, is on the gatherer's row.
   const target = { x: 7, y: 1 };
