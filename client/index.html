@@ -51,7 +51,7 @@
         border: 0;
         border-top: 1px solid #8a6a4480;
       }
-      #tooltip .tip-stat:not(.uncommon, .rare) {
+      #tooltip .tip-stat:not(.uncommon, .rare, .delicious) {
         color: #ccc;
       }
       #tooltip .tip-refusal {
@@ -59,7 +59,8 @@
       }
       /* An improved item's name, in the light shades: every surface it shows on is dark (spec §5, §6). */
       .uncommon,
-      .rare {
+      .rare,
+      .delicious {
         font-weight: 600;
       }
       .uncommon {
@@ -67,6 +68,9 @@
       }
       .rare {
         color: #6fb0ff;
+      }
+      .delicious {
+        color: #ffb347;
       }
       #overheads {
         position: fixed;
@@ -299,6 +303,14 @@
         grid-column: span 2;
         margin: 0;
         opacity: 0.7;
+      }
+      /* A Delicious fish's buff, in the heal green (spec #221). */
+      #buff {
+        margin: 0;
+        color: #5fe36a;
+      }
+      #buff[hidden] {
+        display: none;
       }
       #skills progress {
         display: block;
@@ -1358,6 +1370,7 @@
       <div id="slot-menu" role="menu" hidden></div>
       <div id="player-panel">
         <div id="health"></div>
+        <p id="buff" hidden role="timer"></p>
         <div id="skills"></div>
         <div id="bar-buttons">
           <button

@@ -7,6 +7,7 @@ const player = (defenseLevel: number, smithingLevel = 1) => ({
   defenseXp: xpForLevel(defenseLevel),
   miningXp: 0,
   smithingXp: xpForLevel(smithingLevel),
+  cookingXp: 0,
   inventory: ["copperBar", ""],
   inventoryCounts: [5, 0],
 });
@@ -52,8 +53,23 @@ describe("an item's tip (spec §5)", () => {
 
   test("food gives its total healing and its ticks", () => {
     expect(itemTip("berry")).toMatchObject({
-      kind: "Food, heals 400 over 4 ticks",
+      kind: "Food, heals 100 over 4 ticks",
       stats: [],
+    });
+    expect(itemTip("cookedPike")).toMatchObject({
+      kind: "Food, heals 2000 over 4 ticks",
+      stats: [],
+    });
+  });
+
+  test("a Delicious fish's name is coloured by it, and its line promises the extra healing (#221)", () => {
+    expect(itemTip("cookedTrout:delicious")).toEqual({
+      name: "Cooked trout",
+      quality: "delicious",
+      kind: "Food, heals 1200 over 4 ticks",
+      stats: ["Delicious: an extra healing tick for 60 seconds."],
+      virtue: undefined,
+      refusal: undefined,
     });
   });
 });

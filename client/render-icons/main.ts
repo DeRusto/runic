@@ -138,6 +138,61 @@ const ICONS: Icon[] = [
     turn: FLAT,
     look: { tint: 0x7f9a66 },
   },
+  // The cooked fish and the berry and herb dishes, the same fish browned, rosy and herbal (#221).
+  {
+    id: "cookedPerch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xb07a3c },
+  },
+  {
+    id: "cookedTrout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xc08050 },
+  },
+  {
+    id: "cookedPike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x8a6a40 },
+  },
+  {
+    id: "berryPerch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xb05429 },
+  },
+  {
+    id: "berryTrout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xc05837 },
+  },
+  {
+    id: "berryPike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x8a492c },
+  },
+  {
+    id: "herbPerch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0x6e6320 },
+  },
+  {
+    id: "herbTrout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0x77692b },
+  },
+  {
+    id: "herbPike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x565723 },
+  },
   {
     id: "berry",
     url: "/kenney-game-assets/3D assets/Food Kit/Models/GLB format/grapes.glb",

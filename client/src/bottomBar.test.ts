@@ -439,7 +439,7 @@ test("improved gear equips from the bar like its common form, and names its Virt
 describe("the right-click menu", () => {
   beforeEach(() => {
     room.onStateChange.invoke(
-      stateHolding(["berry", 5], ["copperOre", 3], ["herb", 1]),
+      stateHolding(["berry", 5], ["copperOre", 3], ["cookedPerch", 1]),
     );
     nextFrame();
   });
@@ -480,6 +480,13 @@ describe("the right-click menu", () => {
     menu.children[0]!.onclick!();
     expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 2);
     expect(menu.hidden).toBe(true);
+  });
+
+  test("a Delicious fish eats like its common form (#221)", () => {
+    room.onStateChange.invoke(stateHolding(["cookedTrout:delicious", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Eat", "Drop"]);
   });
 
   test.each([

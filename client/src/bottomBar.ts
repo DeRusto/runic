@@ -8,6 +8,7 @@ import {
   gearOf,
   gearRefusal,
   INVENTORY_SLOTS,
+  itemParts,
   levelFor,
   levelProgress,
   MAX_CHAT_LENGTH,
@@ -118,7 +119,7 @@ export function showBottomBar(
     slot.onclick = () => {
       const item = slot.dataset.item!;
       if (takeover) return item && takeover.click(i, item);
-      if (FOOD_HEALS.has(item)) eat();
+      if (FOOD_HEALS.has(itemParts(item).base)) eat();
       if (gearOf(item)) equip();
     };
     slot.oncontextmenu = (event) => {
@@ -127,7 +128,9 @@ export function showBottomBar(
       if (!item) return;
       if (takeover) return openMenu(event, takeover.menu(i, item));
       openMenu(event, [
-        ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
+        ...(FOOD_HEALS.has(itemParts(item).base)
+          ? ([["Eat", eat]] as const)
+          : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
         ...amountChoices("Drop", count(), (amount) =>
           room.send(DROP_INTENT, { slot: i, amount }),

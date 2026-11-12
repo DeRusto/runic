@@ -16,7 +16,7 @@ export const stationTile = (kind: StationKind, near: Tile) =>
     .reduce((a, b) => (tilesApart(b, near) < tilesApart(a, near) ? b : a));
 
 /**
- * Hit boxes for the furnace and anvil, one per tile. Nothing about them depends on the room, so they stay
+ * Hit boxes for every station, one per tile. Nothing about them depends on the room, so they stay
  * across rejoins. Returns what finds a station's kind under a click's ray.
  */
 export function addStations(tiles: TileKind[][]) {

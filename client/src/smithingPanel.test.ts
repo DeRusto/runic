@@ -59,6 +59,7 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     dead: false,
     smithingXp: 0,
     miningXp: 0,
+    cookingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -125,6 +126,29 @@ test("starts closed, and opens at a station with that station's rows", () => {
   open("anvil");
   expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
   expect(shownRows()).toHaveLength(25);
+});
+
+test("the range lists every cooking recipe under one Cooking section (#221)", () => {
+  open("range");
+  expect(byId.get("smithing-title")!.textContent).toBe("Range");
+  expect(headers()).toEqual([["Cooking", "", true]]);
+  expect(shownRows()).toHaveLength(9);
+  expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Cooked perch"]);
+  expect(line(shownRows()[1])).toEqual([
+    "Berry perch",
+    "1 Perch + 1 Berry · Needs Cooking 5",
+  ]);
+});
+
+test("a cooking row is refused on Cooking, whatever the Smithing level", () => {
+  open("range");
+  patch(me([], { smithingXp: xpForLevel(50), cookingXp: xpForLevel(9) }));
+  expect(line(shownRows()[3])).toEqual([
+    "Cooked trout",
+    "1 Trout · Needs Cooking 10",
+  ]);
+  patch(me([["trout", 1]], { cookingXp: xpForLevel(10) }));
+  expect(line(shownRows()[3])).toEqual(["Cooked trout", "1 Trout"]);
 });
 
 test("the anvil at Smithing 1 opens Copper and folds the other tiers with their gates", () => {

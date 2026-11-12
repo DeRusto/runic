@@ -16,6 +16,9 @@ import {
 } from "@runic/shared";
 import { itemName } from "./itemIcons.ts";
 
+/** What a Delicious item's tooltip says under its kind (#221). */
+const DELICIOUS_LINE = "Delicious: an extra healing tick for 60 seconds.";
+
 /** The lines of an item's tooltip, top to bottom (spec §5). */
 export type ItemTip = {
   name: string;
@@ -38,7 +41,7 @@ function kindOf(item: string) {
   const gear = gearOf(item);
   if (gear)
     return `${SLOT_KINDS[gear.slot]}, needs ${gateOf(item)!.skill} ${gear.level}`;
-  const food = FOOD_HEALS.get(item);
+  const food = FOOD_HEALS.get(itemParts(item).base);
   if (food)
     return `Food, heals ${food.perTick * food.ticks} over ${food.ticks} ticks`;
   if ((TOOLS as readonly string[]).includes(item)) return "Tool";
@@ -56,7 +59,12 @@ export function itemTip(
     quality: itemParts(item).quality,
     kind: kindOf(item),
     // The Gear tab's wording, ended like the Virtue line under it.
-    stats: does ? [`${does}.`] : [],
+    stats: does
+      ? [`${does}.`]
+      : // A Delicious food's own line comes before what it's made of (#221).
+        itemParts(item).quality === "delicious"
+        ? [DELICIOUS_LINE]
+        : [],
     virtue: virtueDoes(item),
     refusal: player && gearRefusal(item, player),
   };

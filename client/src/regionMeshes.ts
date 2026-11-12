@@ -41,6 +41,8 @@ const STATIONS: Record<StationKind, { file: string; width: number }> = {
   // House scale, on its 2×2 footprint.
   furnace: { file: "building_blacksmith_red.gltf", width: 2 },
   anvil: { file: "anvil.gltf", width: 0.8 },
+  // Kenney's kitchen stove, on its one tile (#221).
+  range: { file: "kitchenStove.glb", width: 0.9 },
 };
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 /** A spot with no site on it is drawn at nothing, so it looks like its plain ground. */
@@ -171,6 +173,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     treeMeshes,
     furnace,
     anvil,
+    range,
     oreModel,
     stumpModel,
     village,
@@ -186,6 +189,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ),
     loadStation(STATIONS.furnace),
     loadStation(STATIONS.anvil),
+    loadStation(STATIONS.range),
     new GLTFLoader().loadAsync("/models/ore.glb"),
     new GLTFLoader().loadAsync("/models/stump_round.glb"),
     loadVillageModels([
@@ -193,10 +197,11 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
     ]),
   ]);
-  const stations = { furnace, anvil };
-  const footprints = {
-    furnace: [] as THREE.Vector3[],
-    anvil: [] as THREE.Vector3[],
+  const stations = { furnace, anvil, range };
+  const footprints: Record<StationKind, THREE.Vector3[]> = {
+    furnace: [],
+    anvil: [],
+    range: [],
   };
   const ore = oreParts(oreModel.scene);
   const trees = Object.fromEntries(
