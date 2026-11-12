@@ -47,6 +47,14 @@ import {
   MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
+  potionFromPlant,
+  potionOf,
+  POTIONS,
+  POTION_BUFF_TICKS,
+  AVOIDANCE_POTION_POINTS,
+  FORTITUDE_POTION_PERCENT,
+  MIGHT_POTION_HIT,
+  mixRefusal,
   removeItems,
   PLAYER_CRIT_CHANCE,
   PLAYER_CRIT_MULTIPLIER,
@@ -97,6 +105,7 @@ import {
   type RecipeItem,
   type SitePool,
   type StationKind,
+  type Virtue,
   XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
@@ -294,6 +303,12 @@ export class Simulation {
       healingPool: number[];
       /** A Delicious fish's buff, or none: its fish's per-tick heal, when it next heals and the tick it runs out on. Not saved (spec §6, #221). */
       delicious?: { perTick: number; nextHealTick: number; endTick: number };
+      /**
+       * A Virtue potion's buff, or none: its Virtue, the tick it runs out on and the health
+       * a Fortitude one added, which the hit and Avoidance read from too. Not saved
+       * (spec §6, #222).
+       */
+      potion?: { virtue: Virtue; endTick: number; bonus: number };
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
@@ -1001,6 +1016,28 @@ export class Simulation {
     if (eat === from || eat === to) this.queuedEats.delete(id);
   }
 
+  /**
+   * Mixing a potion: `slot` comes straight off the network, so anything but a slot holding a
+   * mixable plant is ignored. Like a move it skips the queue and touches no action, as
+   * nothing waits on it (#222).
+   */
+  mix(id: string, slot: number) {
+    if (!this.alive(id) || !isInventorySlot(slot)) return;
+    const player = this.state.players.get(id)!;
+    const potion = potionFromPlant(player.inventory[slot]!);
+    if (!potion) return;
+    const refusal = mixRefusal(potion, player);
+    if (refusal) {
+      this.events.push({ type: "told", player: id, line: refusal });
+      return;
+    }
+    // One vial and one plant become one potion, wherever each was (#222).
+    const { inventory, inventoryCounts } = player;
+    removeItems(inventory, inventoryCounts, "vial", 1);
+    removeItems(inventory, inventoryCounts, POTIONS[potion].plant, 1);
+    addItems(inventory, inventoryCounts, potion, 1);
+  }
+
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
   pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
     const pins = this.state.players.get(id)?.pinnedSkills;
@@ -1032,12 +1069,15 @@ export class Simulation {
     // Whatever was worn lands where this came from, so swapping always works (spec §4).
     this.placeGear(id, slot, player[gear.slot]);
     player[gear.slot] = item;
-    this.fitHealth(player);
+    this.fitHealth(id);
   }
 
-  /** After gear changes: max health follows worn Fortitude, and health drops to it but never rises (spec §2). */
-  private fitHealth(player: InstanceType<typeof Player>) {
-    player.maxHealth = maxHealthTotal(player);
+  /** After gear changes or a Fortitude potion starts or ends: max health follows worn Fortitude and an active potion's, and health drops to it but never rises (spec §2, #222). */
+  private fitHealth(id: string) {
+    const player = this.state.players.get(id)!;
+    player.maxHealth =
+      maxHealthTotal(player) +
+      (this.unsyncedPlayers.get(id)!.potion?.bonus ?? 0);
     player.health = Math.min(player.health, player.maxHealth);
   }
 
@@ -1055,7 +1095,7 @@ export class Simulation {
     }
     this.placeGear(id, slot, worn);
     player[gearSlot] = "";
-    this.fitHealth(player);
+    this.fitHealth(id);
   }
 
   /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
@@ -1104,7 +1144,12 @@ export class Simulation {
     const unsynced = this.unsyncedPlayers.get(id)!;
     const parts = itemParts(player.inventory[slot]);
     const food = FOOD_HEALS.get(parts.base);
-    if (food === undefined || this.state.tick < unsynced.nextEatTick) return;
+    const potion = potionOf(parts.base);
+    if (
+      (food === undefined && !potion) ||
+      this.state.tick < unsynced.nextEatTick
+    )
+      return;
     unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
     // From now if no swing is waiting, or a past timer would swallow the delay.
     unsynced.nextSwingTick =
@@ -1112,7 +1157,7 @@ export class Simulation {
     if (--player.inventoryCounts[slot]! === 0)
       player.inventory[slot] = EMPTY_SLOT;
     // Not at full health, or a swing later this tick could save it from being lost.
-    if (player.health < player.maxHealth) {
+    if (food && player.health < player.maxHealth) {
       unsynced.healingPool.push(
         ...Array<number>(food.ticks).fill(food.perTick),
       );
@@ -1120,7 +1165,7 @@ export class Simulation {
     // A Delicious fish heals on its own afterwards, and another one only refreshes it (#221).
     if (parts.quality === "delicious") {
       unsynced.delicious = {
-        perTick: food.perTick,
+        perTick: food!.perTick,
         nextHealTick: this.state.tick + DELICIOUS_BUFF_INTERVAL_TICKS,
         endTick: this.state.tick + DELICIOUS_BUFF_TICKS,
       };
@@ -1128,6 +1173,28 @@ export class Simulation {
         type: "delicious",
         player: id,
         ticks: DELICIOUS_BUFF_TICKS,
+      });
+    }
+    // A potion's Virtue replaces the heal: two minutes of it, refreshed never stacked (#222).
+    if (potion) {
+      const { virtue } = POTIONS[potion];
+      unsynced.potion = {
+        virtue,
+        endTick: this.state.tick + POTION_BUFF_TICKS,
+        // A Fortitude potion's quarter is worked out once, on the normal max.
+        bonus:
+          virtue === "fortitude"
+            ? Math.round(
+                (maxHealthTotal(player) * FORTITUDE_POTION_PERCENT) / 100,
+              )
+            : 0,
+      };
+      this.fitHealth(id);
+      this.events.push({
+        type: "potion",
+        player: id,
+        virtue,
+        ticks: POTION_BUFF_TICKS,
       });
     }
     this.events.push({ type: "eaten", player: id });
@@ -1577,8 +1644,14 @@ export class Simulation {
     this.lock(id);
     const { chance, max, gear } = hitOf(player);
     const rolled = this.rollDamage(chance, max);
+    // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
+    const buffed =
+      gear +
+      (this.unsyncedPlayers.get(id)!.potion?.virtue === "might"
+        ? MIGHT_POTION_HIT
+        : 0);
     // Only on a hit, as 0 means a miss.
-    const hit = rolled && rolled + gear;
+    const hit = rolled && rolled + buffed;
     const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
       critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
@@ -1589,7 +1662,7 @@ export class Simulation {
     );
     this.earnXp(player, "combatXp", xp);
     this.earnXp(player, "hitpointsXp", xp);
-    player.maxHealth = maxHealthTotal(player);
+    this.fitHealth(id);
     this.events.push({
       type: "playerSwing",
       player: id,
@@ -1706,8 +1779,15 @@ export class Simulation {
     unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
     const avoidance = avoidanceOf(player);
+    // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
+    const buffed =
+      avoidance.skill +
+      avoidance.gear +
+      (this.unsyncedPlayers.get(enemy.target)!.potion?.virtue === "avoidance"
+        ? AVOIDANCE_POTION_POINTS
+        : 0);
     const rolled = this.rollDamage(
-      enemyHitChance(enemy.kind, avoidance.skill + avoidance.gear),
+      enemyHitChance(enemy.kind, buffed),
       maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
@@ -1791,10 +1871,11 @@ export class Simulation {
       this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
       player[gearSlot] = "";
     }
-    this.fitHealth(player);
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.delicious = undefined;
+    unsynced.potion = undefined;
+    this.fitHealth(id);
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
@@ -1827,7 +1908,7 @@ export class Simulation {
           this.events.push({ type: "healed", player: id, amount });
       }
       // A Delicious fish heals through a fight, where regeneration pauses (#221).
-      const { delicious } = unsynced;
+      const { delicious, potion } = unsynced;
       if (delicious) {
         if (this.state.tick >= delicious.nextHealTick) {
           delicious.nextHealTick += DELICIOUS_BUFF_INTERVAL_TICKS;
@@ -1841,6 +1922,12 @@ export class Simulation {
         }
         if (this.state.tick >= delicious.endTick)
           unsynced.delicious = undefined;
+      }
+      // A potion's Virtue runs out like the Delicious buff's healing does (#222): the
+      // unspent Fortitude bonus is lost, and health settles on the normal max.
+      if (potion && this.state.tick >= potion.endTick) {
+        unsynced.potion = undefined;
+        this.fitHealth(id);
       }
       if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
     }

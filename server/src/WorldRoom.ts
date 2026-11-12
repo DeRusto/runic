@@ -21,6 +21,7 @@ import {
   DROP_INTENT,
   MOVE_INTENT,
   EAT_INTENT,
+  MIX_INTENT,
   END_TALK_INTENT,
   EQUIP_INTENT,
   EVENTS,
@@ -103,6 +104,8 @@ export class WorldRoom extends Room {
       this.sim.queueDrop(client.sessionId, drop?.slot, drop?.amount),
     [MOVE_INTENT]: (client: Client, move: { from: number; to: number }) =>
       this.sim.moveItem(client.sessionId, move?.from, move?.to),
+    [MIX_INTENT]: (client: Client, mix: { slot: number }) =>
+      this.sim.mix(client.sessionId, mix?.slot),
     [DEPOSIT_INTENT]: (
       client: Client,
       deposit: { slot: number; amount: number },

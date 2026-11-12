@@ -2,6 +2,7 @@ import {
   DELICIOUS_BUFF_INTERVAL_TICKS,
   DELICIOUS_BUFF_TICKS,
   INVENTORY_SLOTS,
+  POTION_BUFF_TICKS,
   parseRegion,
 } from "@runic/shared";
 import { describe, expect, test, vi } from "vitest";
@@ -72,6 +73,28 @@ function heals(
 function healthAfter(sim: Simulation, ticks: number) {
   for (let i = 0; i < ticks; i++) sim.tick();
   return player(sim).health;
+}
+
+/** Ticks `ticks` times and returns each landed player swing's damage. */
+function swings(sim: Simulation, ticks: number) {
+  const seen: number[] = [];
+  for (let i = 0; i < ticks; i++) {
+    sim.tick();
+    for (const event of sim.events.splice(0))
+      if (event.type === "playerSwing") seen.push(event.damage);
+  }
+  return seen;
+}
+
+/** Ticks `ticks` times and returns each enemy swing's damage, 0 for a miss. */
+function enemySwings(sim: Simulation, ticks: number) {
+  const seen: number[] = [];
+  for (let i = 0; i < ticks; i++) {
+    sim.tick();
+    for (const event of sim.events.splice(0))
+      if (event.type === "enemySwing") seen.push(event.damage);
+  }
+  return seen;
 }
 
 describe("what eating does", () => {
@@ -656,4 +679,108 @@ test("eating doesn't stop a walk", () => {
   for (let i = 0; i < 8; i++) sim.tick();
   expect(player(sim).health).toBe(550);
   expect({ x: player(sim).x, y: player(sim).y }).toEqual({ x: 5, y: 2 });
+});
+
+describe("a Virtue potion's buff (#222)", () => {
+  test("drinking one starts it with 400 ticks of events, and it heals nothing", () => {
+    const sim = eater(500, "mightPotion");
+    sim.queueEat("a", 0);
+    sim.tick();
+    expect(sim.events).toEqual([
+      {
+        type: "potion",
+        player: "a",
+        virtue: "might",
+        ticks: POTION_BUFF_TICKS,
+      },
+      { type: "eaten", player: "a" },
+    ]);
+    expect(player(sim).health).toBe(500);
+    expect(heals(sim, 40)).toEqual([]);
+  });
+
+  test("a Might potion adds 100 to the hit while it lasts", () => {
+    // A roll that lands a hit and never crits.
+    const plain = eater(5);
+    vi.spyOn(plain, "random").mockReturnValue(0.2);
+    plain.queueTarget("a", "0");
+    expect(swings(plain, 1)).toEqual([120]);
+    const buffed = eater(5, "mightPotion");
+    vi.spyOn(buffed, "random").mockReturnValue(0.2);
+    // The drink delays the first swing to tick 5, where the buff is on.
+    buffed.queueEat("a", 0);
+    buffed.queueTarget("a", "0");
+    expect(swings(buffed, 5)).toEqual([220]);
+  });
+
+  test("a Fortitude potion raises max health by a quarter, and expiry loses what it didn't heal", () => {
+    const sim = eater(1000, "fortitudePotion");
+    sim.queueEat("a", 0);
+    sim.tick();
+    expect(player(sim).maxHealth).toBe(1250);
+    expect(player(sim).health).toBe(1000);
+    player(sim).health = 1250;
+    // The buff runs 400 ticks, through regeneration, then settles on the normal max.
+    expect(healthAfter(sim, 400)).toBe(1000);
+    expect(player(sim).maxHealth).toBe(1000);
+  });
+
+  test("health below the normal max never dips when the buff expires", () => {
+    const sim = eater(500, "fortitudePotion");
+    sim.queueEat("a", 0);
+    for (let i = 0; i < 400; i++) sim.tick(); // Tick 400.
+    player(sim).health = 500;
+    sim.tick(); // Tick 401: the buff ends.
+    expect(player(sim).maxHealth).toBe(1000);
+    expect(player(sim).health).toBe(500);
+  });
+
+  test("another Fortitude potion refreshes it, never stacking the quarter", () => {
+    const sim = eater(500, "fortitudePotion", "fortitudePotion");
+    expect(
+      ticksOf(sim, "potion", 6, {
+        1: () => sim.queueEat("a", 0),
+        5: () => sim.queueEat("a", 1),
+      }),
+    ).toEqual([1, 5]);
+    expect(player(sim).maxHealth).toBe(1250);
+  });
+
+  test("an Avoidance potion's point joins the worn gear's, and can turn a hit away", () => {
+    // A roll between the Spider's 35% and the buffed 34%.
+    const plain = eater(500);
+    vi.spyOn(plain, "random").mockReturnValue(0.345);
+    plain.queueTarget("a", "0");
+    plain.tick();
+    // The Spider's first swing comes 4 ticks after the fight starts.
+    expect(enemySwings(plain, 4)).toEqual([134]);
+    const buffed = eater(500, "avoidancePotion");
+    vi.spyOn(buffed, "random").mockReturnValue(0.345);
+    buffed.queueEat("a", 0);
+    buffed.queueTarget("a", "0");
+    // The drink puts the first swing on tick 5, where the fight starts, so the
+    // Spider's answer comes on tick 9 — and misses, by the point of Avoidance.
+    expect(enemySwings(buffed, 9)).toEqual([0]);
+  });
+
+  test("death clears it", () => {
+    const sim = eater(1, "fortitudePotion");
+    vi.spyOn(sim, "random").mockReturnValue(0); // Every swing lands, for 100.
+    sim.queueTarget("a", "0");
+    healthAfter(sim, 4);
+    sim.queueEat("a", 0); // On the tick of the Spider's first swing.
+    sim.tick();
+    expect(player(sim).dead).toBe(true);
+    expect(player(sim).maxHealth).toBe(1000);
+  });
+
+  test("it isn't saved, so logging out loses it", () => {
+    const sim = eater(100, "fortitudePotion");
+    sim.queueEat("a", 0);
+    sim.tick();
+    const saved = sim.saveOf("a")!;
+    sim.removePlayer("a");
+    sim.addPlayer("a", saved);
+    expect(player(sim).maxHealth).toBe(1000);
+  });
 });
