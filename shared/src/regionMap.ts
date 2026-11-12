@@ -157,6 +157,10 @@ const contains = (rectangle: TiledObject, { x, y }: TiledObject) =>
   y >= rectangle.y &&
   y < rectangle.y + (rectangle.height ?? 0);
 
+/** A pool's site in words for a message: "fishing spot" for `fishingSpot`. */
+const siteName = ({ skill }: { skill: GatheringSkill }) =>
+  GATHERING[skill].site.replace(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`);
+
 /** A `sitePool` rectangle's settings, with no spots yet. */
 function readPool(object: TiledObject): SitePool {
   const { site, kind, active } = propertiesOf(object);
@@ -233,7 +237,7 @@ export function loadRegion(
     // A site on water is fished from the bank; any other stands on open ground.
     if (GATHERING[inside[0]!.skill].onWater) {
       if (tile.ground !== "water")
-        fail(`a fishing spot at ${x},${y} must be on water`);
+        fail(`a ${siteName(inside[0]!)} at ${x},${y} must be on water`);
     } else if (tile.blocks)
       fail(`a spot stands on a blocking tile at ${x},${y}`);
     inside[0]!.spots.push({ x, y });
@@ -241,6 +245,19 @@ export function loadRegion(
   for (const { kind, active, spots } of pools)
     if (spots.length < active)
       fail(`a ${kind} pool has fewer spots than its ${active} active`);
+  // After every placement, since a villager can stand on the bank.
+  for (const pool of pools.filter((p) => GATHERING[p.skill].onWater))
+    for (const { x, y } of pool.spots) {
+      const beside = [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1],
+      ];
+      // A diagonal tile only counts with a clear tile beside it, which is one of these.
+      if (!beside.some(([bx, by]) => tiles[by!]?.[bx!]?.blocks === false))
+        fail(`a ${siteName(pool)} at ${x},${y} has no walkable tile beside it`);
+    }
   if (placements.objects.filter((o) => o.type === "respawn").length !== 1)
     fail("needs exactly one respawn");
   return { tiles, pools };

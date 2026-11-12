@@ -344,6 +344,15 @@ describe("loadRegion", () => {
       "a fishing spot at 2,1 must be on water",
     ],
     [
+      "a fishing spot with no land beside it to fish from",
+      mapWith({
+        layers: lake([respawn, fishingPool, spot(1, 1)]).layers.map((l) =>
+          l.name === "ground" ? { ...l, data: [2, 1, 1, 1, 6, 6] } : l,
+        ),
+      }),
+      "a fishing spot at 1,1 has no walkable tile beside it",
+    ],
+    [
       "a vein spot on water",
       lake([respawn, { ...pool(1), ...at(0, 1), width: 48 }, spot(1, 1)]),
       "blocking",
