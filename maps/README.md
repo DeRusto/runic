@@ -18,9 +18,9 @@ A pooled site has no tile in `features`: its spot is plain ground, and the serve
 
 Fishing spots are the one pooled site on water: a `fishingSpot` pool's spots must be water tiles, fished from the bank beside them. Every water tile at the Lake's bank is a spot.
 
-Trees are fixed sites: a Birch, Oak or Charwood tile in `features` always stands there, shows a stump while it's run out, and grows back in place. A `tree` prop is scenery and can't be chopped.
+Trees are fixed sites: a Birch, Oak or Charwood tile in `features` always stands there, shows a stump while it's run out, and grows back in place. A `tree` prop is scenery and can't be chopped. The loader refuses a `tree` pool.
 
-Whether a tile blocks walking comes from the `blocks` property on its tile in the tileset, so there's no collision layer to keep in step. Ground tiles have no `blocks`: water always blocks, and every other ground never does. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
+Whether a feature tile blocks walking comes from its `blocks` property in the tileset, so there's no collision layer to keep in step. Ground tiles have no `blocks`: water always blocks, and every other ground never does. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
 
 An object's class is one of these:
 

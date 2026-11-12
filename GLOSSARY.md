@@ -43,11 +43,11 @@ A site that can be mined for ore. Every vein belongs to a site pool: one that ru
 _Avoid_: Ore rock, node, resource
 
 **Site pool**:
-An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins and its berry and herb bushes each have one.
+An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins, its berry and herb bushes, and the Lake's fishing spots each have one.
 _Avoid_: Spawn area, zone
 
 **Spot**:
-One of the tiles in a site pool where a site can appear. With no site on it, a spot is plain ground that players can walk on.
+One of the tiles in a site pool where a site can appear. With no site on it, a spot is its plain tile: ground that players can walk on, or water for a fishing spot.
 _Avoid_: Spawn point, node
 
 **Tree**:
@@ -210,7 +210,7 @@ The skill trained by taking ore from veins and smelting it into bars at a furnac
 _Avoid_: Gathering, quarrying
 
 **Gathering skill**:
-A skill trained by taking items from a **site**, a tile that runs out and grows back, either where it was or at another spot of its site pool: Herblaw from bushes, Mining from veins. It names the family, and is no other name for either skill.
+A skill trained by taking items from a **site**, a tile that runs out and grows back, either where it was or at another spot of its site pool: Herblaw from bushes, Mining from veins, Woodcutting from trees and Fishing from fishing spots. It names the family, and is no other name for any one skill.
 _Avoid_: Resource skill, harvesting
 
 **Smithing**:
@@ -228,7 +228,7 @@ The one shared secret a friend must give to create an account.
 _Avoid_: Referral, key
 
 **Action**:
-The one thing a player is currently doing (walking, picking, mining, smithing or fighting); a new click replaces it.
+The one thing a player is currently doing (walking, picking, mining, chopping, fishing, smithing or fighting); a new click replaces it.
 _Avoid_: Task, job, activity
 
 **Inventory**:

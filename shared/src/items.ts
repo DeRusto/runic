@@ -49,7 +49,7 @@ export const ITEMS = {
   emberiteHelmet: SINGLE,
   emberiteChestplate: SINGLE,
   emberiteLeggings: SINGLE,
-  /** From trees (#208). Nothing uses them until Phase 6. */
+  /** From trees (#208). Processing uses them from Phase 6. */
   birchLog: STACKS,
   oakLog: STACKS,
   charwoodLog: STACKS,
