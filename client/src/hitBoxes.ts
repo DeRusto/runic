@@ -31,6 +31,14 @@ export function tileHitBoxes<Site>(room: WorldConnection) {
       hitBox.position.set(x, HIT_BOX_HEIGHT / 2, y);
       hitBoxes.set(hitBox, { ...siteAt(x, y), id, x, y });
     },
+    /** Takes away the site's box, for one gone from its spot in a site pool. */
+    remove(id: string) {
+      for (const [hitBox, site] of hitBoxes) {
+        if (site.id !== id) continue;
+        scene.remove(hitBox);
+        hitBoxes.delete(hitBox);
+      }
+    },
     /** What finds the site under a click's ray. */
     under(raycaster: THREE.Raycaster) {
       const hit = raycaster.intersectObjects([...hitBoxes.keys()])[0];

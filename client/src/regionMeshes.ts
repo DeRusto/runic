@@ -38,6 +38,10 @@ const STATIONS: Record<StationKind, { file: string; width: number }> = {
   anvil: { file: "anvil.gltf", width: 0.8 },
 };
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
+/** A spot with no site on it is drawn at nothing, so it looks like its plain ground. */
+const GONE_SCALE = new THREE.Vector3(0, 0, 0);
+/** How a bush or vein is drawn: full, run out, or gone from its spot in a site pool. */
+export type SiteLook = "full" | "runOut" | "gone";
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 // The ore's rock colour, so a run-out vein reads as plain rock.
@@ -129,7 +133,7 @@ export function oreParts(ore: THREE.Object3D) {
   };
 }
 
-/** A slab per tile and the props, houses, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one run out or not. */
+/** A slab per tile and the props, houses, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one full, run out or gone. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
     [berryBush, herbBush, ...propMeshes],
@@ -324,13 +328,16 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     meshes.set(geometry, mesh);
   }
 
-  return (id: string, runOut: boolean) => {
+  return (id: string, look: SiteLook) => {
+    const runOut = look === "runOut";
     for (const { geometry, slot, tint } of runOutSlots.get(id)!) {
       const instances = meshes.get(geometry)!;
       const { matrix, color } = placements.get(geometry)![slot]!;
       instances.setMatrixAt(
         slot,
-        runOut ? matrix.clone().scale(RUN_OUT_SCALE) : matrix,
+        look === "full"
+          ? matrix
+          : matrix.clone().scale(runOut ? RUN_OUT_SCALE : GONE_SCALE),
       );
       instances.setColorAt(slot, runOut ? tint : color);
       instances.instanceMatrix.needsUpdate = true;
