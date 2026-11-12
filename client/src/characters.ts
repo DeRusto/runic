@@ -1,8 +1,10 @@
 import {
   GATHERING,
+  GATHERING_SKILLS,
   TICK_MS,
   WALK_TICKS_PER_TILE,
   type EnemyKind,
+  type GatheringSkill,
   type Tile,
   type VillagerId,
 } from "@runic/shared";
@@ -48,9 +50,13 @@ const CLIP_PACKS = [
   "Rig_Medium_CombatMelee",
   "Rig_Medium_Tools",
 ];
-/** The tool each gathering skill shows in hand, by its node's name. */
-const GATHERING_TOOLS = { mining: "pickaxe", woodcutting: "axe" } as const;
-type ToolSkill = keyof typeof GATHERING_TOOLS;
+/** Tools with no model to show in hand. */
+const NO_MODEL: ReadonlySet<string> = new Set(["rod"]);
+/** Each gathering skill whose tool shows in hand, with that tool, which is also its node's name. */
+const HELD_TOOLS = GATHERING_SKILLS.flatMap((skill) => {
+  const { tool } = GATHERING[skill];
+  return tool && !NO_MODEL.has(tool) ? [[skill, tool] as const] : [];
+});
 // Not "hammer": the Blacksmith's own model may hold a node of that name, and it must never hide.
 const HAMMER = "hammer in hand";
 
@@ -168,7 +174,7 @@ export class Figure {
   fightTile?: Tile;
   /** The synced action, so a gathering tool stays in hand between attempts. */
   action = "";
-  private tools: [ToolSkill, THREE.Object3D][] = [];
+  private tools: [GatheringSkill, THREE.Object3D][] = [];
   /** The station it's working at. It faces the tile between moves, and `hammer` stays in hand between items. */
   work?: { tile: Tile; hammer: boolean };
   private hammer?: THREE.Object3D;
@@ -189,9 +195,9 @@ export class Figure {
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
-    for (const [skill, name] of Object.entries(GATHERING_TOOLS)) {
+    for (const [skill, name] of HELD_TOOLS) {
       const tool = model.getObjectByName(name);
-      if (tool) this.tools.push([skill as ToolSkill, tool]);
+      if (tool) this.tools.push([skill, tool]);
     }
     this.hammer = model.getObjectByName(HAMMER);
     for (const item of Object.keys(GEAR_LOOKS)) {
@@ -528,24 +534,23 @@ export function paintGear(
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
   const gearLooks = Object.entries(GEAR_LOOKS);
-  const [knight, barbarian, pickaxe, axe, hammer, clips, gear] =
-    await Promise.all([
+  const [knight, barbarian, hammer, clips, gear, heldTools] = await Promise.all(
+    [
       load("Knight"),
       load("Barbarian"),
-      loadGltf(GATHERING_TOOLS.mining),
-      loadGltf(GATHERING_TOOLS.woodcutting),
       loadGltf("hammer"),
       loadClips(),
       Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
-    ]);
+      Promise.all(HELD_TOOLS.map(([, tool]) => loadGltf(tool))),
+    ],
+  );
   const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
   // Every Figure's clone carries its own, and shows it only during the action.
   for (const [tool, name] of [
-    [pickaxe, GATHERING_TOOLS.mining],
-    [axe, GATHERING_TOOLS.woodcutting],
-    [hammer, HAMMER],
-  ] as const) {
+    ...HELD_TOOLS.map(([, name], i) => [heldTools[i]!, name] as const),
+    [hammer, HAMMER] as const,
+  ]) {
     tool.scene.name = name;
     tool.scene.visible = false;
     castShadows(tool.scene);
