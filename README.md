@@ -2,7 +2,7 @@
 
 A multiplayer online RPG for a small group of friends: a shared, persistent world on a tile grid, where players train skills. It runs in the browser, drawn in low-poly 3D through an isometric camera.
 
-Players forage and mine, smelt bars and smith gear, then fight Spiders and Skeletons for the materials that unlock the next tier. Progress is saved on the server, and accounts need an invite code.
+Players pick berries and herbs, mine ore, chop trees and fish, smelt bars and smith gear, then fight Spiders and Skeletons for the materials that unlock the next tier. Progress is saved on the server, and accounts need an invite code.
 
 ## Stack
 

@@ -13,6 +13,8 @@ import {
   DEPOSIT_INTENT,
   DEPOSIT_INVENTORY_INTENT,
   WITHDRAW_INTENT,
+  GATHERING,
+  GATHERING_SKILLS,
   CHOOSE_INTENT,
   CLOSE_STORE_INTENT,
   DEAL_INTENT,
@@ -22,14 +24,12 @@ import {
   END_TALK_INTENT,
   EQUIP_INTENT,
   EVENTS,
-  FORAGE_INTENT,
   LIST_FRIENDS_INTENT,
   LIST_IGNORES_INTENT,
   LOGOUT_INTENT,
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
-  MINE_INTENT,
   PIN_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
@@ -41,6 +41,7 @@ import {
   VISIT_INTENT,
   WALK_INTENT,
   type ChatLine,
+  type GatheringIntent,
   type Deal,
   type GearSlot,
   type Tile,
@@ -58,9 +59,11 @@ import {
 import { tickStepper } from "./tickStepper.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
+const region = loadWorldRegion();
+
 export class WorldRoom extends Room {
   autoDispose = false;
-  sim = new Simulation(loadWorldRegion(), Math.random);
+  sim = new Simulation(region.tiles, Math.random, region.pools);
   state = this.sim.state;
   /** Players whose connection is gone but whose lock still holds them here. */
   private dropped = new Map<
@@ -73,10 +76,14 @@ export class WorldRoom extends Room {
       this.sim.queueWalk(client.sessionId, to),
     [TARGET_INTENT]: (client: Client, enemy: string) =>
       this.sim.queueTarget(client.sessionId, enemy),
-    [FORAGE_INTENT]: (client: Client, bush: string) =>
-      this.sim.queueGather(client.sessionId, "foraging", bush),
-    [MINE_INTENT]: (client: Client, vein: string) =>
-      this.sim.queueGather(client.sessionId, "mining", vein),
+    // Typed by hand, since fromEntries loses the keys the client's send() checks against.
+    ...(Object.fromEntries(
+      GATHERING_SKILLS.map((skill) => [
+        GATHERING[skill].intent,
+        (client: Client, site: string) =>
+          this.sim.queueGather(client.sessionId, skill, site),
+      ]),
+    ) as Record<GatheringIntent, (client: Client, site: string) => void>),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>
       this.sim.queueMake(client.sessionId, intent),
     [VISIT_INTENT]: (

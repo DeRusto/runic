@@ -16,6 +16,7 @@ const TILESET = {
       id: 4,
       properties: [property("vein", "copper"), property("blocks", true)],
     },
+    { id: 5, properties: [property("ground", "water")] },
   ],
 };
 const at = (x: number, y: number) => ({ x: x * 16, y: y * 16 });
@@ -37,13 +38,48 @@ const mapWith = (changes: object = {}, objects: object[] = [respawn]) => ({
 });
 const load = (map: object, tileset: object = TILESET) =>
   loadRegion(JSON.stringify(map), JSON.stringify(tileset));
-const withLayer = (name: string, data: unknown) => ({
-  layers: mapWith().layers.map((l) => (l.name === name ? { name, data } : l)),
+const pool = (
+  active: number,
+  size = { width: 32, height: 16 },
+  kind = "iron",
+) => ({
+  type: "sitePool",
+  ...at(1, 1),
+  ...size,
+  properties: [
+    property("site", "vein"),
+    property("kind", kind),
+    property("active", active),
+  ],
 });
+const fishingPool = {
+  type: "sitePool",
+  ...at(0, 1),
+  width: 48,
+  height: 16,
+  properties: [
+    property("site", "fishingSpot"),
+    property("kind", "shore"),
+    property("active", 1),
+  ],
+};
+const spot = (x: number, y: number, name?: string) => ({
+  type: "siteSpot",
+  ...at(x, y),
+  point: true,
+  ...(name && { name }),
+});
+/** `base`'s layers, with the layer called `name` holding `data` instead. */
+const withLayer = (name: string, data: unknown, base = mapWith()) => ({
+  layers: base.layers.map((l) => (l.name === name ? { name, data } : l)),
+});
+/** The 3×2 region with water (gid 6) in the middle of the bottom row, unless `ground` says otherwise, and `objects` placed. */
+const lake = (objects: object[], ground = [2, 1, 1, 1, 6, 1]) =>
+  mapWith(withLayer("ground", ground, mapWith({}, objects)));
 
 describe("loadRegion", () => {
   it("merges ground, features and placements into one tile each", () => {
-    const tiles = load(
+    const { tiles } = load(
       mapWith({}, [
         respawn,
         {
@@ -69,11 +105,58 @@ describe("loadRegion", () => {
   });
 
   it("loads what the grid shorthand parses, so test fixtures mean the same", () => {
-    const tiles = load(mapWith());
+    const { tiles } = load(mapWith());
     expect(tiles[0]![0]).toEqual(parseRegion("R")[0]![0]);
     expect(tiles[0]![1]).toEqual(parseRegion("T")[0]![0]);
     expect(tiles[1]![0]).toEqual(parseRegion("c")[0]![0]);
     expect(respawnTile(tiles)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("reads a site pool and its spots, which stay plain ground", () => {
+    const { tiles, pools } = load(
+      mapWith({}, [respawn, pool(1), spot(1, 1), spot(2, 1)]),
+    );
+    expect(pools).toEqual([
+      {
+        skill: "mining",
+        kind: "iron",
+        active: 1,
+        spots: [
+          { x: 1, y: 1 },
+          { x: 2, y: 1 },
+        ],
+      },
+    ]);
+    expect(tiles[1]![1]).toEqual({ ground: "grass", blocks: false });
+  });
+
+  it("makes water block, and puts a fishing spot on it", () => {
+    const { tiles, pools } = load(lake([respawn, fishingPool, spot(1, 1)]));
+    expect(tiles[1]![1]).toEqual({ ground: "water", blocks: true });
+    expect(pools[0]).toMatchObject({
+      skill: "fishing",
+      spots: [{ x: 1, y: 1 }],
+    });
+  });
+
+  it("puts a spot inside overlapping pools in the pool its name gives", () => {
+    const { pools } = load(
+      mapWith({}, [
+        respawn,
+        pool(1),
+        pool(1, undefined, "copper"),
+        spot(1, 1, "copper"),
+        spot(2, 1, "iron"),
+      ]),
+    );
+    expect(pools.map(({ kind, spots }) => ({ kind, spots }))).toEqual([
+      { kind: "iron", spots: [{ x: 2, y: 1 }] },
+      { kind: "copper", spots: [{ x: 1, y: 1 }] },
+    ]);
+  });
+
+  it("reports no pools for a map without any", () => {
+    expect(load(mapWith()).pools).toEqual([]);
   });
 
   it.each([
@@ -189,6 +272,108 @@ describe("loadRegion", () => {
       "two placements on one tile",
       mapWith({}, [respawn, { type: "npc", name: "odo", ...at(0, 0) }]),
       "share",
+    ],
+    [
+      "a spot outside every pool",
+      mapWith({}, [
+        respawn,
+        pool(1, { width: 16, height: 16 }),
+        spot(1, 1),
+        spot(2, 1),
+      ]),
+      "outside every pool",
+    ],
+    [
+      "a spot inside two pools",
+      mapWith({}, [respawn, pool(1), pool(1), spot(1, 1)]),
+      "inside two pools",
+    ],
+    [
+      "a spot that names a pool it isn't inside",
+      mapWith({}, [respawn, pool(1), spot(1, 1, "copper")]),
+      "isn't inside a copper pool",
+    ],
+    [
+      "a pool with fewer spots than it keeps active",
+      mapWith({}, [respawn, pool(3), spot(1, 1), spot(2, 1)]),
+      "fewer spots",
+    ],
+    [
+      "a pool of an unknown site",
+      mapWith({}, [
+        respawn,
+        {
+          ...pool(1),
+          properties: [
+            property("site", "altar"),
+            property("kind", "stone"),
+            property("active", 1),
+          ],
+        },
+        spot(1, 1),
+      ]),
+      "altar",
+    ],
+    [
+      "a pool of an unknown kind",
+      mapWith({}, [
+        respawn,
+        {
+          ...pool(1),
+          properties: [
+            property("site", "vein"),
+            property("kind", "gold"),
+            property("active", 1),
+          ],
+        },
+        spot(1, 1),
+      ]),
+      "gold",
+    ],
+    [
+      "a pool of a site that never pools",
+      mapWith({}, [
+        respawn,
+        {
+          ...pool(1),
+          properties: [
+            property("site", "tree"),
+            property("kind", "birch"),
+            property("active", 1),
+          ],
+        },
+        spot(1, 1),
+      ]),
+      "trees don't pool",
+    ],
+    [
+      "a pool that keeps no site active",
+      mapWith({}, [respawn, pool(0), spot(1, 1)]),
+      "active",
+    ],
+    [
+      "a fishing spot on land",
+      lake([respawn, fishingPool, spot(2, 1)]),
+      "a fishing spot at 2,1 must be on water",
+    ],
+    [
+      "a fishing spot with no land beside it to fish from",
+      lake([respawn, fishingPool, spot(1, 1)], [2, 1, 1, 1, 6, 6]),
+      "a fishing spot at 1,1 has no walkable tile beside it",
+    ],
+    [
+      "a vein spot on water",
+      lake([respawn, { ...pool(1), ...at(0, 1), width: 48 }, spot(1, 1)]),
+      "blocking",
+    ],
+    [
+      "a spot on a blocking tile",
+      mapWith({}, [
+        respawn,
+        { ...pool(1), ...at(0, 0), width: 48 },
+        spot(1, 0),
+      ]),
+      "blocking",
     ],
   ])("refuses %s", (_, map, message) => {
     expect(() => load(map)).toThrow(message);

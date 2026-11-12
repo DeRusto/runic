@@ -56,10 +56,12 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
   ({
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     miningXp: 0,
     smithingXp: 0,
+    woodcuttingXp: 0,
+    fishingXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     pinnedSkills,
@@ -69,7 +71,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
 const TODAY = [
   "Combat",
   "Defense",
-  "Foraging",
+  "Herblaw",
   "Hitpoints",
   "Mining",
   "Smithing",
@@ -343,10 +345,12 @@ describe("the Skills tab", () => {
     expect(rows().map(({ name }) => name.textContent)).toEqual([
       "Combat 1",
       "Defense 1",
-      "Foraging 1",
+      "Herblaw 1",
       "Hitpoints 10",
       "Mining 2",
       "Smithing 1",
+      "Woodcutting 1",
+      "Fishing 1",
       "Blocking 1",
       "Mastery 1",
     ]);

@@ -34,7 +34,7 @@ const start = ({ held = [], tiles = TILES, ...fields }: Start = {}) => {
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: LEVEL_10_XP,
     health: 1000,
     inventory: [

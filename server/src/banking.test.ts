@@ -94,7 +94,7 @@ function banking(held: [string, number][], banked: [string, number][] = []) {
     ...NEXT_TO,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health: 1000,
     inventory,

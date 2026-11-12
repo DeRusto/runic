@@ -1,11 +1,11 @@
-{ "columns":20,
+{ "columns":24,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":320,
+ "imagewidth":384,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":20,
+ "tilecount":24,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -262,6 +262,57 @@
                  "name":"house",
                  "type":"string",
                  "value":"door"
+                }]
+        }, 
+        {
+         "id":20,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"tree",
+                 "type":"string",
+                 "value":"birch"
+                }]
+        }, 
+        {
+         "id":21,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"tree",
+                 "type":"string",
+                 "value":"oak"
+                }]
+        }, 
+        {
+         "id":22,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"tree",
+                 "type":"string",
+                 "value":"charwood"
+                }]
+        }, 
+        {
+         "id":23,
+         "properties":[
+                {
+                 "name":"ground",
+                 "type":"string",
+                 "value":"water"
                 }]
         }],
  "tilewidth":16,

@@ -5,7 +5,7 @@ import { xpForLevel } from "./skills.ts";
 
 const MINER = {
   tools: ["pickaxe"],
-  foragingXp: 0,
+  herblawXp: 0,
   miningXp: 0,
   inventory: ["", ""],
   inventoryCounts: [0, 0],

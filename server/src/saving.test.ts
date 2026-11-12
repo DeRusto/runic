@@ -26,7 +26,7 @@ import type { WorldRoom } from "./WorldRoom.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
 const PORT = 30000 + (process.pid % 5000);
-const respawn = respawnTile(loadWorldRegion());
+const respawn = respawnTile(loadWorldRegion().tiles);
 const folder = mkdtempSync(join(tmpdir(), "runic-saving-"));
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -114,7 +114,7 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   const to = await stepEast(room);
   const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
   const player = world.sim.state.players.get(room.sessionId)!;
-  player.foragingXp = 300;
+  player.herblawXp = 300;
   player.inventory[0] = "berry";
   player.inventoryCounts[0] = 13;
 
@@ -124,7 +124,7 @@ test("a clean shutdown saves everyone, and a restart brings them back", async ()
   const back = await joined(client);
   expect(tileOf(back)).toEqual(to);
   const saved = (back.state as any).players.get(back.sessionId);
-  expect(saved.foragingXp).toBe(300);
+  expect(saved.herblawXp).toBe(300);
   expect(saved.inventory[0]).toBe("berry");
   expect(saved.inventoryCounts[0]).toBe(13);
   expect(saved.inventoryCounts[1]).toBe(0);
@@ -140,7 +140,7 @@ test("pins survive logging out, follow the player to another device, and new ski
   expect(synced(room).masteryXp).toBe(0);
   room.send(PIN_INTENT, { skill: "Combat", pinned: false });
   room.send(PIN_INTENT, { skill: "Blocking", pinned: true });
-  const pinned = ["Defense", "Foraging", "Hitpoints", "Mining", "Smithing"];
+  const pinned = ["Defense", "Herblaw", "Hitpoints", "Mining", "Smithing"];
   await vi.waitFor(
     () =>
       expect([...synced(room).pinnedSkills]).toEqual([...pinned, "Blocking"]),
@@ -193,7 +193,7 @@ test("a sword equipped over the network is synced, and worn again after logging 
 });
 
 test("the Blacksmith's tools, asked for in conversation, reach the client with a told line, and survive logging out", async () => {
-  const tiles = loadWorldRegion();
+  const { tiles } = loadWorldRegion();
   const y = tiles.findIndex((row) =>
     row.some((tile) => tile.villager === "odo"),
   );

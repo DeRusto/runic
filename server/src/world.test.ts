@@ -56,7 +56,7 @@ test("a walk intent moves the player on the server, and others see it", async ()
   const other = new Client(`http://localhost:${PORT}`);
   other.auth.token = await testToken(PORT, "Watcher");
   const watcher = await other.join(WORLD_ROOM);
-  const { x, y } = respawnTile(loadWorldRegion());
+  const { x, y } = respawnTile(loadWorldRegion().tiles);
 
   walker.send(WALK_INTENT, { x: x + 2, y });
 

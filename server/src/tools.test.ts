@@ -46,7 +46,7 @@ test("a player gets only the tools they lack", () => {
     ...NEXT_TO,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health: 10,
     inventory: [],
@@ -130,7 +130,7 @@ test("a save from before tools loads with none", () => {
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health: 10,
     inventory: [],
@@ -145,7 +145,7 @@ test("tools are kept through dying", () => {
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health: 1,
     inventory: [],
@@ -170,4 +170,31 @@ test("dropping every slot leaves tools alone", () => {
   }
   expect([...me().inventory].every((item) => item === "")).toBe(true);
   expect(tools()).toEqual(BOTH);
+});
+
+test("the Forester gives only the axe, and the Blacksmith never does", () => {
+  sim = new Simulation(
+    parseRegion(
+      ["TTTTTTTTT", "TR.....BT", "Tf......T", "TTTTTTTTT"].join("\n"),
+    ),
+    () => 0.99,
+  );
+  sim.addPlayer("a");
+  askForTools();
+  expect(tools()).toEqual(BOTH);
+  sim.queueVisit("a", "bram");
+  arrive();
+  sim.choose(
+    "a",
+    VILLAGERS.bram.nodes.greet.choices.findIndex(
+      (choice) => "action" in choice && choice.action === "giveTools",
+    ),
+  );
+  ticks(1);
+  expect(tools()).toEqual([...BOTH, "axe"]);
+  expect(told.at(-1)).toEqual({
+    type: "told",
+    player: "a",
+    line: "Bram gives you an axe.",
+  });
 });

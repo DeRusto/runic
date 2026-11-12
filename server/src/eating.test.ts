@@ -18,7 +18,7 @@ function eater(health: number, ...food: string[]) {
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health,
     inventory,
@@ -291,7 +291,7 @@ describe("dropping", () => {
     sim.removePlayer("a");
     sim.addPlayer("a", saved);
     sim.queueDrop("a", 0, 20);
-    sim.queueGather("a", "foraging", "2,1");
+    sim.queueGather("a", "herblaw", "2,1");
     sim.tick();
     expect(player(sim).inventory[0]).toBe("berry");
     expect(player(sim).inventoryCounts[0]).toBe(1);

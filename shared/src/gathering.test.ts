@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { BUSHES } from "./foraging.ts";
+import { BUSHES } from "./herblaw.ts";
 import { gatheringSource, rollFinds } from "./gathering.ts";
 import { VEINS } from "./mining.ts";
 
@@ -11,9 +11,9 @@ const rolls = (...values: number[]) => {
 
 describe("rollFinds", () => {
   test("a bush has no finds, so a pick finds nothing", () => {
-    expect(
-      rollFinds(gatheringSource("foraging", "berryBush"), () => 0),
-    ).toEqual([]);
+    expect(rollFinds(gatheringSource("herblaw", "berryBush"), () => 0)).toEqual(
+      [],
+    );
     expect(BUSHES.berryBush).not.toHaveProperty("finds");
   });
 

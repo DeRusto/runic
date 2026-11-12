@@ -562,7 +562,7 @@ describe("the mine event", () => {
       onReconnect: vi.fn(),
       onMessage,
       sessionId,
-      state: { players: new Map([["a", { miningXp, foragingXp: 0 }]]) },
+      state: { players: new Map([["a", { miningXp, herblawXp: 0 }]]) },
     } as unknown as WorldConnection);
     onMessage.mock.calls[0]![1]([event]);
   };

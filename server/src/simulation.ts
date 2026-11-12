@@ -49,7 +49,9 @@ import {
   RECIPES,
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
+  groundBlocks,
   respawnTile,
+  rollCatch,
   rollFinds,
   siteId,
   SHELF_SLOTS,
@@ -70,7 +72,7 @@ import {
   ENEMIES,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
-  TOOLS,
+  aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
   choicesNodeOf,
@@ -79,6 +81,7 @@ import {
   offers,
   type DialogueAction,
   nodesOf,
+  type Villager,
   type VillagerId,
   xpOf,
   type GatheringLeftField,
@@ -89,6 +92,7 @@ import {
   type GearSlot,
   type ItemId,
   type RecipeItem,
+  type SitePool,
   type StationKind,
   XP_PER_DAMAGE_DEALT,
   type Tile,
@@ -148,10 +152,12 @@ export const Player = schema(
     y: t.uint8(),
     combatXp: t.uint32(),
     defenseXp: t.uint32(),
-    foragingXp: t.uint32(),
+    herblawXp: t.uint32(),
     hitpointsXp: t.uint32(),
     miningXp: t.uint32().default(0),
     smithingXp: t.uint32().default(0),
+    woodcuttingXp: t.uint32().default(0),
+    fishingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -203,7 +209,16 @@ export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
 
 export const Vein = schema({ minesLeft: t.uint8() }, "Vein");
 
-const SITE_SCHEMAS = { bushes: Bush, veins: Vein };
+export const Tree = schema({ chopsLeft: t.uint8() }, "Tree");
+
+export const FishingSpot = schema({ catchesLeft: t.uint8() }, "FishingSpot");
+
+const SITE_SCHEMAS = {
+  bushes: Bush,
+  veins: Vein,
+  trees: Tree,
+  fishingSpots: FishingSpot,
+};
 
 export const WorldState = schema(
   {
@@ -212,6 +227,8 @@ export const WorldState = schema(
     enemies: t.map(Enemy),
     bushes: t.map(Bush),
     veins: t.map(Vein),
+    trees: t.map(Tree),
+    fishingSpots: t.map(FishingSpot),
     /** Tagged for views: the room adds each one to the views of the players who can see it. */
     groundItems: t.map(GroundItem).view(),
     /** The general store's shelf, the same for every player: item ids, and parallel to them how many. */
@@ -221,12 +238,16 @@ export const WorldState = schema(
   "WorldState",
 );
 
-/** A bush or vein: where it is and what it is, its synced entry and when it grows back. */
+/** A site pool, with the ticks its run-out sites come back on, soonest first. */
+type SitePoolState = SitePool & { comebackTicks: number[] };
+
+/** A gathering site: where it is and what it is, its synced entry, and when it grows back or which pool it comes back in. */
 type GatheringSite = Tile & {
   skill: GatheringSkill;
   kind: string;
   synced: Partial<Record<GatheringLeftField, number>>;
   regrowTick?: number;
+  pool?: SitePoolState;
 };
 
 /** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
@@ -294,7 +315,7 @@ export class Simulation {
       damagers: Set<string>;
     }
   >();
-  /** Bushes and veins, by the tile that keys them. */
+  /** Every gathering site, by the tile that keys it. */
   private sites = new Map<string, GatheringSite>();
   private villagers = new Map<VillagerId, Tile>();
   /**
@@ -324,26 +345,25 @@ export class Simulation {
   /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
   readonly events: WorldEvent[] = [];
 
+  /** The region's tiles, copied so that a pooled site can block its spot only while it's there. */
+  private tiles: TileKind[][];
+  /** Each site pool, with the ticks its run-out sites come back on, soonest first. Not saved: a restart picks again. */
+  private pools: SitePoolState[];
+
   constructor(
-    private tiles: TileKind[][],
+    tiles: TileKind[][],
     readonly random: () => number,
+    pools: SitePool[] = [],
   ) {
+    this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { enemy, villager, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
-          const { site, stateField, leftField } = GATHERING[skill];
-          const siteKind = kind[site];
-          if (!siteKind) continue;
-          const id = siteId({ x, y });
-          const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
-            [leftField]: gatheringSource(skill, siteKind).holds,
-          });
-          // The row keeps the schema and its map together, which the types can't follow.
-          this.state[stateField].set(id, synced as never);
-          this.sites.set(id, { x, y, skill, kind: siteKind, synced });
+          const siteKind = kind[GATHERING[skill].site];
+          if (siteKind) this.addSite(skill, siteKind, { x, y });
         }
         if (!enemy) return;
         const id = String(this.unsyncedEnemies.size);
@@ -365,6 +385,59 @@ export class Simulation {
           }),
         );
       }),
+    );
+    this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
+    for (const pool of this.pools)
+      for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
+  }
+
+  /** A full site on `tile`, which blocks while it's there. */
+  private addSite(
+    skill: GatheringSkill,
+    kind: string,
+    { x, y }: Tile,
+    pool?: SitePoolState,
+  ) {
+    const { site, stateField, leftField } = GATHERING[skill];
+    const id = siteId({ x, y });
+    const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
+      [leftField]: gatheringSource(skill, kind).holds,
+    });
+    // The row keeps the schema and its map together, which the types can't follow.
+    this.state[stateField].set(id, synced as never);
+    this.sites.set(id, { x, y, skill, kind, synced, pool });
+    Object.assign(this.tiles[y]![x]!, { [site]: kind, blocks: true });
+  }
+
+  /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player, an enemy or a ground item on it. */
+  private placePooledSite(pool: SitePoolState) {
+    const standing = [
+      ...this.state.players.values(),
+      ...this.state.enemies.values(),
+      ...this.state.groundItems.values(),
+    ];
+    const free = pool.spots.filter(
+      (spot) =>
+        !this.sites.has(siteId(spot)) &&
+        !standing.some(({ x, y }) => x === spot.x && y === spot.y),
+    );
+    if (!free.length) return false;
+    const spot = free[Math.floor(this.random() * free.length)]!;
+    this.addSite(pool.skill, pool.kind, spot, pool);
+    return true;
+  }
+
+  /** Takes a run-out pooled site off its spot, to come back somewhere in its pool after its regrow time. */
+  private removePooledSite(site: GatheringSite, pool: SitePoolState) {
+    const { site: field, stateField } = GATHERING[site.skill];
+    const id = siteId(site);
+    this.sites.delete(id);
+    this.state[stateField].delete(id);
+    const tile = this.tiles[site.y]![site.x]!;
+    delete tile[field];
+    tile.blocks = groundBlocks(tile.ground);
+    pool.comebackTicks.push(
+      this.state.tick + gatheringSource(site.skill, site.kind).regrowTicks,
     );
   }
 
@@ -424,14 +497,40 @@ export class Simulation {
         ...respawn,
         combatXp: 0,
         defenseXp: 0,
-        foragingXp: 0,
+        herblawXp: 0,
         hitpointsXp: STARTING_HITPOINTS_XP,
         health: STARTING_HEALTH,
         inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
       };
     }
     const tile = this.tiles[saved.y]?.[saved.x];
-    return !tile || tile.blocks ? { ...saved, ...respawn } : saved;
+    if (tile && !tile.blocks) return saved;
+    // A pooled site may have come back on the spot they logged out on.
+    const nearest = this.sites.has(siteId(saved))
+      ? this.nearestPastSites(saved)
+      : undefined;
+    return { ...saved, ...(nearest ?? respawn) };
+  }
+
+  /** The fewest steps from `from` to a walkable tile, walking through sites as if they had run out: undefined if nothing else is in reach. */
+  private nearestPastSites(from: Tile): Tile | undefined {
+    const throughSites = this.tiles.map((row, y) =>
+      row.map((tile, x) =>
+        this.sites.has(siteId({ x, y })) ? { ...tile, blocks: false } : tile,
+      ),
+    );
+    const seen = new Set([siteId(from)]);
+    const queue = [from];
+    // Breadth-first, so the first walkable tile found is the fewest steps away.
+    for (const tile of queue) {
+      if (!this.tiles[tile.y]![tile.x]!.blocks) return tile;
+      for (const next of legalSteps(throughSites, tile)) {
+        if (seen.has(siteId(next))) continue;
+        seen.add(siteId(next));
+        queue.push(next);
+      }
+    }
+    return undefined;
   }
 
   /** What to write to the database for this player, if they're in the region. */
@@ -443,10 +542,12 @@ export class Simulation {
       y,
       combatXp,
       defenseXp,
-      foragingXp,
+      herblawXp,
       hitpointsXp,
       miningXp,
       smithingXp,
+      woodcuttingXp,
+      fishingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -467,10 +568,12 @@ export class Simulation {
       y,
       combatXp,
       defenseXp,
-      foragingXp,
+      herblawXp,
       hitpointsXp,
       miningXp,
       smithingXp,
+      woodcuttingXp,
+      fishingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -801,10 +904,11 @@ export class Simulation {
 
   private giveTools(id: string, villager: VillagerId) {
     const player = this.state.players.get(id)!;
-    const lacking = TOOLS.filter((tool) => !player.tools.includes(tool));
+    const { name, tools = [] }: Villager = VILLAGERS[villager];
+    const lacking = tools.filter((tool) => !player.tools.includes(tool));
     if (!lacking.length) return;
     player.tools.push(...lacking);
-    const line = `${VILLAGERS[villager].name} gives you ${lacking.map((tool) => `a ${tool}`).join(" and ")}.`;
+    const line = `${name} gives you ${lacking.map(aTool).join(" and ")}.`;
     this.events.push({ type: "told", player: id, line });
   }
 
@@ -1038,21 +1142,21 @@ export class Simulation {
       const unsynced = this.unsyncedPlayers.get(id)!;
       const player = this.state.players.get(id)!;
       // With no way there, the old action still ends, and nothing replaces it.
-      const goNextTo = (tile: Tile | Tile[], action: UnsyncedAction) => {
-        const path = pathNextTo(this.tiles, player, tile);
+      const goNextTo = (action: UnsyncedAction) => {
+        const path = pathNextTo(this.tiles, player, this.nextToOf(action)!);
         unsynced.path = path ?? [];
         unsynced.action = path && action;
       };
       if ("enemy" in intent) {
         unsynced.action = { kind: "fighting", enemy: intent.enemy };
       } else if ("make" in intent) {
-        goNextTo(this.stations[RECIPES[intent.make].station]!, {
+        goNextTo({
           kind: "smithing",
           item: intent.make,
           all: intent.all,
         });
       } else if ("villager" in intent) {
-        goNextTo(this.villagers.get(intent.villager)!, {
+        goNextTo({
           kind: "visiting",
           ...intent,
         });
@@ -1073,7 +1177,7 @@ export class Simulation {
           : undefined;
         unsynced.path = [];
       } else if ("gather" in intent) {
-        goNextTo(this.sites.get(intent.site)!, {
+        goNextTo({
           kind: intent.gather,
           site: intent.site,
         });
@@ -1097,6 +1201,15 @@ export class Simulation {
     this.queuedLogouts.clear();
   }
 
+  /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
+  private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
+    if (action?.kind === "smithing")
+      return this.stations[RECIPES[action.item].station];
+    if (action?.kind === "visiting") return this.villagers.get(action.villager);
+    if (action && "site" in action) return this.sites.get(action.site);
+    return undefined;
+  }
+
   private advancePlayers() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
@@ -1112,6 +1225,20 @@ export class Simulation {
         const target = this.state.players.get(unsynced.action.player)!;
         unsynced.path = pathNextTo(this.tiles, player, target) ?? [];
       }
+      const next = unsynced.path[0];
+      // A pooled site may have come back on the way since the path was found,
+      // perhaps on the tile the walk ends on, so head for the target again.
+      if (
+        next &&
+        !legalSteps(this.tiles, player).some(
+          ({ x, y }) => x === next.x && y === next.y,
+        )
+      ) {
+        const nextTo = this.nextToOf(unsynced.action);
+        unsynced.path = nextTo
+          ? (pathNextTo(this.tiles, player, nextTo) ?? [])
+          : findPath(this.tiles, player, unsynced.path.at(-1)!);
+      }
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
       unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
@@ -1125,8 +1252,16 @@ export class Simulation {
       const { action } = unsynced;
       if (action?.kind !== skill || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
-      const site = this.sites.get(action.site)!;
-      if (this.siteRefusal(site, player)) {
+      // A pooled site that ran out is gone from its spot.
+      const site = this.sites.get(action.site);
+      // A site that came back may have left no way to stand next to it.
+      if (
+        !site ||
+        this.siteRefusal(site, player) ||
+        !tilesNextTo(this.tiles, site).some(
+          ({ x, y }) => x === player.x && y === player.y,
+        )
+      ) {
         unsynced.action = undefined;
         continue;
       }
@@ -1148,17 +1283,17 @@ export class Simulation {
           : { type: verb, player: id, success },
       );
       if (!success) continue;
-      this.earnXp(player, xpField, source.xp);
+      const { item, xp } = rollCatch(source, level, this.random);
+      this.earnXp(player, xpField, xp);
       // Room is counted before either lands, so the second ore goes on the
       // ground, owned by the miner, when the first took the last of it.
-      const room = this.roomFor(source.item, player);
+      const room = this.roomFor(item, player);
       for (let i = 0; i < count; i++) {
-        if (i < room)
-          this.addToSlot(player, slotFor(source.item, player), source.item);
+        if (i < room) this.addToSlot(player, slotFor(item, player), item);
         else
           this.groundItems.spawn(
             player,
-            source.item,
+            item,
             1,
             player.username,
             this.state.tick,
@@ -1178,8 +1313,10 @@ export class Simulation {
             this.state.tick,
           );
       }
-      if (--site.synced[leftField]! === 0)
-        site.regrowTick = this.state.tick + source.regrowTicks;
+      if (--site.synced[leftField]! === 0) {
+        if (site.pool) this.removePooledSite(site, site.pool);
+        else site.regrowTick = this.state.tick + source.regrowTicks;
+      }
       unsynced.action = undefined;
     }
   }
@@ -1317,6 +1454,13 @@ export class Simulation {
       site.synced[leftField] = gatheringSource(site.skill, site.kind).holds;
       site.regrowTick = undefined;
     }
+    // One with no free spot waits, and tries again next tick.
+    for (const pool of this.pools)
+      while (
+        pool.comebackTicks[0]! <= this.state.tick &&
+        this.placePooledSite(pool)
+      )
+        pool.comebackTicks.shift();
   }
 
   /** After the moves, so the first swing lands on the tick the player arrives. */

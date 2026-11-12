@@ -26,6 +26,14 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ashstone: 25,
   cinderglass: 50,
   heartflame: 100,
+  // Low, and rising by tier like ore (#208).
+  birchLog: 3,
+  oakLog: 6,
+  charwoodLog: 12,
+  // Raw fish, priced like logs (#210).
+  perch: 3,
+  trout: 6,
+  pike: 12,
 };
 
 /** How many times its common version's value an item of each Quality is worth (village spec §5). */

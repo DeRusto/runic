@@ -6,23 +6,31 @@ Open `region.tmj` in Tiled to paint it, or edit it through the `tiled` MCP serve
 
 ## Layers
 
-| Layer        | Type    | Holds                                                 | Rule                        |
-| ------------ | ------- | ----------------------------------------------------- | --------------------------- |
-| `ground`     | Tiles   | grass, thicket, path, ashen                           | Every cell is filled        |
-| `features`   | Tiles   | props, bushes, veins, stations, house walls and doors | At most one per tile        |
-| `placements` | Objects | the respawn, enemy homes, NPCs                        | One per tile, snapped to it |
+| Layer        | Type    | Holds                                                | Rule                        |
+| ------------ | ------- | ---------------------------------------------------- | --------------------------- |
+| `ground`     | Tiles   | grass, thicket, path, ashen, water                   | Every cell is filled        |
+| `features`   | Tiles   | props, trees, stations, house walls and doors        | At most one per tile        |
+| `placements` | Objects | the respawn, enemy homes, NPCs, site pools and spots | One per tile, snapped to it |
 
 If it's just what stands on a tile, it's a tile in `features`. If it has a name, its own settings, or something refers to it, it's an object in `placements`.
 
-Whether a tile blocks walking comes from the `blocks` property on its tile in the tileset, so there's no collision layer to keep in step. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
+A pooled site has no tile in `features`: its spot is plain ground, and the server puts a site on `active` of a pool's spots at random. When one runs out it disappears, and after its regrow time a full one comes back at a free spot of the same pool. The loader refuses a spot outside every pool and a pool with fewer spots than `active`.
+
+Fishing spots are the one pooled site on water: a `fishingSpot` pool's spots must be water tiles, fished from the bank beside them. Every water tile at the Lake's bank is a spot.
+
+Trees are fixed sites: a Birch, Oak or Charwood tile in `features` always stands there, shows a stump while it's run out, and grows back in place. A `tree` prop is scenery and can't be chopped. The loader refuses a `tree` pool.
+
+Whether a feature tile blocks walking comes from its `blocks` property in the tileset, so there's no collision layer to keep in step. Ground tiles have no `blocks`: water always blocks, and every other ground never does. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
 
 An object's class is one of these:
 
-| Class       | Needs                                             |
-| ----------- | ------------------------------------------------- |
-| `respawn`   | Nothing. There's exactly one                      |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`  |
-| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous` |
+| Class       | Needs                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `respawn`   | Nothing. There's exactly one                                                                                                                                     |
+| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                                                                                                                 |
+| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`, `tamsin`                                                                                              |
+| `sitePool`  | A rectangle with `site` (`vein`, `bush`, `fishingSpot`), `kind` and `active` (an int)                                                                            |
+| `siteSpot`  | A point inside a `sitePool`, on a tile that doesn't block, or on water for a fishing spot. Where pools overlap, its name is the `kind` of the pool it belongs to |
 
 ## Before committing
 

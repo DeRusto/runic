@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `woodcutting_xp` integer DEFAULT 0 NOT NULL;

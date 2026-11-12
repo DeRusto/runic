@@ -1,10 +1,10 @@
-import {
-  INVENTORY_SLOTS,
-  parseRegion,
-  xpForLevel,
-  type WorldEvent,
-} from "@runic/shared";
+import { INVENTORY_SLOTS, parseRegion, xpForLevel } from "@runic/shared";
 import { beforeEach, expect, test } from "vitest";
+import {
+  addGatherer,
+  gatheringHarness,
+  seededRandom,
+} from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
 
 // The respawn tile is (1,1), a walk of 3 steps from standing next to the Copper vein at (5,1).
@@ -32,48 +32,12 @@ beforeEach(() => {
 const player = (id = "a") => sim.state.players.get(id)!;
 const minesLeft = (vein: string) => sim.state.veins.get(vein)!.minesLeft;
 
-/** Adds a player with a pickaxe, unless `tools` says otherwise. */
-function addAt(
-  id: string,
-  miningXp: number,
-  x = 4,
-  y = 1,
-  tools = ["pickaxe"],
-) {
-  sim.addPlayer(
-    id,
-    {
-      x,
-      y,
-      miningXp,
-      tools,
-      combatXp: 0,
-      defenseXp: 0,
-      foragingXp: 0,
-      hitpointsXp: 4050,
-      health: 10,
-      inventory: Array<string>(INVENTORY_SLOTS).fill(""),
-    },
-    id,
-  );
-}
-
-/** Runs ticks and returns each `mine` event with the tick it came on. */
-const attempts = (count: number) => {
-  const seen: { tick: number; event: WorldEvent }[] = [];
-  for (let i = 0; i < count; i++) {
-    sim.tick();
-    for (const event of sim.events.splice(0))
-      if (event.type === "mine") seen.push({ tick: sim.state.tick, event });
-  }
-  return seen;
-};
-const attemptTicks = (count: number) => attempts(count).map(({ tick }) => tick);
-
-const mine = (vein: string, id = "a") => {
-  sim.queueGather(id, "mining", vein);
-  attempts(8);
-};
+const { addAt, attempts, attemptTicks, gather } = gatheringHarness(
+  () => sim,
+  "mining",
+  { x: 4, y: 1 },
+);
+const mine = (vein: string, id = "a") => gather(vein, id);
 
 test("a vein starts full, by its tier", () => {
   expect(minesLeft(COPPER)).toBe(3);
@@ -150,9 +114,6 @@ test("a vein that holds 3 runs out after 3 successes, whatever they gave", () =>
   expect(minesLeft(COPPER)).toBe(0);
 });
 
-/** A deterministic stream of rolls in [0, 1): Park–Miller, the same generator simulation.test.ts uses. */
-const seededRandom = (seed: number) => () =>
-  (seed = (seed * 16807) % 2147483647) / 2147483647;
 /** The share of `mines` successes on `vein` that gave 2 ore, and how many of each find they gave, driving a fresh simulation per mine so the vein is always full. */
 const mineMany = (vein: string, x: number, y: number, mines: number) => {
   const random = seededRandom(12345);
@@ -161,22 +122,7 @@ const mineMany = (vein: string, x: number, y: number, mines: number) => {
   const finds = new Map<string, number>();
   for (let i = 0; i < mines; i++) {
     const fresh = new Simulation(TILES, random);
-    fresh.addPlayer(
-      "a",
-      {
-        x,
-        y,
-        miningXp: xpForLevel(99),
-        tools: ["pickaxe"],
-        combatXp: 0,
-        defenseXp: 0,
-        foragingXp: 0,
-        hitpointsXp: 4050,
-        health: 10,
-        inventory: Array<string>(INVENTORY_SLOTS).fill(""),
-      },
-      "a",
-    );
+    addGatherer(fresh, "mining", "a", xpForLevel(99), { x, y }, ["pickaxe"]);
     fresh.queueGather("a", "mining", vein);
     for (let t = 0; t < 8; t++) {
       fresh.tick();
@@ -367,7 +313,7 @@ test("a failure gives nothing, keeps the vein, and tries again every 8 ticks", (
   expect(minesLeft(COPPER)).toBe(3);
 });
 
-test("the attempt interval follows the Mining level, not Foraging", () => {
+test("the attempt interval follows the Mining level, not Herblaw", () => {
   addAt("b", xpForLevel(15));
   roll = FAIL;
   sim.queueGather("b", "mining", COPPER);
@@ -398,13 +344,13 @@ test("clicking again can't beat the attempt interval", () => {
   expect(ticks).toEqual([1, 9]);
 });
 
-test("foraging and mining share the timer, so swapping can't beat it", () => {
+test("picking and mining share the timer, so swapping can't beat it", () => {
   sim = new Simulation(
     parseRegion(["TTTTT", "TbRcT", "TTTTT"].join("\n")),
     () => FAIL,
   );
   addAt("b", 0, 2, 1);
-  sim.queueGather("b", "foraging", "1,1");
+  sim.queueGather("b", "herblaw", "1,1");
   sim.tick();
   sim.events.length = 0;
   sim.queueGather("b", "mining", "3,1");

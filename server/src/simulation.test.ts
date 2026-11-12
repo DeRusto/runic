@@ -1,5 +1,6 @@
 import { parseRegion } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
+import { seededRandom } from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -152,7 +153,7 @@ describe("Spiders", () => {
   });
 
   test("the real region has a Spider on every home", () => {
-    const s = new Simulation(loadWorldRegion(), NEVER_WANDER);
+    const s = new Simulation(loadWorldRegion().tiles, NEVER_WANDER);
     const kinds = [...s.state.enemies.values()].map(({ kind }) => kind);
     expect(kinds.filter((kind) => kind === "spider")).toHaveLength(8);
   });
@@ -180,11 +181,7 @@ describe("Spiders", () => {
     // From the home at (2,2), the tree and the rock beside it rule out both diagonals up.
     const rows = ["TTTTTTT", "TR...TT", "TTSoTTT", "TTTTTTT"];
     const legal = new Set(["2,2", "1,1", "2,1", "3,1", "4,1"]);
-    let seed = 1;
-    const s = spiderSim(
-      rows,
-      () => (seed = (seed * 16807) % 2147483647) / 2147483647,
-    );
+    const s = spiderSim(rows, seededRandom(1));
     for (let i = 0; i < 2000; i++) {
       const before = spiderTile(s);
       s.tick();
@@ -198,10 +195,9 @@ describe("Spiders", () => {
 
   test("it never wanders more than 5 tiles from home, but does reach 5", () => {
     const row = `TRS${".".repeat(20)}T`;
-    let seed = 7;
     const s = spiderSim(
       ["T".repeat(row.length), row, "T".repeat(row.length)],
-      () => (seed = (seed * 16807) % 2147483647) / 2147483647,
+      seededRandom(7),
     );
     const seen = new Set<number>();
     for (let i = 0; i < 20000; i++) {
@@ -326,17 +322,19 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     miningXp: 0,
     smithingXp: 0,
+    woodcuttingXp: 0,
+    fishingXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     masteryHundredths: 0,
     pinnedSkills: [
       "Combat",
       "Defense",
-      "Foraging",
+      "Herblaw",
       "Hitpoints",
       "Mining",
       "Smithing",
@@ -365,10 +363,12 @@ const SAVED = {
   y: 2,
   combatXp: 1,
   defenseXp: 2,
-  foragingXp: 3,
+  herblawXp: 3,
   hitpointsXp: 4100,
   miningXp: 4,
   smithingXp: 5,
+  woodcuttingXp: 10,
+  fishingXp: 11,
   blockingXp: 6,
   masteryXp: 7,
   masteryHundredths: 8,
@@ -464,15 +464,15 @@ describe("a player's synced action", () => {
     expect(action(s)).toBe("");
   });
 
-  test("foraging from the click on, through the walk there, until the pick", () => {
+  test("picking from the click on, through the walk there, until the pick", () => {
     const unlucky = start();
-    unlucky.queueGather("a", "foraging", "6,1");
+    unlucky.queueGather("a", "herblaw", "6,1");
     for (let i = 0; i < 8; i++) {
       unlucky.tick();
-      expect(action(unlucky)).toBe("foraging");
+      expect(action(unlucky)).toBe("herblaw");
     }
     const lucky = start(0);
-    lucky.queueGather("a", "foraging", "6,1");
+    lucky.queueGather("a", "herblaw", "6,1");
     for (let i = 0; i < 8; i++) lucky.tick();
     expect(action(lucky)).toBe("");
   });

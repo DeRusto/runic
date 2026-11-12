@@ -1,5 +1,11 @@
 import { Client, CloseCode } from "@colyseus/sdk";
-import { loadRegion, respawnTile, TAKEN_OVER_CLOSE_CODE } from "@runic/shared";
+import {
+  GATHERING,
+  loadRegion,
+  respawnTile,
+  siteId,
+  TAKEN_OVER_CLOSE_CODE,
+} from "@runic/shared";
 import { DefaultLoadingManager } from "three";
 import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
@@ -37,10 +43,17 @@ DefaultLoadingManager.onProgress = (_url, done, total) => {
   loading.setAttribute("aria-valuenow", String(loaded));
 };
 
-const tiles = loadRegion(regionMap, regionTileset);
+const { tiles, pools } = loadRegion(regionMap, regionTileset);
+// Every spot gets a site drawn on it, gone until the server puts one there.
+const spots = pools.flatMap(({ skill, kind, spots }) =>
+  spots.map(({ x, y }) => {
+    Object.assign(tiles[y]![x]!, { [GATHERING[skill].site]: kind });
+    return siteId({ x, y });
+  }),
+);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, newSkeleton, setRunOut, villagerUnder] =
+const [newFigure, newSpider, newSkeleton, setSiteLook, villagerUnder] =
   await Promise.all([
     loadCharacters(),
     loadSpiders(),
@@ -57,6 +70,7 @@ const [newFigure, newSpider, newSkeleton, setRunOut, villagerUnder] =
       loading.textContent = "Could not load the game. Reload to try again.";
       throw error;
     });
+for (const id of spots) setSiteLook(id, "gone");
 // The splash stays behind the login form until the first join settles.
 loading.remove();
 const stationUnder = addStations(tiles);
@@ -76,7 +90,7 @@ function enterWorld(room: WorldConnection) {
     room,
     tiles,
     showEnemies(room, { spider: newSpider, skeleton: newSkeleton }),
-    showGatheringSites(room, tiles, setRunOut),
+    showGatheringSites(room, tiles, spots, setSiteLook),
     stationUnder,
     showSmithingPanel(room),
     villagerUnder,

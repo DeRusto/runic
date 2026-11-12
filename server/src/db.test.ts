@@ -21,21 +21,24 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table and the bank.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting and Fishing.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
   ...GEAR_SLOTS.slice(2),
   "bank",
   "bank_counts",
+  "woodcutting_xp",
+  "fishing_xp",
 ];
-const LATEST_MIGRATIONS = 6;
+const LATEST_MIGRATIONS = 9;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
   sqlite.exec("DROP TABLE IF EXISTS friends");
   sqlite.exec("DROP TABLE IF EXISTS ignores");
+  sqlite.exec("ALTER TABLE players RENAME COLUMN herblaw_xp TO foraging_xp");
   for (const column of LATEST_COLUMNS) {
     sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
   }
@@ -96,6 +99,15 @@ describe("a save from the first slice, written before the stacks migration", () 
   INVENTORY[4] = "herb";
   INVENTORY[9] = "berry";
   const FILLED_SLOTS = [0, 4, 9];
+  // The pins column's default before Herblaw, written out, since unapplying the migrations keeps the newer default.
+  const FORAGING_PINS = [
+    "Combat",
+    "Defense",
+    "Foraging",
+    "Hitpoints",
+    "Mining",
+    "Smithing",
+  ];
   // The saved tile, (4,1), is next to the berry bush.
   const TILES = parseRegion(["TTTTTTT", "TR...bT", "TTTTTTT"].join("\n"));
 
@@ -107,21 +119,21 @@ describe("a save from the first slice, written before the stacks migration", () 
       VALUES (7, 'Old', 'old', 'x', 0)`);
     sqlite
       .prepare(
-        `INSERT INTO players (account_id, combat_xp, defense_xp, foraging_xp, hitpoints_xp, x, y, health, inventory)
-         VALUES (7, 1234, 567, 890, 4500, 4, 1, 6, ?)`,
+        `INSERT INTO players (account_id, combat_xp, defense_xp, foraging_xp, hitpoints_xp, x, y, health, inventory, pinned_skills)
+         VALUES (7, 1234, 567, 890, 4500, 4, 1, 6, ?, ?)`,
       )
-      .run(JSON.stringify(INVENTORY));
+      .run(JSON.stringify(INVENTORY), JSON.stringify(FORAGING_PINS));
     sqlite.close();
     return openDatabase();
   }
 
-  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots and change nothing else", async () => {
+  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots, turn Foraging into Herblaw, start Woodcutting and Fishing at 0 and change nothing else", async () => {
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
       combatXp: 1234,
       defenseXp: 567,
-      foragingXp: 890,
+      herblawXp: 890,
       hitpointsXp: 4500,
       x: 4,
       y: 1,
@@ -129,6 +141,8 @@ describe("a save from the first slice, written before the stacks migration", () 
       inventory: INVENTORY,
       miningXp: 0,
       smithingXp: 0,
+      woodcuttingXp: 0,
+      fishingXp: 0,
       blockingXp: 0,
       // 7% of 7,191.
       masteryXp: 503,
@@ -148,7 +162,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       pinnedSkills: [
         "Combat",
         "Defense",
-        "Foraging",
+        "Herblaw",
         "Hitpoints",
         "Mining",
         "Smithing",
@@ -179,7 +193,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     expect(player).toMatchObject({
       combatXp: 1234,
       defenseXp: 567,
-      foragingXp: 890,
+      herblawXp: 890,
       hitpointsXp: 4500,
       x: 4,
       y: 1,
@@ -196,7 +210,7 @@ describe("a save from the first slice, written before the stacks migration", () 
     const database = await migratedFromOldRow();
     const sim = new Simulation(TILES, () => 0);
     sim.addPlayer("a", readSave(7), "Old");
-    sim.queueGather("a", "foraging", "5,1");
+    sim.queueGather("a", "herblaw", "5,1");
     sim.tick();
     writeSave(7, sim.saveOf("a")!);
     sim.removePlayer("a");

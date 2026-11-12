@@ -9,14 +9,22 @@ import {
 import type * as THREE from "three";
 import { tileHitBoxes } from "./hitBoxes.ts";
 import type { WorldConnection } from "./players.ts";
+import type { SiteLook } from "./regionMeshes.ts";
 
-/** Keeps each site's look to what the server says is left, and returns what finds the site under a click's ray. */
+/**
+ * Keeps each site's look to what the server says is left, shows a pooled site only while the
+ * server has it on its spot, and returns what finds the site under a click's ray. `tiles` has
+ * every spot filled in with its pool's site, so its kind is known before one appears there.
+ */
 export function showGatheringSites(
   room: WorldConnection,
   tiles: TileKind[][],
-  setRunOut: (id: string, runOut: boolean) => void,
+  spots: string[],
+  setLook: (id: string, look: SiteLook) => void,
 ) {
   const callbacks = Callbacks.get(room);
+  // The next room may have its sites on other spots.
+  room.onLeave(() => spots.forEach((id) => setLook(id, "gone")));
   const unders = GATHERING_SKILLS.map((skill) => {
     const { site: siteField, stateField, leftField } = GATHERING[skill];
     const sites = tileHitBoxes<{
@@ -33,8 +41,12 @@ export function showGatheringSites(
       }));
       // The row keeps the map and its field together, which the types can't follow.
       callbacks.listen(site, leftField as never, (left: number) =>
-        setRunOut(id, left === 0),
+        setLook(id, left === 0 ? "runOut" : "full"),
       );
+    });
+    callbacks.onRemove(stateField, (_, id) => {
+      sites.remove(id);
+      setLook(id, "spent");
     });
     return sites.under;
   });

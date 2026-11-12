@@ -52,7 +52,7 @@ function addShopper(id: string, ...stacks: [string, number][]) {
     ...BESIDE_MARTA,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health: 1000,
     inventory,

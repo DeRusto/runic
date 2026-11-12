@@ -1,8 +1,15 @@
 import { VILLAGERS } from "./dialogue.ts";
 import { ENEMIES } from "./enemies.ts";
-import { BUSHES } from "./foraging.ts";
+import { FISHING_SPOTS } from "./fishing.ts";
+import { BUSHES } from "./herblaw.ts";
+import {
+  GATHERING,
+  GATHERING_SKILLS,
+  type GatheringSkill,
+} from "./gathering.ts";
 import { VEINS } from "./mining.ts";
-import type { TileKind } from "./region.ts";
+import { groundBlocks, type Tile, type TileKind } from "./region.ts";
+import { TREES } from "./woodcutting.ts";
 
 type TiledProperty = { name: string; value: unknown };
 type TiledObject = {
@@ -10,6 +17,8 @@ type TiledObject = {
   name?: string;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   properties?: TiledProperty[];
 };
 type TiledLayer = {
@@ -47,6 +56,8 @@ const FEATURE_VALUES = {
   } satisfies Record<NonNullable<TileKind["prop"]>, 1>,
   bush: BUSHES,
   vein: VEINS,
+  tree: TREES,
+  fishingSpot: FISHING_SPOTS,
   station: { furnace: 1, anvil: 1 } satisfies Record<
     NonNullable<TileKind["station"]>,
     1
@@ -61,6 +72,7 @@ const GROUND_VALUES = {
   thicket: 1,
   path: 1,
   ashen: 1,
+  water: 1,
 } satisfies Record<TileKind["ground"], 1>;
 
 const fail = (message: string): never => {
@@ -130,8 +142,43 @@ function place(tile: TileKind, object: TiledObject) {
   } else fail(`unknown placement class "${object.type}"`);
 }
 
-/** The region's tiles from a Tiled map and its tileset, indexed [y][x]. Throws on anything the game couldn't use. */
-export function loadRegion(mapText: string, tilesetText: string): TileKind[][] {
+/** Where a kind of site appears at `active` of its spots at a time. A spot is plain ground in the tiles until a site is on it. */
+export type SitePool = {
+  skill: GatheringSkill;
+  kind: string;
+  active: number;
+  spots: Tile[];
+};
+
+/** Whether a point object lies inside a rectangle object, both in pixels. */
+const contains = (rectangle: TiledObject, { x, y }: TiledObject) =>
+  x >= rectangle.x &&
+  x < rectangle.x + (rectangle.width ?? 0) &&
+  y >= rectangle.y &&
+  y < rectangle.y + (rectangle.height ?? 0);
+
+/** A pool's site in words for a message: "fishing spot" for `fishingSpot`. */
+const siteName = ({ skill }: { skill: GatheringSkill }) =>
+  GATHERING[skill].site.replace(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`);
+
+/** A `sitePool` rectangle's settings, with no spots yet. */
+function readPool(object: TiledObject): SitePool {
+  const { site, kind, active } = propertiesOf(object);
+  const skill = GATHERING_SKILLS.find((s) => GATHERING[s].site === site);
+  if (!skill) return fail(`a pool of unknown site "${String(site)}"`);
+  if (!GATHERING[skill].pooled) fail(`${siteName({ skill })}s don't pool`);
+  if (!Object.hasOwn(GATHERING[skill].sources, String(kind)))
+    fail(`a ${String(site)} pool of unknown kind "${String(kind)}"`);
+  if (!Number.isInteger(active) || (active as number) < 1)
+    fail(`a ${String(kind)} pool needs a whole active count of at least 1`);
+  return { skill, kind: String(kind), active: active as number, spots: [] };
+}
+
+/** The region from a Tiled map and its tileset: its tiles, indexed [y][x], and its site pools. Throws on anything the game couldn't use. */
+export function loadRegion(
+  mapText: string,
+  tilesetText: string,
+): { tiles: TileKind[][]; pools: SitePool[] } {
   const map = JSON.parse(mapText) as TiledMap;
   if (map.tilesets.length !== 1) fail("needs exactly one tileset");
   for (const { name, offsetx, offsety } of map.layers) {
@@ -154,23 +201,65 @@ export function loadRegion(mapText: string, tilesetText: string): TileKind[][] {
       if (featureId !== undefined && Object.keys(feature).length === 0)
         fail(`tile ${featureId} in "features" means nothing`);
       if ("ground" in feature) fail(`ground tile in "features" at ${x},${y}`);
-      return { ground, blocks: false, ...feature } as TileKind;
+      return { ground, blocks: groundBlocks(ground), ...feature } as TileKind;
     }),
   );
 
   const placements = map.layers.find((l) => l.name === "placements");
   if (!placements?.objects) return fail(`no "placements" object layer`);
+  const rectangles = placements.objects.filter((o) => o.type === "sitePool");
+  const pools = rectangles.map(readPool);
   const taken = new Set<string>();
   for (const object of placements.objects) {
+    if (object.type === "sitePool") continue;
     const x = object.x / map.tilewidth;
     const y = object.y / map.tileheight;
     const tile = tiles[y]?.[x];
     if (!tile) return fail(`"${object.type}" is off the grid at ${x},${y}`);
     if (taken.has(`${x},${y}`)) fail(`two placements share ${x},${y}`);
     taken.add(`${x},${y}`);
-    place(tile, object);
+    if (object.type !== "siteSpot") {
+      place(tile, object);
+      continue;
+    }
+    // A named spot belongs to the pool of that kind, so pools can overlap.
+    const inside = pools.filter(
+      (pool, i) =>
+        contains(rectangles[i]!, object) &&
+        (!object.name || pool.kind === object.name),
+    );
+    if (!inside[0])
+      fail(
+        object.name
+          ? `the spot at ${x},${y} isn't inside a ${object.name} pool`
+          : `the spot at ${x},${y} is outside every pool`,
+      );
+    if (inside.length > 1) fail(`the spot at ${x},${y} is inside two pools`);
+    // A site on water is fished from the bank; any other stands on open ground.
+    if (GATHERING[inside[0]!.skill].onWater) {
+      if (tile.ground !== "water")
+        fail(`a ${siteName(inside[0]!)} at ${x},${y} must be on water`);
+    } else if (tile.blocks)
+      fail(`a spot stands on a blocking tile at ${x},${y}`);
+    inside[0]!.spots.push({ x, y });
   }
+  for (const { kind, active, spots } of pools)
+    if (spots.length < active)
+      fail(`a ${kind} pool has fewer spots than its ${active} active`);
+  // After every placement, since a villager can stand on the bank.
+  for (const pool of pools.filter((p) => GATHERING[p.skill].onWater))
+    for (const { x, y } of pool.spots) {
+      const beside = [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1],
+      ];
+      // A diagonal tile only counts with a clear tile beside it, which is one of these.
+      if (!beside.some(([bx, by]) => tiles[by!]?.[bx!]?.blocks === false))
+        fail(`a ${siteName(pool)} at ${x},${y} has no walkable tile beside it`);
+    }
   if (placements.objects.filter((o) => o.type === "respawn").length !== 1)
     fail("needs exactly one respawn");
-  return tiles;
+  return { tiles, pools };
 }

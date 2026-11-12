@@ -7,6 +7,7 @@ const SIZE = 144;
 const RESOURCE = "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf";
 const WEAPONS = "/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf";
 const TOOLS = "/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf";
+const SURVIVAL = "/kenney-game-assets/3D assets/Survival Kit/Models/GLB format";
 const KNIGHT = "/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb";
 const CRAFTPIX_SWORD = "/sword-rpg-game-icon-set/PNG/without background/21.png";
 
@@ -103,6 +104,40 @@ const ICONS: Icon[] = [
   },
   { id: "pickaxe", url: `${TOOLS}/pickaxe.gltf`, turn: LEAN },
   { id: "hammer", url: `${TOOLS}/hammer.gltf`, turn: LEAN },
+  { id: "axe", url: `${TOOLS}/axe.gltf`, turn: LEAN },
+  // One log model for all three, tinted pale, left as it is, and charred.
+  {
+    id: "birchLog",
+    url: `${RESOURCE}/Wood_Log_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0xf0e6cc },
+  },
+  { id: "oakLog", url: `${RESOURCE}/Wood_Log_A.gltf`, turn: FLAT },
+  {
+    id: "charwoodLog",
+    url: `${RESOURCE}/Wood_Log_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0x6a3a30 },
+  },
+  // One fish model for perch and trout, tinted apart, and a bigger one for pike.
+  {
+    id: "perch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xc9c27a },
+  },
+  {
+    id: "trout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xd9a6a0 },
+  },
+  {
+    id: "pike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x7f9a66 },
+  },
   {
     id: "berry",
     url: "/kenney-game-assets/3D assets/Food Kit/Models/GLB format/grapes.glb",
@@ -281,6 +316,26 @@ function nuggets() {
   return group;
 }
 
+/** A tapered pole with a cork grip and a reel: no pack has a fishing rod. */
+function rod() {
+  const group = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a5a2b });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 3), wood);
+  const grip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.11, 0.7),
+    new THREE.MeshStandardMaterial({ color: 0xc9a46a }),
+  );
+  grip.position.y = -1.1;
+  const reel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2, 0.2, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.4 }),
+  );
+  reel.rotation.z = Math.PI / 2;
+  reel.position.set(0.17, -0.6, 0);
+  group.add(pole, grip, reel);
+  return group;
+}
+
 /** A cut gem, elongated: no pack has gems in the free tier. */
 function gem(color: number, emissive?: number) {
   const material = new THREE.MeshStandardMaterial({
@@ -309,6 +364,8 @@ pngs.set("cinderglass", await toPng(renderer.domElement));
 draw(gem(0xe83a10, 0xff4a10), FLAT);
 pngs.set("heartflame", await toPng(renderer.domElement));
 pngs.set("emberiteSword", await craftpixSword());
+draw(rod(), LEAN);
+pngs.set("rod", await toPng(renderer.domElement));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {

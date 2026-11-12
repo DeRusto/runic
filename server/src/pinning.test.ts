@@ -7,7 +7,7 @@ const TILES = parseRegion(["TTTTT", "TR..T", "TTTTT"].join("\n"));
 const STARTING_PINS = [
   "Combat",
   "Defense",
-  "Foraging",
+  "Herblaw",
   "Hitpoints",
   "Mining",
   "Smithing",
@@ -22,7 +22,7 @@ beforeEach(() => {
   sim.addPlayer("a");
 });
 
-test("a new player starts with today's skills pinned, and Blocking not", () => {
+test("a new player starts with today's skills pinned, Herblaw where Herblaw was, and Blocking not", () => {
   expect(pins()).toEqual(STARTING_PINS);
 });
 
@@ -53,7 +53,7 @@ test("a save's experience and pins come back at login", () => {
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     health: 10,
     inventory: [],
