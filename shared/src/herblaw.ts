@@ -1,7 +1,28 @@
-/** Spec §5. Picks and regrowth are per bush; `level` is the Herblaw level needed. */
+/** Spec §5, with #222's three potion plants at their pick gates. Picks and regrowth are per bush; `level` is the Herblaw level needed. */
 export const BUSHES = {
   berryBush: { level: 1, holds: 5, regrowTicks: 84, xp: 10, item: "berry" },
+  dewpetalBush: {
+    level: 5,
+    holds: 4,
+    regrowTicks: 100,
+    xp: 12,
+    item: "dewpetal",
+  },
   herbBush: { level: 10, holds: 3, regrowTicks: 150, xp: 25, item: "herb" },
+  nightbloomBush: {
+    level: 15,
+    holds: 3,
+    regrowTicks: 150,
+    xp: 30,
+    item: "nightbloom",
+  },
+  emberbloomBush: {
+    level: 20,
+    holds: 2,
+    regrowTicks: 200,
+    xp: 50,
+    item: "emberbloom",
+  },
 } as const;
 export type BushKind = keyof typeof BUSHES;
 /**

@@ -1,6 +1,6 @@
 import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
 import type { VillagerId } from "./dialogue.ts";
-import type { ItemId } from "./items.ts";
+import type { ItemId, Virtue } from "./items.ts";
 import type { StationKind } from "./region.ts";
 
 export const SERVER_PORT = 2567;
@@ -31,6 +31,8 @@ export const EAT_INTENT = "eat";
 export const DROP_INTENT = "drop";
 /** The move intent's message type, for a drag in the inventory; its payload is `{ from, to }`, two slots' indexes. */
 export const MOVE_INTENT = "move";
+/** The mix intent's message type, for using a vial on a plant (#222); its payload is the plant's inventory slot's index. */
+export const MIX_INTENT = "mix";
 /** The deposit intent's message type; its payload is `{ slot, amount }` for an inventory slot, and an amount over the stack deposits it all. */
 export const DEPOSIT_INTENT = "deposit";
 /** The withdraw intent's message type; its payload is `{ slot, amount }` for a bank slot, and the server takes as many as fit. */
@@ -188,6 +190,8 @@ export type WorldEvent =
   | { type: "eaten"; player: string }
   /** A Delicious fish's buff started or was refreshed for `player`, with `ticks` of it left (#221). */
   | { type: "delicious"; player: string; ticks: number }
+  /** A Virtue potion's buff started or was refreshed for `player`, with `ticks` of it left (#222). */
+  | { type: "potion"; player: string; virtue: Virtue; ticks: number }
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
@@ -217,6 +221,7 @@ export * from "./generalStore.ts";
 export * from "./items.ts";
 export * from "./tools.ts";
 export * from "./making.ts";
+export * from "./potions.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./regionMap.ts";

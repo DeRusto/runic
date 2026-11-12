@@ -1,11 +1,11 @@
 { "columns":24,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":400,
+ "imagewidth":448,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":25,
+ "tilecount":28,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -322,11 +322,53 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                }, 
+                },
                 {
                  "name":"station",
                  "type":"string",
                  "value":"range"
+                }]
+        },
+        {
+         "id":25,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"bush",
+                 "type":"string",
+                 "value":"dewpetalBush"
+                }]
+        },
+        {
+         "id":26,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"bush",
+                 "type":"string",
+                 "value":"nightbloomBush"
+                }]
+        },
+        {
+         "id":27,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"bush",
+                 "type":"string",
+                 "value":"emberbloomBush"
                 }]
         }],
  "tilewidth":16,

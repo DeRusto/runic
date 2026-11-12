@@ -9,6 +9,7 @@ import {
   type Quality,
 } from "./items.ts";
 import { costsOf, RECIPES, type RecipeItem } from "./making.ts";
+import { POTIONS, type PotionId } from "./potions.ts";
 
 /**
  * The hand-set value of every raw item, in coins (village spec §5). The cheapest sellable item is worth 3,
@@ -34,6 +35,11 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   perch: 3,
   trout: 6,
   pike: 12,
+  // The empty vial is as cheap as a berry, and the plants rise by their pick gate (#222).
+  vial: 3,
+  dewpetal: 6,
+  nightbloom: 12,
+  emberbloom: 20,
 };
 
 /** How many times its common version's value an item of each Quality is worth (village spec §5). Delicious food is as rare as a rare piece, and worth the same multiple (#221). */
@@ -58,6 +64,11 @@ export function valueOf(item: string): number {
       (total, [cost, count]) => total + valueOf(cost) * count,
       0,
     );
+  // A potion is what its mixing costs: one vial and its plant (#222).
+  if (common === undefined && Object.hasOwn(POTIONS, base)) {
+    const { plant } = POTIONS[base as PotionId];
+    common = valueOf("vial") + valueOf(plant);
+  }
   if (common === undefined) throw new Error(`No store value for ${item}`);
   return common * QUALITY_VALUE_TIMES[quality];
 }
@@ -77,6 +88,8 @@ export const STARTING_STOCK: Partial<Record<ItemId, number>> = {
   herb: 10,
   copperOre: 5,
   coal: 5,
+  /** From day one, so a new Herblaw can get mixing (#222). */
+  vial: 20,
 };
 /** One of each item below its starting stock comes back this often: 30 s (village spec §5). */
 export const RESTOCK_TICKS = 100;

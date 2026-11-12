@@ -35,7 +35,7 @@ The part of the village where the furnace, anvil, range and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
-A site in a thicket that can be picked. Every bush belongs to a site pool: one that runs out disappears from its spot, and after a while a full bush comes back at another. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Herblaw level.
+A site in a thicket that can be picked. Every bush belongs to a site pool: one that runs out disappears from its spot, and after a while a full bush comes back at another. Comes in five kinds: a **berry bush** anyone can pick, and the **herb**, **dewpetal**, **nightbloom** and **emberbloom** bushes that need a higher Herblaw level.
 _Avoid_: Node, resource, plant
 
 **Vein**:
@@ -43,7 +43,7 @@ A site that can be mined for ore. Every vein belongs to a site pool: one that ru
 _Avoid_: Ore rock, node, resource
 
 **Site pool**:
-An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins, its berry and herb bushes, and the Lake's fishing spots each have one.
+An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins, its five kinds of bush, and the Lake's fishing spots each have one.
 _Avoid_: Spawn area, zone
 
 **Spot**:
@@ -211,7 +211,7 @@ When a shield stops an enemy's hit that would have landed, so it does no damage.
 _Avoid_: Parry, dodge, miss
 
 **Herblaw**:
-The gathering skill trained by picking berries and herbs from bushes.
+The gathering skill trained by picking berries, herbs and potion plants from bushes.
 _Avoid_: Herbalism, herblore
 
 **Foraging**:
@@ -318,6 +318,30 @@ _Avoid_: Perfect, tasty, golden
 **Healing pool**:
 The health a player's eaten food has yet to give back, as healing ticks waiting in eating order. Each food gives its own amount per healing tick, one food's ticks at a time, so more food heals for longer but not faster.
 _Avoid_: Heal over time, buff
+
+**Dewpetal**:
+A pale blue flower picked from its own bush in the deeper Thicket, at Herblaw 5. A potion plant: mixed with a vial into the Might potion. Not food.
+_Avoid_: Dew flower, petal
+
+**Nightbloom**:
+A violet flower picked from its own bush in the deeper Thicket, at Herblaw 15. A potion plant: mixed with a vial into the Fortitude potion. Not food.
+_Avoid_: Night flower
+
+**Emberbloom**:
+An ember-orange flower picked from its own bush in the deepest Thicket, at Herblaw 20. A potion plant: mixed with a vial into the Avoidance potion. Not food.
+_Avoid_: Ember flower
+
+**Vial**:
+A small empty bottle the general store sells from day one. One holds a potion while it is mixed, and is used up with the plant.
+_Avoid_: Flask, bottle
+
+**Potion**:
+A drink mixed from one vial and one potion plant, and drunk like food is eaten. Drinking one starts its Virtue on the drinker for two minutes: Might adds to the hit, Fortitude raises max health, Avoidance adds a point of Avoidance. Drinking again refreshes it, never stacks it, and it runs through combat. It is not food: it heals nothing, the Virtue is the whole of it, and what a Fortitude bonus hasn't spent is lost when it runs out.
+_Avoid_: Elixir, draught, consumable
+
+**Mixing**:
+Making a potion, anywhere in the inventory and with no station: using a vial on a potion plant. The plant's pick gate is the Herblaw level it needs, and the making engine's level and materials refusals apply. The base herb mixes nothing: it is Cooking material.
+_Avoid_: Brewing, crafting
 
 **Material**:
 An item that goes into making something: ore, finds, bars, logs, fish and Emberbones. Gems, logs and fish count as materials before anything uses them.

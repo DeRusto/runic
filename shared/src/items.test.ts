@@ -32,9 +32,20 @@ describe("ITEMS", () => {
     expect(ITEMS.emberiteShield.stack).toBe(1);
   });
 
+  test("the potion plants, the vial and the potions all stack to 20 (#222)", () => {
+    expect(ITEMS.dewpetal.stack).toBe(20);
+    expect(ITEMS.nightbloom.stack).toBe(20);
+    expect(ITEMS.emberbloom.stack).toBe(20);
+    expect(ITEMS.vial.stack).toBe(20);
+    expect(ITEMS.mightPotion.stack).toBe(20);
+    expect(ITEMS.fortitudePotion.stack).toBe(20);
+    expect(ITEMS.avoidancePotion.stack).toBe(20);
+  });
+
   test("every tier has its bar, sword, shield, helmet, chestplate and leggings, and its ore if it has veins", () => {
-    // Food 10, Emberbone 1, finds 5, six per tier, three ores, three logs, three raw fish and coins.
-    expect(Object.keys(ITEMS)).toHaveLength(57);
+    // Food 10, Emberbone 1, finds 5, six per tier, three ores, three logs, three
+    // raw fish, the three plants, the vial, the three potions and coins (#222).
+    expect(Object.keys(ITEMS)).toHaveLength(64);
   });
 });
 

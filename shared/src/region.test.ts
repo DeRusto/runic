@@ -49,7 +49,10 @@ const IS = {
   respawn: (tile) => !!tile.respawn,
   thicket: (tile) => tile.ground === "thicket",
   berryBush: (tile) => tile.bush === "berryBush",
+  dewpetalBush: (tile) => tile.bush === "dewpetalBush",
   herbBush: (tile) => tile.bush === "herbBush",
+  nightbloomBush: (tile) => tile.bush === "nightbloomBush",
+  emberbloomBush: (tile) => tile.bush === "emberbloomBush",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
   copper: (tile) => tile.vein === "copper",
@@ -107,7 +110,13 @@ const nearestSteps = (kind: string, from: Map<string, number>) =>
 const key2 = ([x, y]: readonly [number, number]) => key(x, y);
 const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
 const VEINS = ["copper", "iron", "emberite"] as const;
-const BUSHES = ["berryBush", "herbBush"] as const;
+const BUSHES = [
+  "berryBush",
+  "dewpetalBush",
+  "herbBush",
+  "nightbloomBush",
+  "emberbloomBush",
+] as const;
 const STATIONS_AND_BLACKSMITH = [
   "furnace",
   "anvil",
@@ -149,7 +158,10 @@ describe("the region", () => {
     ["iron", "mining", 6, 12],
     ["emberite", "mining", 5, 9],
     ["berryBush", "herblaw", 12, 24],
+    ["dewpetalBush", "herblaw", 5, 8],
     ["herbBush", "herblaw", 6, 12],
+    ["nightbloomBush", "herblaw", 4, 8],
+    ["emberbloomBush", "herblaw", 3, 8],
   ] as const)(
     "keeps %s in one %s pool, %i active of %i spots, and none fixed",
     (kind, skill, active, spots) => {
@@ -277,6 +289,13 @@ describe("the region", () => {
     expect(nearestSteps("berryBush", reachable)).toBeLessThan(
       nearestSteps("herbBush", reachable),
     );
+  });
+
+  it("puts the potion plants deeper into the Thicket by their pick gate (#222)", () => {
+    const nearest = (kind: string) => nearestSteps(kind, reachable);
+    expect(nearest("berryBush")).toBeLessThan(nearest("dewpetalBush"));
+    expect(nearest("dewpetalBush")).toBeLessThan(nearest("nightbloomBush"));
+    expect(nearest("nightbloomBush")).toBeLessThan(nearest("emberbloomBush"));
   });
 
   it("paints the Lake in the north-west, and makes every water tile at its bank a spot of one fishing pool, 3 active", () => {

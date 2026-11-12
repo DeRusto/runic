@@ -53,6 +53,16 @@ export const ITEMS = {
   birchLog: STACKS,
   oakLog: STACKS,
   charwoodLog: STACKS,
+  /** The Herblaw potion plants (#222), each from its own bush. The base herb is Cooking material, not a potion plant. */
+  dewpetal: STACKS,
+  nightbloom: STACKS,
+  emberbloom: STACKS,
+  /** Holds one potion while it's mixed (#222). */
+  vial: STACKS,
+  /** The Virtue potions (#222), mixed anywhere from a vial and a plant. */
+  mightPotion: STACKS,
+  fortitudePotion: STACKS,
+  avoidancePotion: STACKS,
   /** From fishing spots (#210), caught raw: a material until the range cooks it into food (#221). */
   perch: STACKS,
   trout: STACKS,
