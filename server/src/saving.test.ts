@@ -26,7 +26,7 @@ import type { WorldRoom } from "./WorldRoom.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
 const PORT = 30000 + (process.pid % 5000);
-const respawn = respawnTile(loadWorldRegion());
+const respawn = respawnTile(loadWorldRegion().tiles);
 const folder = mkdtempSync(join(tmpdir(), "runic-saving-"));
 let server: Awaited<ReturnType<typeof startServer>>;
 
@@ -193,7 +193,7 @@ test("a sword equipped over the network is synced, and worn again after logging 
 });
 
 test("the Blacksmith's tools, asked for in conversation, reach the client with a told line, and survive logging out", async () => {
-  const tiles = loadWorldRegion();
+  const { tiles } = loadWorldRegion();
   const y = tiles.findIndex((row) =>
     row.some((tile) => tile.villager === "odo"),
   );

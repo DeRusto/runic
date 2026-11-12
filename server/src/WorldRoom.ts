@@ -58,9 +58,11 @@ import {
 import { tickStepper } from "./tickStepper.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
+const region = loadWorldRegion();
+
 export class WorldRoom extends Room {
   autoDispose = false;
-  sim = new Simulation(loadWorldRegion(), Math.random);
+  sim = new Simulation(region.tiles, Math.random, region.pools);
   state = this.sim.state;
   /** Players whose connection is gone but whose lock still holds them here. */
   private dropped = new Map<

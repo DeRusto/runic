@@ -89,6 +89,7 @@ import {
   type GearSlot,
   type ItemId,
   type RecipeItem,
+  type SitePool,
   type StationKind,
   XP_PER_DAMAGE_DEALT,
   type Tile,
@@ -221,12 +222,16 @@ export const WorldState = schema(
   "WorldState",
 );
 
-/** A bush or vein: where it is and what it is, its synced entry and when it grows back. */
+/** A site pool, with the ticks its run-out sites come back on, soonest first. */
+type SitePoolState = SitePool & { comebackTicks: number[] };
+
+/** A bush or vein: where it is and what it is, its synced entry, and when it grows back or which pool it comes back in. */
 type GatheringSite = Tile & {
   skill: GatheringSkill;
   kind: string;
   synced: Partial<Record<GatheringLeftField, number>>;
   regrowTick?: number;
+  pool?: SitePoolState;
 };
 
 /** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
@@ -324,26 +329,25 @@ export class Simulation {
   /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
   readonly events: WorldEvent[] = [];
 
+  /** The region's tiles, copied so that a pooled site can block its spot only while it's there. */
+  private tiles: TileKind[][];
+  /** Each site pool, with the ticks its run-out sites come back on, soonest first. Not saved: a restart picks again. */
+  private pools: SitePoolState[];
+
   constructor(
-    private tiles: TileKind[][],
+    tiles: TileKind[][],
     readonly random: () => number,
+    pools: SitePool[] = [],
   ) {
+    this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { enemy, villager, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
-          const { site, stateField, leftField } = GATHERING[skill];
-          const siteKind = kind[site];
-          if (!siteKind) continue;
-          const id = siteId({ x, y });
-          const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
-            [leftField]: gatheringSource(skill, siteKind).holds,
-          });
-          // The row keeps the schema and its map together, which the types can't follow.
-          this.state[stateField].set(id, synced as never);
-          this.sites.set(id, { x, y, skill, kind: siteKind, synced });
+          const siteKind = kind[GATHERING[skill].site];
+          if (siteKind) this.addSite(skill, siteKind, { x, y });
         }
         if (!enemy) return;
         const id = String(this.unsyncedEnemies.size);
@@ -365,6 +369,58 @@ export class Simulation {
           }),
         );
       }),
+    );
+    this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
+    for (const pool of this.pools)
+      for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
+  }
+
+  /** A full site on `tile`, which blocks while it's there. */
+  private addSite(
+    skill: GatheringSkill,
+    kind: string,
+    { x, y }: Tile,
+    pool?: SitePoolState,
+  ) {
+    const { site, stateField, leftField } = GATHERING[skill];
+    const id = siteId({ x, y });
+    const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
+      [leftField]: gatheringSource(skill, kind).holds,
+    });
+    // The row keeps the schema and its map together, which the types can't follow.
+    this.state[stateField].set(id, synced as never);
+    this.sites.set(id, { x, y, skill, kind, synced, pool });
+    Object.assign(this.tiles[y]![x]!, { [site]: kind, blocks: true });
+  }
+
+  /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player or an enemy on it. */
+  private placePooledSite(pool: SitePoolState) {
+    const standing = [
+      ...this.state.players.values(),
+      ...this.state.enemies.values(),
+    ];
+    const free = pool.spots.filter(
+      (spot) =>
+        !this.sites.has(siteId(spot)) &&
+        !standing.some(({ x, y }) => x === spot.x && y === spot.y),
+    );
+    if (!free.length) return false;
+    const spot = free[Math.floor(this.random() * free.length)]!;
+    this.addSite(pool.skill, pool.kind, spot, pool);
+    return true;
+  }
+
+  /** Takes a run-out pooled site off its spot, to come back somewhere in its pool after its regrow time. */
+  private removePooledSite(site: GatheringSite, pool: SitePoolState) {
+    const { site: field, stateField } = GATHERING[site.skill];
+    const id = siteId(site);
+    this.sites.delete(id);
+    this.state[stateField].delete(id);
+    const tile = this.tiles[site.y]![site.x]!;
+    delete tile[field];
+    tile.blocks = false;
+    pool.comebackTicks.push(
+      this.state.tick + gatheringSource(site.skill, site.kind).regrowTicks,
     );
   }
 
@@ -431,6 +487,11 @@ export class Simulation {
       };
     }
     const tile = this.tiles[saved.y]?.[saved.x];
+    // A pooled site may have come back on the spot they logged out on.
+    const beside = this.sites.has(siteId(saved))
+      ? legalSteps(this.tiles, saved)[0]
+      : undefined;
+    if (beside) return { ...saved, ...beside };
     return !tile || tile.blocks ? { ...saved, ...respawn } : saved;
   }
 
@@ -1112,6 +1173,15 @@ export class Simulation {
         const target = this.state.players.get(unsynced.action.player)!;
         unsynced.path = pathNextTo(this.tiles, player, target) ?? [];
       }
+      const next = unsynced.path[0];
+      // A pooled site may have come back on the way since the path was found.
+      if (
+        next &&
+        !legalSteps(this.tiles, player).some(
+          ({ x, y }) => x === next.x && y === next.y,
+        )
+      )
+        unsynced.path = findPath(this.tiles, player, unsynced.path.at(-1)!);
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
       unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
@@ -1125,8 +1195,9 @@ export class Simulation {
       const { action } = unsynced;
       if (action?.kind !== skill || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
-      const site = this.sites.get(action.site)!;
-      if (this.siteRefusal(site, player)) {
+      // A pooled site that ran out is gone from its spot.
+      const site = this.sites.get(action.site);
+      if (!site || this.siteRefusal(site, player)) {
         unsynced.action = undefined;
         continue;
       }
@@ -1178,8 +1249,10 @@ export class Simulation {
             this.state.tick,
           );
       }
-      if (--site.synced[leftField]! === 0)
-        site.regrowTick = this.state.tick + source.regrowTicks;
+      if (--site.synced[leftField]! === 0) {
+        if (site.pool) this.removePooledSite(site, site.pool);
+        else site.regrowTick = this.state.tick + source.regrowTicks;
+      }
       unsynced.action = undefined;
     }
   }
@@ -1317,6 +1390,13 @@ export class Simulation {
       site.synced[leftField] = gatheringSource(site.skill, site.kind).holds;
       site.regrowTick = undefined;
     }
+    // One with no free spot waits, and tries again next tick.
+    for (const pool of this.pools)
+      while (
+        pool.comebackTicks[0]! <= this.state.tick &&
+        this.placePooledSite(pool)
+      )
+        pool.comebackTicks.shift();
   }
 
   /** After the moves, so the first swing lands on the tick the player arrives. */

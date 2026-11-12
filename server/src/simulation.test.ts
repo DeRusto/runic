@@ -152,7 +152,7 @@ describe("Spiders", () => {
   });
 
   test("the real region has a Spider on every home", () => {
-    const s = new Simulation(loadWorldRegion(), NEVER_WANDER);
+    const s = new Simulation(loadWorldRegion().tiles, NEVER_WANDER);
     const kinds = [...s.state.enemies.values()].map(({ kind }) => kind);
     expect(kinds.filter((kind) => kind === "spider")).toHaveLength(8);
   });

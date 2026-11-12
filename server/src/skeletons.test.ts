@@ -58,7 +58,7 @@ const CORRIDOR = [
 ];
 
 test("6 Skeletons start from the region's K homes, at full health", () => {
-  const s = new Simulation(loadWorldRegion(), () => MISS);
+  const s = new Simulation(loadWorldRegion().tiles, () => MISS);
   const skeletons = [...s.state.enemies.values()].filter(
     (enemy) => enemy.kind === "skeleton",
   );
