@@ -621,13 +621,13 @@ describe("Virtues", () => {
     expect(spiderSwing({}, 0.345)).not.toMatchObject({ damage: 0 });
     expect(spiderSwing(avoids, 0.345)).toMatchObject({ damage: 0 });
     expect(spiderSwing(avoids, 0.335)).not.toMatchObject({ damage: 0 });
-    // Defense 10 makes it 33.2%, and the Avoidance 32.2%.
+    // Defense 10 gives 2.25 points, making it 32.75%, and the Avoidance 31.75%.
     const trained = { ...avoids, defenseXp: LEVEL_10_XP };
     expect(spiderSwing({ defenseXp: LEVEL_10_XP }, 0.325)).not.toMatchObject({
       damage: 0,
     });
-    expect(spiderSwing(trained, 0.325)).toMatchObject({ damage: 0 });
-    expect(spiderSwing(trained, 0.32)).not.toMatchObject({ damage: 0 });
+    expect(spiderSwing(trained, 0.32)).toMatchObject({ damage: 0 });
+    expect(spiderSwing(trained, 0.315)).not.toMatchObject({ damage: 0 });
   });
 
   test("Fortitude adds to max health on load, and worn pieces add up", () => {

@@ -109,8 +109,6 @@ export const armourPercentOf = (player: Partial<Record<GearSlot, string>>) =>
 
 /** Avoidance is held in tenths of a point off an enemy's chance to hit. */
 export const AVOIDANCE_TENTHS_PER_POINT = 10;
-/** Tenths of a point of Avoidance in a whole chance to hit (1, or 100 points). */
-export const AVOIDANCE_TENTHS_PER_HIT_CHANCE = AVOIDANCE_TENTHS_PER_POINT * 100;
 
 /** Each Virtue's unit, its size on an uncommon Copper piece (spec §3), and what the Gear tab says it does at a size (spec §5). Fortitude is in health, Might in the sword bonus's units, and Avoidance in tenths of a point. */
 const VIRTUE_EFFECTS: Record<

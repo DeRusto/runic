@@ -632,10 +632,10 @@
       .gear-slot:focus-visible {
         outline-color: #ffd27a;
       }
-      #gear-details {
-        min-height: 2.6em;
+      #gear-stats {
+        list-style: none;
         margin: 8px 0 10px;
-        text-align: center;
+        padding: 0;
         font-size: 12px;
       }
       #toolbelt {
@@ -1234,7 +1234,7 @@
         <div id="sheet-panes">
           <div id="sheet-gear" class="sheet-pane" role="tabpanel">
             <div id="gear-slots"></div>
-            <p id="gear-details"></p>
+            <ul id="gear-stats" aria-label="Stats"></ul>
             Toolbelt
             <div id="toolbelt"></div>
           </div>

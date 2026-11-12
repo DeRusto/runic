@@ -42,7 +42,7 @@ From [Which Virtues exist, and what does each raise?](https://github.com/DeRusto
 - **Any Virtue on any gear.** An improved item's Virtue is one of the three at equal odds, whatever its slot. The player never picks it.
 - **They add up.** The Virtues on every worn piece add together, as armour does. Two pieces of Fortitude give the sum of both.
 - **Might works like a sword's hit bonus.** It is added only to a hit that lands, never to a miss, and a critical hit multiplies it with the rest of the hit.
-- **Avoidance** is counted in percentage points, called points in the Gear tab: −1 point turns a 35% chance to hit into 34%. It comes off the enemy's chance to hit after Defense has lowered it. It never changes block chance or armour.
+- **Avoidance** is counted in percentage points, called points in the Gear tab: −1 point turns a 35% chance to hit into 34%. It adds to the Avoidance Defense gives, and the total comes off the enemy's chance to hit ([second slice §5](second-slice.md#5-numbers)). It never changes block chance or armour.
 - **Fortitude and current health.** Max health is the Hitpoints level × 100, plus the Fortitude of every worn piece. Equipping Fortitude raises only max health, and regen fills the rest. Taking it off, or swapping it for a piece with less, lowers current health to the new max if it was above it. Swapping gear never heals. Regen stays 5% of max health, so Fortitude speeds it up a little.
 - Block chance and armour stay base stats only. No Virtue raises them.
 
@@ -81,7 +81,7 @@ A Virtue's size is its unit × the item's tier number (Copper 1, Bronze 2, Iron 
 | Might | 3 hit, in the same units as a sword's hit bonus | +3 → +15 hit | +6 → +30 | +150 hit |
 | Avoidance | 0.1 percentage points (0.001 off the 0–1 `hitChance` in `ENEMIES`) | −0.1 → −0.5 points | −0.2 → −1.0 | −5 points |
 
-A full rare Emberite set of Fortitude is worth 10 Hitpoints levels, and the Avoidance set about 17 Defense levels against a Skeleton. A full rare set of one Virtue is a long chase: at the cap, one piece in 75 comes out rare with a given Virtue.
+A full rare Emberite set of Fortitude is worth 10 Hitpoints levels, and the Avoidance set 20 Defense levels. A full rare set of one Virtue is a long chase: at the cap, one piece in 75 comes out rare with a given Virtue.
 
 **Chance**
 
@@ -111,7 +111,7 @@ From [How does an improved item look and read?](https://github.com/DeRusto/runic
 ### Where the name shows
 
 - **Inventory and Gear tab slots** replace the browser's `title` tooltip with a custom tooltip, so the coloured name shows on hover. Each slot keeps its `aria-label`. Refusal text, such as a level gate, shows in the same tooltip after the name. The tooltip is a near-black box with a thin border and white 12px system-ui text, like the ground label, so names in it take the light shades. It shows at once, beside the cursor.
-- **Gear tab:** "Body: Copper chestplate of Fortitude. Takes 4% off each hit you take. Adds 20 to your max health." The base stat comes first, then the Virtue line at its size for the tier and Quality, in the same wording as the base stats:
+- **Gear tab slot names** (`aria-label`): "Body: Copper chestplate of Fortitude. Takes 4% off each hit you take. Adds 20 to your max health." The base stat comes first, then the Virtue line at its size for the tier and Quality, in the same wording as the base stats:
   - Fortitude: "Adds N to your max health."
   - Might: "Adds N to your minimum and maximum hit."
   - Avoidance: "Takes N points off an enemy's chance to hit you."

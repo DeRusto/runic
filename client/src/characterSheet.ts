@@ -1,18 +1,25 @@
 import {
+  armourPercentOf,
+  avoidanceOf,
+  blockOf,
   combatLevel,
   gearOf,
   GEAR_SLOTS,
+  hitOf,
   levelFor,
+  maxHealthOf,
   levelProgress,
   MAX_PINNED_SKILLS,
   PIN_INTENT,
+  PLAYER_CRIT_CHANCE,
+  PLAYER_CRIT_MULTIPLIER,
   SKILLS,
   TAKE_OFF_INTENT,
   totalLevel,
   type GearSlot,
   virtueDoes,
 } from "@runic/shared";
-import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
+import { iconUrl, itemName } from "./itemIcons.ts";
 import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
@@ -30,6 +37,17 @@ export type OpenMenu = (
 
 /** A skill bar's tooltip, with thousands separated by commas, as in "12,345 XP" (spec §5). */
 export const xpTip = (xp: number) => `${xp.toLocaleString("en")} XP`;
+
+/** A chance (0..1) as a percentage, to one decimal only where it has one: 0.405 is "40.5%". */
+const percent = (chance: number) => `${+(chance * 100).toFixed(1)}%`;
+
+/** A stat's value, then its skill and gear parts where both add to it, as in "1040 (+1000/+40)" (issue #216). */
+const withSplit = (
+  skill: number,
+  gear: number,
+  shown: (value: number) => string = String,
+) =>
+  `${shown(skill + gear)}${skill && gear ? ` (+${shown(skill)}/+${shown(gear)})` : ""}`;
 
 const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1 7 4 4v2h-5l-1 7-1-7H6v-2l4-4z"/></svg>`;
 
@@ -68,22 +86,13 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   toolbelt.oncontextmenu = (event) => event.preventDefault();
   let toolsDrawn = "";
 
-  // Laid out as a body by the grid's areas; each box is only an icon, and the line below says what it holds.
-  const details = document.getElementById("gear-details")!;
+  // Laid out as a body by the grid's areas; each box is only an icon, and its tooltip and name say what it holds.
   let worn: Partial<Record<GearSlot, string>> = {};
-  let pointedAt: GearSlot | undefined;
   const describe = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
     const does = gearOf(item)?.does;
     const virtue = virtueDoes(item);
     return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
-  };
-  const showDetails = () => {
-    details.replaceChildren(
-      ...(pointedAt
-        ? colouredNames(describe(pointedAt), [worn[pointedAt] ?? ""])
-        : ["Point at a slot to see what's in it."]),
-    );
   };
   const gearSlots = GEAR_SLOTS.map((gearSlot) => {
     // Not disabled when empty, or it couldn't be pointed at to read "Empty".
@@ -99,14 +108,6 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       event.preventDefault();
       if (worn[gearSlot]) openMenu(event, [["Take off", takeOff]]);
     };
-    box.onmouseenter = box.onfocus = () => {
-      pointedAt = gearSlot;
-      showDetails();
-    };
-    box.onmouseleave = box.onblur = () => {
-      pointedAt = undefined;
-      showDetails();
-    };
     addTip(box, () => {
       const item = worn[gearSlot];
       return item ? itemTipParts(itemTip(item)) : itemName(gearSlot);
@@ -117,6 +118,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     .getElementById("gear-slots")!
     .replaceChildren(...gearSlots.map(({ box }) => box));
   let gearDrawn: string | undefined;
+  const stats = document.getElementById("gear-stats")!;
 
   const combat = document.createElement("p");
   const note = document.createElement("p");
@@ -169,7 +171,27 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         box.style.backgroundImage = item && `url("${iconUrl(item)}")`;
         box.textContent = item ? "" : itemName(gearSlot);
       }
-      showDetails();
+    },
+    /** In raw numbers, as the bottom bar's health is (issue #216). */
+    drawStats(me: SyncedPlayer) {
+      const hit = hitOf(me);
+      const avoidance = avoidanceOf(me);
+      const block = blockOf(me);
+      const health = maxHealthOf(me);
+      const lines = [
+        `Health ${me.health} / ${withSplit(health.skill, health.gear)}`,
+        `Hit chance ${percent(hit.chance)}`,
+        `Min hit ${withSplit(hit.min, hit.gear)}`,
+        `Max hit ${withSplit(hit.max, hit.gear)}`,
+        `Critical ${percent(PLAYER_CRIT_CHANCE)} ×${PLAYER_CRIT_MULTIPLIER}`,
+        `Avoidance ${withSplit(avoidance.skill, avoidance.gear, (points) => points.toFixed(1))}`,
+        `Block ${block ? withSplit(block.skill, block.shield, percent) : percent(0)}`,
+        `Armour ${armourPercentOf(me)}%`,
+      ];
+      // Rows are kept and only their text changes, so a screen reader isn't handed a new list each patch.
+      if (stats.children.length !== lines.length)
+        stats.replaceChildren(...lines.map(() => document.createElement("li")));
+      lines.forEach((line, i) => (stats.children[i]!.textContent = line));
     },
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {

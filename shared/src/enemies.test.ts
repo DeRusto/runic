@@ -5,7 +5,7 @@ test("a Spider's numbers are the first slice's", () => {
   expect(ENEMIES.spider).toEqual({
     health: 800,
     hitChance: 0.35,
-    hitChancePerDefenseLevel: -0.002,
+    accuracy: 0,
     maxDamage: 200,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
@@ -20,7 +20,7 @@ test("a Skeleton's numbers are spec §5's, and otherwise a Spider's", () => {
   expect(ENEMIES.skeleton).toEqual({
     health: 2400,
     hitChance: 0.55,
-    hitChancePerDefenseLevel: -0.003,
+    accuracy: 0,
     maxDamage: 500,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,

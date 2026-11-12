@@ -187,8 +187,16 @@ How much damage a player can still take before dying; at most 100 for each Hitpo
 _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
-The skill that makes a player harder to hit; trained by being attacked, whether the swing lands or misses.
+The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses.
 _Avoid_: Armour, defence
+
+**Avoidance**:
+How many percentage points come off an enemy's chance to hit a player, from Defense and the Avoidance Virtue on worn gear. An enemy always keeps at least a 5% chance.
+_Avoid_: Dodge, evasion
+
+**Accuracy**:
+Points an enemy adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now.
+_Avoid_: Precision, attack bonus
 
 **Blocking**:
 The skill that makes a shield block more often; trained by blocking. It doesn't decide who can use a shield.

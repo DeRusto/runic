@@ -1,4 +1,9 @@
-import { GEAR_SLOTS, PIN_INTENT, TAKE_OFF_INTENT } from "@runic/shared";
+import {
+  GEAR_SLOTS,
+  PIN_INTENT,
+  TAKE_OFF_INTENT,
+  xpForLevel,
+} from "@runic/shared";
 import { beforeEach, describe, expect, test, vi, type Mock } from "vitest";
 import {
   showCharacterSheet,
@@ -124,7 +129,6 @@ describe("the Gear tab", () => {
           : `[${part.className}]${part.textContent}`,
       )
       .join("");
-  const details = () => shown(el("gear-details").children);
   /** Points at a slot, and reads the tooltip it shows, or undefined when hidden. */
   const pointAt = (gearSlot = "weapon") => {
     box(gearSlot).onpointermove({ clientX: 0, clientY: 0 });
@@ -148,8 +152,6 @@ describe("the Gear tab", () => {
     box().oncontextmenu({ preventDefault: vi.fn() });
     expect(room.send).not.toHaveBeenCalled();
     expect(openMenu).not.toHaveBeenCalled();
-    box("ring").onmouseenter();
-    expect(details()).toBe("Ring: Empty");
     expect(pointAt("ring")).toBe("Ring");
   });
 
@@ -159,23 +161,15 @@ describe("the Gear tab", () => {
     expect(box().attributes["aria-disabled"]).toBe("false");
     expect(box().dataset.item).toBe("ironSword");
     expect(box().style.backgroundImage).toBe('url("/icons/ironSword.png")');
-    expect(details()).toBe("Point at a slot to see what's in it.");
-    box().onfocus();
-    expect(details()).toBe(
+    expect(box().attributes["aria-label"]).toBe(
       "Weapon: Iron sword. Adds 200 to your minimum and maximum hit",
     );
-    box().onblur();
-    expect(details()).toBe("Point at a slot to see what's in it.");
   });
 
-  test("worn improved gear names itself in its Quality's colour, in the line and the tooltip (spec §5)", () => {
+  test("worn improved gear names itself in its Quality's colour in the tooltip (spec §5)", () => {
     wearing("ironSword:rare:might", "", {
       body: "copperChestplate:uncommon:fortitude",
     });
-    box("body").onmouseenter();
-    expect(details()).toMatch(
-      /^Body: \[uncommon\]Copper chestplate of Fortitude\. Takes 4% off each hit you take/,
-    );
     expect(box("body").attributes["aria-label"]).toMatch(
       /^Body: Copper chestplate of Fortitude\. /,
     );
@@ -198,18 +192,6 @@ describe("the Gear tab", () => {
     expect(box("body").attributes["aria-label"]).toBe(
       "Body: Copper chestplate of Fortitude. Takes 4% off each hit you take. Adds 20 to your max health.",
     );
-  });
-
-  test("the line follows the gear while it's pointed at", () => {
-    wearing("", "emberiteShield");
-    box("shield").onmouseenter();
-    expect(details()).toBe(
-      "Shield: Emberite shield. Starts at a 30% chance to block a hit",
-    );
-    wearing("");
-    expect(details()).toBe("Shield: Empty");
-    box("shield").onmouseleave();
-    expect(details()).toBe("Point at a slot to see what's in it.");
   });
 
   test("taking it off empties the slot again", () => {
@@ -241,6 +223,64 @@ describe("the Gear tab", () => {
     box().style.backgroundImage = "untouched";
     wearing("ironSword");
     expect(box().style.backgroundImage).toBe("untouched");
+  });
+});
+
+describe("the Gear tab's stats", () => {
+  const stats = (fields: object) => {
+    sheet.drawStats({
+      ...me([]),
+      health: 1000,
+      maxHealth: 1000,
+      ...fields,
+    } as unknown as SyncedPlayer);
+    return el("gear-stats").children.map((row: any) => row.textContent);
+  };
+
+  test("a fresh player's stats come from skill alone, with no splits", () => {
+    expect(stats({})).toEqual([
+      "Health 1000 / 1000",
+      "Hit chance 40%",
+      "Min hit 100",
+      "Max hit 200",
+      "Critical 10% ×1.5",
+      "Avoidance 0.0",
+      "Block 0%",
+      "Armour 0%",
+    ]);
+  });
+
+  test("each row splits into skill and gear where both add to it, as in issue #216's examples", () => {
+    expect(
+      stats({
+        health: 850,
+        maxHealth: 1040,
+        combatXp: xpForLevel(11),
+        defenseXp: xpForLevel(12),
+        blockingXp: xpForLevel(11),
+        weapon: "emberiteSword",
+        shield: "copperShield",
+        head: "copperHelmet:uncommon:avoidance",
+        body: "copperChestplate:rare:fortitude",
+        legs: "emberiteLeggings",
+      }),
+    ).toEqual([
+      "Health 850 / 1040 (+1000/+40)",
+      "Hit chance 45%",
+      "Min hit 400 (+100/+300)",
+      "Max hit 500 (+200/+300)",
+      "Critical 10% ×1.5",
+      "Avoidance 2.9 (+2.8/+0.1)",
+      "Block 12% (+2%/+10%)",
+      "Armour 12%",
+    ]);
+  });
+
+  test("the rows follow health and experience on each draw", () => {
+    stats({});
+    expect(stats({ health: 600, combatXp: xpForLevel(2) }).slice(0, 2)).toEqual(
+      ["Health 600 / 1000", "Hit chance 40.5%"],
+    );
   });
 });
 

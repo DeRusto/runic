@@ -126,7 +126,7 @@ Where item tips show:
 | Toolbelt icon | The tool's name and its "Tool" kind line |
 | Smithing recipe | The tip of what it makes, base stats only, with no Virtue. Its materials (`2 Copper bar (have 5)`) and experience follow the stats, then any refusal |
 
-The Gear tab's details line under the slots stays as it is, because a keyboard player reads it on focus.
+The Gear tab's details line under the slots is gone, replaced by the stats list ([Character panel shows stats](https://github.com/DeRusto/runic/issues/216)). Each slot's `aria-label` still says what it holds.
 
 ### Plain tips
 

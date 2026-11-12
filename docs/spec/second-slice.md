@@ -186,13 +186,15 @@ A bar's experience goes to Smithing and the same amount to Mining. Swords and sh
 
 - Damage on a hit: (1 + bonus)..(2 + floor(Combat / 20) + bonus).
 - Block chance: the shield's base, plus 0.2 points per Blocking level above 1.
+- Avoidance: 0.25 points per Defense level above 1, plus the Avoidance Virtue on worn gear. One point takes one percentage point off an enemy's chance to hit ([Character panel shows stats](https://github.com/DeRusto/runic/issues/216)).
+- An enemy's chance to hit: its base, plus its accuracy, minus the player's Avoidance, and never below 5%. The Spider's and the Skeleton's accuracy is 0.
 
 **Skeleton**
 
 | Stat | Value |
 |---|---|
 | Health | 24 |
-| Hit chance | 55%, minus 0.3 points per Defense level above 1 |
+| Hit chance | 55%, minus the player's Avoidance (see Gear) |
 | Damage on a hit | 1..5 |
 | Swing | Every 8 ticks |
 | Returns after dying | 200 ticks |
@@ -275,7 +277,7 @@ The ray tests live enemies, bushes, veins, stations and the Blacksmith, then fal
 - A floating window above the right end of the bar, in the brown panel art from Kenney's UI Pack - Adventure. The bar itself stays flat **[D11]**.
 - The Character button and `C` toggle it, and `Esc` and its close button shut it. Typing in chat never does. It reopens on the tab last used.
 - One size on both tabs, about 340×400, shrinking only to fit a very short window. The title and tabs stay put and the content scrolls beneath them, with the scrollbar's space always reserved. Each tab keeps its own scroll position, and pinning doesn't move the list.
-- **Gear tab:** weapon and shield slots side by side, each with the item's name and what it does, or "Empty". Below them, the Toolbelt is a grid of tool icons with name tooltips. Tools have no right-click menu.
+- **Gear tab:** weapon and shield slots side by side, each with the item's name and what it does, or "Empty". Under the slots, a list of the player's stats in raw numbers: health, hit chance, min and max hit, critical, Avoidance, block and armour, each split into its skill and gear parts where both add to it ([Character panel shows stats](https://github.com/DeRusto/runic/issues/216)). Below them, the Toolbelt is a grid of tool icons with name tooltips. Tools have no right-click menu.
 - **Gear slot clicks:** left-click takes the gear off, and right-click offers Take off.
 - **Skills tab:** every skill with its level, progress bar and pin. At six pins the other pins are disabled.
 - **Pinning:** the bar follows the sheet's order, not the order of pinning. Today's skills start pinned, including Mining and Smithing, and any later skill starts unpinned, so Blocking waits for a free pin.

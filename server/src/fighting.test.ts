@@ -398,8 +398,8 @@ describe("the Spider's swing", () => {
   test.each([
     { defenseXp: 0, roll: 0.349, hits: true },
     { defenseXp: 0, roll: 0.351, hits: false },
-    { defenseXp: 5000, roll: 0.329, hits: true }, // Level 11.
-    { defenseXp: 5000, roll: 0.331, hits: false },
+    { defenseXp: 5000, roll: 0.324, hits: true }, // Level 11: 2.5 Avoidance.
+    { defenseXp: 5000, roll: 0.326, hits: false },
   ])(
     "with $defenseXp Defense XP, a roll of $roll hits: $hits",
     ({ defenseXp, roll, hits }) => {

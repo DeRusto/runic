@@ -133,7 +133,7 @@ An idle Spider has a 1-in-10 chance each tick to step to an adjacent walkable ti
 
 | | Player | Spider |
 |---|---|---|
-| Hit chance | 40% + 0.5% per Combat level above 1 | 35% − 0.2 points per Defense level above 1 |
+| Hit chance | 40% + 0.5% per Combat level above 1 | 35% − the player's Avoidance ([second slice §5](second-slice.md#5-numbers)) |
 | Damage on a hit | 1..(2 + floor(Combat / 20)) | 1..2 |
 | Health | Hitpoints level | 8 |
 | Swing | every 8 ticks | every 8 ticks, offset 4 |

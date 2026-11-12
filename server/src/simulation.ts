@@ -4,9 +4,9 @@ import {
   addXp,
   armourPercentOf,
   attemptChance,
-  BLOCK_CHANCE_PER_BLOCKING_LEVEL,
+  avoidanceOf,
+  blockOf,
   BLOCKING_XP_PER_BLOCK,
-  COMBAT_LEVELS_PER_DAMAGE,
   COMBAT_LOCK_TICKS,
   COINS,
   costsOf,
@@ -18,6 +18,7 @@ import {
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
+  enemyHitChance,
   FIGHT_BACK_DELAY_TICKS,
   FOOD_HEALS,
   gatheringSource,
@@ -29,10 +30,12 @@ import {
   gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
   HEALTH_PER_HITPOINTS_LEVEL,
+  hitOf,
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
   logoutRefusal,
+  maxHealthOf,
   madeItem,
   makeRefusal,
   moveStack,
@@ -40,12 +43,9 @@ import {
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
   removeItems,
-  PLAYER_BASE_DAMAGE,
   PLAYER_CRIT_CHANCE,
   PLAYER_CRIT_MULTIPLIER,
   PLAYER_DEAD_TICKS,
-  PLAYER_HIT_CHANCE,
-  PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
   RECIPES,
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
@@ -62,8 +62,6 @@ import {
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
-  virtueOf,
-  AVOIDANCE_TENTHS_PER_HIT_CHANCE,
   BANK_SLOTS,
   bankRefusal,
   bankSlotFor,
@@ -119,11 +117,12 @@ const WINDOWS = {
 type VillagerWindow = keyof typeof WINDOWS;
 
 /** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
-const maxHealthOf = (
+const maxHealthTotal = (
   player: { hitpointsXp: number } & Partial<Record<GearSlot, string>>,
-) =>
-  levelFor(player.hitpointsXp) * HEALTH_PER_HITPOINTS_LEVEL +
-  virtueOf(player, "fortitude");
+) => {
+  const { skill, gear } = maxHealthOf(player);
+  return skill + gear;
+};
 
 /**
  * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
@@ -454,7 +453,7 @@ export class Simulation {
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: maxHealthOf(fields),
+      maxHealth: maxHealthTotal(fields),
     });
     player.pinnedSkills = new ArraySchema(...pinnedSkills);
     player.tools = new ArraySchema(...tools);
@@ -1028,7 +1027,7 @@ export class Simulation {
 
   /** After gear changes: max health follows worn Fortitude, and health drops to it but never rises (spec §2). */
   private fitHealth(player: InstanceType<typeof Player>) {
-    player.maxHealth = maxHealthOf(player);
+    player.maxHealth = maxHealthTotal(player);
     player.health = Math.min(player.health, player.maxHealth);
   }
 
@@ -1513,19 +1512,10 @@ export class Simulation {
     enemy: InstanceType<typeof Enemy>,
   ) {
     this.lock(id);
-    const combat = levelFor(player.combatXp);
-    const rolled = this.rollDamage(
-      PLAYER_HIT_CHANCE + PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1),
-      PLAYER_BASE_DAMAGE +
-        HEALTH_PER_HITPOINTS_LEVEL *
-          Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
-    );
+    const { chance, max, gear } = hitOf(player);
+    const rolled = this.rollDamage(chance, max);
     // Only on a hit, as 0 means a miss.
-    const hit =
-      rolled &&
-      rolled +
-        (gearOf(player.weapon)?.hitBonus ?? 0) +
-        virtueOf(player, "might");
+    const hit = rolled && rolled + gear;
     const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
       critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
@@ -1536,7 +1526,7 @@ export class Simulation {
     );
     this.earnXp(player, "combatXp", xp);
     this.earnXp(player, "hitpointsXp", xp);
-    player.maxHealth = maxHealthOf(player);
+    player.maxHealth = maxHealthTotal(player);
     this.events.push({
       type: "playerSwing",
       player: id,
@@ -1649,19 +1639,12 @@ export class Simulation {
     ) {
       return;
     }
-    const {
-      hitChance,
-      hitChancePerDefenseLevel,
-      maxDamage,
-      swingIntervalTicks,
-    } = ENEMIES[enemy.kind];
+    const { maxDamage, swingIntervalTicks } = ENEMIES[enemy.kind];
     unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
-    const defense = levelFor(player.defenseXp);
+    const avoidance = avoidanceOf(player);
     const rolled = this.rollDamage(
-      hitChance +
-        hitChancePerDefenseLevel * (defense - 1) -
-        virtueOf(player, "avoidance") / AVOIDANCE_TENTHS_PER_HIT_CHANCE,
+      enemyHitChance(enemy.kind, avoidance.skill + avoidance.gear),
       maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
@@ -1705,12 +1688,8 @@ export class Simulation {
   }
 
   private rollBlock(player: InstanceType<typeof Player>) {
-    const base = gearOf(player.shield)?.blockChance;
-    if (base === undefined) return false;
-    const levelsAbove1 = levelFor(player.blockingXp) - 1;
-    return (
-      this.random() < base + BLOCK_CHANCE_PER_BLOCKING_LEVEL * levelsAbove1
-    );
+    const block = blockOf(player);
+    return !!block && this.random() < block.shield + block.skill;
   }
 
   /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
