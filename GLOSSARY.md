@@ -83,7 +83,7 @@ A talk with a villager in the dialogue box above the bar: the villager's lines a
 _Avoid_: Chat (that is the chat box), dialog
 
 **Forester**:
-The villager at the edge of the thicket, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
+Bram, the villager at the edge of the thicket, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
 _Avoid_: Woodcutter (too close to Woodcutting, the skill), woodsman
 
 **Fisher**:
