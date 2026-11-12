@@ -393,11 +393,12 @@ export class Simulation {
     Object.assign(this.tiles[y]![x]!, { [site]: kind, blocks: true });
   }
 
-  /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player or an enemy on it. */
+  /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player, an enemy or a ground item on it. */
   private placePooledSite(pool: SitePoolState) {
     const standing = [
       ...this.state.players.values(),
       ...this.state.enemies.values(),
+      ...this.state.groundItems.values(),
     ];
     const free = pool.spots.filter(
       (spot) =>
