@@ -213,8 +213,18 @@ export function loadRegion(
       continue;
     }
     if (tile.blocks) fail(`a spot stands on a blocking tile at ${x},${y}`);
-    const inside = pools.filter((_, i) => contains(rectangles[i]!, object));
-    if (!inside[0]) fail(`the spot at ${x},${y} is outside every pool`);
+    // A named spot belongs to the pool of that kind, so pools can overlap.
+    const inside = pools.filter(
+      (pool, i) =>
+        contains(rectangles[i]!, object) &&
+        (!object.name || pool.kind === object.name),
+    );
+    if (!inside[0])
+      fail(
+        object.name
+          ? `the spot at ${x},${y} isn't inside a ${object.name} pool`
+          : `the spot at ${x},${y} is outside every pool`,
+      );
     if (inside.length > 1) fail(`the spot at ${x},${y} is inside two pools`);
     inside[0]!.spots.push({ x, y });
   }
