@@ -46,7 +46,7 @@ export function showGatheringSites(
     });
     callbacks.onRemove(stateField, (_, id) => {
       sites.remove(id);
-      setLook(id, "gone");
+      setLook(id, "spent");
     });
     return sites.under;
   });

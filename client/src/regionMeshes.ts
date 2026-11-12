@@ -45,8 +45,11 @@ const STATIONS: Record<StationKind, { file: string; width: number }> = {
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 /** A spot with no site on it is drawn at nothing, so it looks like its plain ground. */
 const GONE_SCALE = new THREE.Vector3(0, 0, 0);
-/** How a site is drawn: full, run out, or gone from its spot in a site pool. */
-export type SiteLook = "full" | "runOut" | "gone";
+/** How a site is drawn: full, run out, gone from its spot in a site pool, or just taken off it ("spent"), which shrinks it as run out and then fades it away. */
+export type SiteLook = "full" | "runOut" | "gone" | "spent";
+/** How long a spent site stays at its run-out look, then how long it takes to fade, in ms. */
+const SPENT_HOLD_MS = 1200;
+const SPENT_FADE_MS = 800;
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 // The ore's rock colour, so a run-out vein reads as plain rock.
@@ -424,12 +427,49 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       rippleMaterial.opacity = 0.45 + 0.25 * Math.sin(performance.now() / 400);
     };
 
+  /** The fading copies of each spent site, by its tile's id. */
+  const fading = new Map<string, THREE.Mesh[]>();
+  const stopFading = (id: string) => {
+    for (const copy of fading.get(id) ?? []) {
+      scene.remove(copy);
+      (copy.material as THREE.Material).dispose();
+    }
+    fading.delete(id);
+  };
+  /** An InstancedMesh can't fade one instance, so a spent site fades as its own copy. */
+  const fadeOut = (id: string, copies: THREE.Mesh[]) => {
+    fading.set(id, copies);
+    copies.forEach((copy) => scene.add(copy));
+    const start = performance.now();
+    const step = (now: number) => {
+      if (fading.get(id) !== copies) return;
+      const faded = (now - start - SPENT_HOLD_MS) / SPENT_FADE_MS;
+      if (faded >= 1) return stopFading(id);
+      for (const copy of copies)
+        (copy.material as THREE.Material).opacity = 1 - Math.max(faded, 0);
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+
   const setLook = (id: string, look: SiteLook) => {
+    stopFading(id);
+    const copies: THREE.Mesh[] = [];
     for (const { geometry, slot, tint, only } of runOutSlots.get(id)!) {
       const instances = meshes.get(geometry)!;
       const { matrix, color } = placements.get(geometry)![slot]!;
+      if (look === "spent" && !only) {
+        const own = instances.material as THREE.MeshLambertMaterial;
+        const faded = own.clone();
+        faded.transparent = true;
+        faded.color.multiply(tint);
+        const copy = new THREE.Mesh(geometry, faded);
+        copy.applyMatrix4(matrix.clone().scale(RUN_OUT_SCALE));
+        copy.castShadow = true;
+        copies.push(copy);
+      }
       const runOut = look === "runOut" && !only;
-      const shown = only ? look === only : look !== "gone";
+      const shown = only ? look === only : look !== "gone" && look !== "spent";
       instances.setMatrixAt(
         slot,
         !shown
@@ -442,6 +482,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       instances.instanceMatrix.needsUpdate = true;
       instances.instanceColor!.needsUpdate = true;
     }
+    if (copies.length) fadeOut(id, copies);
   };
   // A tree's stump is hidden until it runs out.
   tiles.forEach((row, y) =>
