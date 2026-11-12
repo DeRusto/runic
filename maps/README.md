@@ -22,13 +22,13 @@ Whether a tile blocks walking comes from the `blocks` property on its tile in th
 
 An object's class is one of these:
 
-| Class       | Needs                                                                  |
-| ----------- | ---------------------------------------------------------------------- |
-| `respawn`   | Nothing. There's exactly one                                           |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                       |
-| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`              |
-| `sitePool`  | A rectangle with `site` (`vein`, `bush`), `kind` and `active` (an int) |
-| `siteSpot`  | A point inside exactly one `sitePool`, on a tile that doesn't block    |
+| Class       | Needs                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `respawn`   | Nothing. There's exactly one                                                                                                     |
+| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                                                                                 |
+| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`                                                                        |
+| `sitePool`  | A rectangle with `site` (`vein`, `bush`), `kind` and `active` (an int)                                                           |
+| `siteSpot`  | A point inside a `sitePool`, on a tile that doesn't block. Where pools overlap, its name is the `kind` of the pool it belongs to |
 
 ## Before committing
 

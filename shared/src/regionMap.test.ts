@@ -37,20 +37,25 @@ const mapWith = (changes: object = {}, objects: object[] = [respawn]) => ({
 });
 const load = (map: object, tileset: object = TILESET) =>
   loadRegion(JSON.stringify(map), JSON.stringify(tileset));
-const pool = (active: number, size = { width: 32, height: 16 }) => ({
+const pool = (
+  active: number,
+  size = { width: 32, height: 16 },
+  kind = "iron",
+) => ({
   type: "sitePool",
   ...at(1, 1),
   ...size,
   properties: [
     property("site", "vein"),
-    property("kind", "iron"),
+    property("kind", kind),
     property("active", active),
   ],
 });
-const spot = (x: number, y: number) => ({
+const spot = (x: number, y: number, name?: string) => ({
   type: "siteSpot",
   ...at(x, y),
   point: true,
+  ...(name && { name }),
 });
 const withLayer = (name: string, data: unknown) => ({
   layers: mapWith().layers.map((l) => (l.name === name ? { name, data } : l)),
@@ -107,6 +112,22 @@ describe("loadRegion", () => {
       },
     ]);
     expect(tiles[1]![1]).toEqual({ ground: "grass", blocks: false });
+  });
+
+  it("puts a spot inside overlapping pools in the pool its name gives", () => {
+    const { pools } = load(
+      mapWith({}, [
+        respawn,
+        pool(1),
+        pool(1, undefined, "copper"),
+        spot(1, 1, "copper"),
+        spot(2, 1, "iron"),
+      ]),
+    );
+    expect(pools.map(({ kind, spots }) => ({ kind, spots }))).toEqual([
+      { kind: "iron", spots: [{ x: 2, y: 1 }] },
+      { kind: "copper", spots: [{ x: 1, y: 1 }] },
+    ]);
   });
 
   it("reports no pools for a map without any", () => {
@@ -241,6 +262,11 @@ describe("loadRegion", () => {
       "a spot inside two pools",
       mapWith({}, [respawn, pool(1), pool(1), spot(1, 1)]),
       "inside two pools",
+    ],
+    [
+      "a spot that names a pool it isn't inside",
+      mapWith({}, [respawn, pool(1), spot(1, 1, "copper")]),
+      "isn't inside a copper pool",
     ],
     [
       "a pool with fewer spots than it keeps active",
