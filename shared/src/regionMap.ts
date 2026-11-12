@@ -1,8 +1,13 @@
 import { VILLAGERS } from "./dialogue.ts";
 import { ENEMIES } from "./enemies.ts";
 import { BUSHES } from "./foraging.ts";
+import {
+  GATHERING,
+  GATHERING_SKILLS,
+  type GatheringSkill,
+} from "./gathering.ts";
 import { VEINS } from "./mining.ts";
-import type { TileKind } from "./region.ts";
+import type { Tile, TileKind } from "./region.ts";
 
 type TiledProperty = { name: string; value: unknown };
 type TiledObject = {
@@ -10,6 +15,8 @@ type TiledObject = {
   name?: string;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   properties?: TiledProperty[];
 };
 type TiledLayer = {
@@ -130,8 +137,38 @@ function place(tile: TileKind, object: TiledObject) {
   } else fail(`unknown placement class "${object.type}"`);
 }
 
-/** The region's tiles from a Tiled map and its tileset, indexed [y][x]. Throws on anything the game couldn't use. */
-export function loadRegion(mapText: string, tilesetText: string): TileKind[][] {
+/** Where a kind of site appears at `active` of its spots at a time. A spot is plain ground in the tiles until a site is on it. */
+export type SitePool = {
+  skill: GatheringSkill;
+  kind: string;
+  active: number;
+  spots: Tile[];
+};
+
+/** Whether a point object lies inside a rectangle object, both in pixels. */
+const contains = (rectangle: TiledObject, { x, y }: TiledObject) =>
+  x >= rectangle.x &&
+  x < rectangle.x + (rectangle.width ?? 0) &&
+  y >= rectangle.y &&
+  y < rectangle.y + (rectangle.height ?? 0);
+
+/** A `sitePool` rectangle's settings, with no spots yet. */
+function readPool(object: TiledObject): SitePool {
+  const { site, kind, active } = propertiesOf(object);
+  const skill = GATHERING_SKILLS.find((s) => GATHERING[s].site === site);
+  if (!skill) return fail(`a pool of unknown site "${String(site)}"`);
+  if (!Object.hasOwn(GATHERING[skill].sources, String(kind)))
+    fail(`a ${String(site)} pool of unknown kind "${String(kind)}"`);
+  if (!Number.isInteger(active) || (active as number) < 1)
+    fail(`a ${String(kind)} pool needs a whole active count of at least 1`);
+  return { skill, kind: String(kind), active: active as number, spots: [] };
+}
+
+/** The region from a Tiled map and its tileset: its tiles, indexed [y][x], and its site pools. Throws on anything the game couldn't use. */
+export function loadRegion(
+  mapText: string,
+  tilesetText: string,
+): { tiles: TileKind[][]; pools: SitePool[] } {
   const map = JSON.parse(mapText) as TiledMap;
   if (map.tilesets.length !== 1) fail("needs exactly one tileset");
   for (const { name, offsetx, offsety } of map.layers) {
@@ -160,17 +197,31 @@ export function loadRegion(mapText: string, tilesetText: string): TileKind[][] {
 
   const placements = map.layers.find((l) => l.name === "placements");
   if (!placements?.objects) return fail(`no "placements" object layer`);
+  const rectangles = placements.objects.filter((o) => o.type === "sitePool");
+  const pools = rectangles.map(readPool);
   const taken = new Set<string>();
   for (const object of placements.objects) {
+    if (object.type === "sitePool") continue;
     const x = object.x / map.tilewidth;
     const y = object.y / map.tileheight;
     const tile = tiles[y]?.[x];
     if (!tile) return fail(`"${object.type}" is off the grid at ${x},${y}`);
     if (taken.has(`${x},${y}`)) fail(`two placements share ${x},${y}`);
     taken.add(`${x},${y}`);
-    place(tile, object);
+    if (object.type !== "siteSpot") {
+      place(tile, object);
+      continue;
+    }
+    if (tile.blocks) fail(`a spot stands on a blocking tile at ${x},${y}`);
+    const inside = pools.filter((_, i) => contains(rectangles[i]!, object));
+    if (!inside[0]) fail(`the spot at ${x},${y} is outside every pool`);
+    if (inside.length > 1) fail(`the spot at ${x},${y} is inside two pools`);
+    inside[0]!.spots.push({ x, y });
   }
+  for (const { kind, active, spots } of pools)
+    if (spots.length < active)
+      fail(`a ${kind} pool has fewer spots than its ${active} active`);
   if (placements.objects.filter((o) => o.type === "respawn").length !== 1)
     fail("needs exactly one respawn");
-  return tiles;
+  return { tiles, pools };
 }

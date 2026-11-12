@@ -37,13 +37,28 @@ const mapWith = (changes: object = {}, objects: object[] = [respawn]) => ({
 });
 const load = (map: object, tileset: object = TILESET) =>
   loadRegion(JSON.stringify(map), JSON.stringify(tileset));
+const pool = (active: number, size = { width: 32, height: 16 }) => ({
+  type: "sitePool",
+  ...at(1, 1),
+  ...size,
+  properties: [
+    property("site", "vein"),
+    property("kind", "iron"),
+    property("active", active),
+  ],
+});
+const spot = (x: number, y: number) => ({
+  type: "siteSpot",
+  ...at(x, y),
+  point: true,
+});
 const withLayer = (name: string, data: unknown) => ({
   layers: mapWith().layers.map((l) => (l.name === name ? { name, data } : l)),
 });
 
 describe("loadRegion", () => {
   it("merges ground, features and placements into one tile each", () => {
-    const tiles = load(
+    const { tiles } = load(
       mapWith({}, [
         respawn,
         {
@@ -69,11 +84,33 @@ describe("loadRegion", () => {
   });
 
   it("loads what the grid shorthand parses, so test fixtures mean the same", () => {
-    const tiles = load(mapWith());
+    const { tiles } = load(mapWith());
     expect(tiles[0]![0]).toEqual(parseRegion("R")[0]![0]);
     expect(tiles[0]![1]).toEqual(parseRegion("T")[0]![0]);
     expect(tiles[1]![0]).toEqual(parseRegion("c")[0]![0]);
     expect(respawnTile(tiles)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("reads a site pool and its spots, which stay plain ground", () => {
+    const { tiles, pools } = load(
+      mapWith({}, [respawn, pool(1), spot(1, 1), spot(2, 1)]),
+    );
+    expect(pools).toEqual([
+      {
+        skill: "mining",
+        kind: "iron",
+        active: 1,
+        spots: [
+          { x: 1, y: 1 },
+          { x: 2, y: 1 },
+        ],
+      },
+    ]);
+    expect(tiles[1]![1]).toEqual({ ground: "grass", blocks: false });
+  });
+
+  it("reports no pools for a map without any", () => {
+    expect(load(mapWith()).pools).toEqual([]);
   });
 
   it.each([
@@ -189,6 +226,72 @@ describe("loadRegion", () => {
       "two placements on one tile",
       mapWith({}, [respawn, { type: "npc", name: "odo", ...at(0, 0) }]),
       "share",
+    ],
+    [
+      "a spot outside every pool",
+      mapWith({}, [
+        respawn,
+        pool(1, { width: 16, height: 16 }),
+        spot(1, 1),
+        spot(2, 1),
+      ]),
+      "outside every pool",
+    ],
+    [
+      "a spot inside two pools",
+      mapWith({}, [respawn, pool(1), pool(1), spot(1, 1)]),
+      "inside two pools",
+    ],
+    [
+      "a pool with fewer spots than it keeps active",
+      mapWith({}, [respawn, pool(3), spot(1, 1), spot(2, 1)]),
+      "fewer spots",
+    ],
+    [
+      "a pool of an unknown site",
+      mapWith({}, [
+        respawn,
+        {
+          ...pool(1),
+          properties: [
+            property("site", "tree"),
+            property("kind", "oak"),
+            property("active", 1),
+          ],
+        },
+        spot(1, 1),
+      ]),
+      "tree",
+    ],
+    [
+      "a pool of an unknown kind",
+      mapWith({}, [
+        respawn,
+        {
+          ...pool(1),
+          properties: [
+            property("site", "vein"),
+            property("kind", "gold"),
+            property("active", 1),
+          ],
+        },
+        spot(1, 1),
+      ]),
+      "gold",
+    ],
+    [
+      "a pool that keeps no site active",
+      mapWith({}, [respawn, pool(0), spot(1, 1)]),
+      "active",
+    ],
+    [
+      "a spot on a blocking tile",
+      mapWith({}, [
+        respawn,
+        { ...pool(1), ...at(0, 0), width: 48 },
+        spot(1, 0),
+      ]),
+      "blocking",
     ],
   ])("refuses %s", (_, map, message) => {
     expect(() => load(map)).toThrow(message);
