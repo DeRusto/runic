@@ -289,7 +289,7 @@ The health a player's eaten food has yet to give back, as healing ticks waiting 
 _Avoid_: Heal over time, buff
 
 **Material**:
-An item that goes into making something: ore, finds, bars, logs and Emberbones. Gems and logs count as materials before anything uses them.
+An item that goes into making something: ore, finds, bars, logs, fish and Emberbones. Gems, logs and fish count as materials before anything uses them.
 _Avoid_: Resource, ingredient
 
 **Ore**:
@@ -299,6 +299,10 @@ _Avoid_: Rock, stone
 **Log**:
 The wood a player takes from a tree: birch, oak or charwood logs. A successful chop gives 1. Logs stack like ore.
 _Avoid_: Wood, lumber, timber
+
+**Fish**:
+What a player catches at a fishing spot with a rod: **Perch** (Fishing 1), **Trout** (10) or **Pike** (20). Every fishing spot can give any of them. A catch is a perch unless the player's level lets a better fish come up instead. Fish are caught raw, so they are a material, not food, and can't be eaten. A successful catch gives 1, and fish stack like ore.
+_Avoid_: Raw fish
 
 **Find**:
 A material a vein sometimes gives along with its ore on a successful mine: tin from Copper and Iron veins, coal from Iron veins, and gems from Emberite veins. A find is always 1.
