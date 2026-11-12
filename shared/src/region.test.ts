@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   loadRegion,
+  TREES as TREES_TABLE,
   neighbours,
   parseRegion,
   tileHash,
@@ -54,6 +55,10 @@ const IS = {
   copper: (tile) => tile.vein === "copper",
   iron: (tile) => tile.vein === "iron",
   emberite: (tile) => tile.vein === "emberite",
+  birch: (tile) => tile.tree === "birch",
+  oak: (tile) => tile.tree === "oak",
+  charwood: (tile) => tile.tree === "charwood",
+  forester: (tile) => tile.villager === "bram",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
   blacksmith: (tile) => tile.villager === "odo",
@@ -91,6 +96,7 @@ const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
 const VEINS = ["copper", "iron", "emberite"] as const;
 const BUSHES = ["berryBush", "herbBush"] as const;
 const STATIONS_AND_BLACKSMITH = ["furnace", "anvil", "blacksmith"] as const;
+const TREES = ["birch", "oak", "charwood"] as const;
 
 describe("the region", () => {
   const respawn = tilesOf("respawn")[0]!;
@@ -107,7 +113,8 @@ describe("the region", () => {
     ["furnace", 4],
     ["anvil", 1],
     ["blacksmith", 1],
-    ["villager", 3],
+    ["forester", 1],
+    ["villager", 4],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -150,7 +157,7 @@ describe("the region", () => {
   it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager"),
+        ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager", ...TREES),
         ...spotsOf(...VEINS, ...BUSHES),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
@@ -214,7 +221,13 @@ describe("the region", () => {
     expect(
       tooNear(
         [
-          ...tilesOf("respawn", "thicket", ...STATIONS_AND_BLACKSMITH),
+          ...tilesOf(
+            "respawn",
+            "thicket",
+            "forester",
+            "birch",
+            ...STATIONS_AND_BLACKSMITH,
+          ),
           ...spotsOf(...VEINS),
         ],
         10,
@@ -245,6 +258,46 @@ describe("the region", () => {
         ),
       );
     expect(nearest("berryBush")).toBeLessThan(nearest("herbBush"));
+  });
+
+  it.each([
+    ["birch", 1],
+    ["oak", 10],
+    ["charwood", 20],
+  ] as const)("places fixed %s trees, Woodcutting %i", (kind, level) => {
+    expect(tilesOf(kind).length).toBeGreaterThanOrEqual(3);
+    expect(pools.filter((pool) => pool.kind === kind)).toEqual([]);
+    expect(TREES_TABLE[kind].level).toBe(level);
+  });
+
+  it("puts the Birch trees at the Thicket's edge beside the Forester, Oak in the east field and Charwood in the Boneyard", () => {
+    const forester = asTile(tilesOf("forester")[0]!);
+    const thicketNear = (x: number, y: number) =>
+      tilesOf("thicket").some(
+        (tile) => tilesApart(asTile(tile), { x, y }) <= 1,
+      );
+    expect(thicketNear(forester.x, forester.y)).toBe(true);
+    for (const [x, y] of tilesOf("birch")) {
+      expect(thicketNear(x, y)).toBe(true);
+      expect(tilesApart({ x, y }, forester)).toBeLessThanOrEqual(8);
+    }
+    for (const [x, y] of tilesOf("oak")) {
+      expect([x >= 64, y <= 28]).toEqual([true, true]);
+    }
+    for (const [x, y] of tilesOf("charwood"))
+      expect(region[y]![x]!.ground).toBe("ashen");
+  });
+
+  it("makes the Boneyard the only route to every Charwood tree", () => {
+    const withoutAshen = stepsFrom(
+      respawn,
+      (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
+    );
+    expect(
+      tilesOf("charwood").filter((tree) =>
+        tilesNextTo(tree).some(([x, y]) => withoutAshen.has(key(x, y))),
+      ),
+    ).toEqual([]);
   });
 
   it("makes the Boneyard the only route to every Emberite spot", () => {
