@@ -22,6 +22,7 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   thicket: { color: 0x3f7a35, top: -0.02 },
   path: { color: 0xa77b4f, top: -0.05 },
   ashen: { color: 0x6e6862, top: -0.01 },
+  water: { color: 0x3b78b0, top: -0.12 },
 };
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
@@ -63,6 +64,17 @@ const TREE_MODELS: Record<TreeKind, { model: string; tint: number }> = {
 const TREE_SCALE = 0.5;
 /** Kenney's stump, about a third of a tile across, grown to most of one. */
 export const STUMP_SCALE = 2.4;
+/** An active fishing spot: two pale rings on the water that shimmer. */
+function rippleGeometry() {
+  const rings = [
+    new THREE.RingGeometry(0.12, 0.17, 24),
+    new THREE.RingGeometry(0.3, 0.35, 24),
+  ];
+  // Just above the water, so the slab can't hide it.
+  return mergeGeometries(rings)
+    .rotateX(-Math.PI / 2)
+    .translate(0, 0.01, 0);
+}
 const KAYKIT_PROPS = {
   tree: { scale: 0.45, models: ["Tree_1_A", "Tree_2_A", "Tree_4_A"] },
   rock: { scale: 0.65, models: ["Rock_1_E", "Rock_2_C"] },
@@ -222,6 +234,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ownMaterials.set(geometry, villageMaterial);
   }
   ownMaterials.set(stump, villageMaterial);
+  const ripple = rippleGeometry();
+  const rippleMaterial = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+  });
+  ownMaterials.set(ripple, rippleMaterial);
 
   const slabs = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, SLAB_HEIGHT, 1),
@@ -272,7 +291,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
-      const { bush, prop, vein, tree, station, house } = tile;
+      const { bush, prop, vein, tree, fishingSpot, station, house } = tile;
       if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
         for (const { part, angle, height } of houseParts(tiles, x, y)) {
@@ -286,7 +305,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           );
         }
       }
-      if (!bush && !prop && !vein && !tree) return;
+      if (!bush && !prop && !vein && !tree && !fishingSpot) return;
       const rotation = new THREE.Quaternion().setFromAxisAngle(
         up,
         (((hash >>> 16) & 255) / 256) * Math.PI * 2,
@@ -332,6 +351,23 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
             ),
             tint: white,
             only: "runOut",
+          },
+        ]);
+      } else if (fishingSpot) {
+        // A spot with no site, or one run out, is plain water.
+        runOutSlots.set(siteId({ x, y }), [
+          {
+            geometry: ripple,
+            slot: place(
+              ripple,
+              new THREE.Matrix4().compose(
+                at,
+                rotation,
+                new THREE.Vector3(1, 1, 1),
+              ),
+            ),
+            tint: white,
+            only: "full",
           },
         ]);
       } else if (vein) {
@@ -380,10 +416,15 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       mesh.setMatrixAt(i, item.matrix);
       mesh.setColorAt(i, item.color);
     });
-    mesh.castShadow = true;
+    mesh.castShadow = geometry !== ripple;
     scene.add(mesh);
     meshes.set(geometry, mesh);
   }
+  const ripples = meshes.get(ripple);
+  if (ripples)
+    ripples.onBeforeRender = () => {
+      rippleMaterial.opacity = 0.45 + 0.25 * Math.sin(performance.now() / 400);
+    };
 
   const setLook = (id: string, look: SiteLook) => {
     for (const { geometry, slot, tint, only } of runOutSlots.get(id)!) {
