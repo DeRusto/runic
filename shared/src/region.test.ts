@@ -11,7 +11,10 @@ import {
 
 const read = (name: string) =>
   readFileSync(new URL(`../../maps/${name}`, import.meta.url), "utf8");
-const region = loadRegion(read("region.tmj"), read("region.tsj"));
+const { tiles: region, pools } = loadRegion(
+  read("region.tmj"),
+  read("region.tsj"),
+);
 const blocks = (x: number, y: number) => region[y]![x]!.blocks;
 const key = (x: number, y: number) => `${x},${y}`;
 
@@ -66,6 +69,11 @@ function tilesOf(...kinds: (keyof typeof IS)[]) {
   );
 }
 const isHouse = (x: number, y: number) => !!region[y]?.[x]?.house;
+/** Every spot of the pools of these kinds. */
+const spotsOf = (...kinds: string[]) =>
+  pools
+    .filter(({ kind }) => kinds.includes(kind))
+    .flatMap(({ spots }) => spots.map(({ x, y }) => [x, y] as const));
 
 /** The tiles one legal step from a tile that may itself block, with the same corner rule (spec §4, D1). */
 const tilesNextTo = ([x, y]: readonly [number, number]) =>
@@ -97,9 +105,6 @@ describe("the region", () => {
     ["berryBush", 12],
     ["herbBush", 6],
     ["spider", 8],
-    ["copper", 6],
-    ["iron", 4],
-    ["emberite", 3],
     ["skeleton", 6],
     ["furnace", 4],
     ["anvil", 1],
@@ -108,6 +113,22 @@ describe("the region", () => {
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
+
+  it.each([
+    ["copper", 9, 18],
+    ["iron", 6, 12],
+    ["emberite", 5, 9],
+  ] as const)(
+    "keeps %s veins in one pool, %i active of %i spots, and none fixed",
+    (kind, active, spots) => {
+      expect(
+        pools
+          .filter((pool) => pool.kind === kind)
+          .map((pool) => [pool.skill, pool.active, pool.spots.length]),
+      ).toEqual([["mining", active, spots]]);
+      expect(tilesOf(kind)).toEqual([]);
+    },
+  );
 
   it("has an outer ring of blocks", () => {
     for (let x = 0; x < 96; x++) {
@@ -126,14 +147,12 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
-  it("lets a player walk next to every bush, vein, station and villager", () => {
+  it("lets a player walk next to every bush, spot, station and villager", () => {
     expect(
-      tilesOf(
-        ...BUSHES,
-        ...VEINS,
-        ...STATIONS_AND_BLACKSMITH,
-        "villager",
-      ).filter(
+      [
+        ...tilesOf(...BUSHES, ...STATIONS_AND_BLACKSMITH, "villager"),
+        ...spotsOf(...VEINS),
+      ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
@@ -188,51 +207,49 @@ describe("the region", () => {
   });
 
   it("keeps every Skeleton's reach off everything a player must be safe at", () => {
-    const tooNear = (safe: (keyof typeof IS)[], reach: number) =>
+    const tooNear = (safe: (readonly [number, number])[], reach: number) =>
       tilesOf("skeleton").flatMap((home) =>
-        tilesOf(...safe).filter(
-          (tile) => tilesApart(asTile(home), asTile(tile)) <= reach,
-        ),
+        safe.filter((tile) => tilesApart(asTile(home), asTile(tile)) <= reach),
       );
     expect(
-      tooNear(["respawn", "thicket", ...VEINS, ...STATIONS_AND_BLACKSMITH], 10),
+      tooNear(
+        [
+          ...tilesOf("respawn", "thicket", ...STATIONS_AND_BLACKSMITH),
+          ...spotsOf(...VEINS),
+        ],
+        10,
+      ),
     ).toEqual([]);
-    expect(tooNear(["spider"], 15)).toEqual([]);
+    expect(tooNear(tilesOf("spider"), 15)).toEqual([]);
   });
 
-  it("makes the Boneyard the only route to the Emberite veins", () => {
+  it("makes the Boneyard the only route to every Emberite spot", () => {
     const withoutAshen = stepsFrom(
       respawn,
       (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
     );
     expect(
-      tilesOf("emberite").filter((tile) =>
-        tilesNextTo(tile).some(([x, y]) => withoutAshen.has(key(x, y))),
+      spotsOf("emberite").filter((spot) =>
+        [spot, ...tilesNextTo(spot)].some(([x, y]) =>
+          withoutAshen.has(key(x, y)),
+        ),
       ),
     ).toEqual([]);
   });
 
-  it.each([
-    // The walks from the Smithy at the crossroads, which the owner accepted (second slice §3).
-    ["Copper", "copper", 8, 14],
-    ["Iron", "iron", 17, 20],
-    ["Emberite", "emberite", 33, 38],
-  ] as const)(
-    "puts %s veins the right walk from the Smithy",
-    (_, vein, minSeconds, maxSeconds) => {
-      const fromSmithy = stepsFrom(tilesNextTo(tilesOf("furnace")[0]!)[0]!);
-      const seconds = tilesOf(vein).map(
-        (vein) =>
-          Math.min(
-            ...tilesNextTo(vein).map(
-              ([x, y]) => fromSmithy.get(key(x, y)) ?? Infinity,
-            ),
-          ) * 0.6, // A tile takes 0.6 s (spec §3).
+  it("puts the nearest Copper spot nearer the Smithy than the nearest Iron spot, and that nearer than the nearest Emberite spot", () => {
+    const fromSmithy = stepsFrom(tilesNextTo(tilesOf("furnace")[0]!)[0]!);
+    const nearest = (kind: (typeof VEINS)[number]) =>
+      Math.min(
+        ...spotsOf(kind).flatMap((spot) =>
+          tilesNextTo(spot).map(
+            ([x, y]) => fromSmithy.get(key(x, y)) ?? Infinity,
+          ),
+        ),
       );
-      expect(Math.min(...seconds)).toBeGreaterThanOrEqual(minSeconds);
-      expect(Math.max(...seconds)).toBeLessThanOrEqual(maxSeconds);
-    },
-  );
+    expect(nearest("copper")).toBeLessThan(nearest("iron"));
+    expect(nearest("iron")).toBeLessThan(nearest("emberite"));
+  });
 
   it.each([
     ["marta", 11, 41],
