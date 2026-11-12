@@ -4,6 +4,7 @@ import {
   EAT_INTENT,
   EMPTY_SLOT,
   EQUIP_INTENT,
+  MIX_INTENT,
   INVENTORY_SLOTS,
   MAX_XP,
   MOVE_INTENT,
@@ -487,6 +488,35 @@ describe("the right-click menu", () => {
     nextFrame();
     rightClick(0);
     expect(menuChoices()).toEqual(["Eat", "Drop"]);
+  });
+
+  test("a potion drinks on a click and from the menu, by the eat flow (#222)", () => {
+    room.onStateChange.invoke(stateHolding(["mightPotion", 1]));
+    nextFrame();
+    slot(0).onclick!();
+    expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 0);
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Drink", "Drop"]);
+    menu.children[0]!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 0);
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("a potion plant offers Mix potion, which sends the plant's slot (#222)", () => {
+    room.onStateChange.invoke(stateHolding(["dewpetal", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Mix potion", "Drop"]);
+    menu.children[0]!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(MIX_INTENT, { slot: 0 });
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("the base herb, which the range cooks, offers no mixing (#222)", () => {
+    room.onStateChange.invoke(stateHolding(["herb", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Drop"]);
   });
 
   test.each([

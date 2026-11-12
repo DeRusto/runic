@@ -14,7 +14,10 @@ import {
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MAX_LEVEL,
+  MIX_INTENT,
   MOVE_INTENT,
+  potionOf,
+  potionFromPlant,
   PRIVATE_LINE,
   SKILLS,
   xpForLevel,
@@ -113,13 +116,14 @@ export function showBottomBar(
     slot.type = "button";
     const eat = () => room.send(EAT_INTENT, i);
     const equip = () => room.send(EQUIP_INTENT, i);
-    // Only food and gear do anything on a left-click, so a material's slot sends nothing.
+    const mix = () => room.send(MIX_INTENT, { slot: i });
+    // Only food, potions and gear do anything on a left-click, so a material's slot sends nothing.
     // Not the slot's text, which shows coins in short form.
     const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
       if (takeover) return item && takeover.click(i, item);
-      if (FOOD_HEALS.has(itemParts(item).base)) eat();
+      if (FOOD_HEALS.has(itemParts(item).base) || potionOf(item)) eat();
       if (gearOf(item)) equip();
     };
     slot.oncontextmenu = (event) => {
@@ -131,6 +135,8 @@ export function showBottomBar(
         ...(FOOD_HEALS.has(itemParts(item).base)
           ? ([["Eat", eat]] as const)
           : []),
+        ...(potionOf(item) ? ([["Drink", eat]] as const) : []),
+        ...(potionFromPlant(item) ? ([["Mix potion", mix]] as const) : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
         ...amountChoices("Drop", count(), (amount) =>
           room.send(DROP_INTENT, { slot: i, amount }),

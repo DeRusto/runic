@@ -28,7 +28,13 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   water: { color: 0x3b78b0, top: -0.12 },
 };
 const BUSH_WIDTH = 0.9;
-const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
+const BUSH_TINT: Record<BushKind, number> = {
+  berryBush: 0xffb0b0,
+  dewpetalBush: 0xaad4ff,
+  herbBush: 0xb8f0ff,
+  nightbloomBush: 0xb490e8,
+  emberbloomBush: 0xffa64d,
+};
 // Not gear's tints, which leave veins looking like plain or dark rock. They multiply the ore's near-white vein.
 const VEIN_TINT: Record<VeinTier, THREE.Color> = {
   copper: new THREE.Color(0xff8a3c),
@@ -64,7 +70,10 @@ const SITE_FIELDS = GATHERING_SKILLS.map((skill) => GATHERING[skill].site);
 
 const BUSH_MODELS: Record<BushKind, string> = {
   berryBush: "Bush_2_B",
+  dewpetalBush: "Bush_4_B",
   herbBush: "Bush_4_B",
+  nightbloomBush: "Bush_2_B",
+  emberbloomBush: "Bush_2_B",
 };
 /** Each kind of tree its own model and tint, apart from the tree props' models so a choppable one reads as one. */
 const TREE_MODELS: Record<TreeKind, { model: string; tint: number }> = {
@@ -169,7 +178,14 @@ export function oreParts(ore: THREE.Object3D) {
 /** A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites: returns how to show one full, run out or gone. A run-out tree is a stump. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
-    [berryBush, herbBush, ...propMeshes],
+    [
+      berryBush,
+      dewpetalBush,
+      herbBush,
+      nightbloomBush,
+      emberbloomBush,
+      ...propMeshes
+    ],
     treeMeshes,
     furnace,
     anvil,
@@ -211,7 +227,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const stump = bakeColours(
     stumpModel.scene.getObjectByProperty("type", "Mesh")!.parent as THREE.Group,
   );
-  const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
+  const bushMeshes = {
+    berryBush: berryBush!,
+    dewpetalBush: dewpetalBush!,
+    herbBush: herbBush!,
+    nightbloomBush: nightbloomBush!,
+    emberbloomBush: emberbloomBush!,
+  };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
   for (const [kind, { models }] of Object.entries(KAYKIT_PROPS)) {
     propVariants[kind as PropKind] = propMeshes

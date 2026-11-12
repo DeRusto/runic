@@ -72,6 +72,28 @@ describe("an item's tip (spec §5)", () => {
       refusal: undefined,
     });
   });
+
+  test("a potion is one, and its line says what drinking it does for two minutes (#222)", () => {
+    expect(itemTip("mightPotion")).toEqual({
+      name: "Might potion",
+      quality: "common",
+      kind: "Potion",
+      stats: ["Drink: +100 to your hit for 2 minutes."],
+      virtue: undefined,
+      refusal: undefined,
+    });
+    expect(itemTip("fortitudePotion").stats).toEqual([
+      "Drink: +25% max health for 2 minutes.",
+    ]);
+    expect(itemTip("avoidancePotion").stats).toEqual([
+      "Drink: +1 to your Avoidance for 2 minutes.",
+    ]);
+  });
+
+  test("a potion plant and the vial stay materials (#222)", () => {
+    expect(itemTip("dewpetal").kind).toBe("Material");
+    expect(itemTip("vial").kind).toBe("Material");
+  });
 });
 
 describe("a smithing recipe's tip (spec §5)", () => {

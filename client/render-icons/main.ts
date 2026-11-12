@@ -198,10 +198,54 @@ const ICONS: Icon[] = [
     url: "/kenney-game-assets/3D assets/Food Kit/Models/GLB format/grapes.glb",
     turn: FLAT,
   },
+  // The herb and the potion plants, the same plant tinted apart (#222).
   {
     id: "herb",
     url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
     turn: [0.3, 0, 0],
+  },
+  {
+    id: "dewpetal",
+    url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
+    turn: [0.3, 0, 0],
+    look: { tint: 0x9fd0ff },
+  },
+  {
+    id: "nightbloom",
+    url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
+    turn: [0.3, 0, 0],
+    look: { tint: 0x9a6ad8 },
+  },
+  {
+    id: "emberbloom",
+    url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
+    turn: [0.3, 0, 0],
+    look: { tint: 0xe8743c },
+  },
+  // The empty vial, and the three potions tinted by their Virtue (#222).
+  {
+    id: "vial",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/bottle_B_brown.gltf",
+    turn: FLAT,
+    look: { tint: 0xddeeff },
+  },
+  {
+    id: "mightPotion",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/bottle_A_green.gltf",
+    turn: FLAT,
+    look: { tint: 0xff5555 },
+  },
+  {
+    id: "fortitudePotion",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/bottle_C_brown.gltf",
+    turn: FLAT,
+    look: { tint: 0x55e07a },
+  },
+  {
+    id: "avoidancePotion",
+    url: "/fantasy-props-megakit/Exports/glTF/Potion_4.gltf",
+    turn: FLAT,
+    look: { tint: 0x5599ff },
   },
   {
     id: "coal",

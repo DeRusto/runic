@@ -1,6 +1,8 @@
 import {
+  AVOIDANCE_POTION_POINTS,
   costsOf,
   countOf,
+  FORTITUDE_POTION_PERCENT,
   FOOD_HEALS,
   gateOf,
   gearOf,
@@ -8,16 +10,29 @@ import {
   GEMS,
   itemParts,
   makeRefusal,
+  MIGHT_POTION_HIT,
+  POTION_BUFF_TICKS,
+  potionOf,
   RECIPES,
+  TICK_MS,
   TOOLS,
   virtueDoes,
   xpOf,
+  type PotionId,
   type RecipeItem,
 } from "@runic/shared";
 import { itemName } from "./itemIcons.ts";
 
 /** What a Delicious item's tooltip says under its kind (#221). */
 const DELICIOUS_LINE = "Delicious: an extra healing tick for 60 seconds.";
+
+/** What each potion's tooltip says drinking it does, for its buff's two minutes (#222). */
+const POTION_LINE: Record<PotionId, string> = {
+  mightPotion: `Drink: +${MIGHT_POTION_HIT} to your hit`,
+  fortitudePotion: `Drink: +${FORTITUDE_POTION_PERCENT}% max health`,
+  avoidancePotion: `Drink: +${AVOIDANCE_POTION_POINTS} to your Avoidance`,
+};
+const POTION_MINUTES = (POTION_BUFF_TICKS * TICK_MS) / 60_000;
 
 /** The lines of an item's tooltip, top to bottom (spec §5). */
 export type ItemTip = {
@@ -41,6 +56,7 @@ function kindOf(item: string) {
   const gear = gearOf(item);
   if (gear)
     return `${SLOT_KINDS[gear.slot]}, needs ${gateOf(item)!.skill} ${gear.level}`;
+  if (potionOf(itemParts(item).base)) return "Potion";
   const food = FOOD_HEALS.get(itemParts(item).base);
   if (food)
     return `Food, heals ${food.perTick * food.ticks} over ${food.ticks} ticks`;
@@ -54,6 +70,7 @@ export function itemTip(
   player?: { combatXp: number; defenseXp: number },
 ): ItemTip {
   const does = gearOf(item)?.does;
+  const potion = potionOf(itemParts(item).base);
   return {
     name: itemName(item),
     quality: itemParts(item).quality,
@@ -61,10 +78,12 @@ export function itemTip(
     // The Gear tab's wording, ended like the Virtue line under it.
     stats: does
       ? [`${does}.`]
-      : // A Delicious food's own line comes before what it's made of (#221).
-        itemParts(item).quality === "delicious"
-        ? [DELICIOUS_LINE]
-        : [],
+      : // A potion's drink line, then a Delicious food's own line (#221, #222).
+        potion
+        ? [`${POTION_LINE[potion]} for ${POTION_MINUTES} minutes.`]
+        : itemParts(item).quality === "delicious"
+          ? [DELICIOUS_LINE]
+          : [],
     virtue: virtueDoes(item),
     refusal: player && gearRefusal(item, player),
   };

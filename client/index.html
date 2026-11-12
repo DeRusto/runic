@@ -304,12 +304,14 @@
         margin: 0;
         opacity: 0.7;
       }
-      /* A Delicious fish's buff, in the heal green (spec #221). */
-      #buff {
+      /* A Delicious fish's buff and a Virtue potion's, in the heal green (spec #221, #222). */
+      #buff,
+      #potion-buff {
         margin: 0;
         color: #5fe36a;
       }
-      #buff[hidden] {
+      #buff[hidden],
+      #potion-buff[hidden] {
         display: none;
       }
       #skills progress {
@@ -1371,6 +1373,7 @@
       <div id="player-panel">
         <div id="health"></div>
         <p id="buff" hidden role="timer"></p>
+        <p id="potion-buff" hidden role="timer"></p>
         <div id="skills"></div>
         <div id="bar-buttons">
           <button

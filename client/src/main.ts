@@ -15,7 +15,7 @@ import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
-import { showDelicious } from "./delicious.ts";
+import { showBuffs } from "./delicious.ts";
 import { showDialogueBox } from "./dialogueBox.ts";
 import { showEnemies } from "./enemies.ts";
 import { showFights } from "./fights.ts";
@@ -102,7 +102,7 @@ function enterWorld(room: WorldConnection) {
   );
   showSocialPanel(room);
   showFights(room);
-  showDelicious(room);
+  showBuffs(room);
   showDialogueBox(room);
   showStoreWindow(room, openMenu);
   showBankWindow(room, openMenu);
