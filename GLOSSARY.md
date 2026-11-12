@@ -15,7 +15,7 @@ The part of a region where players spawn and respawn, and gather to talk.
 _Avoid_: Town, hub, spawn
 
 **Thicket**:
-The part of a region where foraging bushes grow.
+The part of a region where bushes grow, and players pick berries and herbs to train Herblaw.
 _Avoid_: Forest, woods
 
 **Field**:
@@ -35,7 +35,7 @@ The part of the village where the furnace, anvil and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
-A tile in a thicket that can be foraged; it runs out after use and grows back over time. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Foraging level.
+A site in a thicket that can be picked. Every bush belongs to a site pool: one that runs out disappears from its spot, and after a while a full bush comes back at another. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Herblaw level.
 _Avoid_: Node, resource, plant
 
 **Vein**:
@@ -43,7 +43,7 @@ A site that can be mined for ore. Every vein belongs to a site pool: one that ru
 _Avoid_: Ore rock, node, resource
 
 **Site pool**:
-An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins each have one.
+An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins and its berry and herb bushes each have one.
 _Avoid_: Spawn area, zone
 
 **Spot**:
@@ -165,7 +165,7 @@ A trainable ability with its own experience and level, raised by doing the match
 _Avoid_: Stat, attribute, profession
 
 **Total level**:
-The sum of a player's levels across the 23 registered skills, at most 2,277. Combat and Foraging don't count: they are replaced when they split.
+The sum of a player's levels across the 23 registered skills, at most 2,277. Combat doesn't count: it is replaced when it splits.
 _Avoid_: Overall level, combat level
 
 **Combat level**:
@@ -198,16 +198,19 @@ _Avoid_: Shield skill, parry
 When a shield stops an enemy's hit that would have landed, so it does no damage. Only a player with a shield can block.
 _Avoid_: Parry, dodge, miss
 
+**Herblaw**:
+The gathering skill trained by picking berries and herbs from bushes.
+_Avoid_: Herbalism, herblore
+
 **Foraging**:
-The skill trained by picking food from bushes; the food heals when eaten.
-_Avoid_: Gathering, herbalism
+Former skill; became Herblaw, with its experience.
 
 **Mining**:
 The skill trained by taking ore from veins and smelting it into bars at a furnace.
 _Avoid_: Gathering, quarrying
 
 **Gathering skill**:
-A skill trained by taking items from a **site**, a tile that runs out and grows back, either where it was or at another spot of its site pool: Foraging from bushes, Mining from veins. It names the family, and is no other name for either skill.
+A skill trained by taking items from a **site**, a tile that runs out and grows back, either where it was or at another spot of its site pool: Herblaw from bushes, Mining from veins. It names the family, and is no other name for either skill.
 _Avoid_: Resource skill, harvesting
 
 **Smithing**:
@@ -225,7 +228,7 @@ The one shared secret a friend must give to create an account.
 _Avoid_: Referral, key
 
 **Action**:
-The one thing a player is currently doing (walking, foraging, mining, smithing or fighting); a new click replaces it.
+The one thing a player is currently doing (walking, picking, mining, smithing or fighting); a new click replaces it.
 _Avoid_: Task, job, activity
 
 **Inventory**:

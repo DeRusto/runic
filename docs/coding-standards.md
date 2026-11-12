@@ -38,7 +38,7 @@ Rules for placing code:
 - `shared` has no runtime dependencies and touches neither the DOM nor Node APIs.
 - The client never imports from `server`, and the server never imports from `client`.
 - Everything `shared` exports goes through [`shared/src/index.ts`](../shared/src/index.ts). Other workspaces import from `"@runic/shared"`, never from a path inside it.
-- One file per game concept (`foraging.ts`, `gear.ts`, `pathfinding.ts`), named in camelCase after that concept. A file grows until a second concept moves in; then split it.
+- One file per game concept (`herblaw.ts`, `gear.ts`, `pathfinding.ts`), named in camelCase after that concept. A file grows until a second concept moves in; then split it.
 
 ## The server decides
 
@@ -55,7 +55,7 @@ The server is the single source of truth (see [ADR 0001](adr/0001-300ms-server-t
 
 - Game values live in tables and named constants in `shared`, never as literals in logic. Name constants in `SCREAMING_SNAKE_CASE` with their unit in the name (`_TICKS`, `_MS`, `_PERCENT`, `PER_LEVEL`).
 - Tables are `as const` objects keyed by kind (`BUSHES`, `VEINS`, `GEAR`, `RECIPES`), and their key type comes from the table: `type BushKind = keyof typeof BUSHES`. Add a kind by adding a row, not a branch.
-- When several features differ only in data, describe the difference in one registry and write the logic once over it, as `GATHERING` does for foraging and mining. More gathering skills are coming, so weigh a shared helper against the next skill, not today's line count.
+- When several features differ only in data, describe the difference in one registry and write the logic once over it, as `GATHERING` does for Herblaw and Mining. More gathering skills are coming, so weigh a shared helper against the next skill, not today's line count.
 - Cite the spec section a value comes from in its comment (`Spec §5.`), so a later reader can check it.
 - Health and damage are integers in hundredths of a Hitpoints level (`HEALTH_PER_HITPOINTS_LEVEL`). Keep game arithmetic in integers and round once, where the spec says.
 
