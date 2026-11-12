@@ -215,3 +215,4 @@ export * from "./skills.ts";
 export * from "./playerMenu.ts";
 export * from "./social.ts";
 export * from "./woodcutting.ts";
+export * from "./fishing.ts";

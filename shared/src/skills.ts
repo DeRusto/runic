@@ -9,6 +9,7 @@ export const SKILLS = [
   ["Mining", "miningXp"],
   ["Smithing", "smithingXp"],
   ["Woodcutting", "woodcuttingXp"],
+  ["Fishing", "fishingXp"],
   ["Blocking", "blockingXp"],
   ["Mastery", "masteryXp"],
 ] as const;
@@ -26,7 +27,6 @@ const UPCOMING_SKILLS = [
   ["Prayer", "prayerXp"],
   ["Magic", "magicXp"],
   ["Cooking", "cookingXp"],
-  ["Fishing", "fishingXp"],
   ["Firemaking", "firemakingXp"],
   ["Crafting", "craftingXp"],
   ["Agility", "agilityXp"],

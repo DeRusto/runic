@@ -1,9 +1,12 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { EnemyKind } from "./enemies.ts";
+import type { FishingSpotKind } from "./fishing.ts";
 import type { BushKind } from "./herblaw.ts";
 import type { TreeKind } from "./woodcutting.ts";
 
-export type GroundKind = "grass" | "thicket" | "path" | "ashen";
+export type GroundKind = "grass" | "thicket" | "path" | "ashen" | "water";
+/** Water can never be walked on, with or without a site on it. */
+export const groundBlocks = (ground: GroundKind) => ground === "water";
 export type PropKind =
   "tree" | "rock" | "tuft" | "well" | "lamp" | "barrel" | "crate";
 /** The five metals, lowest first. Each tier's item ids start with it (`bronzeSword`). */
@@ -18,6 +21,7 @@ export type TileKind = {
   bush?: BushKind;
   vein?: VeinTier;
   tree?: TreeKind;
+  fishingSpot?: FishingSpotKind;
   station?: StationKind;
   villager?: VillagerId;
   house?: "wall" | "door";
@@ -55,6 +59,8 @@ export const TILE_KINDS = {
   M: { ground: "grass", villager: "marta", blocks: true },
   $: { ground: "grass", villager: "aldous", blocks: true },
   f: { ground: "thicket", villager: "bram", blocks: true },
+  Y: { ground: "grass", villager: "tamsin", blocks: true },
+  "~": { ground: "water", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },
   W: { ground: "path", prop: "well", blocks: true },

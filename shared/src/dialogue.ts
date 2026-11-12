@@ -168,6 +168,34 @@ export const VILLAGERS = {
       bye: { lines: [you("Bye."), villager("Mind the roots.")] },
     },
   },
+  // The Fisher (#206). Tamsin is the build ticket's flavour name.
+  tamsin: {
+    name: "Tamsin",
+    role: "fisher",
+    start: "greet",
+    tools: ["rod"],
+    nodes: {
+      greet: {
+        lines: [
+          villager("Tamsin. I fish the Lake, when the fish let me."),
+          villager("Look for the ripples. That's where they're biting."),
+        ],
+        choices: [
+          { text: "Can I have a rod?", to: "rod", action: "giveTools" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      rod: {
+        lines: [
+          you("Can I have a rod?"),
+          villager(
+            "Take this one. Perch at first; the trout and pike come with practice.",
+          ),
+        ],
+      },
+      bye: { lines: [you("Bye."), villager("Tight lines.")] },
+    },
+  },
 } satisfies Record<string, Villager>;
 
 /** "a pickaxe", "an axe". */

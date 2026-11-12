@@ -1,5 +1,6 @@
 import { VILLAGERS } from "./dialogue.ts";
 import { ENEMIES } from "./enemies.ts";
+import { FISHING_SPOTS } from "./fishing.ts";
 import { BUSHES } from "./herblaw.ts";
 import {
   GATHERING,
@@ -7,7 +8,7 @@ import {
   type GatheringSkill,
 } from "./gathering.ts";
 import { VEINS } from "./mining.ts";
-import type { Tile, TileKind } from "./region.ts";
+import { groundBlocks, type Tile, type TileKind } from "./region.ts";
 import { TREES } from "./woodcutting.ts";
 
 type TiledProperty = { name: string; value: unknown };
@@ -56,6 +57,7 @@ const FEATURE_VALUES = {
   bush: BUSHES,
   vein: VEINS,
   tree: TREES,
+  fishingSpot: FISHING_SPOTS,
   station: { furnace: 1, anvil: 1 } satisfies Record<
     NonNullable<TileKind["station"]>,
     1
@@ -70,6 +72,7 @@ const GROUND_VALUES = {
   thicket: 1,
   path: 1,
   ashen: 1,
+  water: 1,
 } satisfies Record<TileKind["ground"], 1>;
 
 const fail = (message: string): never => {
@@ -193,7 +196,7 @@ export function loadRegion(
       if (featureId !== undefined && Object.keys(feature).length === 0)
         fail(`tile ${featureId} in "features" means nothing`);
       if ("ground" in feature) fail(`ground tile in "features" at ${x},${y}`);
-      return { ground, blocks: false, ...feature } as TileKind;
+      return { ground, blocks: groundBlocks(ground), ...feature } as TileKind;
     }),
   );
 
@@ -214,7 +217,6 @@ export function loadRegion(
       place(tile, object);
       continue;
     }
-    if (tile.blocks) fail(`a spot stands on a blocking tile at ${x},${y}`);
     // A named spot belongs to the pool of that kind, so pools can overlap.
     const inside = pools.filter(
       (pool, i) =>
@@ -228,6 +230,12 @@ export function loadRegion(
           : `the spot at ${x},${y} is outside every pool`,
       );
     if (inside.length > 1) fail(`the spot at ${x},${y} is inside two pools`);
+    // A site on water is fished from the bank; any other stands on open ground.
+    if (GATHERING[inside[0]!.skill].onWater) {
+      if (tile.ground !== "water")
+        fail(`a fishing spot at ${x},${y} must be on water`);
+    } else if (tile.blocks)
+      fail(`a spot stands on a blocking tile at ${x},${y}`);
     inside[0]!.spots.push({ x, y });
   }
   for (const { kind, active, spots } of pools)

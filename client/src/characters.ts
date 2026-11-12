@@ -579,6 +579,8 @@ const VILLAGER_MODELS = {
   marta: "Rogue",
   aldous: "Mage",
   bram: "Rogue_Hooded",
+  // Every KayKit adventurer is taken, and Tamsin stands far from Marta.
+  tamsin: "Rogue",
 } satisfies Record<VillagerId, string>;
 
 /** What a villager holds, by their model's node name for it. */

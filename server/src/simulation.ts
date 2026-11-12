@@ -49,7 +49,9 @@ import {
   RECIPES,
   REGEN_INTERVAL_TICKS,
   REGEN_PERCENT_OF_MAX_HEALTH,
+  groundBlocks,
   respawnTile,
+  rollCatch,
   rollFinds,
   siteId,
   SHELF_SLOTS,
@@ -155,6 +157,7 @@ export const Player = schema(
     miningXp: t.uint32().default(0),
     smithingXp: t.uint32().default(0),
     woodcuttingXp: t.uint32().default(0),
+    fishingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -208,7 +211,14 @@ export const Vein = schema({ minesLeft: t.uint8() }, "Vein");
 
 export const Tree = schema({ chopsLeft: t.uint8() }, "Tree");
 
-const SITE_SCHEMAS = { bushes: Bush, veins: Vein, trees: Tree };
+export const FishingSpot = schema({ catchesLeft: t.uint8() }, "FishingSpot");
+
+const SITE_SCHEMAS = {
+  bushes: Bush,
+  veins: Vein,
+  trees: Tree,
+  fishingSpots: FishingSpot,
+};
 
 export const WorldState = schema(
   {
@@ -218,6 +228,7 @@ export const WorldState = schema(
     bushes: t.map(Bush),
     veins: t.map(Vein),
     trees: t.map(Tree),
+    fishingSpots: t.map(FishingSpot),
     /** Tagged for views: the room adds each one to the views of the players who can see it. */
     groundItems: t.map(GroundItem).view(),
     /** The general store's shelf, the same for every player: item ids, and parallel to them how many. */
@@ -424,7 +435,7 @@ export class Simulation {
     this.state[stateField].delete(id);
     const tile = this.tiles[site.y]![site.x]!;
     delete tile[field];
-    tile.blocks = false;
+    tile.blocks = groundBlocks(tile.ground);
     pool.comebackTicks.push(
       this.state.tick + gatheringSource(site.skill, site.kind).regrowTicks,
     );
@@ -515,6 +526,7 @@ export class Simulation {
       miningXp,
       smithingXp,
       woodcuttingXp,
+      fishingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -540,6 +552,7 @@ export class Simulation {
       miningXp,
       smithingXp,
       woodcuttingXp,
+      fishingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -1228,17 +1241,17 @@ export class Simulation {
           : { type: verb, player: id, success },
       );
       if (!success) continue;
-      this.earnXp(player, xpField, source.xp);
+      const { item, xp } = rollCatch(source, level, this.random);
+      this.earnXp(player, xpField, xp);
       // Room is counted before either lands, so the second ore goes on the
       // ground, owned by the miner, when the first took the last of it.
-      const room = this.roomFor(source.item, player);
+      const room = this.roomFor(item, player);
       for (let i = 0; i < count; i++) {
-        if (i < room)
-          this.addToSlot(player, slotFor(source.item, player), source.item);
+        if (i < room) this.addToSlot(player, slotFor(item, player), item);
         else
           this.groundItems.spawn(
             player,
-            source.item,
+            item,
             1,
             player.username,
             this.state.tick,

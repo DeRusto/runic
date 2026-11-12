@@ -16,6 +16,7 @@ const TILESET = {
       id: 4,
       properties: [property("vein", "copper"), property("blocks", true)],
     },
+    { id: 5, properties: [property("ground", "water")] },
   ],
 };
 const at = (x: number, y: number) => ({ x: x * 16, y: y * 16 });
@@ -51,6 +52,24 @@ const pool = (
     property("active", active),
   ],
 });
+/** The 3×2 region with water (gid 6) in the middle of the bottom row, and `objects` placed. */
+const lake = (objects: object[]) =>
+  mapWith({
+    layers: mapWith({}, objects).layers.map((l) =>
+      l.name === "ground" ? { ...l, data: [2, 1, 1, 1, 6, 1] } : l,
+    ),
+  });
+const fishingPool = {
+  type: "sitePool",
+  ...at(0, 1),
+  width: 48,
+  height: 16,
+  properties: [
+    property("site", "fishingSpot"),
+    property("kind", "shore"),
+    property("active", 1),
+  ],
+};
 const spot = (x: number, y: number, name?: string) => ({
   type: "siteSpot",
   ...at(x, y),
@@ -112,6 +131,15 @@ describe("loadRegion", () => {
       },
     ]);
     expect(tiles[1]![1]).toEqual({ ground: "grass", blocks: false });
+  });
+
+  it("makes water block, and puts a fishing spot on it", () => {
+    const { tiles, pools } = load(lake([respawn, fishingPool, spot(1, 1)]));
+    expect(tiles[1]![1]).toEqual({ ground: "water", blocks: true });
+    expect(pools[0]).toMatchObject({
+      skill: "fishing",
+      spots: [{ x: 1, y: 1 }],
+    });
   });
 
   it("puts a spot inside overlapping pools in the pool its name gives", () => {
@@ -309,6 +337,16 @@ describe("loadRegion", () => {
       "a pool that keeps no site active",
       mapWith({}, [respawn, pool(0), spot(1, 1)]),
       "active",
+    ],
+    [
+      "a fishing spot on land",
+      lake([respawn, fishingPool, spot(2, 1)]),
+      "a fishing spot at 2,1 must be on water",
+    ],
+    [
+      "a vein spot on water",
+      lake([respawn, { ...pool(1), ...at(0, 1), width: 48 }, spot(1, 1)]),
+      "blocking",
     ],
     [
       "a spot on a blocking tile",

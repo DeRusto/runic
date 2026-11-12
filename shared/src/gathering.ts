@@ -1,3 +1,4 @@
+import { FISHING_SPOTS } from "./fishing.ts";
 import { BUSHES } from "./herblaw.ts";
 import { takeRefusal, type HasInventory, type ItemId } from "./items.ts";
 import { toolRefusal } from "./dialogue.ts";
@@ -12,13 +13,23 @@ export const PICK_INTENT = "pick";
 export const MINE_INTENT = "mine";
 /** The chop intent's message type; its payload is the clicked tree's id in state. */
 export const CHOP_INTENT = "chop";
+/** The fish intent's message type; its payload is the clicked fishing spot's id in state. */
+export const FISH_INTENT = "fish";
 
 /** One find a site can give on a successful gather: `chance` it rolls, and the one item it gives — `item`, or one of `split` by share. Each find rolls on its own, so one success can give several. */
 export type FindRoll =
   | { chance: number; item: ItemId }
   | { chance: number; split: { item: ItemId; share: number }[] };
 
-/** One row of `BUSHES`, `VEINS` or `TREES`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. `finds` are the finds a success can give; unset means none. */
+/** A better item a success can give instead of the source's own, from `level` on, on a `chance` roll, with its own experience. */
+export type CatchRoll = {
+  level: number;
+  chance: number;
+  item: ItemId;
+  xp: number;
+};
+
+/** One row of `BUSHES`, `VEINS`, `TREES` or `FISHING_SPOTS`: `level` is the skill level needed, and `holds` is how many a site has before it runs out. `doubleChance` is the chance a success gives 2 of the item; unset means always 1. `finds` are the finds a success can give; unset means none. `catches`, best first, can replace `item` and `xp`; unset means never. */
 export type GatheringSource = {
   level: number;
   holds: number;
@@ -26,6 +37,7 @@ export type GatheringSource = {
   xp: number;
   doubleChance?: number;
   finds?: FindRoll[];
+  catches?: readonly CatchRoll[];
   item: ItemId;
 };
 
@@ -52,6 +64,8 @@ export const GATHERING = {
     clip: "PickUp",
     success: "Picked!",
     successDouble: undefined,
+    /** Whether the site sits on water, fished from the land beside it, rather than on open ground. */
+    onWater: false,
   },
   mining: {
     skill: "Mining",
@@ -67,6 +81,7 @@ export const GATHERING = {
     clip: "Pickaxing",
     success: "Mined!",
     successDouble: "Mined 2!",
+    onWater: false,
   },
   woodcutting: {
     skill: "Woodcutting",
@@ -82,6 +97,23 @@ export const GATHERING = {
     clip: "Chopping",
     success: "Chopped!",
     successDouble: undefined,
+    onWater: false,
+  },
+  fishing: {
+    skill: "Fishing",
+    xpField: "fishingXp",
+    tool: "rod",
+    runOutFirst: false,
+    sources: FISHING_SPOTS,
+    site: "fishingSpot",
+    verb: "fish",
+    stateField: "fishingSpots",
+    leftField: "catchesLeft",
+    intent: FISH_INTENT,
+    clip: "Fishing_Cast",
+    success: "Caught!",
+    successDouble: undefined,
+    onWater: true,
   },
 } as const;
 
@@ -116,6 +148,17 @@ export function rollFinds(
     if (gave !== undefined) found.push(gave);
   }
   return found;
+}
+
+/** What one success gives and its experience: the first of the source's catches the player's level allows whose roll comes up, or else its own item. */
+export function rollCatch(
+  source: GatheringSource,
+  level: number,
+  random: () => number,
+): { item: ItemId; xp: number } {
+  for (const roll of source.catches ?? [])
+    if (level >= roll.level && random() < roll.chance) return roll;
+  return source;
 }
 
 /** In the order a tick advances them. */
