@@ -125,6 +125,29 @@ test("a site never appears under a player: with every free spot taken, it waits 
   expect(veinIds()).toEqual([id(C)]);
 });
 
+test("a site never appears on a ground item: it waits for the item to go", () => {
+  start(pool(1, [A, C]));
+  addAt("miner", { x: 5, y: 3 });
+  mineOut("miner", A);
+  addAt("onA", A);
+  addAt("dropper", C);
+  player("dropper").inventory[0] = "tin";
+  player("dropper").inventoryCounts[0] = 1;
+  sim.queueDrop("dropper", 0, 1);
+  sim.tick();
+  sim.queueWalk("dropper", { x: 2, y: 2 });
+  runTicks(REGROW_TICKS + 10);
+  expect(veinIds()).toEqual([]);
+
+  const [item] = sim.state.groundItems.keys();
+  sim.queueTake("dropper", item!);
+  runTicks(4);
+  expect(sim.state.groundItems.size).toBe(0);
+  sim.queueWalk("dropper", { x: 2, y: 2 });
+  runTicks(4);
+  expect(veinIds()).toEqual([id(C)]);
+});
+
 test("a player still mining a site when it runs out stops", () => {
   start(pool(1, [A, C]));
   addAt("miner", { x: 5, y: 3 });
