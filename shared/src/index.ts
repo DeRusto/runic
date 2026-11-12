@@ -119,6 +119,12 @@ export function logoutRefusal(locked: boolean) {
 export const REGEN_INTERVAL_TICKS = 20;
 export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const HEALING_POOL_INTERVAL_TICKS = 4;
+/** A Delicious fish's buff runs this many ticks, or 60 s (#221). */
+export const DELICIOUS_BUFF_TICKS = 200;
+/** Within it, this often it heals (#221). */
+export const DELICIOUS_BUFF_INTERVAL_TICKS = 20;
+/** Each time, this percent of the fish's per-tick heal (#221). */
+export const DELICIOUS_BUFF_PERCENT = 20;
 export const SAVE_INTERVAL_TICKS = 100;
 /** How long after its drop only its owner can see a ground item: one minute (#71). */
 export const GROUND_ITEM_OWNER_TICKS = 200;
@@ -180,6 +186,8 @@ export type WorldEvent =
   /** An item finished at a station, by its id, so the client can name an improved one (spec §5). */
   | { type: "made"; player: string; item: string }
   | { type: "eaten"; player: string }
+  /** A Delicious fish's buff started or was refreshed for `player`, with `ticks` of it left (#221). */
+  | { type: "delicious"; player: string; ticks: number }
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */

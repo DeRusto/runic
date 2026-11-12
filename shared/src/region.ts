@@ -14,7 +14,8 @@ export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
 /** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
 export type VeinTier = Exclude<Tier, "bronze" | "steel">;
-export type StationKind = "furnace" | "anvil";
+/** A furnace smelts ore, an anvil makes gear, and a range cooks food (#221). */
+export type StationKind = "furnace" | "anvil" | "range";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
@@ -55,6 +56,7 @@ export const TILE_KINDS = {
   C: { ground: "ashen", tree: "charwood", blocks: true },
   F: { ground: "grass", station: "furnace", blocks: true },
   N: { ground: "grass", station: "anvil", blocks: true },
+  G: { ground: "grass", station: "range", blocks: true },
   B: { ground: "grass", villager: "odo", blocks: true },
   M: { ground: "grass", villager: "marta", blocks: true },
   $: { ground: "grass", villager: "aldous", blocks: true },

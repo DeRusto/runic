@@ -6,10 +6,10 @@ import { levelFor, type XpField } from "./skills.ts";
 
 type Recipe = {
   station: StationKind;
-  /** The skill that gates this recipe: the furnace's is Mining, the anvil's is Smithing. */
-  skill: "Mining" | "Smithing";
+  /** The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing, the range's Cooking. */
+  skill: "Mining" | "Smithing" | "Cooking";
   /** That skill's synced experience field. */
-  xpField: "miningXp" | "smithingXp";
+  xpField: "miningXp" | "smithingXp" | "cookingXp";
   /** That skill's level needed. */
   level: number;
   costs: Partial<Record<ItemId, number>>;
@@ -290,6 +290,88 @@ export const RECIPES = {
     ticks: 12,
     xp: { smithingXp: 108 },
   },
+  /** #221's range: one raw fish each, and the same fish again with a berry or a herb (spec #219's shape). Each pays Cooking, and all take as long as a bar. */
+  cookedPerch: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 1,
+    costs: { perch: 1 },
+    ticks: 6,
+    xp: { cookingXp: 12 },
+  },
+  berryPerch: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 5,
+    costs: { perch: 1, berry: 1 },
+    ticks: 6,
+    xp: { cookingXp: 18 },
+  },
+  herbPerch: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 10,
+    costs: { perch: 1, herb: 1 },
+    ticks: 6,
+    xp: { cookingXp: 24 },
+  },
+  cookedTrout: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 10,
+    costs: { trout: 1 },
+    ticks: 6,
+    xp: { cookingXp: 30 },
+  },
+  berryTrout: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 15,
+    costs: { trout: 1, berry: 1 },
+    ticks: 6,
+    xp: { cookingXp: 45 },
+  },
+  herbTrout: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 20,
+    costs: { trout: 1, herb: 1 },
+    ticks: 6,
+    xp: { cookingXp: 60 },
+  },
+  cookedPike: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 20,
+    costs: { pike: 1 },
+    ticks: 6,
+    xp: { cookingXp: 50 },
+  },
+  berryPike: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 25,
+    costs: { pike: 1, berry: 1 },
+    ticks: 6,
+    xp: { cookingXp: 75 },
+  },
+  herbPike: {
+    station: "range",
+    skill: "Cooking",
+    xpField: "cookingXp",
+    level: 30,
+    costs: { pike: 1, herb: 1 },
+    ticks: 6,
+    xp: { cookingXp: 100 },
+  },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
 
@@ -301,6 +383,18 @@ export const IMPROVED_PER_MILLE_PER_LEVEL = 2;
 export const IMPROVED_PER_MILLE_CAP = 200;
 /** One improved item in five is rare; the rest are uncommon (spec §3). */
 export const RARE_SHARE_OF_IMPROVED = 1 / 5;
+
+/** The chance, in tenths of a percent, that food cooked at its recipe's level comes out Delicious (#221). */
+export const DELICIOUS_PER_MILLE_AT_GATE = 40;
+/** Added to the Delicious chance, in tenths of a percent, per Cooking level above the recipe's (#221). */
+export const DELICIOUS_PER_MILLE_PER_LEVEL = 2;
+/** The most the Delicious chance reaches, in tenths of a percent (#221). */
+export const DELICIOUS_PER_MILLE_CAP = 200;
+
+/** The percent of fish cooked at its recipe's level that burns (#221). */
+export const BURN_PERCENT_AT_GATE = 25;
+/** Taken off the burn chance, in percent, per Cooking level above the recipe's, floored at 0 (#221). */
+export const BURN_PERCENT_PER_LEVEL = 1;
 
 /** The id of one `item` made at this Smithing level: gear rolls whether it is improved, then rare, then its Virtue (spec §2). Anything else is never improved. */
 export function madeItem(
@@ -319,6 +413,28 @@ export function madeItem(
   const virtue = VIRTUES[Math.floor(random() * VIRTUES.length)];
   return `${item}:${quality}:${virtue}`;
 }
+
+/** The id of one `item` cooked at this Cooking level: food rolls whether it comes out Delicious, by the improved-item formula (#221). */
+export function cookedItem(
+  item: RecipeItem,
+  level: number,
+  random: () => number,
+): string {
+  const perMille = Math.min(
+    DELICIOUS_PER_MILLE_AT_GATE +
+      DELICIOUS_PER_MILLE_PER_LEVEL * (level - RECIPES[item].level),
+    DELICIOUS_PER_MILLE_CAP,
+  );
+  return random() < perMille / 1000 ? `${item}:delicious` : item;
+}
+
+/** The percent of `item` that burns when cooked at this Cooking level, floored at 0 (#221). */
+export const burnPercent = (item: RecipeItem, level: number) =>
+  Math.max(
+    0,
+    BURN_PERCENT_AT_GATE -
+      BURN_PERCENT_PER_LEVEL * (level - RECIPES[item].level),
+  );
 
 export const costsOf = (item: RecipeItem) =>
   Object.entries(RECIPES[item].costs) as [ItemId, number][];

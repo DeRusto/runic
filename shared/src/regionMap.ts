@@ -58,7 +58,7 @@ const FEATURE_VALUES = {
   vein: VEINS,
   tree: TREES,
   fishingSpot: FISHING_SPOTS,
-  station: { furnace: 1, anvil: 1 } satisfies Record<
+  station: { furnace: 1, anvil: 1, range: 1 } satisfies Record<
     NonNullable<TileKind["station"]>,
     1
   >,

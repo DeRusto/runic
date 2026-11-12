@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  burnPercent,
+  cookedItem,
   countOf,
   levelRefusal,
   madeItem,
@@ -9,14 +11,20 @@ import {
 } from "./making.ts";
 import { xpForLevel } from "./skills.ts";
 
-const holding = (held: [string, number][], smithingXp = 0, miningXp = 0) => ({
+const holding = (
+  held: [string, number][],
+  smithingXp = 0,
+  miningXp = 0,
+  cookingXp = 0,
+) => ({
   smithingXp,
   miningXp,
+  cookingXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are the rebalance spec §3's Making table", () => {
+test("the recipes are the rebalance spec §3's Making table, and #221's range after it", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -288,6 +296,87 @@ test("the recipes are the rebalance spec §3's Making table", () => {
       ticks: 12,
       xp: { smithingXp: 108 },
     },
+    cookedPerch: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 1,
+      costs: { perch: 1 },
+      ticks: 6,
+      xp: { cookingXp: 12 },
+    },
+    berryPerch: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 5,
+      costs: { perch: 1, berry: 1 },
+      ticks: 6,
+      xp: { cookingXp: 18 },
+    },
+    herbPerch: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 10,
+      costs: { perch: 1, herb: 1 },
+      ticks: 6,
+      xp: { cookingXp: 24 },
+    },
+    cookedTrout: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 10,
+      costs: { trout: 1 },
+      ticks: 6,
+      xp: { cookingXp: 30 },
+    },
+    berryTrout: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 15,
+      costs: { trout: 1, berry: 1 },
+      ticks: 6,
+      xp: { cookingXp: 45 },
+    },
+    herbTrout: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 20,
+      costs: { trout: 1, herb: 1 },
+      ticks: 6,
+      xp: { cookingXp: 60 },
+    },
+    cookedPike: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 20,
+      costs: { pike: 1 },
+      ticks: 6,
+      xp: { cookingXp: 50 },
+    },
+    berryPike: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 25,
+      costs: { pike: 1, berry: 1 },
+      ticks: 6,
+      xp: { cookingXp: 75 },
+    },
+    herbPike: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 30,
+      costs: { pike: 1, herb: 1 },
+      ticks: 6,
+      xp: { cookingXp: 100 },
+    },
   });
 });
 
@@ -413,12 +502,63 @@ test("too few materials are refused", () => {
   expect(makeRefusal("copperSword", player)).toBe("Not enough materials");
 });
 
-test("the anvil needs a hammer and the furnace needs nothing", () => {
+test("the anvil needs a hammer and the furnace and range need nothing", () => {
   expect(stationRefusal("anvil", { tools: ["pickaxe"] })).toBe(
     "You need a hammer. The Blacksmith will give you one.",
   );
   expect(stationRefusal("anvil", { tools: ["hammer"] })).toBeUndefined();
   expect(stationRefusal("furnace", { tools: [] })).toBeUndefined();
+  expect(stationRefusal("range", { tools: [] })).toBeUndefined();
+});
+
+describe("cooking at the range (#221)", () => {
+  test("the base fish are gated on Cooking at 1, 10 and 20, the dishes 5 above them, the herb dishes 10", () => {
+    const player = holding([["perch", 1]]);
+    expect(makeRefusal("cookedPerch", player)).toBeUndefined();
+    expect(
+      makeRefusal("cookedTrout", holding([["trout", 1]], 0, 0, xpForLevel(9))),
+    ).toBe("Needs Cooking 10");
+    expect(
+      makeRefusal(
+        "herbPike",
+        holding(
+          [
+            ["pike", 1],
+            ["herb", 1],
+          ],
+          0,
+          0,
+          xpForLevel(29),
+        ),
+      ),
+    ).toBe("Needs Cooking 30");
+    expect(
+      makeRefusal("berryPike", holding([["pike", 1]], 0, 0, xpForLevel(25))),
+    ).toBe("Not enough materials");
+  });
+
+  test("food rolls Delicious by the improved-item formula, at the fish's gate and 0.2% a level to its 20% cap", () => {
+    expect(cookedItem("cookedPerch", 1, rolling(0.0399))).toBe(
+      "cookedPerch:delicious",
+    );
+    expect(cookedItem("cookedPerch", 1, rolling(0.04))).toBe("cookedPerch");
+    expect(cookedItem("cookedTrout", 20, rolling(0.0599))).toBe(
+      "cookedTrout:delicious",
+    );
+    // Cooked perch's gate is 1, so the cap arrives: 40 + 2 × 98 over it.
+    expect(cookedItem("cookedPerch", 99, rolling(0.1999))).toBe(
+      "cookedPerch:delicious",
+    );
+    expect(cookedItem("cookedPerch", 99, rolling(0.2))).toBe("cookedPerch");
+  });
+
+  test("a burn is 25% at the fish's gate, a percent less per level, floored at 0", () => {
+    expect(burnPercent("cookedPerch", 1)).toBe(25);
+    expect(burnPercent("cookedPerch", 30)).toBe(0);
+    expect(burnPercent("cookedTrout", 10)).toBe(25);
+    expect(burnPercent("cookedTrout", 11)).toBe(24);
+    expect(burnPercent("berryPike", 30)).toBe(20);
+  });
 });
 
 /** A random source that returns `rolls` in order. */

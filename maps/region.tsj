@@ -1,11 +1,11 @@
 { "columns":24,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":384,
+ "imagewidth":400,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":24,
+ "tilecount":25,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -313,6 +313,20 @@
                  "name":"ground",
                  "type":"string",
                  "value":"water"
+                }]
+        }, 
+        {
+         "id":24,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"station",
+                 "type":"string",
+                 "value":"range"
                 }]
         }],
  "tilewidth":16,

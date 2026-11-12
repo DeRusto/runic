@@ -53,10 +53,20 @@ export const ITEMS = {
   birchLog: STACKS,
   oakLog: STACKS,
   charwoodLog: STACKS,
-  /** From fishing spots (#210), caught raw: not food until Cooking (Phase 6). */
+  /** From fishing spots (#210), caught raw: a material until the range cooks it into food (#221). */
   perch: STACKS,
   trout: STACKS,
   pike: STACKS,
+  /** From the range (#221), and the fish's dishes with a berry or a herb. */
+  cookedPerch: STACKS,
+  cookedTrout: STACKS,
+  cookedPike: STACKS,
+  berryPerch: STACKS,
+  berryTrout: STACKS,
+  berryPike: STACKS,
+  herbPerch: STACKS,
+  herbTrout: STACKS,
+  herbPike: STACKS,
   /** All of a player's coins share one slot with no cap (village spec §3). */
   coins: { stack: Infinity },
 } as const;
@@ -65,14 +75,18 @@ export type ItemId = keyof typeof ITEMS;
 /** The id of coins, which the general store pays in (village spec §3). */
 export const COINS = "coins";
 
-/** The Qualities an item can be made at, lowest first; common is a plain id (spec §2). */
-export const QUALITIES = ["common", "uncommon", "rare"] as const;
+/** The Qualities an item can be at, lowest first: the three gear is made at, and a food's Delicious. A common item is a plain id (spec §2, ADR 0004). */
+export const QUALITIES = ["common", "uncommon", "rare", "delicious"] as const;
 export type Quality = (typeof QUALITIES)[number];
 /** The Virtues an improved item can carry, as they appear in its id (spec §2). */
 export const VIRTUES = ["fortitude", "might", "avoidance"] as const;
 export type Virtue = (typeof VIRTUES)[number];
 
-/** Splits an id held in state or a save into its base id, Quality and Virtue: `copperChestplate:uncommon:fortitude`, or a plain id for a common item (ADR 0004). Every lookup by item id reads `base`. */
+/**
+ * Splits an id held in state or a save into its base id, Quality and Virtue: `copperChestplate:uncommon:fortitude`,
+ * `cookedPerch:delicious`, or a plain id for a common item (ADR 0004, and #221's food suffix). Every
+ * lookup by item id reads `base`.
+ */
 export function itemParts(id: string) {
   const [base, quality = "common", virtue] = id.split(":");
   return {

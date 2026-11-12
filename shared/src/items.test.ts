@@ -33,8 +33,8 @@ describe("ITEMS", () => {
   });
 
   test("every tier has its bar, sword, shield, helmet, chestplate and leggings, and its ore if it has veins", () => {
-    // Food 2, Emberbone 1, finds 5, six per tier, three ores, three logs, three fish and coins.
-    expect(Object.keys(ITEMS)).toHaveLength(48);
+    // Food 10, Emberbone 1, finds 5, six per tier, three ores, three logs, three raw fish and coins.
+    expect(Object.keys(ITEMS)).toHaveLength(57);
   });
 });
 
@@ -110,6 +110,15 @@ describe("an item id's parts (ADR 0004)", () => {
       quality: "rare",
       virtue: "might",
     });
+  });
+
+  test("a Delicious food's suffix is a Quality with no Virtue (#221)", () => {
+    expect(itemParts("cookedPerch:delicious")).toEqual({
+      base: "cookedPerch",
+      quality: "delicious",
+      virtue: undefined,
+    });
+    expect(itemParts("cookedPerch:delicious").base).toBe("cookedPerch");
   });
 
   test("an improved piece stacks to 1, like its common form", () => {

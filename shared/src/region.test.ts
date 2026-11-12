@@ -64,6 +64,7 @@ const IS = {
   path: (tile) => tile.ground === "path",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
+  range: (tile) => tile.station === "range",
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   house: (tile) => !!tile.house,
@@ -107,7 +108,12 @@ const key2 = ([x, y]: readonly [number, number]) => key(x, y);
 const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
 const VEINS = ["copper", "iron", "emberite"] as const;
 const BUSHES = ["berryBush", "herbBush"] as const;
-const STATIONS_AND_BLACKSMITH = ["furnace", "anvil", "blacksmith"] as const;
+const STATIONS_AND_BLACKSMITH = [
+  "furnace",
+  "anvil",
+  "range",
+  "blacksmith",
+] as const;
 const TREES = ["birch", "oak", "charwood"] as const;
 
 describe("the region", () => {
@@ -129,6 +135,7 @@ describe("the region", () => {
     ["skeleton", 6],
     ["furnace", 4],
     ["anvil", 1],
+    ["range", 1],
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
@@ -379,17 +386,23 @@ describe("the region", () => {
     ]);
   });
 
+  it("stands the range beside the furnace's north-east corner (#221)", () => {
+    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+    expect(tilesOf("range")).toEqual([[x + 3, y]]);
+  });
+
   it("hides none of the smithy from the default camera, which looks north-west", () => {
     const isTall = (tile: TileKind) =>
       !!tile.house ||
-      tile.station === "furnace" ||
+      tile.station !== undefined ||
       ["tree", "well", "lamp"].includes(tile.prop ?? "");
-    const furnace = new Set(tilesOf("furnace").map(([x, y]) => key(x, y)));
+    const stations = new Set(
+      tilesOf(...STATIONS_AND_BLACKSMITH).map(([x, y]) => key(x, y)),
+    );
     for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
       for (let dx = 0; dx <= 4; dx++) {
         for (let dy = 0; dy <= 4; dy++) {
-          // The furnace's own tiles stand south-east of one another.
-          if (furnace.has(key(x + dx, y + dy))) continue;
+          if (stations.has(key(x + dx, y + dy))) continue;
           if (dx || dy) expect(isTall(region[y + dy]![x + dx]!)).toBe(false);
         }
       }
@@ -430,6 +443,7 @@ describe("parseRegion", () => {
     ["e", { ground: "ashen", vein: "emberite", blocks: true }],
     ["F", { ground: "grass", station: "furnace", blocks: true }],
     ["N", { ground: "grass", station: "anvil", blocks: true }],
+    ["G", { ground: "grass", station: "range", blocks: true }],
     ["B", { ground: "grass", villager: "odo", blocks: true }],
     ["H", { ground: "grass", house: "wall", blocks: true }],
     ["D", { ground: "grass", house: "door", blocks: true }],

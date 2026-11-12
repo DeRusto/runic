@@ -36,11 +36,12 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   pike: 12,
 };
 
-/** How many times its common version's value an item of each Quality is worth (village spec §5). */
+/** How many times its common version's value an item of each Quality is worth (village spec §5). Delicious food is as rare as a rare piece, and worth the same multiple (#221). */
 export const QUALITY_VALUE_TIMES: Record<Quality, number> = {
   common: 1,
   uncommon: 2,
   rare: 4,
+  delicious: 4,
 };
 
 /**
@@ -79,11 +80,12 @@ export const STARTING_STOCK: Partial<Record<ItemId, number>> = {
 };
 /** One of each item below its starting stock comes back this often: 30 s (village spec §5). */
 export const RESTOCK_TICKS = 100;
-/** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min and 20 min (village spec §5). */
+/** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min, 20 min, and Delicious with the rare (village spec §5, #221). */
 export const DRAIN_TICKS: Record<Quality, number> = {
   common: 200,
   uncommon: 1000,
   rare: 4000,
+  delicious: 4000,
 };
 
 /** What the shelf holds, as the synced state has it: parallel item ids and counts. */

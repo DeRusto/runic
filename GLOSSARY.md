@@ -31,7 +31,7 @@ The body of water in the region, where players fish from the bank. Water can't b
 _Avoid_: Pond, mere
 
 **Smithy**:
-The part of the village where the furnace, anvil and Blacksmith stand.
+The part of the village where the furnace, anvil, range and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
@@ -66,8 +66,12 @@ _Avoid_: Smelter, forge
 A fixed tile where a player turns bars into gear.
 _Avoid_: Forge, workbench
 
+**Range**:
+A fixed tile in the smithy, beside the furnace, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
+_Avoid_: Stove, oven, cooker
+
 **Station**:
-A furnace or an anvil: a fixed place where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
+A furnace, an anvil or a range: a fixed place where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -225,6 +229,10 @@ _Avoid_: Resource skill, harvesting
 The skill trained by turning bars into gear at an anvil. Smelting ore into bars is Mining.
 _Avoid_: Crafting, forging
 
+**Cooking**:
+The skill trained by turning a raw fish into food at the range. It gates each fish and dish, decides how often one burns and how often one comes out Delicious, and pays the food's experience.
+_Avoid_: Chef work, cookery
+
 ### Players
 
 **Account**:
@@ -300,8 +308,12 @@ All the ground items on one tile. A tile holds any number of them.
 _Avoid_: Heap, stack
 
 **Food**:
-An item that heals the player who eats it, over the next few ticks rather than all at once; berries and herbs are food.
+An item that heals the player who eats it, over the next few ticks rather than all at once: a berry and the range's cooked fish and dishes are food. A raw fish is a material until the range cooks it, and a herb is Cooking material, not food.
 _Avoid_: Consumable, potion
+
+**Delicious**:
+The food Quality a fish or dish can come out of the range at. It heals exactly like its common form, and eating it starts a short extra healing of its own that runs through combat and is refreshed, never stacked, by another Delicious fish. Its name shows in gold.
+_Avoid_: Perfect, tasty, golden
 
 **Healing pool**:
 The health a player's eaten food has yet to give back, as healing ticks waiting in eating order. Each food gives its own amount per healing tick, one food's ticks at a time, so more food heals for longer but not faster.
@@ -320,7 +332,7 @@ The wood a player takes from a tree: birch, oak or charwood logs. A successful c
 _Avoid_: Wood, lumber, timber
 
 **Fish**:
-What a player catches at a fishing spot with a rod: **Perch** (Fishing 1), **Trout** (10) or **Pike** (20). Every fishing spot can give any of them. A catch is a perch unless the player's level lets a better fish come up instead. Fish are caught raw, so they are a material, not food, and can't be eaten. A successful catch gives 1, and fish stack like ore.
+What a player catches at a fishing spot with a rod: **Perch** (Fishing 1), **Trout** (10) or **Pike** (20). Every fishing spot can give any of them. A catch is a perch unless the player's level lets a better fish come up instead. Fish are caught raw, so they are a material, not food, and can't be eaten until the range cooks them. A successful catch gives 1, and fish stack like ore.
 _Avoid_: Raw fish
 
 **Find**:
@@ -348,7 +360,7 @@ Gear of uncommon or rare Quality, which carries a Virtue. Today only making give
 _Avoid_: Magic item, enchanted item, rare item (rare is one Quality)
 
 **Quality**:
-A step on the ladder an item is made at: common, uncommon or rare. A common item has no Virtue, an uncommon one has a Virtue, and a rare one has a Virtue at double the size. Quality never changes an item's base stats, gate or look. Its colour shows in the item's name.
+A step on the ladder an item is made at: common, uncommon or rare. A common item has no Virtue, an uncommon one has a Virtue, and a rare one has a Virtue at double the size. Food can also come out Delicious. Quality never changes an item's base stats, gate or look. Its colour shows in the item's name.
 _Avoid_: Rarity, grade, tier (that's the metal)
 
 **Virtue**:
