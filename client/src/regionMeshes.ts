@@ -5,6 +5,7 @@ import {
   type GroundKind,
   type PropKind,
   type StationKind,
+  type TreeKind,
   type VeinTier,
   type TileKind,
 } from "@runic/shared";
@@ -40,7 +41,7 @@ const STATIONS: Record<StationKind, { file: string; width: number }> = {
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 /** A spot with no site on it is drawn at nothing, so it looks like its plain ground. */
 const GONE_SCALE = new THREE.Vector3(0, 0, 0);
-/** How a bush or vein is drawn: full, run out, or gone from its spot in a site pool. */
+/** How a site is drawn: full, run out, or gone from its spot in a site pool. */
 export type SiteLook = "full" | "runOut" | "gone";
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
@@ -53,6 +54,15 @@ const BUSH_MODELS: Record<BushKind, string> = {
   berryBush: "Bush_2_B",
   herbBush: "Bush_4_B",
 };
+/** Each kind of tree its own model and tint, apart from the tree props' models so a choppable one reads as one. */
+const TREE_MODELS: Record<TreeKind, { model: string; tint: number }> = {
+  birch: { model: "Tree_3_A", tint: 0xf2ffd8 },
+  oak: { model: "Tree_2_B", tint: 0xffffff },
+  charwood: { model: "Tree_Bare_1_A", tint: 0x8a4a3a },
+};
+const TREE_SCALE = 0.5;
+/** Kenney's stump, about a third of a tile across, grown to most of one. */
+export const STUMP_SCALE = 2.4;
 const KAYKIT_PROPS = {
   tree: { scale: 0.45, models: ["Tree_1_A", "Tree_2_A", "Tree_4_A"] },
   rock: { scale: 0.65, models: ["Rock_1_E", "Rock_2_C"] },
@@ -133,13 +143,15 @@ export function oreParts(ore: THREE.Object3D) {
   };
 }
 
-/** A slab per tile and the props, houses, veins, stations and bushes on them, all fixed but for bushes and veins: returns how to show one full, run out or gone. */
+/** A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites: returns how to show one full, run out or gone. A run-out tree is a stump. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
     [berryBush, herbBush, ...propMeshes],
+    treeMeshes,
     furnace,
     anvil,
     oreModel,
+    stumpModel,
     village,
   ] = await Promise.all([
     Promise.all(
@@ -148,9 +160,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         ...Object.values(KAYKIT_PROPS).flatMap(({ models }) => models),
       ].map(loadModel),
     ),
+    Promise.all(
+      Object.values(TREE_MODELS).map(({ model }) => loadModel(model)),
+    ),
     loadStation(STATIONS.furnace),
     loadStation(STATIONS.anvil),
     new GLTFLoader().loadAsync("/models/ore.glb"),
+    new GLTFLoader().loadAsync("/models/stump_round.glb"),
     loadVillageModels([
       ...Object.values(HOUSE_MODELS),
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
@@ -162,6 +178,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     anvil: [] as THREE.Vector3[],
   };
   const ore = oreParts(oreModel.scene);
+  const trees = Object.fromEntries(
+    Object.keys(TREE_MODELS).map((kind, i) => [kind, treeMeshes[i]!.geometry]),
+  ) as Record<TreeKind, THREE.BufferGeometry>;
+  // Kenney's stump is two coloured parts, baked into one geometry like the village's.
+  const stump = bakeColours(
+    stumpModel.scene.getObjectByProperty("type", "Mesh")!.parent as THREE.Group,
+  );
   const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
   for (const [kind, { models }] of Object.entries(KAYKIT_PROPS)) {
@@ -198,6 +221,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   for (const geometry of village.values()) {
     ownMaterials.set(geometry, villageMaterial);
   }
+  ownMaterials.set(stump, villageMaterial);
 
   const slabs = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, SLAB_HEIGHT, 1),
@@ -220,10 +244,15 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     return placements.get(geometry)!.push({ matrix, color }) - 1;
   };
 
-  /** Where each part of a bush or vein is drawn, by its tile's id, and the tint it takes when run out. */
+  /** Where each part of a site is drawn, by its tile's id, and the tint it takes when run out. A part with `only` shows, untinted and full size, at that look alone. */
   const runOutSlots = new Map<
     string,
-    { geometry: THREE.BufferGeometry; slot: number; tint: THREE.Color }[]
+    {
+      geometry: THREE.BufferGeometry;
+      slot: number;
+      tint: THREE.Color;
+      only?: SiteLook;
+    }[]
   >();
 
   const matrix = new THREE.Matrix4();
@@ -243,7 +272,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
-      const { bush, prop, vein, station, house } = tile;
+      const { bush, prop, vein, tree, station, house } = tile;
       if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
         for (const { part, angle, height } of houseParts(tiles, x, y)) {
@@ -257,7 +286,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           );
         }
       }
-      if (!bush && !prop && !vein) return;
+      if (!bush && !prop && !vein && !tree) return;
       const rotation = new THREE.Quaternion().setFromAxisAngle(
         up,
         (((hash >>> 16) & 255) / 256) * Math.PI * 2,
@@ -276,6 +305,34 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         );
         runOutSlots.set(siteId({ x, y }), [
           { geometry, slot, tint: RUN_OUT_TINT },
+        ]);
+      } else if (tree) {
+        const geometry = trees[tree];
+        const scale = new THREE.Vector3().setScalar(TREE_SCALE);
+        runOutSlots.set(siteId({ x, y }), [
+          {
+            geometry,
+            slot: place(
+              geometry,
+              new THREE.Matrix4().compose(at, rotation, scale),
+              new THREE.Color(TREE_MODELS[tree].tint),
+            ),
+            tint: white,
+            only: "full",
+          },
+          {
+            geometry: stump,
+            slot: place(
+              stump,
+              new THREE.Matrix4().compose(
+                at,
+                rotation,
+                new THREE.Vector3().setScalar(STUMP_SCALE),
+              ),
+            ),
+            tint: white,
+            only: "runOut",
+          },
         ]);
       } else if (vein) {
         const placed = new THREE.Matrix4().compose(
@@ -328,20 +385,28 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     meshes.set(geometry, mesh);
   }
 
-  return (id: string, look: SiteLook) => {
-    const runOut = look === "runOut";
-    for (const { geometry, slot, tint } of runOutSlots.get(id)!) {
+  const setLook = (id: string, look: SiteLook) => {
+    for (const { geometry, slot, tint, only } of runOutSlots.get(id)!) {
       const instances = meshes.get(geometry)!;
       const { matrix, color } = placements.get(geometry)![slot]!;
+      const runOut = look === "runOut" && !only;
+      const shown = only ? look === only : look !== "gone";
       instances.setMatrixAt(
         slot,
-        look === "full"
-          ? matrix
-          : matrix.clone().scale(runOut ? RUN_OUT_SCALE : GONE_SCALE),
+        !shown
+          ? matrix.clone().scale(GONE_SCALE)
+          : runOut
+            ? matrix.clone().scale(RUN_OUT_SCALE)
+            : matrix,
       );
       instances.setColorAt(slot, runOut ? tint : color);
       instances.instanceMatrix.needsUpdate = true;
       instances.instanceColor!.needsUpdate = true;
     }
   };
+  // A tree's stump is hidden until it runs out.
+  tiles.forEach((row, y) =>
+    row.forEach(({ tree }, x) => tree && setLook(siteId({ x, y }), "full")),
+  );
+  return setLook;
 }
