@@ -1036,6 +1036,7 @@ export class Simulation {
     removeItems(inventory, inventoryCounts, "vial", 1);
     removeItems(inventory, inventoryCounts, POTIONS[potion].plant, 1);
     addItems(inventory, inventoryCounts, potion, 1);
+    this.earnXp(player, "herblawXp", POTIONS[potion].xp);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */

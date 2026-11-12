@@ -1,3 +1,4 @@
+import { BUSHES } from "./herblaw.ts";
 import {
   heldCount,
   removeItems,
@@ -8,6 +9,9 @@ import {
 } from "./items.ts";
 import { levelFor } from "./skills.ts";
 
+/** Mixing pays this multiple of the plant's pick experience, as cooking pays over the catch (#222). */
+export const MIX_XP_PER_PICK = 1.5;
+
 /** What one potion does and what it's mixed from (#222). */
 export type Potion = {
   /** The Virtue its buff carries while it lasts. */
@@ -16,13 +20,30 @@ export type Potion = {
   plant: ItemId;
   /** The Herblaw level needed to mix it: the plant's pick gate. */
   level: number;
+  /** What mixing one pays, in Herblaw experience: `MIX_XP_PER_PICK` of the plant's pick. */
+  xp: number;
 };
 
 /** The three Virtue potions, by id (#222). The base herb makes no potion: it's Cooking material. */
 export const POTIONS = {
-  mightPotion: { virtue: "might", plant: "dewpetal", level: 5 },
-  fortitudePotion: { virtue: "fortitude", plant: "nightbloom", level: 15 },
-  avoidancePotion: { virtue: "avoidance", plant: "emberbloom", level: 20 },
+  mightPotion: {
+    virtue: "might",
+    plant: "dewpetal",
+    level: 5,
+    xp: MIX_XP_PER_PICK * BUSHES.dewpetalBush.xp,
+  },
+  fortitudePotion: {
+    virtue: "fortitude",
+    plant: "nightbloom",
+    level: 15,
+    xp: MIX_XP_PER_PICK * BUSHES.nightbloomBush.xp,
+  },
+  avoidancePotion: {
+    virtue: "avoidance",
+    plant: "emberbloom",
+    level: 20,
+    xp: MIX_XP_PER_PICK * BUSHES.emberbloomBush.xp,
+  },
 } as const satisfies Record<string, Potion>;
 export type PotionId = keyof typeof POTIONS;
 const POTION_IDS = Object.keys(POTIONS) as PotionId[];

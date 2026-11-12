@@ -6,6 +6,7 @@ import {
   FORTITUDE_POTION_PERCENT,
   mixRefusal,
   MIGHT_POTION_HIT,
+  MIX_XP_PER_PICK,
   potionFromPlant,
   potionOf,
   POTIONS,
@@ -38,12 +39,28 @@ describe("POTIONS", () => {
   ] as const)(
     "%s carries %s, mixed from %s at Herblaw %i",
     (potion, virtue, plant, level) => {
-      expect(POTIONS[potion]).toEqual({ virtue, plant, level });
+      expect(POTIONS[potion].virtue).toBe(virtue);
+      expect(POTIONS[potion].plant).toBe(plant);
       expect(POTIONS[potion].level).toBe(BUSHES[`${plant}Bush`].level);
       expect(potionFromPlant(plant)).toBe(potion);
       expect(potionOf(potion)).toBe(potion);
     },
   );
+
+  it("pays 1.5 of its plant's pick experience: 18, 45 and 75 (#222)", () => {
+    expect(POTIONS.mightPotion.xp).toBe(
+      MIX_XP_PER_PICK * BUSHES.dewpetalBush.xp,
+    );
+    expect(POTIONS.fortitudePotion.xp).toBe(
+      MIX_XP_PER_PICK * BUSHES.nightbloomBush.xp,
+    );
+    expect(POTIONS.avoidancePotion.xp).toBe(
+      MIX_XP_PER_PICK * BUSHES.emberbloomBush.xp,
+    );
+    expect(POTIONS.mightPotion.xp).toBe(18);
+    expect(POTIONS.fortitudePotion.xp).toBe(45);
+    expect(POTIONS.avoidancePotion.xp).toBe(75);
+  });
 
   it("leaves the base herb out: the range cooks it, nothing mixes it (#222)", () => {
     expect(potionFromPlant("herb")).toBeUndefined();

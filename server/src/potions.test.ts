@@ -126,10 +126,19 @@ describe("mixing a potion", () => {
     ]);
   });
 
-  test("mixing pays no experience", () => {
+  test("mixing pays 1.5 of the plant's pick experience, in Herblaw (#222)", () => {
     addHolding(5, ["dewpetal", 1], ["vial", 1]);
+    const before = player().herblawXp;
     sim.mix("a", 0);
-    expect(player().herblawXp).toBe(xpForLevel(5));
+    expect(player().herblawXp).toBe(before + 18);
+  });
+
+  test("a refused mix grants no experience", () => {
+    addHolding(4, ["dewpetal", 1], ["vial", 1]);
+    const before = player().herblawXp;
+    sim.mix("a", 0);
+    expect(lines()).toEqual(["Needs Herblaw 5"]);
+    expect(player().herblawXp).toBe(before);
   });
 
   test("mixing doesn't stop a walk", () => {

@@ -211,7 +211,7 @@ When a shield stops an enemy's hit that would have landed, so it does no damage.
 _Avoid_: Parry, dodge, miss
 
 **Herblaw**:
-The gathering skill trained by picking berries, herbs and potion plants from bushes.
+The gathering skill trained by picking berries, herbs and potion plants from bushes, and by mixing potions.
 _Avoid_: Herbalism, herblore
 
 **Foraging**:
@@ -340,7 +340,7 @@ A drink mixed from one vial and one potion plant, and drunk like food is eaten. 
 _Avoid_: Elixir, draught, consumable
 
 **Mixing**:
-Making a potion, anywhere in the inventory and with no station: using a vial on a potion plant. The plant's pick gate is the Herblaw level it needs, and the making engine's level and materials refusals apply. The base herb mixes nothing: it is Cooking material.
+Making a potion, anywhere in the inventory and with no station: using a vial on a potion plant. The plant's pick gate is the Herblaw level it needs, it pays 1.5 of the plant's pick experience, and the making engine's level and materials refusals apply. The base herb mixes nothing: it is Cooking material.
 _Avoid_: Brewing, crafting
 
 **Material**:
