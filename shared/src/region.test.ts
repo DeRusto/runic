@@ -95,6 +95,14 @@ const tilesNextTo = ([x, y]: readonly [number, number]) =>
     ),
   );
 
+/** The fewest steps in `from` to stand next to any spot of `kind`. */
+const nearestSteps = (kind: string, from: Map<string, number>) =>
+  Math.min(
+    ...spotsOf(kind).flatMap((spot) =>
+      tilesNextTo(spot).map(([x, y]) => from.get(key(x, y)) ?? Infinity),
+    ),
+  );
+
 const key2 = ([x, y]: readonly [number, number]) => key(x, y);
 const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
 const VEINS = ["copper", "iron", "emberite"] as const;
@@ -105,6 +113,11 @@ const TREES = ["birch", "oak", "charwood"] as const;
 describe("the region", () => {
   const respawn = tilesOf("respawn")[0]!;
   const reachable = stepsFrom(respawn);
+  /** Every tile a player can walk to from the respawn tile without setting foot on ashen ground. */
+  const withoutAshen = stepsFrom(
+    respawn,
+    (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
+  );
 
   it("is exactly 96×64", () => {
     expect(region.map((row) => row.length)).toEqual(Array(64).fill(96));
@@ -254,15 +267,9 @@ describe("the region", () => {
   });
 
   it("puts the nearest berry spot nearer the village than the nearest herb spot", () => {
-    const nearest = (kind: (typeof BUSHES)[number]) =>
-      Math.min(
-        ...spotsOf(kind).flatMap((spot) =>
-          tilesNextTo(spot).map(
-            ([x, y]) => reachable.get(key(x, y)) ?? Infinity,
-          ),
-        ),
-      );
-    expect(nearest("berryBush")).toBeLessThan(nearest("herbBush"));
+    expect(nearestSteps("berryBush", reachable)).toBeLessThan(
+      nearestSteps("herbBush", reachable),
+    );
   });
 
   it("paints the Lake in the north-west, and makes every water tile at its bank a spot of one fishing pool, 3 active", () => {
@@ -288,11 +295,7 @@ describe("the region", () => {
   });
 
   it("puts the nearest fishing spot 30 to 35 steps from the respawn tile", () => {
-    const nearest = Math.min(
-      ...spotsOf("shore").flatMap((spot) =>
-        tilesNextTo(spot).map(([x, y]) => reachable.get(key(x, y)) ?? Infinity),
-      ),
-    );
+    const nearest = nearestSteps("shore", reachable);
     expect([nearest >= 30, nearest <= 35]).toEqual([true, true]);
   });
 
@@ -325,10 +328,6 @@ describe("the region", () => {
   });
 
   it("makes the Boneyard the only route to every Charwood tree", () => {
-    const withoutAshen = stepsFrom(
-      respawn,
-      (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
-    );
     expect(
       tilesOf("charwood").filter((tree) =>
         tilesNextTo(tree).some(([x, y]) => withoutAshen.has(key(x, y))),
@@ -337,10 +336,6 @@ describe("the region", () => {
   });
 
   it("makes the Boneyard the only route to every Emberite spot", () => {
-    const withoutAshen = stepsFrom(
-      respawn,
-      (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
-    );
     expect(
       spotsOf("emberite").filter((spot) =>
         [spot, ...tilesNextTo(spot)].some(([x, y]) =>
@@ -353,13 +348,7 @@ describe("the region", () => {
   it("puts the nearest Copper spot nearer the Smithy than the nearest Iron spot, and that nearer than the nearest Emberite spot", () => {
     const fromSmithy = stepsFrom(tilesNextTo(tilesOf("furnace")[0]!)[0]!);
     const nearest = (kind: (typeof VEINS)[number]) =>
-      Math.min(
-        ...spotsOf(kind).flatMap((spot) =>
-          tilesNextTo(spot).map(
-            ([x, y]) => fromSmithy.get(key(x, y)) ?? Infinity,
-          ),
-        ),
-      );
+      nearestSteps(kind, fromSmithy);
     expect(nearest("copper")).toBeLessThan(nearest("iron"));
     expect(nearest("iron")).toBeLessThan(nearest("emberite"));
   });
