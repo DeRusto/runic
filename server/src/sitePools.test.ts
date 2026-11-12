@@ -125,6 +125,25 @@ test("a site never appears under a player: with every free spot taken, it waits 
   expect(veinIds()).toEqual([id(C)]);
 });
 
+test("a site never appears under an enemy: it waits for the enemy to move off", () => {
+  const home = { x: 1, y: 1 };
+  const withSpider = TILES.map((row) => row.map((tile) => ({ ...tile })));
+  withSpider[home.y]![home.x]!.enemy = "spider";
+  // The pick roll never makes it wander, so it stays where it's put.
+  sim = new Simulation(withSpider, () => roll, [pool(1, [A, C])]);
+  addAt("miner", { x: 5, y: 3 });
+  mineOut("miner", A);
+  addAt("onA", A);
+  const spider = sim.state.enemies.get("0")!;
+  Object.assign(spider, C);
+  runTicks(REGROW_TICKS + 10);
+  expect(veinIds()).toEqual([]);
+
+  Object.assign(spider, home);
+  runTicks(2);
+  expect(veinIds()).toEqual([id(C)]);
+});
+
 test("a site never appears on a ground item: it waits for the item to go", () => {
   start(pool(1, [A, C]));
   addAt("miner", { x: 5, y: 3 });
