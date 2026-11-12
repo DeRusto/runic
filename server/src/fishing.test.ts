@@ -1,13 +1,12 @@
 import {
   gatherRefusal,
-  INVENTORY_SLOTS,
   parseRegion,
   VILLAGERS,
   xpForLevel,
   type SitePool,
-  type WorldEvent,
 } from "@runic/shared";
 import { beforeEach, expect, test } from "vitest";
+import { gatheringHarness, seededRandom } from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
 
 // The respawn tile is (1,1); the Lake is row 2's water, and the spot at (3,2) is fished from (3,1).
@@ -36,37 +35,12 @@ beforeEach(() => {
 const player = (id = "a") => sim.state.players.get(id)!;
 const catchesLeft = () => sim.state.fishingSpots.get(SPOT)?.catchesLeft;
 
+const harness = gatheringHarness(() => sim, "fishing", { x: 3, y: 1 });
 /** Adds a player with a rod beside the spot, unless `tools` says otherwise. */
-function addAt(id: string, fishingXp: number, tools = ["rod"]) {
-  sim.addPlayer(
-    id,
-    {
-      x: 3,
-      y: 1,
-      fishingXp,
-      tools,
-      combatXp: 0,
-      defenseXp: 0,
-      herblawXp: 0,
-      hitpointsXp: 4050,
-      health: 10,
-      inventory: Array<string>(INVENTORY_SLOTS).fill(""),
-    },
-    id,
-  );
-}
-
+const addAt = (id: string, fishingXp: number, tools = ["rod"]) =>
+  harness.addAt(id, fishingXp, 3, 1, tools);
 /** Clicks the spot, runs ticks, and returns each `fish` event. */
-function fish(id = "a") {
-  sim.queueGather(id, "fishing", SPOT);
-  const seen: WorldEvent[] = [];
-  for (let i = 0; i < 8; i++) {
-    sim.tick();
-    for (const event of sim.events.splice(0))
-      if (event.type === "fish") seen.push(event);
-  }
-  return seen;
-}
+const fish = (id = "a") => harness.gather(SPOT, id);
 
 test("the spot is on water, and water blocks walking with or without a spot on it", () => {
   addAt("a", 0);
@@ -119,10 +93,6 @@ test("below Fishing 10 every catch is a perch", () => {
   fish();
   expect(player().inventory[0]).toBe("perch");
 });
-
-/** Park–Miller, as mining.test.ts uses. */
-const seededRandom = (seed: number) => () =>
-  (seed = (seed * 16807) % 2147483647) / 2147483647;
 
 test("over many catches at Fishing 20, about 20% are pike, 24% trout and the rest perch", () => {
   const random = seededRandom(12345);

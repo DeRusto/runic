@@ -1,11 +1,6 @@
-import {
-  gatherRefusal,
-  INVENTORY_SLOTS,
-  parseRegion,
-  xpForLevel,
-  type WorldEvent,
-} from "@runic/shared";
+import { gatherRefusal, parseRegion, xpForLevel } from "@runic/shared";
 import { beforeEach, expect, test } from "vitest";
+import { gatheringHarness } from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
 
 // The respawn tile is (1,1), a walk of 3 steps from standing next to the Birch at (5,1).
@@ -31,47 +26,11 @@ beforeEach(() => {
 const player = (id = "a") => sim.state.players.get(id)!;
 const chopsLeft = (tree: string) => sim.state.trees.get(tree)!.chopsLeft;
 
-/** Adds a player with an axe, unless `tools` says otherwise. */
-function addAt(
-  id: string,
-  woodcuttingXp: number,
-  x = 4,
-  y = 1,
-  tools = ["axe"],
-) {
-  sim.addPlayer(
-    id,
-    {
-      x,
-      y,
-      woodcuttingXp,
-      tools,
-      combatXp: 0,
-      defenseXp: 0,
-      herblawXp: 0,
-      hitpointsXp: 4050,
-      health: 10,
-      inventory: Array<string>(INVENTORY_SLOTS).fill(""),
-    },
-    id,
-  );
-}
-
-/** Runs ticks and returns each `chop` event with the tick it came on. */
-const attempts = (count: number) => {
-  const seen: { tick: number; event: WorldEvent }[] = [];
-  for (let i = 0; i < count; i++) {
-    sim.tick();
-    for (const event of sim.events.splice(0))
-      if (event.type === "chop") seen.push({ tick: sim.state.tick, event });
-  }
-  return seen;
-};
-
-const chop = (tree: string, id = "a") => {
-  sim.queueGather(id, "woodcutting", tree);
-  attempts(8);
-};
+const { addAt, attempts, gather } = gatheringHarness(() => sim, "woodcutting", {
+  x: 4,
+  y: 1,
+});
+const chop = (tree: string, id = "a") => gather(tree, id);
 
 test("a tree starts full, by its kind", () => {
   expect(chopsLeft(BIRCH)).toBe(4);

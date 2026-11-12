@@ -8,6 +8,7 @@ import {
   type WorldEvent,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
+import { gatheringHarness } from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
 
 // The respawn tile is (1,1), a walk of 3 steps from standing next to the berry bush at (5,1).
@@ -33,23 +34,10 @@ const player = (id = "a") => sim.state.players.get(id)!;
 const picksLeft = (bush: string) => sim.state.bushes.get(bush)!.picksLeft;
 const food = (id = "a") => [...player(id).inventory].filter(Boolean);
 
-/** Puts a player beside the berry bush at (4,1) with the given Herblaw experience. */
-const addAt = (id: string, herblawXp: number, x = 4, y = 1) => {
-  sim.addPlayer("template");
-  const save = sim.saveOf("template")!;
-  sim.removePlayer("template");
-  sim.addPlayer(id, { ...save, x, y, herblawXp });
-};
-
-/** Runs ticks and returns the state tick of each pick attempt. */
-const attemptTicks = (count: number) => {
-  const ticks: number[] = [];
-  for (let i = 0; i < count; i++) {
-    sim.tick();
-    for (const _ of sim.events.splice(0)) ticks.push(sim.state.tick);
-  }
-  return ticks;
-};
+const { addAt, attemptTicks, gather } = gatheringHarness(() => sim, "herblaw", {
+  x: 4,
+  y: 1,
+});
 
 const runTicks = (count: number) => {
   for (let i = 0; i < count; i++) sim.tick();
@@ -57,10 +45,7 @@ const runTicks = (count: number) => {
 };
 
 /** Picks once with a click, however long the wait for the next attempt is. */
-const pick = (bush: string, id = "a") => {
-  sim.queueGather(id, "herblaw", bush);
-  runTicks(8);
-};
+const pick = (bush: string, id = "a") => gather(bush, id);
 
 test("clicking a bush walks next to it and attempts on the tick of arrival", () => {
   roll = FAIL;

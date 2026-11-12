@@ -1,5 +1,6 @@
 import { parseRegion } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
+import { seededRandom } from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -180,11 +181,7 @@ describe("Spiders", () => {
     // From the home at (2,2), the tree and the rock beside it rule out both diagonals up.
     const rows = ["TTTTTTT", "TR...TT", "TTSoTTT", "TTTTTTT"];
     const legal = new Set(["2,2", "1,1", "2,1", "3,1", "4,1"]);
-    let seed = 1;
-    const s = spiderSim(
-      rows,
-      () => (seed = (seed * 16807) % 2147483647) / 2147483647,
-    );
+    const s = spiderSim(rows, seededRandom(1));
     for (let i = 0; i < 2000; i++) {
       const before = spiderTile(s);
       s.tick();
@@ -198,10 +195,9 @@ describe("Spiders", () => {
 
   test("it never wanders more than 5 tiles from home, but does reach 5", () => {
     const row = `TRS${".".repeat(20)}T`;
-    let seed = 7;
     const s = spiderSim(
       ["T".repeat(row.length), row, "T".repeat(row.length)],
-      () => (seed = (seed * 16807) % 2147483647) / 2147483647,
+      seededRandom(7),
     );
     const seen = new Set<number>();
     for (let i = 0; i < 20000; i++) {
