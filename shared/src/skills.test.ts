@@ -52,6 +52,7 @@ test("the registry holds 23 different skills, without Combat, which splits", () 
   const names = SKILL_REGISTRY.map(([skill]) => skill);
   expect(new Set(names).size).toBe(23);
   expect(names).not.toContain("Combat");
+  expect(names).not.toContain("Foraging");
   expect(names).toContain("Herblaw");
 });
 
