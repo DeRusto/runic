@@ -66,6 +66,8 @@ export const GATHERING = {
     successDouble: undefined,
     /** Whether the site sits on water, fished from the land beside it, rather than on open ground. */
     onWater: false,
+    /** Whether a run-out site comes back at another spot of its pool, rather than growing back where it stands. */
+    pooled: true,
   },
   mining: {
     skill: "Mining",
@@ -82,6 +84,7 @@ export const GATHERING = {
     success: "Mined!",
     successDouble: "Mined 2!",
     onWater: false,
+    pooled: true,
   },
   woodcutting: {
     skill: "Woodcutting",
@@ -98,6 +101,8 @@ export const GATHERING = {
     success: "Chopped!",
     successDouble: undefined,
     onWater: false,
+    // Trees are fixed sites: a felled one leaves a stump where it stood (#208).
+    pooled: false,
   },
   fishing: {
     skill: "Fishing",
@@ -114,6 +119,7 @@ export const GATHERING = {
     success: "Caught!",
     successDouble: undefined,
     onWater: true,
+    pooled: true,
   },
 } as const;
 

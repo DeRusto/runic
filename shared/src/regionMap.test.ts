@@ -334,6 +334,22 @@ describe("loadRegion", () => {
       "gold",
     ],
     [
+      "a pool of a site that never pools",
+      mapWith({}, [
+        respawn,
+        {
+          ...pool(1),
+          properties: [
+            property("site", "tree"),
+            property("kind", "birch"),
+            property("active", 1),
+          ],
+        },
+        spot(1, 1),
+      ]),
+      "trees don't pool",
+    ],
+    [
       "a pool that keeps no site active",
       mapWith({}, [respawn, pool(0), spot(1, 1)]),
       "active",

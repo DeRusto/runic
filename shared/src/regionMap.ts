@@ -166,6 +166,7 @@ function readPool(object: TiledObject): SitePool {
   const { site, kind, active } = propertiesOf(object);
   const skill = GATHERING_SKILLS.find((s) => GATHERING[s].site === site);
   if (!skill) return fail(`a pool of unknown site "${String(site)}"`);
+  if (!GATHERING[skill].pooled) fail(`${siteName({ skill })}s don't pool`);
   if (!Object.hasOwn(GATHERING[skill].sources, String(kind)))
     fail(`a ${String(site)} pool of unknown kind "${String(kind)}"`);
   if (!Number.isInteger(active) || (active as number) < 1)
