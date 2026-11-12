@@ -102,8 +102,6 @@ describe("the region", () => {
 
   it.each([
     ["respawn", 1],
-    ["berryBush", 12],
-    ["herbBush", 6],
     ["spider", 8],
     ["skeleton", 6],
     ["furnace", 4],
@@ -115,17 +113,19 @@ describe("the region", () => {
   });
 
   it.each([
-    ["copper", 9, 18],
-    ["iron", 6, 12],
-    ["emberite", 5, 9],
+    ["copper", "mining", 9, 18],
+    ["iron", "mining", 6, 12],
+    ["emberite", "mining", 5, 9],
+    ["berryBush", "herblaw", 12, 24],
+    ["herbBush", "herblaw", 6, 12],
   ] as const)(
-    "keeps %s veins in one pool, %i active of %i spots, and none fixed",
-    (kind, active, spots) => {
+    "keeps %s in one %s pool, %i active of %i spots, and none fixed",
+    (kind, skill, active, spots) => {
       expect(
         pools
           .filter((pool) => pool.kind === kind)
           .map((pool) => [pool.skill, pool.active, pool.spots.length]),
-      ).toEqual([["mining", active, spots]]);
+      ).toEqual([[skill, active, spots]]);
       expect(tilesOf(kind)).toEqual([]);
     },
   );
@@ -147,11 +147,11 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
-  it("lets a player walk next to every bush, spot, station and villager", () => {
+  it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...BUSHES, ...STATIONS_AND_BLACKSMITH, "villager"),
-        ...spotsOf(...VEINS),
+        ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager"),
+        ...spotsOf(...VEINS, ...BUSHES),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
@@ -221,6 +221,30 @@ describe("the region", () => {
       ),
     ).toEqual([]);
     expect(tooNear(tilesOf("spider"), 15)).toEqual([]);
+  });
+
+  it("grows every bush spot in the Thicket, with no two side by side, so bushes never wall one another in", () => {
+    const spots = spotsOf(...BUSHES);
+    expect(spots.filter(([x, y]) => !IS.thicket(region[y]![x]!))).toEqual([]);
+    expect(
+      spots.filter((spot, i) =>
+        spots.some(
+          (other, j) => i !== j && tilesApart(asTile(spot), asTile(other)) < 2,
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("puts the nearest berry spot nearer the village than the nearest herb spot", () => {
+    const nearest = (kind: (typeof BUSHES)[number]) =>
+      Math.min(
+        ...spotsOf(kind).flatMap((spot) =>
+          tilesNextTo(spot).map(
+            ([x, y]) => reachable.get(key(x, y)) ?? Infinity,
+          ),
+        ),
+      );
+    expect(nearest("berryBush")).toBeLessThan(nearest("herbBush"));
   });
 
   it("makes the Boneyard the only route to every Emberite spot", () => {

@@ -91,8 +91,8 @@ const { tiles, pools } = loadWorldRegion();
 type Vein = { tier: VeinTier; tile: Tile; left: number; regrowTick: number };
 const veinTiles: { tier: VeinTier; tile: Tile }[] = [];
 // shortcut: plays each pool's first `active` spots as veins that grow back in place; model the move to another spot if pacing comes to hinge on the walk to it.
-for (const { kind, active, spots } of pools)
-  for (const tile of spots.slice(0, active))
+for (const { skill, kind, active, spots } of pools)
+  for (const tile of skill === "mining" ? spots.slice(0, active) : [])
     veinTiles.push({ tier: kind as VeinTier, tile });
 let furnace: Tile | undefined;
 let anvil: Tile | undefined;

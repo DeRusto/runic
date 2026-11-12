@@ -6,11 +6,11 @@ Open `region.tmj` in Tiled to paint it, or edit it through the `tiled` MCP serve
 
 ## Layers
 
-| Layer        | Type    | Holds                                                 | Rule                        |
-| ------------ | ------- | ----------------------------------------------------- | --------------------------- |
-| `ground`     | Tiles   | grass, thicket, path, ashen                           | Every cell is filled        |
-| `features`   | Tiles   | props, bushes, veins, stations, house walls and doors | At most one per tile        |
-| `placements` | Objects | the respawn, enemy homes, NPCs, site pools and spots  | One per tile, snapped to it |
+| Layer        | Type    | Holds                                                | Rule                        |
+| ------------ | ------- | ---------------------------------------------------- | --------------------------- |
+| `ground`     | Tiles   | grass, thicket, path, ashen                          | Every cell is filled        |
+| `features`   | Tiles   | props, stations, house walls and doors               | At most one per tile        |
+| `placements` | Objects | the respawn, enemy homes, NPCs, site pools and spots | One per tile, snapped to it |
 
 If it's just what stands on a tile, it's a tile in `features`. If it has a name, its own settings, or something refers to it, it's an object in `placements`.
 
@@ -20,13 +20,13 @@ Whether a tile blocks walking comes from the `blocks` property on its tile in th
 
 An object's class is one of these:
 
-| Class       | Needs                                                               |
-| ----------- | ------------------------------------------------------------------- |
-| `respawn`   | Nothing. There's exactly one                                        |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                    |
-| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`                   |
-| `sitePool`  | A rectangle with `site` (`vein`), `kind` and `active` (an int)      |
-| `siteSpot`  | A point inside exactly one `sitePool`, on a tile that doesn't block |
+| Class       | Needs                                                                  |
+| ----------- | ---------------------------------------------------------------------- |
+| `respawn`   | Nothing. There's exactly one                                           |
+| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                       |
+| `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`                      |
+| `sitePool`  | A rectangle with `site` (`vein`, `bush`), `kind` and `active` (an int) |
+| `siteSpot`  | A point inside exactly one `sitePool`, on a tile that doesn't block    |
 
 ## Before committing
 
