@@ -27,7 +27,7 @@ export const players = sqliteTable("players", {
     .references(() => accounts.id),
   combatXp: integer("combat_xp").notNull(),
   defenseXp: integer("defense_xp").notNull(),
-  foragingXp: integer("foraging_xp").notNull(),
+  herblawXp: integer("herblaw_xp").notNull(),
   hitpointsXp: integer("hitpoints_xp").notNull(),
   x: integer().notNull(),
   y: integer().notNull(),

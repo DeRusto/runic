@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUSHES } from "./foraging.ts";
+import { BUSHES } from "./herblaw.ts";
 import {
   attemptChance,
   gatherRefusal,
@@ -24,17 +24,17 @@ describe("attemptChance on bushes", () => {
 describe("gatherRefusal's order", () => {
   const novice = {
     tools: [],
-    foragingXp: 0,
+    herblawXp: 0,
     miningXp: 0,
     inventory: [""],
     inventoryCounts: [0],
   };
 
   it("names a run-out bush before a level the player lacks", () => {
-    expect(gatherRefusal("foraging", "herbBush", 3, novice)).toBe(
-      "You need Foraging 10 to pick this.",
+    expect(gatherRefusal("herblaw", "herbBush", 3, novice)).toBe(
+      "You need Herblaw 10 to pick this.",
     );
-    expect(gatherRefusal("foraging", "herbBush", 0, novice)).toBe(
+    expect(gatherRefusal("herblaw", "herbBush", 0, novice)).toBe(
       "This bush has run out.",
     );
   });

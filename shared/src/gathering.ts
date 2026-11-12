@@ -1,11 +1,11 @@
-import { BUSHES } from "./foraging.ts";
+import { BUSHES } from "./herblaw.ts";
 import { takeRefusal, type HasInventory, type ItemId } from "./items.ts";
 import { VEINS } from "./mining.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
-/** The forage intent's message type; its payload is the clicked bush's id in state. */
-export const FORAGE_INTENT = "forage";
+/** The pick intent's message type; its payload is the clicked bush's id in state. */
+export const PICK_INTENT = "pick";
 /** The mine intent's message type; its payload is the clicked vein's id in state. */
 export const MINE_INTENT = "mine";
 
@@ -30,9 +30,9 @@ export const DOUBLE_YIELD = 2;
 
 /** Everything that tells the gathering skills apart. Each key is also the skill's synced `PlayerAction`. */
 export const GATHERING = {
-  foraging: {
-    skill: "Foraging",
-    xpField: "foragingXp",
+  herblaw: {
+    skill: "Herblaw",
+    xpField: "herblawXp",
     tool: undefined,
     /** A run-out site is refused before the player's own lacks are. */
     runOutFirst: true,
@@ -44,7 +44,7 @@ export const GATHERING = {
     /** The field of `WorldState` holding the sites, and each one's count of what's left. */
     stateField: "bushes",
     leftField: "picksLeft",
-    intent: FORAGE_INTENT,
+    intent: PICK_INTENT,
     clip: "PickUp",
     success: "Picked!",
     successDouble: undefined,

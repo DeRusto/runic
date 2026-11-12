@@ -49,7 +49,7 @@ function addAt(
       tools,
       combatXp: 0,
       defenseXp: 0,
-      foragingXp: 0,
+      herblawXp: 0,
       hitpointsXp: 4050,
       health: 10,
       inventory: Array<string>(INVENTORY_SLOTS).fill(""),
@@ -170,7 +170,7 @@ const mineMany = (vein: string, x: number, y: number, mines: number) => {
         tools: ["pickaxe"],
         combatXp: 0,
         defenseXp: 0,
-        foragingXp: 0,
+        herblawXp: 0,
         hitpointsXp: 4050,
         health: 10,
         inventory: Array<string>(INVENTORY_SLOTS).fill(""),
@@ -367,7 +367,7 @@ test("a failure gives nothing, keeps the vein, and tries again every 8 ticks", (
   expect(minesLeft(COPPER)).toBe(3);
 });
 
-test("the attempt interval follows the Mining level, not Foraging", () => {
+test("the attempt interval follows the Mining level, not Herblaw", () => {
   addAt("b", xpForLevel(15));
   roll = FAIL;
   sim.queueGather("b", "mining", COPPER);
@@ -398,13 +398,13 @@ test("clicking again can't beat the attempt interval", () => {
   expect(ticks).toEqual([1, 9]);
 });
 
-test("foraging and mining share the timer, so swapping can't beat it", () => {
+test("picking and mining share the timer, so swapping can't beat it", () => {
   sim = new Simulation(
     parseRegion(["TTTTT", "TbRcT", "TTTTT"].join("\n")),
     () => FAIL,
   );
   addAt("b", 0, 2, 1);
-  sim.queueGather("b", "foraging", "1,1");
+  sim.queueGather("b", "herblaw", "1,1");
   sim.tick();
   sim.events.length = 0;
   sim.queueGather("b", "mining", "3,1");

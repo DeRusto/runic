@@ -161,7 +161,7 @@ describe("a gather or a fight ends following", () => {
   });
 
   test("a gather", () => {
-    sim.queueGather("a", "foraging", siteId({ x: 6, y: 2 }));
+    sim.queueGather("a", "herblaw", siteId({ x: 6, y: 2 }));
     runTicks(1);
     expect(sim.following("a")).toBeUndefined();
   });

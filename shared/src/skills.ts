@@ -4,7 +4,7 @@ export const MAX_LEVEL = 99;
 export const SKILLS = [
   ["Combat", "combatXp"],
   ["Defense", "defenseXp"],
-  ["Foraging", "foragingXp"],
+  ["Herblaw", "herblawXp"],
   ["Hitpoints", "hitpointsXp"],
   ["Mining", "miningXp"],
   ["Smithing", "smithingXp"],
@@ -29,7 +29,6 @@ const UPCOMING_SKILLS = [
   ["Fishing", "fishingXp"],
   ["Firemaking", "firemakingXp"],
   ["Crafting", "craftingXp"],
-  ["Herblaw", "herblawXp"],
   ["Agility", "agilityXp"],
   ["Thieving", "thievingXp"],
   ["Jewelsmithing", "jewelsmithingXp"],
@@ -38,9 +37,9 @@ const UPCOMING_SKILLS = [
   ["Runecrafting", "runecraftingXp"],
 ] as const;
 
-/** The 23 skills total level counts. Combat and Foraging aren't among them: their splits replace them. */
+/** The 23 skills total level counts. Combat isn't among them: its split replaces it. */
 export const SKILL_REGISTRY = [...SKILLS, ...UPCOMING_SKILLS].filter(
-  ([skill]) => skill !== "Combat" && skill !== "Foraging",
+  ([skill]) => skill !== "Combat",
 );
 
 /** What the bottom bar's skills column fits: two across, three down. */
@@ -50,7 +49,7 @@ export const MAX_PINNED_SKILLS = 6;
 export const STARTING_PINNED_SKILLS = [
   "Combat",
   "Defense",
-  "Foraging",
+  "Herblaw",
   "Hitpoints",
   "Mining",
   "Smithing",

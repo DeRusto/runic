@@ -326,7 +326,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     y: 1,
     combatXp: 0,
     defenseXp: 0,
-    foragingXp: 0,
+    herblawXp: 0,
     hitpointsXp: 4050,
     miningXp: 0,
     smithingXp: 0,
@@ -336,7 +336,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     pinnedSkills: [
       "Combat",
       "Defense",
-      "Foraging",
+      "Herblaw",
       "Hitpoints",
       "Mining",
       "Smithing",
@@ -365,7 +365,7 @@ const SAVED = {
   y: 2,
   combatXp: 1,
   defenseXp: 2,
-  foragingXp: 3,
+  herblawXp: 3,
   hitpointsXp: 4100,
   miningXp: 4,
   smithingXp: 5,
@@ -464,15 +464,15 @@ describe("a player's synced action", () => {
     expect(action(s)).toBe("");
   });
 
-  test("foraging from the click on, through the walk there, until the pick", () => {
+  test("picking from the click on, through the walk there, until the pick", () => {
     const unlucky = start();
-    unlucky.queueGather("a", "foraging", "6,1");
+    unlucky.queueGather("a", "herblaw", "6,1");
     for (let i = 0; i < 8; i++) {
       unlucky.tick();
-      expect(action(unlucky)).toBe("foraging");
+      expect(action(unlucky)).toBe("herblaw");
     }
     const lucky = start(0);
-    lucky.queueGather("a", "foraging", "6,1");
+    lucky.queueGather("a", "herblaw", "6,1");
     for (let i = 0; i < 8; i++) lucky.tick();
     expect(action(lucky)).toBe("");
   });

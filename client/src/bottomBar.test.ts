@@ -96,7 +96,7 @@ function signal<Args extends unknown[]>() {
 const TODAY = [
   "Combat",
   "Defense",
-  "Foraging",
+  "Herblaw",
   "Hitpoints",
   "Mining",
   "Smithing",
@@ -112,7 +112,7 @@ const stateHolding = (...stacks: [string, number][]) => ({
         maxHealth: 1000,
         combatXp: 0,
         defenseXp: 0,
-        foragingXp: 0,
+        herblawXp: 0,
         hitpointsXp: 0,
         miningXp: 0,
         smithingXp: 0,

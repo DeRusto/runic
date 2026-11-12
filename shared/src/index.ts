@@ -202,7 +202,7 @@ export type WorldEvent =
 export * from "./bank.ts";
 export * from "./dialogue.ts";
 export * from "./enemies.ts";
-export * from "./foraging.ts";
+export * from "./herblaw.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";
 export * from "./generalStore.ts";

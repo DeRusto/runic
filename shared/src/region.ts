@@ -1,6 +1,6 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { EnemyKind } from "./enemies.ts";
-import type { BushKind } from "./foraging.ts";
+import type { BushKind } from "./herblaw.ts";
 
 export type GroundKind = "grass" | "thicket" | "path" | "ashen";
 export type PropKind =

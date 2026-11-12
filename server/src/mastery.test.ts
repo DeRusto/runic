@@ -30,7 +30,7 @@ const startAt = (tiles: typeof BUSH_TILES, fields = {}) => {
 };
 const pickBerry = () => {
   rolls = [0];
-  sim.queueGather("a", "foraging", BERRY);
+  sim.queueGather("a", "herblaw", BERRY);
   ticks(8);
 };
 
@@ -47,16 +47,16 @@ test("a new player starts Mastery at 0 experience", () => {
 test("a berry's 10 experience earns 0.7, and the fractions add up", () => {
   startAt(BUSH_TILES, { x: 4, y: 1 });
   pickBerry();
-  expect(me().foragingXp).toBe(10);
+  expect(me().herblawXp).toBe(10);
   expect(me()).toMatchObject({ masteryXp: 0, masteryHundredths: 70 });
   pickBerry();
   expect(me()).toMatchObject({ masteryXp: 1, masteryHundredths: 40 });
 });
 
 test("experience lost to the cap earns nothing", () => {
-  startAt(BUSH_TILES, { x: 4, y: 1, foragingXp: MAX_XP - 1 });
+  startAt(BUSH_TILES, { x: 4, y: 1, herblawXp: MAX_XP - 1 });
   pickBerry();
-  expect(me().foragingXp).toBe(MAX_XP);
+  expect(me().herblawXp).toBe(MAX_XP);
   expect(me()).toMatchObject({ masteryXp: 0, masteryHundredths: 7 });
 });
 
@@ -64,7 +64,7 @@ test("experience at the cap earns nothing, and Mastery's own can't pass it", () 
   startAt(BUSH_TILES, {
     x: 4,
     y: 1,
-    foragingXp: MAX_XP,
+    herblawXp: MAX_XP,
     masteryXp: MAX_XP,
   });
   pickBerry();

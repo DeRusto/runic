@@ -56,7 +56,7 @@ function add(
       inventoryCounts,
       combatXp: 0,
       defenseXp: 0,
-      foragingXp: 0,
+      herblawXp: 0,
       hitpointsXp: 4050,
       health: 10,
     },

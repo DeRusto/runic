@@ -1,6 +1,6 @@
 import { VILLAGERS } from "./dialogue.ts";
 import { ENEMIES } from "./enemies.ts";
-import { BUSHES } from "./foraging.ts";
+import { BUSHES } from "./herblaw.ts";
 import {
   GATHERING,
   GATHERING_SKILLS,

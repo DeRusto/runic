@@ -48,18 +48,18 @@ test("progress is how far through the current level", () => {
   expect(levelProgress(480200)).toBe(1);
 });
 
-test("the registry holds 23 different skills, without the two that split", () => {
+test("the registry holds 23 different skills, without Combat, which splits", () => {
   const names = SKILL_REGISTRY.map(([skill]) => skill);
   expect(new Set(names).size).toBe(23);
   expect(names).not.toContain("Combat");
-  expect(names).not.toContain("Foraging");
+  expect(names).toContain("Herblaw");
 });
 
 test("only the skills that can be trained reach the sheet, the bar and pinning", () => {
   expect(SKILLS.map(([skill]) => skill)).toEqual([
     "Combat",
     "Defense",
-    "Foraging",
+    "Herblaw",
     "Hitpoints",
     "Mining",
     "Smithing",
@@ -72,15 +72,15 @@ test("a new player's total level is Hitpoints 10 and 22 skills at 1", () => {
   expect(totalLevel({ hitpointsXp: 4050 })).toBe(32);
 });
 
-test("total level counts experience held, but not Combat or Foraging", () => {
+test("total level counts experience held, Herblaw's too, but not Combat's", () => {
   expect(
     totalLevel({
       hitpointsXp: 4050,
       miningXp: 50,
+      herblawXp: xpForLevel(10),
       combatXp: MAX_XP,
-      foragingXp: MAX_XP,
     }),
-  ).toBe(33);
+  ).toBe(42);
 });
 
 test("total level tops out at 2,277", () => {
@@ -131,8 +131,8 @@ test("Defense, Blocking and Hitpoints each count a quarter", () => {
   expect(combatLevel({ ...FRESH, defenseXp: xpForLevel(2) })).toBe(3);
 });
 
-test("Mastery and Foraging don't count", () => {
-  expect(combatLevel({ ...FRESH, masteryXp: MAX_XP, foragingXp: MAX_XP })).toBe(
+test("Mastery and Herblaw don't count", () => {
+  expect(combatLevel({ ...FRESH, masteryXp: MAX_XP, herblawXp: MAX_XP })).toBe(
     3,
   );
 });

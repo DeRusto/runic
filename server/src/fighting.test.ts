@@ -25,7 +25,7 @@ const SAVE: PlayerSave = {
   y: 1,
   combatXp: 0,
   defenseXp: 0,
-  foragingXp: 0,
+  herblawXp: 0,
   hitpointsXp: 4050,
   health: 1000,
   inventory: [],
@@ -586,12 +586,12 @@ describe("dying", () => {
     expect(player(s).x).toBe(1);
   });
 
-  test("a dead player's forage intent is ignored", () => {
+  test("a dead player's pick intent is ignored", () => {
     const s = fight(["TTTTTTT", "TRS.b.T", "TTTTTTT"], MISS, 0, 0.99);
     s.addPlayer("a", { ...SAVE, x: 3, health: 1 });
     s.queueTarget("a", "0");
     run(s, 5);
-    s.queueGather("a", "foraging", siteId({ x: 4, y: 1 }));
+    s.queueGather("a", "herblaw", siteId({ x: 4, y: 1 }));
     expect(run(s, 4)).toEqual([]);
   });
 
@@ -915,16 +915,16 @@ describe("fighting back", () => {
     expect(player(s).target).toBe("");
   });
 
-  test("a foraging player carries on", () => {
+  test("a player picking carries on", () => {
     // The bush at (3,1), and the Spider next to the player at the tile they stop on.
     const s = fight(["TTTTTTT", "TRSb..T", "T.....T", "TTTTTTT"]);
     s.addPlayer("a");
-    s.queueGather("a", "foraging", siteId({ x: 3, y: 1 }));
+    s.queueGather("a", "herblaw", siteId({ x: 3, y: 1 }));
     setOn(s, "a");
     const events = run(s, 7);
     expect(swingTicks(events, "enemySwing")).toEqual([1]);
     expect(swingTicks(events, "playerSwing")).toEqual([]);
-    expect(player(s).action).toBe("foraging");
+    expect(player(s).action).toBe("herblaw");
   });
 
   test("a dropped player doesn't", () => {

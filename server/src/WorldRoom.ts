@@ -22,7 +22,7 @@ import {
   END_TALK_INTENT,
   EQUIP_INTENT,
   EVENTS,
-  FORAGE_INTENT,
+  PICK_INTENT,
   LIST_FRIENDS_INTENT,
   LIST_IGNORES_INTENT,
   LOGOUT_INTENT,
@@ -75,8 +75,8 @@ export class WorldRoom extends Room {
       this.sim.queueWalk(client.sessionId, to),
     [TARGET_INTENT]: (client: Client, enemy: string) =>
       this.sim.queueTarget(client.sessionId, enemy),
-    [FORAGE_INTENT]: (client: Client, bush: string) =>
-      this.sim.queueGather(client.sessionId, "foraging", bush),
+    [PICK_INTENT]: (client: Client, bush: string) =>
+      this.sim.queueGather(client.sessionId, "herblaw", bush),
     [MINE_INTENT]: (client: Client, vein: string) =>
       this.sim.queueGather(client.sessionId, "mining", vein),
     [MAKE_INTENT]: (client: Client, intent: { item: string; all: boolean }) =>

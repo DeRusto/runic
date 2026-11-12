@@ -22,7 +22,7 @@ const SAVE: PlayerSave = {
   y: 1,
   combatXp: 0,
   defenseXp: 0,
-  foragingXp: 0,
+  herblawXp: 0,
   hitpointsXp: 4050,
   health: 1000,
   inventory: [],
