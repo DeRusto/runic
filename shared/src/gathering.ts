@@ -1,7 +1,7 @@
 import { FISHING_SPOTS } from "./fishing.ts";
 import { BUSHES } from "./herblaw.ts";
 import { takeRefusal, type HasInventory, type ItemId } from "./items.ts";
-import { toolRefusal } from "./dialogue.ts";
+import { toolRefusal } from "./tools.ts";
 import { VEINS } from "./mining.ts";
 import type { Tile } from "./region.ts";
 import { levelFor } from "./skills.ts";

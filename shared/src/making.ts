@@ -1,4 +1,4 @@
-import { toolRefusal } from "./dialogue.ts";
+import { toolRefusal } from "./tools.ts";
 import { GEAR } from "./gear.ts";
 import { VIRTUES, type HasInventory, type ItemId } from "./items.ts";
 import type { StationKind } from "./region.ts";

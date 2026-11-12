@@ -1,4 +1,4 @@
-import type { Tool } from "./items.ts";
+import type { Tool } from "./tools.ts";
 
 /** A conversation's line, said by the villager or by the player, whose words the chosen choice puts in their mouth. */
 export type DialogueLine = { speaker: "villager" | "you"; text: string };
@@ -197,20 +197,6 @@ export const VILLAGERS = {
     },
   },
 } satisfies Record<string, Villager>;
-
-/** "a pickaxe", "an axe". */
-export const aTool = (tool: Tool) =>
-  `${/^[aeiou]/.test(tool) ? "an" : "a"} ${tool}`;
-
-/** Why a player without `tool` can't do what needs it, naming the villager who gives it, or undefined if they have it. */
-export function toolRefusal(tool: Tool, player: { tools: Iterable<string> }) {
-  if ([...player.tools].includes(tool)) return undefined;
-  const giver = Object.values(VILLAGERS as Record<string, Villager>).find(
-    (villager) => villager.tools?.includes(tool),
-  )!;
-  const role = giver.role[0]!.toUpperCase() + giver.role.slice(1);
-  return `You need ${aTool(tool)}. The ${role} will give you one.`;
-}
 
 export type VillagerId = keyof typeof VILLAGERS;
 

@@ -82,10 +82,6 @@ export function itemParts(id: string) {
   };
 }
 
-/** Every tool. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). Each villager's `tools` says who gives which. */
-export const TOOLS = ["pickaxe", "hammer", "axe", "rod"] as const;
-export type Tool = (typeof TOOLS)[number];
-
 /** The rare finds from Emberite veins, rarest last. Nothing uses them yet (spec §3). */
 export const GEMS = ["ashstone", "cinderglass", "heartflame"];
 

@@ -207,6 +207,7 @@ export * from "./gathering.ts";
 export * from "./gear.ts";
 export * from "./generalStore.ts";
 export * from "./items.ts";
+export * from "./tools.ts";
 export * from "./making.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
