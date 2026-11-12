@@ -59,6 +59,9 @@ const IS = {
   oak: (tile) => tile.tree === "oak",
   charwood: (tile) => tile.tree === "charwood",
   forester: (tile) => tile.villager === "bram",
+  fisher: (tile) => tile.villager === "tamsin",
+  water: (tile) => tile.ground === "water",
+  path: (tile) => tile.ground === "path",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
   blacksmith: (tile) => tile.villager === "odo",
@@ -92,6 +95,7 @@ const tilesNextTo = ([x, y]: readonly [number, number]) =>
     ),
   );
 
+const key2 = ([x, y]: readonly [number, number]) => key(x, y);
 const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
 const VEINS = ["copper", "iron", "emberite"] as const;
 const BUSHES = ["berryBush", "herbBush"] as const;
@@ -114,7 +118,8 @@ describe("the region", () => {
     ["anvil", 1],
     ["blacksmith", 1],
     ["forester", 1],
-    ["villager", 4],
+    ["fisher", 1],
+    ["villager", 5],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -158,7 +163,7 @@ describe("the region", () => {
     expect(
       [
         ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager", ...TREES),
-        ...spotsOf(...VEINS, ...BUSHES),
+        ...spotsOf(...VEINS, ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
@@ -258,6 +263,37 @@ describe("the region", () => {
         ),
       );
     expect(nearest("berryBush")).toBeLessThan(nearest("herbBush"));
+  });
+
+  it("paints the Lake in the north-west, and makes every water tile at its bank a spot of one fishing pool, 3 active", () => {
+    const water = tilesOf("water");
+    expect(water.length).toBeGreaterThan(0);
+    for (const [x, y] of water) {
+      expect([x >= 5 && x <= 27, y >= 2 && y <= 12]).toEqual([true, true]);
+    }
+    const bank = water.filter((tile) => tilesNextTo(tile).length > 0);
+    expect(
+      pools
+        .filter((pool) => pool.skill === "fishing")
+        .map((pool) => [pool.kind, pool.active]),
+    ).toEqual([["shore", 3]]);
+    expect(spotsOf("shore").map(key2).sort()).toEqual(bank.map(key2).sort());
+  });
+
+  it("stands the Fisher on the bank where a path reaches the shore", () => {
+    const fisher = asTile(tilesOf("fisher")[0]!);
+    const near = (kind: keyof typeof IS) =>
+      tilesOf(kind).some((tile) => tilesApart(asTile(tile), fisher) <= 1);
+    expect([near("water"), near("path")]).toEqual([true, true]);
+  });
+
+  it("puts the nearest fishing spot 30 to 35 steps from the respawn tile", () => {
+    const nearest = Math.min(
+      ...spotsOf("shore").flatMap((spot) =>
+        tilesNextTo(spot).map(([x, y]) => reachable.get(key(x, y)) ?? Infinity),
+      ),
+    );
+    expect([nearest >= 30, nearest <= 35]).toEqual([true, true]);
   });
 
   it.each([

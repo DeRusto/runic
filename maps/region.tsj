@@ -1,11 +1,11 @@
-{ "columns":23,
+{ "columns":24,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":368,
+ "imagewidth":384,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":23,
+ "tilecount":24,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -304,6 +304,15 @@
                  "name":"tree",
                  "type":"string",
                  "value":"charwood"
+                }]
+        }, 
+        {
+         "id":23,
+         "properties":[
+                {
+                 "name":"ground",
+                 "type":"string",
+                 "value":"water"
                 }]
         }],
  "tilewidth":16,
