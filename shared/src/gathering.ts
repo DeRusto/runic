@@ -120,6 +120,8 @@ export const GATHERING = {
 export type GatheringSkill = keyof typeof GATHERING;
 type GatheringRow = (typeof GATHERING)[GatheringSkill];
 export type GatheringVerb = GatheringRow["verb"];
+/** The intents that start gathering, one per skill; each payload is the site id. */
+export type GatheringIntent = GatheringRow["intent"];
 export type GatheringLeftField = GatheringRow["leftField"];
 
 /** What one successful gather found: each of the source's finds rolls on its own, and a split find gives exactly one of its items, by share. */
