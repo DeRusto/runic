@@ -499,7 +499,7 @@
                  "rotation":0,
                  "type":"sitePool",
                  "visible":true,
-                 "width":448,
+                 "width":688,
                  "x":64,
                  "y":32
                 }, 
@@ -727,14 +727,14 @@
                 {
                  "height":0,
                  "id":37,
-                 "name":"",
+                 "name":"copper",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
                  "type":"siteSpot",
                  "visible":true,
                  "width":0,
-                 "x":496,
+                 "x":736,
                  "y":416
                 }, 
                 {
@@ -1097,7 +1097,7 @@
                 {
                  "height":0,
                  "id":62,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1110,7 +1110,7 @@
                 {
                  "height":0,
                  "id":63,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1123,7 +1123,7 @@
                 {
                  "height":0,
                  "id":64,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1136,7 +1136,7 @@
                 {
                  "height":0,
                  "id":65,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1149,7 +1149,7 @@
                 {
                  "height":0,
                  "id":66,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1162,7 +1162,7 @@
                 {
                  "height":0,
                  "id":67,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1175,7 +1175,7 @@
                 {
                  "height":0,
                  "id":68,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1188,7 +1188,7 @@
                 {
                  "height":0,
                  "id":69,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1201,7 +1201,7 @@
                 {
                  "height":0,
                  "id":70,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1214,7 +1214,7 @@
                 {
                  "height":0,
                  "id":71,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1227,7 +1227,7 @@
                 {
                  "height":0,
                  "id":72,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1240,7 +1240,7 @@
                 {
                  "height":0,
                  "id":73,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1253,7 +1253,7 @@
                 {
                  "height":0,
                  "id":74,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1266,7 +1266,7 @@
                 {
                  "height":0,
                  "id":75,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1279,7 +1279,7 @@
                 {
                  "height":0,
                  "id":76,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1292,7 +1292,7 @@
                 {
                  "height":0,
                  "id":77,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1305,7 +1305,7 @@
                 {
                  "height":0,
                  "id":78,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1318,7 +1318,7 @@
                 {
                  "height":0,
                  "id":79,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1331,7 +1331,7 @@
                 {
                  "height":0,
                  "id":80,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1344,7 +1344,7 @@
                 {
                  "height":0,
                  "id":81,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1357,7 +1357,7 @@
                 {
                  "height":0,
                  "id":82,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1370,7 +1370,7 @@
                 {
                  "height":0,
                  "id":83,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1383,7 +1383,7 @@
                 {
                  "height":0,
                  "id":84,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
@@ -1396,7 +1396,7 @@
                 {
                  "height":0,
                  "id":85,
-                 "name":"",
+                 "name":"berryBush",
                  "opacity":1,
                  "point":true,
                  "rotation":0,
