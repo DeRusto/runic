@@ -93,12 +93,12 @@ describe("the committed icons", () => {
     }
   });
 
-  test("total about 700 KB", () => {
+  test("average under 17 KB an icon, so the set grows only with its count", () => {
     const bytes = pngs.reduce(
       (total, file) => total + statSync(`${ICONS_DIR}/${file}`).size,
       0,
     );
-    expect(bytes).toBeLessThan(750_000);
+    expect(bytes / pngs.length).toBeLessThan(17_000);
   });
 
   test("the licence copy says which file is Craftpix's", () => {

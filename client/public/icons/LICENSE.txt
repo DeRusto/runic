@@ -1,6 +1,6 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-43 are rendered by client/render-icons, 38 from the CC0 models below and five from
+47 are rendered by client/render-icons, 42 from the CC0 models below and five from
 our own geometry. The other is a Craftpix file.
 
 ------------------------------------------------------------------------
@@ -27,14 +27,15 @@ a licence to anyone else: this file is not CC0, and if you want it for your own
 project, get it from Craftpix under their terms.
 
 ------------------------------------------------------------------------
-2. The rendered 43
+2. The rendered 47
 ------------------------------------------------------------------------
 
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
 http://creativecommons.org/publicdomain/zero/1.0/
 
 copperOre, ironOre, emberiteOre, copperBar, ironBar, emberiteBar, and bronzeBar
-and steelBar tinted from the copper and iron bars
+and steelBar tinted from the copper and iron bars; birchLog, oakLog and charwoodLog
+from the model Wood_Log_A, two of them tinted
     KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 copperSword, ironSword, copperShield, ironShield, emberiteShield, and the bronze
 and steel sword and shield tinted from the copper and iron ones
@@ -43,7 +44,7 @@ copperHelmet, copperChestplate, copperLeggings, and the same in bronze, iron,
 steel and emberite
     KayKit Adventurers 2.0, by Kay Lousberg (www.kaylousberg.com), the Knight
     character's helmet, body and leg meshes
-pickaxe, hammer
+pickaxe, hammer, axe
     KayKit RPG Tools Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 berry
     Kenney Food Kit 2.0 (www.kenney.nl), the model grapes.glb

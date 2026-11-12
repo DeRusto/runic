@@ -103,6 +103,21 @@ const ICONS: Icon[] = [
   },
   { id: "pickaxe", url: `${TOOLS}/pickaxe.gltf`, turn: LEAN },
   { id: "hammer", url: `${TOOLS}/hammer.gltf`, turn: LEAN },
+  { id: "axe", url: `${TOOLS}/axe.gltf`, turn: LEAN },
+  // One log model for all three, tinted pale, left as it is, and charred.
+  {
+    id: "birchLog",
+    url: `${RESOURCE}/Wood_Log_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0xf0e6cc },
+  },
+  { id: "oakLog", url: `${RESOURCE}/Wood_Log_A.gltf`, turn: FLAT },
+  {
+    id: "charwoodLog",
+    url: `${RESOURCE}/Wood_Log_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0x6a3a30 },
+  },
   {
     id: "berry",
     url: "/kenney-game-assets/3D assets/Food Kit/Models/GLB format/grapes.glb",
