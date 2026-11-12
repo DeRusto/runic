@@ -7,13 +7,18 @@ import {
   avoidanceOf,
   blockOf,
   BLOCKING_XP_PER_BLOCK,
+  burnPercent,
   COMBAT_LOCK_TICKS,
   COINS,
+  cookedItem,
   costsOf,
   dealRefusal,
   dealTotals,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_ENEMY_SWING,
+  DELICIOUS_BUFF_INTERVAL_TICKS,
+  DELICIOUS_BUFF_PERCENT,
+  DELICIOUS_BUFF_TICKS,
   DOUBLE_YIELD,
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
@@ -157,6 +162,7 @@ export const Player = schema(
     smithingXp: t.uint32().default(0),
     woodcuttingXp: t.uint32().default(0),
     fishingXp: t.uint32().default(0),
+    cookingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -286,6 +292,8 @@ export class Simulation {
       nextEatTick: number;
       /** What each healing tick still to come gives, in eating order. Not saved, so leaving loses it (spec §6). */
       healingPool: number[];
+      /** A Delicious fish's buff, or none: its fish's per-tick heal, when it next heals and the tick it runs out on. Not saved (spec §6, #221). */
+      delicious?: { perTick: number; nextHealTick: number; endTick: number };
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
@@ -547,6 +555,7 @@ export class Simulation {
       smithingXp,
       woodcuttingXp,
       fishingXp,
+      cookingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -573,6 +582,7 @@ export class Simulation {
       smithingXp,
       woodcuttingXp,
       fishingXp,
+      cookingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -1092,7 +1102,8 @@ export class Simulation {
   private eat(id: string, slot: number) {
     const player = this.state.players.get(id)!;
     const unsynced = this.unsyncedPlayers.get(id)!;
-    const food = FOOD_HEALS.get(player.inventory[slot]);
+    const parts = itemParts(player.inventory[slot]);
+    const food = FOOD_HEALS.get(parts.base);
     if (food === undefined || this.state.tick < unsynced.nextEatTick) return;
     unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
     // From now if no swing is waiting, or a past timer would swallow the delay.
@@ -1105,6 +1116,19 @@ export class Simulation {
       unsynced.healingPool.push(
         ...Array<number>(food.ticks).fill(food.perTick),
       );
+    }
+    // A Delicious fish heals on its own afterwards, and another one only refreshes it (#221).
+    if (parts.quality === "delicious") {
+      unsynced.delicious = {
+        perTick: food.perTick,
+        nextHealTick: this.state.tick + DELICIOUS_BUFF_INTERVAL_TICKS,
+        endTick: this.state.tick + DELICIOUS_BUFF_TICKS,
+      };
+      this.events.push({
+        type: "delicious",
+        player: id,
+        ticks: DELICIOUS_BUFF_TICKS,
+      });
     }
     this.events.push({ type: "eaten", player: id });
   }
@@ -1355,6 +1379,45 @@ export class Simulation {
     // Dropping during the wait is allowed, so they may have gone.
     const refusal = makeRefusal(item, player);
     if (refusal) return told(refusal);
+    // A burn consumes the fish: no experience, no item, and Make all goes on to the
+    // next one (#221). It never rolls Delicious.
+    if (RECIPES[item].station === "range") {
+      const level = levelFor(player.cookingXp);
+      if (this.random() < burnPercent(item, level) / 100) {
+        for (const [cost, count] of costsOf(item))
+          removeItems(player.inventory, player.inventoryCounts, cost, count);
+        // "berryPerch" reads as "berry perch", like an item's name does.
+        const name = item.replace(
+          /[A-Z]/g,
+          (letter) => ` ${letter.toLowerCase()}`,
+        );
+        this.events.push({
+          type: "told",
+          player: id,
+          line: `You burn the ${name}.`,
+        });
+        return true;
+      }
+    }
+    // Rolled after the room check below, so a refused make rolls nothing.
+    const roll =
+      RECIPES[item].station === "range"
+        ? () => cookedItem(item, levelFor(player.cookingXp), this.random)
+        : () => madeItem(item, levelFor(player.smithingXp), this.random);
+    return this.craftItem(id, player, item, roll);
+  }
+
+  /** Swaps the materials for what `roll` makes, on a copy so a full inventory can refuse first. */
+  private craftItem(
+    id: string,
+    player: InstanceType<typeof Player>,
+    item: RecipeItem,
+    roll: () => string,
+  ) {
+    const told = (line: string) => {
+      this.events.push({ type: "told", player: id, line });
+      return false;
+    };
     const inventory = [...player.inventory];
     const inventoryCounts = [...player.inventoryCounts];
     for (const [cost, count] of costsOf(item)) {
@@ -1371,7 +1434,7 @@ export class Simulation {
     // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
     const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
-    const made = madeItem(item, levelFor(player.smithingXp), this.random);
+    const made = roll();
     inventory[slot] = made;
     inventoryCounts[slot]!++;
     inventory.forEach((held, i) => {
@@ -1731,6 +1794,7 @@ export class Simulation {
     this.fitHealth(player);
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
+    unsynced.delicious = undefined;
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
@@ -1761,6 +1825,22 @@ export class Simulation {
         player.health += amount;
         if (amount > 0)
           this.events.push({ type: "healed", player: id, amount });
+      }
+      // A Delicious fish heals through a fight, where regeneration pauses (#221).
+      const { delicious } = unsynced;
+      if (delicious) {
+        if (this.state.tick >= delicious.nextHealTick) {
+          delicious.nextHealTick += DELICIOUS_BUFF_INTERVAL_TICKS;
+          const amount = Math.min(
+            Math.round((delicious.perTick * DELICIOUS_BUFF_PERCENT) / 100),
+            player.maxHealth - player.health,
+          );
+          player.health += amount;
+          if (amount > 0)
+            this.events.push({ type: "healed", player: id, amount });
+        }
+        if (this.state.tick >= delicious.endTick)
+          unsynced.delicious = undefined;
       }
       if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
     }

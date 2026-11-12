@@ -5,7 +5,7 @@ import {
   xpForLevel,
   type WorldEvent,
 } from "@runic/shared";
-import { beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 // The furnace is at (4,1) and the anvil at (6,1), with (5,1) next to both.
@@ -307,8 +307,8 @@ test("gear takes a slot each", () => {
 test("eating and dropping don't interrupt it", () => {
   add([
     ["copperOre", 1],
-    ["herb", 2],
-    ["berry", 1],
+    ["berry", 2],
+    ["herb", 1],
   ]);
   sim.queueMake("a", { item: "copperBar", all: false });
   run(2);
@@ -317,7 +317,7 @@ test("eating and dropping don't interrupt it", () => {
   run(5);
   expect(items()).toEqual([
     ["copperBar", 1],
-    ["herb", 1],
+    ["berry", 1],
   ]);
   expect(makes()).toHaveLength(1);
 });
@@ -484,4 +484,154 @@ test("a bar is never improved, even on the luckiest roll", () => {
   sim.queueMake("a", { item: "copperBar", all: false });
   run(7);
   expect(items()).toEqual([["copperBar", 1]]);
+});
+
+// The range is at (4,1), with (3,1) and (5,1) beside it, and no enemies to spend rolls on.
+const RANGE_TILES = parseRegion(
+  ["TTTTTTT", "TR..G.T", "T.....T", "TTTTTTT"].join("\n"),
+);
+
+describe("cooking at the range (#221)", () => {
+  let sim: Simulation;
+  let seen: { tick: number; event: WorldEvent }[];
+
+  beforeEach(() => {
+    sim = new Simulation(RANGE_TILES, () => FAIL);
+    seen = [];
+  });
+
+  /** Adds a player holding `held` next to the range, with `cookingXp` and a random source. */
+  function cook(
+    held: [string, number][],
+    {
+      id = "a",
+      x = 5,
+      y = 1,
+      cookingXp = 0,
+      random = (() => FAIL) as () => number,
+    } = {},
+  ) {
+    if (random !== undefined) sim = new Simulation(RANGE_TILES, random);
+    const inventory = Array<string>(INVENTORY_SLOTS).fill("");
+    const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(0);
+    held.forEach(([item, count], slot) => {
+      inventory[slot] = item;
+      inventoryCounts[slot] = count;
+    });
+    sim.addPlayer(
+      id,
+      {
+        x,
+        y,
+        combatXp: 0,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        cookingXp,
+        inventory,
+        inventoryCounts,
+      },
+      id,
+    );
+  }
+
+  const run = (ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      sim.tick();
+      for (const event of sim.events.splice(0))
+        seen.push({ tick: sim.state.tick, event });
+    }
+  };
+  const lines = () =>
+    seen.flatMap(({ event }) => (event.type === "told" ? [event.line] : []));
+  const items = (id = "a") =>
+    [...sim.state.players.get(id)!.inventory]
+      .map((item, slot) => [
+        item,
+        sim.state.players.get(id)!.inventoryCounts[slot],
+      ])
+      .filter(([item]) => item !== EMPTY_SLOT);
+
+  test("a raw fish cooks into a cooked one, paying Cooking", () => {
+    cook([["perch", 1]]);
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([["cookedPerch", 1]]);
+    expect(sim.state.players.get("a")!.cookingXp).toBe(12);
+    expect(seen.map(({ event }) => event)).toContainEqual({
+      type: "make",
+      player: "a",
+      station: "range",
+      ticks: 6,
+    });
+  });
+
+  test("the range needs no tool", () => {
+    cook([["perch", 1]], { random: () => 1 });
+    sim.state.players.get("a")!.tools.length = 0;
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([["cookedPerch", 1]]);
+  });
+
+  test("a burn eats the fish: no item, no experience, and a line", () => {
+    cook([["perch", 1]], { random: () => 0 }); // Every roll burns or improves.
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([]);
+    expect(sim.state.players.get("a")!.cookingXp).toBe(0);
+    expect(lines()).toEqual(["You burn the cooked perch."]);
+  });
+
+  test("Make all cooks on through a burn, until the fish run out", () => {
+    cook([["perch", 2]], { random: () => 0 });
+    sim.queueMake("a", { item: "cookedPerch", all: true });
+    run(20);
+    expect(items()).toEqual([]);
+    expect(lines()).toEqual([
+      "You burn the cooked perch.",
+      "You burn the cooked perch.",
+      "Not enough materials",
+    ]);
+  });
+
+  test("a fish that doesn't burn can come out Delicious", () => {
+    const random = vi.fn().mockReturnValueOnce(0.5).mockReturnValue(0);
+    cook([["perch", 1]], { random });
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([["cookedPerch:delicious", 1]]);
+    expect(sim.state.players.get("a")!.cookingXp).toBe(12);
+    expect(seen.map(({ event }) => event)).toContainEqual({
+      type: "made",
+      player: "a",
+      item: "cookedPerch:delicious",
+    });
+  });
+
+  test("a dish costs its fish and its berry, and burns both", () => {
+    const cooking5 = xpForLevel(5);
+    cook(
+      [
+        ["perch", 1],
+        ["berry", 1],
+      ],
+      { cookingXp: cooking5, random: () => 0 },
+    );
+    sim.queueMake("a", { item: "berryPerch", all: false });
+    run(7);
+    expect(items()).toEqual([]);
+    expect(lines()).toEqual(["You burn the berry perch."]);
+    cook(
+      [
+        ["perch", 1],
+        ["berry", 1],
+      ],
+      { id: "b", cookingXp: cooking5, random: () => 0.99 },
+    );
+    sim.queueMake("b", { item: "berryPerch", all: false });
+    run(7);
+    expect(items("b")).toEqual([["berryPerch", 1]]);
+  });
 });
