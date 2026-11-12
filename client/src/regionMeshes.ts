@@ -1,7 +1,10 @@
 import {
+  GATHERING,
+  GATHERING_SKILLS,
   siteId,
   tileHash,
   type BushKind,
+  type GatheringSkill,
   type GroundKind,
   type PropKind,
   type StationKind,
@@ -50,6 +53,9 @@ const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 const VEIN_RUN_OUT_TINT = new THREE.Color(0x6b6665);
 
 const white = new THREE.Color(0xffffff);
+
+type SiteField = (typeof GATHERING)[GatheringSkill]["site"];
+const SITE_FIELDS = GATHERING_SKILLS.map((skill) => GATHERING[skill].site);
 
 const BUSH_MODELS: Record<BushKind, string> = {
   berryBush: "Bush_2_B",
@@ -274,6 +280,54 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     }[]
   >();
 
+  /** The parts each kind of site is drawn with, as runOutSlots keeps them, with the scale and colour each is placed at. */
+  const siteParts: {
+    [field in SiteField]: (kind: NonNullable<TileKind[field]>) => {
+      geometry: THREE.BufferGeometry;
+      scale: number;
+      color?: THREE.Color;
+      tint: THREE.Color;
+      only?: SiteLook;
+    }[];
+  } = {
+    bush: (kind) => {
+      const { geometry } = bushMeshes[kind];
+      geometry.computeBoundingBox();
+      const width = geometry.boundingBox!.getSize(new THREE.Vector3()).x;
+      return [
+        {
+          geometry,
+          scale: BUSH_WIDTH / width,
+          color: new THREE.Color(BUSH_TINT[kind]),
+          tint: RUN_OUT_TINT,
+        },
+      ];
+    },
+    tree: (kind) => [
+      {
+        geometry: trees[kind],
+        scale: TREE_SCALE,
+        color: new THREE.Color(TREE_MODELS[kind].tint),
+        tint: white,
+        only: "full",
+      },
+      { geometry: stump, scale: STUMP_SCALE, tint: white, only: "runOut" },
+    ],
+    // A spot with no site, or one run out, is plain water.
+    fishingSpot: () => [
+      { geometry: ripple, scale: 1, tint: white, only: "full" },
+    ],
+    vein: (kind) => [
+      { geometry: ore.rock.geometry, scale: ORE_SCALE, tint: white },
+      {
+        geometry: ore.vein.geometry,
+        scale: ORE_SCALE,
+        color: VEIN_TINT[kind],
+        tint: VEIN_RUN_OUT_TINT,
+      },
+    ],
+  };
+
   const matrix = new THREE.Matrix4();
   const color = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
@@ -291,7 +345,8 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
-      const { bush, prop, vein, tree, fishingSpot, station, house } = tile;
+      const { prop, station, house } = tile;
+      const site = SITE_FIELDS.find((field) => tile[field]);
       if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
         for (const { part, angle, height } of houseParts(tiles, x, y)) {
@@ -305,89 +360,32 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
           );
         }
       }
-      if (!bush && !prop && !vein && !tree && !fishingSpot) return;
+      if (!site && !prop) return;
       const rotation = new THREE.Quaternion().setFromAxisAngle(
         up,
         (((hash >>> 16) & 255) / 256) * Math.PI * 2,
       );
       const at = new THREE.Vector3(x, top, y);
-      if (bush) {
-        const { geometry } = bushMeshes[bush];
-        geometry.computeBoundingBox();
-        const scale = new THREE.Vector3().setScalar(
-          BUSH_WIDTH / geometry.boundingBox!.getSize(new THREE.Vector3()).x,
-        );
-        const slot = place(
-          geometry,
-          new THREE.Matrix4().compose(at, rotation, scale),
-          new THREE.Color(BUSH_TINT[bush]),
-        );
-        runOutSlots.set(siteId({ x, y }), [
-          { geometry, slot, tint: RUN_OUT_TINT },
-        ]);
-      } else if (tree) {
-        const geometry = trees[tree];
-        const scale = new THREE.Vector3().setScalar(TREE_SCALE);
-        runOutSlots.set(siteId({ x, y }), [
-          {
-            geometry,
-            slot: place(
+      if (site) {
+        runOutSlots.set(
+          siteId({ x, y }),
+          siteParts[site](tile[site] as never).map(
+            ({ geometry, scale, color, tint, only }) => ({
               geometry,
-              new THREE.Matrix4().compose(at, rotation, scale),
-              new THREE.Color(TREE_MODELS[tree].tint),
-            ),
-            tint: white,
-            only: "full",
-          },
-          {
-            geometry: stump,
-            slot: place(
-              stump,
-              new THREE.Matrix4().compose(
-                at,
-                rotation,
-                new THREE.Vector3().setScalar(STUMP_SCALE),
+              slot: place(
+                geometry,
+                new THREE.Matrix4().compose(
+                  at,
+                  rotation,
+                  new THREE.Vector3().setScalar(scale),
+                ),
+                color,
               ),
-            ),
-            tint: white,
-            only: "runOut",
-          },
-        ]);
-      } else if (fishingSpot) {
-        // A spot with no site, or one run out, is plain water.
-        runOutSlots.set(siteId({ x, y }), [
-          {
-            geometry: ripple,
-            slot: place(
-              ripple,
-              new THREE.Matrix4().compose(
-                at,
-                rotation,
-                new THREE.Vector3(1, 1, 1),
-              ),
-            ),
-            tint: white,
-            only: "full",
-          },
-        ]);
-      } else if (vein) {
-        const placed = new THREE.Matrix4().compose(
-          at,
-          rotation,
-          new THREE.Vector3().setScalar(ORE_SCALE),
+              tint,
+              only,
+            }),
+          ),
         );
-        runOutSlots.set(siteId({ x, y }), [
-          {
-            geometry: ore.rock.geometry,
-            slot: place(ore.rock.geometry, placed),
-            tint: white,
-          },
-          {
-            geometry: ore.vein.geometry,
-            slot: place(ore.vein.geometry, placed, VEIN_TINT[vein]),
-            tint: VEIN_RUN_OUT_TINT,
-          },
-        ]);
       } else {
         const options = propVariants[prop!];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
