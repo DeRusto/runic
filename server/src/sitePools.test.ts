@@ -191,3 +191,26 @@ test("a player saved on a tile that now holds a site logs in beside it, not at r
   expect(tilesApart({ x, y }, A)).toBe(1);
   expect(TILES[y]![x]!.blocks).toBe(false);
 });
+
+test("a gatherer whose destination grows a site mid-walk goes round to another tile next to the target before gathering", () => {
+  // The target sits in the corner; D, the nearest tile next to it, is on the gatherer's row.
+  const target = { x: 7, y: 1 };
+  const D = { x: 6, y: 1 };
+  start(pool(1, [A, D]), pool(1, [target]));
+  addAt("miner", { x: 5, y: 3 });
+  const regrowTick = mineOut("miner", A) + REGROW_TICKS;
+  addAt("onA", A);
+  addAt("gatherer", { x: 1, y: 1 });
+  // The site appears on D while the gatherer is still a few steps short of it.
+  runTicks(regrowTick - 6 - sim.state.tick);
+  sim.queueGather("gatherer", "mining", id(target));
+  let gatheredFrom: Tile | undefined;
+  for (let i = 0; i < 20 && !gatheredFrom; i++) {
+    sim.tick();
+    const { x, y, miningXp } = player("gatherer");
+    if (miningXp > 0) gatheredFrom = { x, y };
+  }
+  expect(veinIds()).toContain(id(D));
+  expect(gatheredFrom).toBeDefined();
+  expect(tilesApart(gatheredFrom!, target)).toBe(1);
+});

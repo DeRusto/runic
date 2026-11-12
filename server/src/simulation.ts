@@ -1121,21 +1121,21 @@ export class Simulation {
       const unsynced = this.unsyncedPlayers.get(id)!;
       const player = this.state.players.get(id)!;
       // With no way there, the old action still ends, and nothing replaces it.
-      const goNextTo = (tile: Tile | Tile[], action: UnsyncedAction) => {
-        const path = pathNextTo(this.tiles, player, tile);
+      const goNextTo = (action: UnsyncedAction) => {
+        const path = pathNextTo(this.tiles, player, this.nextToOf(action)!);
         unsynced.path = path ?? [];
         unsynced.action = path && action;
       };
       if ("enemy" in intent) {
         unsynced.action = { kind: "fighting", enemy: intent.enemy };
       } else if ("make" in intent) {
-        goNextTo(this.stations[RECIPES[intent.make].station]!, {
+        goNextTo({
           kind: "smithing",
           item: intent.make,
           all: intent.all,
         });
       } else if ("villager" in intent) {
-        goNextTo(this.villagers.get(intent.villager)!, {
+        goNextTo({
           kind: "visiting",
           ...intent,
         });
@@ -1156,7 +1156,7 @@ export class Simulation {
           : undefined;
         unsynced.path = [];
       } else if ("gather" in intent) {
-        goNextTo(this.sites.get(intent.site)!, {
+        goNextTo({
           kind: intent.gather,
           site: intent.site,
         });
@@ -1180,6 +1180,15 @@ export class Simulation {
     this.queuedLogouts.clear();
   }
 
+  /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
+  private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
+    if (action?.kind === "smithing")
+      return this.stations[RECIPES[action.item].station];
+    if (action?.kind === "visiting") return this.villagers.get(action.villager);
+    if (action && "site" in action) return this.sites.get(action.site);
+    return undefined;
+  }
+
   private advancePlayers() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
@@ -1196,14 +1205,19 @@ export class Simulation {
         unsynced.path = pathNextTo(this.tiles, player, target) ?? [];
       }
       const next = unsynced.path[0];
-      // A pooled site may have come back on the way since the path was found.
+      // A pooled site may have come back on the way since the path was found,
+      // perhaps on the tile the walk ends on, so head for the target again.
       if (
         next &&
         !legalSteps(this.tiles, player).some(
           ({ x, y }) => x === next.x && y === next.y,
         )
-      )
-        unsynced.path = findPath(this.tiles, player, unsynced.path.at(-1)!);
+      ) {
+        const nextTo = this.nextToOf(unsynced.action);
+        unsynced.path = nextTo
+          ? (pathNextTo(this.tiles, player, nextTo) ?? [])
+          : findPath(this.tiles, player, unsynced.path.at(-1)!);
+      }
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
       unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
@@ -1219,7 +1233,14 @@ export class Simulation {
       const player = this.state.players.get(id)!;
       // A pooled site that ran out is gone from its spot.
       const site = this.sites.get(action.site);
-      if (!site || this.siteRefusal(site, player)) {
+      // A site that came back may have left no way to stand next to it.
+      if (
+        !site ||
+        this.siteRefusal(site, player) ||
+        !tilesNextTo(this.tiles, site).some(
+          ({ x, y }) => x === player.x && y === player.y,
+        )
+      ) {
         unsynced.action = undefined;
         continue;
       }
