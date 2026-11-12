@@ -87,7 +87,7 @@ Bram, the villager at the edge of the thicket, near the village, who gives playe
 _Avoid_: Woodcutter (too close to Woodcutting, the skill), woodsman
 
 **Fisher**:
-The villager by the water who gives players a fishing rod if they don't have one, for free, when they ask in conversation.
+Tamsin, the villager on the Lake's bank where the path reaches it, who gives players a fishing rod if they don't have one, for free, when they ask in conversation.
 _Avoid_: Fisherman, angler
 
 **Storekeeper**:
