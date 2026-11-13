@@ -14,8 +14,9 @@ export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
 /** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
 export type VeinTier = Exclude<Tier, "bronze" | "steel">;
-/** A furnace smelts ore, an anvil makes gear, a range or a fire cooks food (#221, #224) and a workbench crafts utilities (#225). Only a fire is player-placed and burns out, and no tile is one. */
-export type StationKind = "furnace" | "anvil" | "range" | "fire" | "workbench";
+/** A furnace smelts ore, an anvil makes gear, a range or a fire cooks food (#221, #224), a workbench crafts utilities (#225) and an altar makes runes (#232). Only a fire is player-placed and burns out, and no tile is one. */
+export type StationKind =
+  "furnace" | "anvil" | "range" | "fire" | "workbench" | "altar";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
@@ -61,6 +62,7 @@ export const TILE_KINDS = {
   N: { ground: "grass", station: "anvil", blocks: true },
   G: { ground: "grass", station: "range", blocks: true },
   w: { ground: "grass", station: "workbench", blocks: true },
+  O: { ground: "grass", station: "altar", blocks: true },
   B: { ground: "grass", villager: "odo", blocks: true },
   M: { ground: "grass", villager: "marta", blocks: true },
   $: { ground: "grass", villager: "aldous", blocks: true },

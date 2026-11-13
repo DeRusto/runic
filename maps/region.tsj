@@ -1,11 +1,11 @@
 { "columns":24,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":464,
+ "imagewidth":480,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":29,
+ "tilecount":30,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -383,6 +383,20 @@
                  "name":"station",
                  "type":"string",
                  "value":"workbench"
+                }]
+        },
+        {
+         "id":29,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"station",
+                 "type":"string",
+                 "value":"altar"
                 }]
         }],
  "tilewidth":16,

@@ -1,12 +1,13 @@
 import {
+  currentQuestOf,
   ITEMS,
   nodesOf,
   openingNodeOf,
   QUESTS,
   QUEST_DONE,
   questDoneOf,
-  questOfVillager,
   questStageOf,
+  questsOfVillager,
   stageOf,
   stationRefusal,
   type Quest,
@@ -14,19 +15,49 @@ import {
 import { describe, expect, test } from "vitest";
 
 describe("the quest engine", () => {
-  test("every quest's villager exists, its stages name real nodes, and its turn-ins name real items", () => {
+  test("every quest's villager exists and gives it, its stages name real nodes, and its turn-ins name real items", () => {
     for (const quest of Object.values(QUESTS)) {
-      expect(questOfVillager(quest.villager)?.id).toBe(quest.id);
+      expect(questsOfVillager(quest.villager)).toContain(quest);
       const nodes = nodesOf(quest.villager);
       expect(nodes[quest.doneNode]).toBeDefined();
-      if (quest.repeat) expect(nodes[quest.repeat.node]).toBeDefined();
+      if ("repeat" in quest) expect(nodes[quest.repeat.node]).toBeDefined();
       for (const stage of quest.stages) {
         expect(stageOf(quest, stage.id)).toBe(stage);
         expect(nodes[stage.node]).toBeDefined();
         if (stage.turnIn) expect(ITEMS[stage.turnIn.item]).toBeDefined();
       }
-      if (quest.repeat) expect(ITEMS[quest.repeat.turnIn.item]).toBeDefined();
+      if ("repeat" in quest)
+        expect(ITEMS[quest.repeat.turnIn.item]).toBeDefined();
     }
+  });
+
+  test("a villager's chain runs in table order, and the quest a player is on is its first not done with its repeats", () => {
+    const at = (progresses: [string, { stage: string; turns: number }][]) =>
+      currentQuestOf("odo", new Map(progresses));
+    expect(at([])?.id).toBe("odoCopper");
+    expect(at([["odoCopper", { stage: "fetch", turns: 0 }]])?.id).toBe(
+      "odoCopper",
+    );
+    // The repeats keep the first quest current until they run out.
+    expect(at([["odoCopper", { stage: QUEST_DONE, turns: 1 }]])?.id).toBe(
+      "odoCopper",
+    );
+    expect(at([["odoCopper", { stage: QUEST_DONE, turns: 3 }]])?.id).toBe(
+      "odoEssence",
+    );
+    expect(
+      at([
+        ["odoCopper", { stage: QUEST_DONE, turns: 3 }],
+        ["odoEssence", { stage: "proof", turns: 0 }],
+      ]),
+    ).toBe(QUESTS.odoEssence);
+    // Everything done, the chain ends on its last quest.
+    expect(
+      at([
+        ["odoCopper", { stage: QUEST_DONE, turns: 3 }],
+        ["odoEssence", { stage: QUEST_DONE, turns: 0 }],
+      ])?.id,
+    ).toBe("odoEssence");
   });
 
   test("a stage without a turn-in, and one with, both come off the tables", () => {
@@ -69,24 +100,43 @@ describe("the quest engine", () => {
 });
 
 describe("the villager's conversation opens by the player's progress", () => {
+  const at = (progresses: [string, { stage: string; turns: number }][]) =>
+    openingNodeOf("odo", new Map(progresses));
+
   test("not started, it opens with the villager's own start", () => {
-    expect(openingNodeOf("odo", undefined)).toBe("greet");
-    expect(openingNodeOf("marta", undefined)).toBe("greet");
-    expect(openingNodeOf("marta", { stage: "fetch", turns: 0 })).toBe("greet");
+    expect(at([])).toBe("greet");
+    expect(openingNodeOf("marta")).toBe("greet");
   });
 
   test("on a stage, it opens with that stage's node", () => {
-    expect(openingNodeOf("odo", { stage: "fetch", turns: 0 })).toBe("quest");
+    expect(at([["odoCopper", { stage: "fetch", turns: 0 }]])).toBe("quest");
+    expect(
+      at([
+        ["odoCopper", { stage: QUEST_DONE, turns: 3 }],
+        ["odoEssence", { stage: "proof", turns: 0 }],
+      ]),
+    ).toBe("proofQuest");
   });
 
   test("done, it opens with the repeats' node while turn-ins are left, and the forge's after", () => {
     const repeat = QUESTS.odoCopper.repeat!;
-    expect(openingNodeOf("odo", { stage: QUEST_DONE, turns: 0 })).toBe(
+    expect(at([["odoCopper", { stage: QUEST_DONE, turns: 0 }]])).toBe(
       repeat.node,
     );
     expect(
-      openingNodeOf("odo", { stage: QUEST_DONE, turns: repeat.turns }),
+      at([["odoCopper", { stage: QUEST_DONE, turns: repeat.turns }]]),
     ).toBe(QUESTS.odoCopper.doneNode);
+    // The second quest, done, opens with the runes' node (#232).
+    expect(
+      at([
+        ["odoCopper", { stage: QUEST_DONE, turns: repeat.turns }],
+        ["odoEssence", { stage: QUEST_DONE, turns: 0 }],
+      ]),
+    ).toBe("runes");
+  });
+
+  test("while the chain's next quest waits to be offered, the last one done opens with its done node (#232)", () => {
+    expect(at([["odoCopper", { stage: QUEST_DONE, turns: 3 }]])).toBe("forge");
   });
 });
 
@@ -116,8 +166,8 @@ describe("the smithy's stations are Odo's to open", () => {
     );
   });
 
-  test("the range, fire and workbench need neither", () => {
-    for (const station of ["range", "fire", "workbench"] as const)
+  test("the range, fire, workbench and altar need neither", () => {
+    for (const station of ["range", "fire", "workbench", "altar"] as const)
       expect(stationRefusal(station, unhelped)).toBeUndefined();
   });
 });

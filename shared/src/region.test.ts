@@ -69,6 +69,7 @@ const IS = {
   anvil: (tile) => tile.station === "anvil",
   range: (tile) => tile.station === "range",
   workbench: (tile) => tile.station === "workbench",
+  altar: (tile) => tile.station === "altar",
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   house: (tile) => !!tile.house,
@@ -148,6 +149,7 @@ describe("the region", () => {
     ["anvil", 1],
     ["range", 1],
     ["workbench", 1],
+    ["altar", 1],
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
@@ -197,7 +199,7 @@ describe("the region", () => {
   it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager", ...TREES),
+        ...tilesOf(...STATIONS_AND_BLACKSMITH, "altar", "villager", ...TREES),
         ...spotsOf(...VEINS, ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
@@ -440,6 +442,29 @@ describe("the region", () => {
     for (let x = 18; x <= 22; x++) {
       expect(region[37]![x]).toEqual({ ground: "grass", blocks: false });
     }
+  });
+
+  it("stands the rune altar on the Boneyard's far side, ringed by rock props with one way in (#232)", () => {
+    const [{ x, y }] = tilesOf("altar").map(([tx, ty]) => ({ x: tx, y: ty }));
+    expect(region[y]![x]!.ground).toBe("ashen");
+    const ring = neighbours({ x, y });
+    const props = ring.filter(
+      ({ x: nx, y: ny }) => region[ny]![nx]!.prop === "rock",
+    );
+    expect(props).toHaveLength(7);
+    // One unblocked neighbour keeps the altar walkable-to.
+    expect(ring.some(({ x: nx, y: ny }) => !region[ny]![nx]!.blocks)).toBe(
+      true,
+    );
+    // The walk is the gate: it stands on the far side of the Boneyard, so no way
+    // there keeps off the ashen ground, and the nearest way in is over 55 steps.
+    expect(ring.some(({ x: nx, y: ny }) => withoutAshen.has(key(nx, ny)))).toBe(
+      false,
+    );
+    const nearest = Math.min(
+      ...ring.map(({ x: nx, y: ny }) => reachable.get(key(nx, ny)) ?? Infinity),
+    );
+    expect(nearest).toBeGreaterThan(55);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { EMPTY_SLOT, INVENTORY_SLOTS } from "./index.ts";
+import { EMPTY_SLOT, INVENTORY_SLOTS, RUNES } from "./index.ts";
 import { itemParts, ITEMS, slotFor, takeRefusal } from "./items.ts";
 
 /** A whole inventory from the first slots given, as [item, count] pairs. */
@@ -43,11 +43,17 @@ describe("ITEMS", () => {
   });
 
   test("every tier has its bar, sword, shield, helmet, chestplate, leggings and cape, and its ore if it has veins", () => {
-    // Food 10, Emberbone 1, finds 5, seven per tier (the capes three), three ores,
-    // three logs, three raw fish, the three plants, the vial, the three potions, the
-    // silk, the rope and torch, and coins (#217, #222, #225), plus Fletching's
-    // twenty: a shaft, a feather, five arrowheads, five arrows, five knives, three bows (#228).
-    expect(Object.keys(ITEMS)).toHaveLength(102);
+    // Food 10, Emberbone 1, finds 5, #232's essence two and the four runes, seven per tier
+    // (the capes three), three ores, three logs, three raw fish, the three plants, the vial,
+    // the three potions, the silk, the rope and torch, and coins (#217, #222, #225), plus
+    // Fletching's twenty: a shaft, a feather, five arrowheads, five arrows, five knives, three bows (#228).
+    expect(Object.keys(ITEMS)).toHaveLength(108);
+  });
+
+  test("the essence find and the runes stack to 20 (#232)", () => {
+    expect(ITEMS.strangeMaterial.stack).toBe(20);
+    expect(ITEMS.runeEssence.stack).toBe(20);
+    for (const rune of RUNES) expect(ITEMS[rune].stack).toBe(20);
   });
 
   test("the silk, the rope and the torch stack to 20, and a cape takes a whole slot (#225)", () => {

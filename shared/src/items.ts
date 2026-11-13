@@ -16,6 +16,14 @@ export const ITEMS = {
   ashstone: STACKS,
   cinderglass: STACKS,
   heartflame: STACKS,
+  /** #232's essence find, which every vein rolls: a strange material until the player identifies it, then rune essence. */
+  strangeMaterial: STACKS,
+  runeEssence: STACKS,
+  /** #232's four elemental runes, made from one rune essence each at the altar. */
+  airRune: STACKS,
+  waterRune: STACKS,
+  earthRune: STACKS,
+  fireRune: STACKS,
   copperOre: STACKS,
   copperBar: STACKS,
   copperSword: SINGLE,

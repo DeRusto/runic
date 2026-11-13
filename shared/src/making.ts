@@ -7,13 +7,26 @@ import { levelFor, type XpField } from "./skills.ts";
 
 type Recipe = {
   station: StationKind;
-  /** The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing, the range's Cooking, and the workbench's Crafting and Fletching (#225, #228). */
-  skill: "Mining" | "Smithing" | "Cooking" | "Crafting" | "Fletching";
+  /** The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing, the range's Cooking, the workbench's Crafting and Fletching (#225, #228), and the altar's Runecrafting (#232). */
+  skill:
+    | "Mining"
+    | "Smithing"
+    | "Cooking"
+    | "Crafting"
+    | "Fletching"
+    | "Runecrafting";
   /** That skill's synced experience field. */
   xpField:
-    "miningXp" | "smithingXp" | "cookingXp" | "craftingXp" | "fletchingXp";
+    | "miningXp"
+    | "smithingXp"
+    | "cookingXp"
+    | "craftingXp"
+    | "fletchingXp"
+    | "runecraftingXp";
   /** That skill's level needed. */
   level: number;
+  /** The skill level where one make gives a second rune for the same essence, hand-set per rune (#232). */
+  doublesAt?: number;
   /** A cost may be a stand-in: `log` is any tier's log (#228). */
   costs: Partial<Record<ItemId | typeof LOG, number>>;
   ticks: number;
@@ -589,6 +602,48 @@ export const RECIPES = {
     ticks: 6,
     xp: { fletchingXp: 90 },
   },
+  /** #232's altar: the four elemental runes, one essence to a rune and never a failure. Once the making skill is at a rune's `doublesAt`, one essence makes two. */
+  airRune: {
+    station: "altar",
+    skill: "Runecrafting",
+    xpField: "runecraftingXp",
+    level: 1,
+    // Air's twice its gate of 1 would come at once, so it waits for 20 like the earth rune's.
+    doublesAt: 20,
+    costs: { runeEssence: 1 },
+    ticks: 6,
+    xp: { runecraftingXp: 5 },
+  },
+  waterRune: {
+    station: "altar",
+    skill: "Runecrafting",
+    xpField: "runecraftingXp",
+    level: 5,
+    doublesAt: 10,
+    costs: { runeEssence: 1 },
+    ticks: 6,
+    xp: { runecraftingXp: 8 },
+  },
+  earthRune: {
+    station: "altar",
+    skill: "Runecrafting",
+    xpField: "runecraftingXp",
+    level: 10,
+    doublesAt: 20,
+    costs: { runeEssence: 1 },
+    ticks: 6,
+    xp: { runecraftingXp: 12 },
+  },
+  fireRune: {
+    station: "altar",
+    skill: "Runecrafting",
+    xpField: "runecraftingXp",
+    level: 20,
+    doublesAt: 40,
+    costs: { runeEssence: 1 },
+    ticks: 6,
+    xp: { runecraftingXp: 20 },
+  },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
 
@@ -791,6 +846,11 @@ export function makeRefusal(
 /** How many of a recipe's product one make gives: 1 for everything but #228's batches. */
 export const yieldOf = (item: RecipeItem) =>
   (RECIPES[item] as { yield?: number }).yield ?? 1;
+
+/** Whether one make of `item` at this level of its skill gives a second rune for the same essence (#232). */
+export const doublesAt = (item: RecipeItem, level: number) =>
+  (RECIPES[item] as { doublesAt?: number }).doublesAt !== undefined &&
+  level >= (RECIPES[item] as { doublesAt?: number }).doublesAt!;
 
 /** Why a click on this station is refused, or undefined if it isn't. The client shows it, and the server ignores the pick. The smithy's furnace and anvil open only for Odo's quest done (#231). */
 export function stationRefusal(

@@ -12,7 +12,8 @@ const MINER = {
 };
 
 describe("VEINS", () => {
-  it("holds each tier's numbers from spec §5", () => {
+  it("holds each tier's numbers from spec §5, with #232's essence find last", () => {
+    const essence = { chance: 0.2, item: "strangeMaterial" };
     expect(VEINS).toEqual({
       copper: {
         level: 1,
@@ -21,7 +22,7 @@ describe("VEINS", () => {
         xp: 6,
         doubleChance: 0.3,
         item: "copperOre",
-        finds: [{ chance: 1 / 3, item: "tin" }],
+        finds: [{ chance: 1 / 3, item: "tin" }, essence],
       },
       iron: {
         level: 10,
@@ -33,6 +34,7 @@ describe("VEINS", () => {
         finds: [
           { chance: 1 / 6, item: "tin" },
           { chance: 1 / 2, item: "coal" },
+          essence,
         ],
       },
       emberite: {
@@ -51,6 +53,7 @@ describe("VEINS", () => {
               { item: "heartflame", share: 0.05 },
             ],
           },
+          essence,
         ],
       },
     });

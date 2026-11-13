@@ -70,6 +70,7 @@ test("only the skills that can be trained reach the sheet, the bar and pinning",
     "Firemaking",
     "Crafting",
     "Fletching",
+    "Runecrafting",
     "Blocking",
     "Mastery",
   ]);

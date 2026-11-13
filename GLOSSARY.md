@@ -78,8 +78,12 @@ _Avoid_: Campfire, bonfire
 A fixed tile in the smithy, between the range and the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
 _Avoid_: Crafting table, work table
 
+**Altar**:
+A fixed tile out in the Boneyard's far side, an old stone circle ringed by rocks, where a player turns rune essence into runes (#232). It asks no level of its own, gives no tools, and never runs out; the walk there is the gate.
+_Avoid_: Stone circle (that's its look), rune stone
+
 **Station**:
-A furnace, an anvil, a range or a workbench: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
+A furnace, an anvil, a range, a workbench or an altar: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -173,7 +177,7 @@ _Avoid_: Frame, turn, cycle
 ### Quests
 
 **Quest**:
-Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first. Each quest is a row of the shared quests table, and the server holds each player's progress in it. Phase 11 owns the quests beyond the first.
+Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first, and the strange material he teaches identification from is his second. Each quest is a row of the shared quests table, and the server holds each player's progress in it. A villager's quests run as one chain, in the order they stand in the table (#231, #232). Phase 11 owns the quests beyond these.
 _Avoid_: Mission, task (that's the Action), errand
 
 **Stage**:
@@ -274,6 +278,14 @@ _Avoid_: Handicraft, construction
 **Fletching**:
 The skill trained by making the archer's stock at the workbench: arrow shafts from a log, arrows from shafts, arrowheads and feathers, and bows from a log and a rope (#228). It gates each product and pays its experience.
 _Avoid_: Woodwork, carpentry
+
+**Runecrafting**:
+The skill trained by making runes from rune essence at the altar. It gates each rune and pays its experience, and a make never fails (#232). Once it is at a rune's doubling level, one essence makes two of that rune. Higher runes come with Phase 9's spells.
+_Avoid_: Magic, spellcraft
+
+**Identification**:
+The one-off act of learning what the strange material really is, taught by Odo's second quest (#232). Finishing it sets the player's flag at once: every strange material they hold, bank included, turns to rune essence, and the veins' essence find gives essence from then on.
+_Avoid_: Uncovering, appraisal
 
 **Agility**:
 The skill trained only by crossing obstacles, on a course or a shortcut. It gates each shortcut and raises the chance that a player's landed hits are critical. It does not count toward combat level. Runic has no run energy, and Agility adds none (#234).
@@ -422,7 +434,7 @@ What a player catches at a fishing spot with a rod: **Perch** (Fishing 1), **Tro
 _Avoid_: Raw fish
 
 **Find**:
-A material a vein sometimes gives along with its ore on a successful mine: tin from Copper and Iron veins, coal from Iron veins, and gems from Emberite veins. A find is always 1.
+A material a vein sometimes gives along with its ore on a successful mine: tin from Copper and Iron veins, coal from Iron veins, and gems from Emberite veins; and, from every vein, the essence find at 1 in 5, which is a strange material until the player identifies it (#232). A find is always 1.
 _Avoid_: Drop, extra, byproduct, bonus
 
 **Gem**:
@@ -432,6 +444,18 @@ _Avoid_: Jewel, stone
 **Bar**:
 Metal made at a furnace from ore, plus a find for Bronze (tin) and Steel (coal), ready to become gear at an anvil.
 _Avoid_: Ingot
+
+**Strange material**:
+The essence find's masked face, before the player identifies it (#232): a dull piece the veins give without telling what it is. It stacks like ore and is worth little at the store.
+_Avoid_: Mystery item, unknown material
+
+**Rune essence**:
+The essence unmasked, once Odo's second quest teaches identification (#232): the stuff runes are made from. One essence makes one rune at the altar, or two once the player's Runecrafting is at that rune's doubling level.
+_Avoid_: Essence (alone), pure essence
+
+**Rune**:
+A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Today only the four elementals exist — the **air rune** (1), the **water rune** (5), the **earth rune** (10) and the **fire rune** (20); higher runes come with Phase 9's spells.
+_Avoid_: Talisman (there are none), magic stone
 
 **Emberbone**:
 Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.

@@ -17,9 +17,9 @@ describe("rollFinds", () => {
     expect(BUSHES.berryBush).not.toHaveProperty("finds");
   });
 
-  test("copper's tin hits below 1 in 3 and misses above it", () => {
+  test("copper's tin hits below 1 in 3 and misses above it, and its essence find rolls after", () => {
     const copper = gatheringSource("mining", "copper");
-    expect(rollFinds(copper, () => 0)).toEqual(["tin"]);
+    expect(rollFinds(copper, () => 0)).toEqual(["tin", "strangeMaterial"]);
     expect(rollFinds(copper, () => 0.34)).toEqual([]);
   });
 
@@ -43,9 +43,9 @@ describe("rollFinds", () => {
     expect(rollFinds(emberite, rolls(0.06))).toEqual([]);
   });
 
-  test("the veins carry the finds the spec's §3 table gives them", () => {
-    expect(VEINS.copper.finds).toHaveLength(1);
-    expect(VEINS.iron.finds).toHaveLength(2);
-    expect(VEINS.emberite.finds).toHaveLength(1);
+  test("the veins carry the finds the spec's §3 table gives them, plus #232's essence", () => {
+    expect(VEINS.copper.finds).toHaveLength(2);
+    expect(VEINS.iron.finds).toHaveLength(3);
+    expect(VEINS.emberite.finds).toHaveLength(2);
   });
 });

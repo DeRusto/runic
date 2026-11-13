@@ -13,8 +13,9 @@ import { AUGMENTATIONS, costsOf, RECIPES, type RecipeItem } from "./making.ts";
 import { POTIONS, type PotionId } from "./potions.ts";
 
 /**
- * The hand-set value of every raw item, in coins (village spec §5). The cheapest sellable item is worth 3,
- * so it sells for 1. A value of 0 would make an item trash; none are yet.
+ * The hand-set value of every raw item, in coins (village spec §5). The store pays 40% of value,
+ * never under 1, so the cheapest sellable item, #232's strange material at 1, sells for 1.
+ * A value of 0 would make an item trash; none are yet.
  */
 export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   berry: 3,
@@ -28,6 +29,14 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ashstone: 25,
   cinderglass: 50,
   heartflame: 100,
+  // #232's essence: the masked find is worth a coin until it is identified, and a rune
+  // outsells the essence it is made of, by its gate.
+  strangeMaterial: 1,
+  runeEssence: 6,
+  airRune: 8,
+  waterRune: 12,
+  earthRune: 18,
+  fireRune: 30,
   // Low, and rising by tier like ore (#208).
   birchLog: 3,
   oakLog: 6,

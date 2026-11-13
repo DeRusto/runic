@@ -41,6 +41,8 @@ export type Quest = {
   points: number;
   /** The tools the villager hands over when the quest starts, for the work it asks. */
   gives?: readonly Tool[];
+  /** What finishing the quest teaches at once, whose rule it turns on (#232): essence identification so far. */
+  teaches?: "essence";
   stages: QuestStage[];
   repeat?: QuestRepeat;
   /** The node the conversation opens with once the quest and its turn-ins are all done. */
@@ -76,6 +78,32 @@ export const QUESTS = {
     },
     doneNode: "forge",
   },
+  // The identification chain's second quest (#232): a strange material for Odo to name, then
+  // proof it comes from every vein. Finishing it teaches identification, which turns what the
+  // player holds into rune essence and unmasks the veins' drops from then on.
+  odoEssence: {
+    id: "odoEssence",
+    title: "The strange material",
+    villager: "odo",
+    points: 1,
+    teaches: "essence",
+    stages: [
+      {
+        id: "essence",
+        node: "essenceQuest",
+        journal: "Odo wants a look at the strange material the veins give.",
+        turnIn: { item: "strangeMaterial", count: 1 },
+      },
+      {
+        id: "proof",
+        node: "proofQuest",
+        journal:
+          "Odo wants proof: a strange material from every vein, three in all.",
+        turnIn: { item: "strangeMaterial", count: 3 },
+      },
+    ],
+    doneNode: "runes",
+  },
 } as const satisfies Record<string, Quest>;
 export type QuestId = keyof typeof QUESTS;
 
@@ -85,9 +113,30 @@ export const QUEST_DONE = "done";
 /** One quest's per-player progress: the stage's id, or "done", and the repeat turn-ins done. */
 export type QuestProgress = { stage: string; turns: number };
 
-/** The quest this villager gives, or undefined when they give none. */
-export const questOfVillager = (villager: VillagerId): Quest | undefined =>
-  Object.values(QUESTS).find((quest) => quest.villager === villager);
+/** A villager's quests, in table order, which their chain runs in (#231, #232). */
+export const questsOfVillager = (villager: VillagerId): Quest[] =>
+  Object.values(QUESTS).filter((quest) => quest.villager === villager);
+
+/**
+ * The quest of `villager`'s chain a player with this progress is on: the first not yet done
+ * with its repeats, or the chain's last once everything is (#231, #232). It is the quest a
+ * "quest" choice runs, and the one whose stage the conversation opens with.
+ */
+export function currentQuestOf(
+  villager: VillagerId,
+  progresses?: ReadonlyMap<string, QuestProgress>,
+): Quest | undefined {
+  const chain = questsOfVillager(villager);
+  if (!chain.length) return undefined;
+  const spent = (quest: Quest, progress?: QuestProgress) =>
+    progress !== undefined &&
+    progress.stage === QUEST_DONE &&
+    progress.turns >= (quest.repeat?.turns ?? 0);
+  return (
+    chain.find((quest) => !spent(quest, progresses?.get(quest.id))) ??
+    chain[chain.length - 1]!
+  );
+}
 
 /** The stage of `quest` this progress names, or undefined when the quest is done or the stage isn't one of its stages. */
 export const stageOf = (quest: Quest, stage?: string) =>
@@ -113,16 +162,25 @@ export const questDoneOf = (
   quest: QuestId,
 ) => questStageOf(player, quest) === QUEST_DONE;
 
-/** The node `villager`'s conversation opens with for a player at `progress`, or their own start when they give no quest or it isn't started (#231). */
+/** The node `villager`'s conversation opens with for a player at `progresses`: the current quest's stage-appropriate node, or their own start when they give no quest or it isn't started (#231). While the current quest waits to be offered, the last quest before it that has progress opens with its done node (#232). */
 export function openingNodeOf(
   villager: VillagerId,
-  progress?: QuestProgress,
+  progresses?: ReadonlyMap<string, QuestProgress>,
 ): string {
-  const quest = questOfVillager(villager);
-  if (!quest || !progress) return VILLAGERS[villager].start;
-  if (progress.stage === QUEST_DONE)
-    return progress.turns < (quest.repeat?.turns ?? 0)
-      ? quest.repeat!.node
-      : quest.doneNode;
-  return stageOf(quest, progress.stage)?.node ?? VILLAGERS[villager].start;
+  const quest = currentQuestOf(villager, progresses);
+  if (!quest) return VILLAGERS[villager].start;
+  const progress = progresses?.get(quest.id);
+  if (progress) {
+    if (progress.stage === QUEST_DONE)
+      return progress.turns < (quest.repeat?.turns ?? 0)
+        ? quest.repeat!.node
+        : quest.doneNode;
+    return stageOf(quest, progress.stage)?.node ?? VILLAGERS[villager].start;
+  }
+  const chain = questsOfVillager(villager);
+  const earlier = chain
+    .slice(0, chain.indexOf(quest))
+    .filter((quest) => progresses?.has(quest.id))
+    .at(-1);
+  return earlier?.doneNode ?? VILLAGERS[villager].start;
 }

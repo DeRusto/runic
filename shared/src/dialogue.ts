@@ -146,6 +146,80 @@ export const VILLAGERS = {
             "Forge treating you well? Furnace and anvil are yours whenever you like.",
           ),
         ],
+        choices: [
+          // The identification chain's offer, once the forge quest and its repeats are done (#232).
+          {
+            text: "About the strange material the veins give...",
+            to: "essence",
+            action: "quest",
+          },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      // Odo's second quest (#232): the strange material the veins give, which he names.
+      essence: {
+        lines: [
+          you("About the strange material the veins give..."),
+          villager("That! Bring me a piece and I'll tell you what it is."),
+        ],
+      },
+      essenceQuest: {
+        lines: [
+          villager(
+            "Any luck with that strange stuff? The veins give it up now and then.",
+          ),
+        ],
+        choices: [
+          {
+            text: "I've got a piece. Here.",
+            to: "essenceGiven",
+            action: "quest",
+          },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      essenceGiven: {
+        lines: [
+          you("I've got a piece. Here."),
+          villager(
+            "There it is. Essence, of a kind — the stuff runes are made from.",
+          ),
+          villager(
+            "But I'll want proof you can find it in every vein. Three more pieces, and I'll teach you to know it on sight.",
+          ),
+        ],
+      },
+      proofQuest: {
+        lines: [
+          villager(
+            "Proof, remember? A piece from every vein — copper, iron and emberite. Three pieces.",
+          ),
+        ],
+        choices: [
+          { text: "Here are the three.", to: "taught", action: "quest" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      taught: {
+        lines: [
+          you("Here are the three."),
+          villager(
+            "Same stuff, every vein. Now watch — hold it to the light, like so.",
+          ),
+          villager(
+            "There. From today you'll know it for rune essence, and the veins will give it up as essence too.",
+          ),
+          villager(
+            "The old stone circle out on the Boneyard's far side is where you'll make runes of it. Mind the bones.",
+          ),
+        ],
+      },
+      runes: {
+        lines: [
+          villager(
+            "Essence to runes at the old stone circle, out past the Emberite. Mind the bones.",
+          ),
+        ],
         choices: [{ text: "Bye.", to: "bye" }],
       },
     },

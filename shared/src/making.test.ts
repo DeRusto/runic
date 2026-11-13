@@ -6,6 +6,7 @@ import {
   capesIn,
   cookedItem,
   countOf,
+  doublesAt,
   heldOf,
   levelRefusal,
   madeItem,
@@ -15,6 +16,7 @@ import {
   stationRefusal,
   xpLines,
 } from "./making.ts";
+import { RUNES } from "./runecrafting.ts";
 import { xpForLevel } from "./skills.ts";
 
 const holding = (
@@ -24,17 +26,19 @@ const holding = (
   cookingXp = 0,
   craftingXp = 0,
   fletchingXp = 0,
+  runecraftingXp = 0,
 ) => ({
   smithingXp,
   miningXp,
   cookingXp,
   craftingXp,
   fletchingXp,
+  runecraftingXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are the rebalance spec §3's Making table, and #221's range, #225's Crafting and #228's Fletching at the workbench after it", () => {
+test("the recipes are the rebalance spec §3's Making table, #221's range, #225's Crafting and #228's Fletching at the workbench, and #232's four elemental runes at the altar, after it", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -596,7 +600,62 @@ test("the recipes are the rebalance spec §3's Making table, and #221's range, #
       ticks: 6,
       xp: { fletchingXp: 90 },
     },
+    airRune: {
+      station: "altar",
+      skill: "Runecrafting",
+      xpField: "runecraftingXp",
+      level: 1,
+      doublesAt: 20,
+      costs: { runeEssence: 1 },
+      ticks: 6,
+      xp: { runecraftingXp: 5 },
+    },
+    waterRune: {
+      station: "altar",
+      skill: "Runecrafting",
+      xpField: "runecraftingXp",
+      level: 5,
+      doublesAt: 10,
+      costs: { runeEssence: 1 },
+      ticks: 6,
+      xp: { runecraftingXp: 8 },
+    },
+    earthRune: {
+      station: "altar",
+      skill: "Runecrafting",
+      xpField: "runecraftingXp",
+      level: 10,
+      doublesAt: 20,
+      costs: { runeEssence: 1 },
+      ticks: 6,
+      xp: { runecraftingXp: 12 },
+    },
+    fireRune: {
+      station: "altar",
+      skill: "Runecrafting",
+      xpField: "runecraftingXp",
+      level: 20,
+      doublesAt: 40,
+      costs: { runeEssence: 1 },
+      ticks: 6,
+      xp: { runecraftingXp: 20 },
+    },
   });
+});
+
+test("only the runes double, one essence making two once the making skill reaches their level", () => {
+  // Each rune's hand-set doubling level (#232): air at 20, water at 10, earth at 20, fire at 40.
+  expect(doublesAt("airRune", 19)).toBe(false);
+  expect(doublesAt("airRune", 20)).toBe(true);
+  expect(doublesAt("waterRune", 9)).toBe(false);
+  expect(doublesAt("waterRune", 10)).toBe(true);
+  expect(doublesAt("earthRune", 19)).toBe(false);
+  expect(doublesAt("earthRune", 20)).toBe(true);
+  expect(doublesAt("fireRune", 39)).toBe(false);
+  expect(doublesAt("fireRune", 40)).toBe(true);
+  for (const item of Object.keys(RECIPES))
+    if (!RUNES.includes(item as never))
+      expect(doublesAt(item as never, 99)).toBe(false);
 });
 
 test("Emberite gear needs its Emberbones as well as its bars and level", () => {
