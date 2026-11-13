@@ -1,4 +1,4 @@
-import { ArraySchema, schema, t } from "@colyseus/schema";
+import { schema, t } from "@colyseus/schema";
 import {
   addItems,
   addXp,
@@ -81,7 +81,6 @@ import {
   SKILLS,
   slotFor,
   takeRefusal,
-  STARTING_PINNED_SKILLS,
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
@@ -91,8 +90,6 @@ import {
   depositRefusal,
   itemParts,
   ENEMIES,
-  STARTING_HEALTH,
-  STARTING_HITPOINTS_XP,
   aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
@@ -124,6 +121,7 @@ import {
   type XpField,
 } from "@runic/shared";
 import { GroundItem, GroundItems } from "./groundItems.ts";
+import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import {
   findPath,
@@ -499,38 +497,11 @@ export class Simulation {
 
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
-    const {
-      inventory,
-      inventoryCounts = [],
-      pinnedSkills = STARTING_PINNED_SKILLS,
-      tools = [],
-      bank = [],
-      bankCounts = [],
-      ...fields
-    } = this.loginSave(saved);
+    const fields = syncedOf(this.loginSave(saved));
     const player = Object.assign(new Player(), fields, {
       username,
       maxHealth: maxHealthTotal(fields),
     });
-    player.pinnedSkills = new ArraySchema(...pinnedSkills);
-    player.tools = new ArraySchema(...tools);
-    player.inventory = new ArraySchema(...inventory);
-    // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
-    player.inventoryCounts = new ArraySchema(
-      ...inventory.map((item, slot) =>
-        item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
-      ),
-    );
-    // A save from before the bank has none, so it starts empty (village spec §6).
-    player.bank = new ArraySchema(
-      ...Array.from(
-        { length: BANK_SLOTS },
-        (_, slot) => bank[slot] ?? EMPTY_SLOT,
-      ),
-    );
-    player.bankCounts = new ArraySchema(
-      ...Array.from({ length: BANK_SLOTS }, (_, slot) => bankCounts[slot] ?? 0),
-    );
     this.state.players.set(id, player);
     this.unsyncedPlayers.set(id, {
       path: [],
@@ -548,17 +519,7 @@ export class Simulation {
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
     const respawn = respawnTile(this.tiles);
-    if (!saved) {
-      return {
-        ...respawn,
-        combatXp: 0,
-        defenseXp: 0,
-        herblawXp: 0,
-        hitpointsXp: STARTING_HITPOINTS_XP,
-        health: STARTING_HEALTH,
-        inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
-      };
-    }
+    if (!saved) return newSave(respawn);
     const tile = this.tiles[saved.y]?.[saved.x];
     if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
@@ -593,69 +554,8 @@ export class Simulation {
   saveOf(id: string): PlayerSave | undefined {
     const player = this.state.players.get(id);
     if (!player) return undefined;
-    const {
-      x,
-      y,
-      combatXp,
-      defenseXp,
-      herblawXp,
-      hitpointsXp,
-      miningXp,
-      smithingXp,
-      woodcuttingXp,
-      fishingXp,
-      cookingXp,
-      firemakingXp,
-      craftingXp,
-      blockingXp,
-      masteryXp,
-      masteryHundredths,
-      health,
-      weapon,
-      shield,
-      head,
-      body,
-      legs,
-      hands,
-      feet,
-      cape,
-      neck,
-      ring,
-    } = player;
     return {
-      x,
-      y,
-      combatXp,
-      defenseXp,
-      herblawXp,
-      hitpointsXp,
-      miningXp,
-      smithingXp,
-      woodcuttingXp,
-      fishingXp,
-      cookingXp,
-      firemakingXp,
-      craftingXp,
-      blockingXp,
-      masteryXp,
-      masteryHundredths,
-      health,
-      weapon,
-      shield,
-      head,
-      body,
-      legs,
-      hands,
-      feet,
-      cape,
-      neck,
-      ring,
-      pinnedSkills: [...player.pinnedSkills],
-      inventory: [...player.inventory],
-      inventoryCounts: [...player.inventoryCounts],
-      tools: [...player.tools],
-      bank: [...player.bank],
-      bankCounts: [...player.bankCounts],
+      ...saveOf(player),
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.respawned(player)),
     };
