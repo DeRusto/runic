@@ -3,6 +3,7 @@ import {
   levelRefusal,
   MAKE_INTENT,
   makeRefusal,
+  MAKING_SKILLS,
   makingOf,
   materialLines,
   RECIPES,
@@ -11,6 +12,7 @@ import {
   WALK_INTENT,
   type AugmentationKind,
   type MakeItem,
+  type MakingSkill,
   type RecipeItem,
   type StationKind,
   type Tile,
@@ -30,10 +32,6 @@ const pieceName = (item: string, tier: string) => {
   const suffix = itemName(item).replace(itemName(tier), "").trimStart();
   return suffix.charAt(0).toUpperCase() + suffix.slice(1);
 };
-
-/** Which panel section a station opens: a fire cooks like the range (#224). */
-const sectionOf = (station: StationKind) =>
-  station === "fire" ? "range" : station;
 
 /**
  * The panel a click on a station opens, once the player is next to it. Returns how to ask
@@ -60,9 +58,10 @@ export function showSmithingPanel(room: WorldConnection) {
 
   const items = Object.keys(RECIPES) as RecipeItem[];
   const augmentations = Object.keys(AUGMENTATIONS) as AugmentationKind[];
-  /** One folding section: a tier of the furnace or anvil, the range's Cooking, or a workbench or anvil skill's list (#221, #225, #238). */
+  /** One folding section: a Making skill's list, or one tier of it for a tiered skill (#221, #225, #238). */
   const section = (
-    station: StationKind,
+    places: readonly StationKind[],
+    skill: MakingSkill,
     makes: MakeItem[],
     name: string,
     tier?: string,
@@ -81,7 +80,7 @@ export function showSmithingPanel(room: WorldConnection) {
       // In a tier's section the header names the metal, so a row names only the piece:
       // "Chestplate", or "Throwing knife" for the two-word one (#228).
       name.textContent =
-        station === "anvil" && tier ? pieceName(item, tier) : itemName(item);
+        skill === "Smithing" && tier ? pieceName(item, tier) : itemName(item);
       const button = (label: string, all: boolean) => {
         const make = document.createElement("button");
         make.type = "button";
@@ -118,72 +117,37 @@ export function showSmithingPanel(room: WorldConnection) {
     });
     element.append(header, ...rows.map(({ row }) => row));
     return {
-      station,
+      places,
       element,
       gate,
       first: makes[0]!,
       rows,
     };
   };
-  const sections = [
-    ...(["furnace", "anvil"] as const).flatMap((station) =>
-      TIERS.map((tier) =>
-        section(
-          station,
-          items.filter(
-            (item) =>
-              RECIPES[item].station === station &&
-              item.startsWith(tier) &&
-              // The anvil's Jewelsmithing gets its own section below (#238).
-              (station === "anvil" ? RECIPES[item].skill === "Smithing" : true),
-          ),
-          itemName(tier),
-          tier,
-        ),
-      ),
-    ),
-    section(
-      "anvil",
-      items.filter((item) => RECIPES[item].skill === "Jewelsmithing"),
-      "Jewelsmithing",
-    ),
-    section(
-      "range",
-      items.filter((item) => RECIPES[item].station === "range"),
-      "Cooking",
-    ),
-    section(
-      "workbench",
-      [
-        ...items.filter(
-          (item) =>
-            RECIPES[item].station === "workbench" &&
-            RECIPES[item].skill === "Crafting",
-        ),
-        ...augmentations,
-      ],
-      "Crafting",
-    ),
-    section(
-      "workbench",
-      items.filter(
-        (item) =>
-          RECIPES[item].station === "workbench" &&
-          RECIPES[item].skill === "Fletching",
-      ),
-      "Fletching",
-    ),
-    section(
-      "workbench",
-      items.filter((item) => RECIPES[item].skill === "Leatherworking"),
-      "Leatherworking",
-    ),
-    section(
-      "altar",
-      items.filter((item) => RECIPES[item].station === "altar"),
-      "Runecrafting",
-    ),
-  ];
+  // In the table's order; an augmentation joins its skill's section after the recipes (#225).
+  const sections = (Object.keys(MAKING_SKILLS) as MakingSkill[]).flatMap(
+    (skill) => {
+      const { places, tiered } = MAKING_SKILLS[skill] as {
+        places: readonly StationKind[];
+        tiered?: boolean;
+      };
+      const makes: MakeItem[] = [
+        ...items.filter((item) => RECIPES[item].skill === skill),
+        ...augmentations.filter((kind) => AUGMENTATIONS[kind].skill === skill),
+      ];
+      return tiered
+        ? TIERS.map((tier) =>
+            section(
+              places,
+              skill,
+              makes.filter((item) => item.startsWith(tier)),
+              itemName(tier),
+              tier,
+            ),
+          )
+        : [section(places, skill, makes, skill)];
+    },
+  );
   const rows = sections.flatMap((s) => s.rows);
   document
     .getElementById("smithing-rows")!
@@ -215,7 +179,7 @@ export function showSmithingPanel(room: WorldConnection) {
     title.textContent = itemName(station);
     // Folding starts over at each opening: the tiers the player has reached open, the rest fold.
     for (const s of sections) {
-      s.element.hidden = s.station !== sectionOf(station);
+      s.element.hidden = !s.places.includes(station);
       s.element.open = !levelRefusal(s.first, me);
     }
     draw(me);

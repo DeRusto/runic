@@ -9,12 +9,8 @@ import {
   avoidanceOf,
   blockOf,
   BLOCKING_XP_PER_BLOCK,
-  burnPercent,
-  capeIn,
   COMBAT_LOCK_TICKS,
   COINS,
-  cookedItem,
-  costsOf,
   dealRefusal,
   dealTotals,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
@@ -37,7 +33,6 @@ import {
   gearOf,
   GEAR_SLOTS,
   gearRefusal,
-  gossamerItem,
   HEALING_POOL_INTERVAL_TICKS,
   HEALTH_PER_HITPOINTS_LEVEL,
   hitOf,
@@ -48,13 +43,11 @@ import {
   lightRefusal,
   logoutRefusal,
   maxHealthOf,
-  madeItem,
   makeRefusal,
+  make,
   makingOf,
-  LOG,
-  LOGS,
-  yieldOf,
-  type AugmentationKind,
+  makingSkillOf,
+  stationOf,
   type MakeItem,
   moveStack,
   MASTERY_SHARE_PERCENT,
@@ -102,7 +95,6 @@ import {
   countOf,
   QUEST_DONE,
   currentQuestOf,
-  doublesAt,
   openingNodeOf,
   stageOf,
   type Deal,
@@ -115,7 +107,6 @@ import {
   type Tool,
   type Villager,
   type VillagerId,
-  xpOf,
   type GatheringLeftField,
   type GatheringSkill,
   type PlayerAction,
@@ -124,7 +115,6 @@ import {
   type FireLog,
   type GearSlot,
   type ItemId,
-  type RecipeItem,
   type SitePool,
   type StationKind,
   type Virtue,
@@ -743,14 +733,14 @@ export class Simulation {
     if (!player || player.dead || typeof item !== "string") return;
     if (!Object.hasOwn(RECIPES, item) && !Object.hasOwn(AUGMENTATIONS, item))
       return;
-    const make = item as MakeItem;
-    const { station } = makingOf(make);
-    // `at` names the fire to cook at, which stands in for the range (#224).
+    const wanted = item as MakeItem;
+    const station = stationOf(wanted);
+    // `at` names the fire to make at, for a Making skill made over one (#224).
     let fire: Tile | undefined;
     if (at) {
       const { x, y } = at as Partial<Tile>;
       if (
-        station !== "range" ||
+        !makingSkillOf(wanted).places.includes("fire") ||
         !Number.isInteger(x) ||
         !Number.isInteger(y) ||
         !this.state.fires.has(siteId({ x, y } as Tile))
@@ -760,7 +750,7 @@ export class Simulation {
     } else if (!this.stations[station] || stationRefusal(station, player)) {
       return;
     }
-    this.queuedActions.set(id, { make, all: all === true, at: fire });
+    this.queuedActions.set(id, { make: wanted, all: all === true, at: fire });
   }
 
   /**
@@ -1464,7 +1454,7 @@ export class Simulation {
   /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
     if (action?.kind === "smithing")
-      return action.at ?? this.stations[makingOf(action.item).station];
+      return action.at ?? this.stations[stationOf(action.item)];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
@@ -1609,151 +1599,42 @@ export class Simulation {
         this.events.push({ type: "told", player: id, line: refusal });
         continue;
       }
-      const { station, ticks } = makingOf(making.item);
+      const { ticks } = makingOf(making.item);
       making.doneTick = this.state.tick + ticks;
-      this.events.push({ type: "make", player: id, station, ticks });
+      this.events.push({
+        type: "make",
+        player: id,
+        station: stationOf(making.item),
+        ticks,
+      });
     }
   }
 
   /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
   private finishItem(id: string, { item, at }: { item: MakeItem; at?: Tile }) {
     const player = this.state.players.get(id)!;
-    const told = (line: string) => {
-      this.events.push({ type: "told", player: id, line });
+    // A fire burns more than the range, by the points of the log it burns (#224).
+    const fire = at ? this.state.fires.get(siteId(at)) : undefined;
+    const outcome = make(
+      item,
+      player,
+      this.random,
+      fire ? FIRES[fire.log].burnPercent : 0,
+    );
+    if ("refused" in outcome) {
+      this.events.push({ type: "told", player: id, line: outcome.refused });
       return false;
-    };
-    // Dropping during the wait is allowed, so they may have gone.
-    const refusal = makeRefusal(item, player);
-    if (refusal) return told(refusal);
-    // An augmentation has no roll: its product is the cape's own gossamer variant (#217, #225).
-    if (Object.hasOwn(AUGMENTATIONS, item))
-      return this.finishAugment(id, player, item as AugmentationKind);
-    const recipe = item as RecipeItem;
-    // A burn consumes the fish: no experience, no item, and Make all goes on to the
-    // next one (#221). It never rolls Delicious.
-    if (RECIPES[recipe].station === "range") {
-      const level = levelFor(player.cookingXp);
-      // A fire burns more than the range, by the points of the log it burns (#224).
-      const fire = at ? this.state.fires.get(siteId(at)) : undefined;
-      const burn =
-        burnPercent(recipe, level) + (fire ? FIRES[fire.log].burnPercent : 0);
-      if (this.random() < burn / 100) {
-        for (const [cost, count] of costsOf(recipe))
-          removeItems(player.inventory, player.inventoryCounts, cost, count);
-        // "berryPerch" reads as "berry perch", like an item's name does.
-        const name = recipe.replace(
-          /[A-Z]/g,
-          (letter) => ` ${letter.toLowerCase()}`,
-        );
-        this.events.push({
-          type: "told",
-          player: id,
-          line: `You burn the ${name}.`,
-        });
-        return true;
-      }
     }
-    // Rolled after the room check below, so a refused make rolls nothing.
-    const roll =
-      RECIPES[recipe].station === "range"
-        ? () => cookedItem(recipe, levelFor(player.cookingXp), this.random)
-        : // The improved chance is the making skill's, so a bow rolls on Fletching (#228).
-          () =>
-            madeItem(
-              recipe,
-              levelFor(player[RECIPES[recipe].xpField]),
-              this.random,
-            );
-    return this.craftItem(id, player, recipe, roll);
-  }
-
-  /**
-   * Swaps the reagent and the first cape held for its gossamer variant, which keeps the cape's
-   * Quality and Virtue, on a copy so a full inventory can refuse first (#217, #225).
-   */
-  private finishAugment(
-    id: string,
-    player: InstanceType<typeof Player>,
-    item: AugmentationKind,
-  ) {
-    const told = (line: string) => {
-      this.events.push({ type: "told", player: id, line });
-      return false;
-    };
-    const { reagent, xp, xpField } = AUGMENTATIONS[item];
-    // The refusal has already found a cape to work on.
-    const cape = capeIn(player)!;
-    const made = gossamerItem(cape);
-    const inventory = [...player.inventory];
-    const inventoryCounts = [...player.inventoryCounts];
-    removeItems(inventory, inventoryCounts, reagent, 1);
-    removeItems(inventory, inventoryCounts, cape, 1);
-    const slot = slotFor(made, { inventory, inventoryCounts });
-    if (slot < 0) return told("Your inventory is full.");
-    inventory[slot] = made;
-    inventoryCounts[slot]!++;
-    inventory.forEach((held, i) => {
+    outcome.inventory.forEach((held, i) => {
       player.inventory[i] = held;
-      player.inventoryCounts[i] = inventoryCounts[i]!;
+      player.inventoryCounts[i] = outcome.inventoryCounts[i]!;
     });
-    this.earnXp(player, xpField, xp);
-    this.events.push({ type: "made", player: id, item: made });
-    return true;
-  }
-
-  /** Swaps the materials for what `roll` makes, on a copy so a full inventory can refuse first. */
-  private craftItem(
-    id: string,
-    player: InstanceType<typeof Player>,
-    item: RecipeItem,
-    roll: () => string,
-  ) {
-    const told = (line: string) => {
-      this.events.push({ type: "told", player: id, line });
-      return false;
-    };
-    const inventory = [...player.inventory];
-    const inventoryCounts = [...player.inventoryCounts];
-    for (const [cost, count] of costsOf(item)) {
-      let left = count;
-      // A stand-in cost takes any tier of its kind, first held first, like an augmentation's cape (#228).
-      const takes: string[] = cost === LOG ? [...LOGS] : [cost];
-      inventory.forEach((held, slot) => {
-        if (!takes.includes(held) || !left) return;
-        const taken = Math.min(left, inventoryCounts[slot]!);
-        left -= taken;
-        inventoryCounts[slot]! -= taken;
-        if (!inventoryCounts[slot]) inventory[slot] = EMPTY_SLOT;
-      });
-    }
-    // On the copy, so the last ore in a full inventory leaves room for its bar. Gear never
-    // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
-    const slot = slotFor(item, { inventory, inventoryCounts });
-    if (slot < 0) return told("Your inventory is full.");
-    const made = roll();
-    // A Delicious fish can't join a stack of plain ones, so it needs room of its own; a plain
-    // batch tops up every stack of it with room before filling empty slots, refusing whole if it
-    // doesn't all fit (#228). At a rune's doubling level one essence makes two runes, and each
-    // rune pays its experience (#232).
-    const times = doublesAt(item, levelFor(player[RECIPES[item].xpField]))
-      ? 2
-      : 1;
-    if (made === item) {
-      if (addItems(inventory, inventoryCounts, made, yieldOf(item) * times))
-        return told("Your inventory is full.");
-    } else {
-      const madeSlot = slotFor(made, { inventory, inventoryCounts });
-      if (madeSlot < 0) return told("Your inventory is full.");
-      inventory[madeSlot] = made;
-      inventoryCounts[madeSlot]!++;
-    }
-    inventory.forEach((held, i) => {
-      player.inventory[i] = held;
-      player.inventoryCounts[i] = inventoryCounts[i]!;
-    });
-    for (const [field, gained] of xpOf(item))
-      this.earnXp(player, field, gained * times);
-    this.events.push({ type: "made", player: id, item: made });
+    for (const [field, gained] of outcome.xp)
+      this.earnXp(player, field, gained);
+    if (outcome.told)
+      this.events.push({ type: "told", player: id, line: outcome.told });
+    if (outcome.made)
+      this.events.push({ type: "made", player: id, item: outcome.made });
     return true;
   }
 

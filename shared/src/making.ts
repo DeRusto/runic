@@ -1,36 +1,50 @@
+import { EMPTY_SLOT } from "./index.ts";
 import { toolRefusal } from "./tools.ts";
-import { GEAR, gearOf } from "./gear.ts";
-import { VIRTUES, type HasInventory, type ItemId, itemParts } from "./items.ts";
+import { GEAR, gearOf, gossamerItem } from "./gear.ts";
+import {
+  addItems,
+  VIRTUES,
+  type HasInventory,
+  type ItemId,
+  itemParts,
+  removeItems,
+  slotFor,
+} from "./items.ts";
 import { questDoneOf } from "./quests.ts";
 import type { StationKind } from "./region.ts";
 import { levelFor, type XpField } from "./skills.ts";
 
+type MakingSkillRow = {
+  /** The skill's synced experience field, which gates its recipes and is paid for them. */
+  xpField: XpField;
+  /** Where it is made. The first is the fixed station its make walks to and names; a fire comes from the make's own tile. */
+  places: readonly StationKind[];
+  /** Whether the panel splits its section by metal tier. */
+  tiered?: boolean;
+  /** Whether a make can burn and comes out Delicious instead of improved (#221). */
+  cooks?: boolean;
+};
+
+/**
+ * Every Making skill, in the Smithing panel's section order. A recipe names only its skill;
+ * its station, gate field and paid field all come from here.
+ */
+export const MAKING_SKILLS = {
+  Mining: { xpField: "miningXp", places: ["furnace"], tiered: true },
+  Smithing: { xpField: "smithingXp", places: ["anvil"], tiered: true },
+  Jewelsmithing: { xpField: "jewelsmithingXp", places: ["anvil"] },
+  Cooking: { xpField: "cookingXp", places: ["range", "fire"], cooks: true },
+  Crafting: { xpField: "craftingXp", places: ["workbench"] },
+  Fletching: { xpField: "fletchingXp", places: ["workbench"] },
+  Leatherworking: { xpField: "leatherworkingXp", places: ["workbench"] },
+  Runecrafting: { xpField: "runecraftingXp", places: ["altar"] },
+} as const satisfies Record<string, MakingSkillRow>;
+export type MakingSkill = keyof typeof MAKING_SKILLS;
+type MakingXpField = (typeof MAKING_SKILLS)[MakingSkill]["xpField"];
+
 type Recipe = {
-  station: StationKind;
-  /**
-   * The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing and
-   * Jewelsmithing (#238), the range's Cooking, the workbench's Crafting, Fletching (#225,
-   * #228) and Leatherworking (#238), and the altar's Runecrafting (#232).
-   */
-  skill:
-    | "Mining"
-    | "Smithing"
-    | "Cooking"
-    | "Crafting"
-    | "Fletching"
-    | "Runecrafting"
-    | "Leatherworking"
-    | "Jewelsmithing";
-  /** That skill's synced experience field. */
-  xpField:
-    | "miningXp"
-    | "smithingXp"
-    | "cookingXp"
-    | "craftingXp"
-    | "fletchingXp"
-    | "runecraftingXp"
-    | "leatherworkingXp"
-    | "jewelsmithingXp";
+  /** The Making skill that gates this recipe and is paid for it. */
+  skill: MakingSkill;
   /** That skill's level needed. */
   level: number;
   /** The skill level where one make gives a second rune for the same essence, hand-set per rune (#232). */
@@ -38,8 +52,8 @@ type Recipe = {
   /** A cost may be a stand-in: `log` is any tier's log (#228). */
   costs: Partial<Record<ItemId | typeof LOG, number>>;
   ticks: number;
-  /** What finishing one grants, in each skill. */
-  xp: Partial<Record<XpField, number>>;
+  /** The skill's experience that finishing one pays. */
+  xp: number;
   /** How many of the product one make gives, for #228's batches; 1 for the rest. */
   yield?: number;
 };
@@ -47,610 +61,480 @@ type Recipe = {
 /** Spec §5, as revised by the rebalance spec §3 Making. The order here is the order of the Smithing panel's rows. */
 export const RECIPES = {
   copperBar: {
-    station: "furnace",
     skill: "Mining",
-    xpField: "miningXp",
     level: 1,
     costs: { copperOre: 1 },
     ticks: 6,
-    xp: { miningXp: 2 },
+    xp: 2,
   },
   bronzeBar: {
-    station: "furnace",
     skill: "Mining",
-    xpField: "miningXp",
     level: 5,
     costs: { copperOre: 1, tin: 1 },
     ticks: 6,
-    xp: { miningXp: 4 },
+    xp: 4,
   },
   ironBar: {
-    station: "furnace",
     skill: "Mining",
-    xpField: "miningXp",
     level: 10,
     costs: { ironOre: 1 },
     ticks: 6,
-    xp: { miningXp: 6 },
+    xp: 6,
   },
   steelBar: {
-    station: "furnace",
     skill: "Mining",
-    xpField: "miningXp",
     level: 15,
     costs: { ironOre: 1, coal: 1 },
     ticks: 6,
-    xp: { miningXp: 9 },
+    xp: 9,
   },
   emberiteBar: {
-    station: "furnace",
     skill: "Mining",
-    xpField: "miningXp",
     level: 20,
     costs: { emberiteOre: 1 },
     ticks: 6,
-    xp: { miningXp: 12 },
+    xp: 12,
   },
   copperSword: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 18 },
+    xp: 18,
   },
   copperShield: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 4 },
     ticks: 16,
-    xp: { smithingXp: 24 },
+    xp: 24,
   },
   copperHelmet: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 2 },
     ticks: 8,
-    xp: { smithingXp: 12 },
+    xp: 12,
   },
   copperChestplate: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 5 },
     ticks: 20,
-    xp: { smithingXp: 30 },
+    xp: 30,
   },
   copperLeggings: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 18 },
+    xp: 18,
   },
   bronzeSword: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 36 },
+    xp: 36,
   },
   bronzeShield: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 4 },
     ticks: 16,
-    xp: { smithingXp: 48 },
+    xp: 48,
   },
   bronzeHelmet: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 2 },
     ticks: 8,
-    xp: { smithingXp: 24 },
+    xp: 24,
   },
   bronzeChestplate: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 5 },
     ticks: 20,
-    xp: { smithingXp: 60 },
+    xp: 60,
   },
   bronzeLeggings: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 36 },
+    xp: 36,
   },
   ironSword: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 54 },
+    xp: 54,
   },
   ironShield: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 4 },
     ticks: 16,
-    xp: { smithingXp: 72 },
+    xp: 72,
   },
   ironHelmet: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 2 },
     ticks: 8,
-    xp: { smithingXp: 36 },
+    xp: 36,
   },
   ironChestplate: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 5 },
     ticks: 20,
-    xp: { smithingXp: 90 },
+    xp: 90,
   },
   ironLeggings: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 54 },
+    xp: 54,
   },
   steelSword: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 81 },
+    xp: 81,
   },
   steelShield: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 4 },
     ticks: 16,
-    xp: { smithingXp: 108 },
+    xp: 108,
   },
   steelHelmet: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 2 },
     ticks: 8,
-    xp: { smithingXp: 54 },
+    xp: 54,
   },
   steelChestplate: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 5 },
     ticks: 20,
-    xp: { smithingXp: 135 },
+    xp: 135,
   },
   steelLeggings: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 3 },
     ticks: 12,
-    xp: { smithingXp: 81 },
+    xp: 81,
   },
   emberiteSword: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 3, emberbone: 2 },
     ticks: 12,
-    xp: { smithingXp: 108 },
+    xp: 108,
   },
   emberiteShield: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 4, emberbone: 3 },
     ticks: 16,
-    xp: { smithingXp: 144 },
+    xp: 144,
   },
   emberiteHelmet: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 2, emberbone: 1 },
     ticks: 8,
-    xp: { smithingXp: 72 },
+    xp: 72,
   },
   emberiteChestplate: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 5, emberbone: 4 },
     ticks: 20,
-    xp: { smithingXp: 180 },
+    xp: 180,
   },
   emberiteLeggings: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 3, emberbone: 2 },
     ticks: 12,
-    xp: { smithingXp: 108 },
+    xp: 108,
   },
   /** #228's anvil pieces: arrowheads for Fletching's arrows, and throwing knives for Phase 8's combat. A tier's batch of arrowheads costs one bar and pays 6, and a knife one bar, plus an Emberbone at Emberite like the gear. */
   copperArrowhead: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 1 },
     ticks: 6,
     yield: 10,
-    xp: { smithingXp: 6 },
+    xp: 6,
   },
   bronzeArrowhead: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 1 },
     ticks: 6,
     yield: 10,
-    xp: { smithingXp: 6 },
+    xp: 6,
   },
   ironArrowhead: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 1 },
     ticks: 6,
     yield: 10,
-    xp: { smithingXp: 6 },
+    xp: 6,
   },
   steelArrowhead: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 1 },
     ticks: 6,
     yield: 10,
-    xp: { smithingXp: 6 },
+    xp: 6,
   },
   emberiteArrowhead: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 1 },
     ticks: 6,
     yield: 10,
-    xp: { smithingXp: 6 },
+    xp: 6,
   },
   copperThrowingKnife: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 1,
     costs: { copperBar: 1 },
     ticks: 6,
-    xp: { smithingXp: 6 },
+    xp: 6,
   },
   bronzeThrowingKnife: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 5,
     costs: { bronzeBar: 1 },
     ticks: 6,
-    xp: { smithingXp: 12 },
+    xp: 12,
   },
   ironThrowingKnife: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 10,
     costs: { ironBar: 1 },
     ticks: 6,
-    xp: { smithingXp: 18 },
+    xp: 18,
   },
   steelThrowingKnife: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 15,
     costs: { steelBar: 1 },
     ticks: 6,
-    xp: { smithingXp: 27 },
+    xp: 27,
   },
   emberiteThrowingKnife: {
-    station: "anvil",
     skill: "Smithing",
-    xpField: "smithingXp",
     level: 20,
     costs: { emberiteBar: 1, emberbone: 1 },
     ticks: 6,
-    xp: { smithingXp: 36 },
+    xp: 36,
   },
   /** #221's range: one raw fish each, and the same fish again with a berry or a herb (spec #219's shape). Each pays Cooking, and all take as long as a bar. A fire cooks these too, adding its log's burn points (#224). */
   cookedPerch: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 1,
     costs: { perch: 1 },
     ticks: 6,
-    xp: { cookingXp: 12 },
+    xp: 12,
   },
   berryPerch: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 5,
     costs: { perch: 1, berry: 1 },
     ticks: 6,
-    xp: { cookingXp: 18 },
+    xp: 18,
   },
   herbPerch: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 10,
     costs: { perch: 1, herb: 1 },
     ticks: 6,
-    xp: { cookingXp: 24 },
+    xp: 24,
   },
   cookedTrout: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 10,
     costs: { trout: 1 },
     ticks: 6,
-    xp: { cookingXp: 30 },
+    xp: 30,
   },
   berryTrout: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 15,
     costs: { trout: 1, berry: 1 },
     ticks: 6,
-    xp: { cookingXp: 45 },
+    xp: 45,
   },
   herbTrout: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 20,
     costs: { trout: 1, herb: 1 },
     ticks: 6,
-    xp: { cookingXp: 60 },
+    xp: 60,
   },
   cookedPike: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 20,
     costs: { pike: 1 },
     ticks: 6,
-    xp: { cookingXp: 50 },
+    xp: 50,
   },
   berryPike: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 25,
     costs: { pike: 1, berry: 1 },
     ticks: 6,
-    xp: { cookingXp: 75 },
+    xp: 75,
   },
   herbPike: {
-    station: "range",
     skill: "Cooking",
-    xpField: "cookingXp",
     level: 30,
     costs: { pike: 1, herb: 1 },
     ticks: 6,
-    xp: { cookingXp: 100 },
+    xp: 100,
   },
   /** #225's workbench: the utilities Crafting makes. The rope and torch wait for the systems that will use them, and the vial is the store's second source. */
   rope: {
-    station: "workbench",
     skill: "Crafting",
-    xpField: "craftingXp",
     level: 1,
     costs: { spiderSilk: 2 },
     ticks: 6,
-    xp: { craftingXp: 8 },
+    xp: 8,
   },
   torch: {
-    station: "workbench",
     skill: "Crafting",
-    xpField: "craftingXp",
     level: 5,
     costs: { birchLog: 1, rope: 1 },
     ticks: 6,
-    xp: { craftingXp: 14 },
+    xp: 14,
   },
   vial: {
-    station: "workbench",
     skill: "Crafting",
-    xpField: "craftingXp",
     level: 10,
     costs: { cinderglass: 1 },
     ticks: 6,
-    xp: { craftingXp: 20 },
+    xp: 20,
   },
   /** #228's workbench: Fletching's stock. A shaft comes from any tier's log, an arrow from ten of each part, and a bow from its own wood and a rope. */
   arrowShaft: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { log: 1 },
     ticks: 6,
     yield: 10,
-    xp: { fletchingXp: 2 },
+    xp: 2,
   },
   copperArrow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { arrowShaft: 10, copperArrowhead: 10, feather: 10 },
     ticks: 6,
     yield: 10,
-    xp: { fletchingXp: 8 },
+    xp: 8,
   },
   bronzeArrow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { arrowShaft: 10, bronzeArrowhead: 10, feather: 10 },
     ticks: 6,
     yield: 10,
-    xp: { fletchingXp: 8 },
+    xp: 8,
   },
   ironArrow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { arrowShaft: 10, ironArrowhead: 10, feather: 10 },
     ticks: 6,
     yield: 10,
-    xp: { fletchingXp: 8 },
+    xp: 8,
   },
   steelArrow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { arrowShaft: 10, steelArrowhead: 10, feather: 10 },
     ticks: 6,
     yield: 10,
-    xp: { fletchingXp: 8 },
+    xp: 8,
   },
   emberiteArrow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { arrowShaft: 10, emberiteArrowhead: 10, feather: 10 },
     ticks: 6,
     yield: 10,
-    xp: { fletchingXp: 8 },
+    xp: 8,
   },
   birchBow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 1,
     costs: { birchLog: 1, rope: 1 },
     ticks: 6,
-    xp: { fletchingXp: 20 },
+    xp: 20,
   },
   oakBow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 10,
     costs: { oakLog: 1, rope: 1 },
     ticks: 6,
-    xp: { fletchingXp: 50 },
+    xp: 50,
   },
   charwoodBow: {
-    station: "workbench",
     skill: "Fletching",
-    xpField: "fletchingXp",
     level: 20,
     costs: { charwoodLog: 1, rope: 1 },
     ticks: 6,
-    xp: { fletchingXp: 90 },
+    xp: 90,
   },
   /** #232's altar: the four elemental runes, one essence to a rune and never a failure. Once the making skill is at a rune's `doublesAt`, one essence makes two. */
   airRune: {
-    station: "altar",
     skill: "Runecrafting",
-    xpField: "runecraftingXp",
     level: 1,
     // Twice the gate, as every rune's doubling level is (#232).
     doublesAt: 2,
     costs: { runeEssence: 1 },
     ticks: 6,
-    xp: { runecraftingXp: 5 },
+    xp: 5,
   },
   waterRune: {
-    station: "altar",
     skill: "Runecrafting",
-    xpField: "runecraftingXp",
     level: 5,
     doublesAt: 10,
     costs: { runeEssence: 1 },
     ticks: 6,
-    xp: { runecraftingXp: 8 },
+    xp: 8,
   },
   earthRune: {
-    station: "altar",
     skill: "Runecrafting",
-    xpField: "runecraftingXp",
     level: 10,
     doublesAt: 20,
     costs: { runeEssence: 1 },
     ticks: 6,
-    xp: { runecraftingXp: 12 },
+    xp: 12,
   },
   fireRune: {
-    station: "altar",
     skill: "Runecrafting",
-    xpField: "runecraftingXp",
     level: 20,
     doublesAt: 40,
     costs: { runeEssence: 1 },
     ticks: 6,
-    xp: { runecraftingXp: 20 },
+    xp: 20,
   },
   /**
    * #238's Leatherworking, at the workbench: hands and feet of a tier from the band's hides
@@ -659,233 +543,183 @@ export const RECIPES = {
    * the experience is 10–50 by tier (#237).
    */
   copperGloves: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 1,
     costs: { tarnHide: 2 },
     ticks: 8,
-    xp: { leatherworkingXp: 10 },
+    xp: 10,
   },
   copperBoots: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 1,
     costs: { tarnHide: 2 },
     ticks: 8,
-    xp: { leatherworkingXp: 10 },
+    xp: 10,
   },
   bronzeGloves: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 5,
     costs: { tarnHide: 3 },
     ticks: 8,
-    xp: { leatherworkingXp: 20 },
+    xp: 20,
   },
   bronzeBoots: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 5,
     costs: { tarnHide: 3 },
     ticks: 8,
-    xp: { leatherworkingXp: 20 },
+    xp: 20,
   },
   ironGloves: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 10,
     costs: { bristleHide: 2 },
     ticks: 8,
-    xp: { leatherworkingXp: 30 },
+    xp: 30,
   },
   ironBoots: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 10,
     costs: { bristleHide: 2 },
     ticks: 8,
-    xp: { leatherworkingXp: 30 },
+    xp: 30,
   },
   steelGloves: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 15,
     costs: { bristleHide: 3 },
     ticks: 8,
-    xp: { leatherworkingXp: 40 },
+    xp: 40,
   },
   steelBoots: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 15,
     costs: { bristleHide: 3 },
     ticks: 8,
-    xp: { leatherworkingXp: 40 },
+    xp: 40,
   },
   emberiteGloves: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 20,
     costs: { cinderHide: 2, emberbone: 1 },
     ticks: 8,
-    xp: { leatherworkingXp: 50 },
+    xp: 50,
   },
   emberiteBoots: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 20,
     costs: { cinderHide: 2, emberbone: 1 },
     ticks: 8,
-    xp: { leatherworkingXp: 50 },
+    xp: 50,
   },
   /**
    * #238's 15 capes, the Crafting build's pieces: two of the band's hides and the rope for
    * the cord (#237). Experience is 15–75 by tier.
    */
   copperMightCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 1,
     costs: { tarnHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 15 },
+    xp: 15,
   },
   copperFortitudeCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 1,
     costs: { tarnHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 15 },
+    xp: 15,
   },
   copperAvoidanceCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 1,
     costs: { tarnHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 15 },
+    xp: 15,
   },
   bronzeMightCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 5,
     costs: { tarnHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 30 },
+    xp: 30,
   },
   bronzeFortitudeCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 5,
     costs: { tarnHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 30 },
+    xp: 30,
   },
   bronzeAvoidanceCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 5,
     costs: { tarnHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 30 },
+    xp: 30,
   },
   ironMightCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 10,
     costs: { bristleHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 45 },
+    xp: 45,
   },
   ironFortitudeCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 10,
     costs: { bristleHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 45 },
+    xp: 45,
   },
   ironAvoidanceCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 10,
     costs: { bristleHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 45 },
+    xp: 45,
   },
   steelMightCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 15,
     costs: { bristleHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 60 },
+    xp: 60,
   },
   steelFortitudeCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 15,
     costs: { bristleHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 60 },
+    xp: 60,
   },
   steelAvoidanceCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 15,
     costs: { bristleHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 60 },
+    xp: 60,
   },
   emberiteMightCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 20,
     costs: { cinderHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 75 },
+    xp: 75,
   },
   emberiteFortitudeCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 20,
     costs: { cinderHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 75 },
+    xp: 75,
   },
   emberiteAvoidanceCape: {
-    station: "workbench",
     skill: "Leatherworking",
-    xpField: "leatherworkingXp",
     level: 20,
     costs: { cinderHide: 2, rope: 1 },
     ticks: 12,
-    xp: { leatherworkingXp: 75 },
+    xp: 75,
   },
   /**
    * #238's Jewelsmithing, at the anvil: a neck and a ring of every tier, from a bar alone
@@ -893,94 +727,74 @@ export const RECIPES = {
    * 15–75 by tier, and they roll improved versions like every gear piece.
    */
   copperAmulet: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 1,
     costs: { copperBar: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 15 },
+    xp: 15,
   },
   copperRing: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 1,
     costs: { copperBar: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 15 },
+    xp: 15,
   },
   bronzeAmulet: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 5,
     costs: { bronzeBar: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 30 },
+    xp: 30,
   },
   bronzeRing: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 5,
     costs: { bronzeBar: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 30 },
+    xp: 30,
   },
   ironAmulet: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 10,
     costs: { ironBar: 1, ashstone: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 45 },
+    xp: 45,
   },
   ironRing: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 10,
     costs: { ironBar: 1, ashstone: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 45 },
+    xp: 45,
   },
   steelAmulet: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 15,
     costs: { steelBar: 1, cinderglass: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 60 },
+    xp: 60,
   },
   steelRing: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 15,
     costs: { steelBar: 1, cinderglass: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 60 },
+    xp: 60,
   },
   emberiteAmulet: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 20,
     costs: { emberiteBar: 1, heartflame: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 75 },
+    xp: 75,
   },
   emberiteRing: {
-    station: "anvil",
     skill: "Jewelsmithing",
-    xpField: "jewelsmithingXp",
     level: 20,
     costs: { emberiteBar: 1, heartflame: 1 },
     ticks: 6,
-    xp: { jewelsmithingXp: 75 },
+    xp: 75,
   },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
@@ -993,9 +807,7 @@ export type RecipeItem = keyof typeof RECIPES;
  */
 export const AUGMENTATIONS = {
   gossamerCloak: {
-    station: "workbench",
     skill: "Crafting",
-    xpField: "craftingXp",
     level: 15,
     reagent: "spiderSilk",
     ticks: 6,
@@ -1026,9 +838,16 @@ export function augmentationOf(item: MakeItem) {
     ? AUGMENTATIONS[item as AugmentationKind]
     : undefined;
 }
-/** The recipe or augmentation this make names, whose station, gate and wait they share (#225). */
+/** The recipe or augmentation this make names, whose skill, gate and wait they share (#225). */
 export const makingOf = (item: MakeItem) =>
   recipeOf(item) ?? augmentationOf(item)!;
+/** The Making skill row this make belongs to. */
+export const makingSkillOf = (
+  item: MakeItem,
+): MakingSkillRow & { xpField: MakingXpField } =>
+  MAKING_SKILLS[makingOf(item).skill];
+/** The fixed station this make walks to and names in its event; a fire stands in for Cooking's by tile (#224). */
+export const stationOf = (item: MakeItem) => makingSkillOf(item).places[0]!;
 
 /** Whether this id is a cape an augmentation can work on: a cape piece that isn't already a variant (#217). */
 const isCape = (item: string) =>
@@ -1069,9 +888,7 @@ export function materialLines(item: MakeItem): [string, number][] {
 
 /** What one make grants, as [xpField, amount] pairs: a recipe's grants, or an augmentation's single one (#225). */
 export function xpLines(item: MakeItem): [XpField, number][] {
-  const augmentation = augmentationOf(item);
-  if (augmentation) return [[augmentation.xpField, augmentation.xp]];
-  return xpOf(item as RecipeItem);
+  return [[makingSkillOf(item).xpField, makingOf(item).xp]];
 }
 
 /** The chance, in tenths of a percent, that gear made at its recipe's level is improved (spec §3). */
@@ -1138,9 +955,6 @@ export const burnPercent = (item: RecipeItem, level: number) =>
 export const costsOf = (item: RecipeItem) =>
   Object.entries(RECIPES[item].costs) as [ItemId | typeof LOG, number][];
 
-export const xpOf = (item: RecipeItem) =>
-  Object.entries(RECIPES[item].xp) as [XpField, number][];
-
 /** How many of `item` a player holds, across all their stacks. */
 export function countOf(item: string, player: HasInventory) {
   const counts = [...player.inventoryCounts];
@@ -1153,10 +967,10 @@ export function countOf(item: string, player: HasInventory) {
 /** Why the player's level is too low to make this, or undefined if it isn't. The panel folds a tier on it. */
 export function levelRefusal(
   item: MakeItem,
-  player: Record<Recipe["xpField"], number>,
+  player: Record<MakingXpField, number>,
 ) {
-  const { level, skill, xpField } = makingOf(item);
-  return levelFor(player[xpField]) < level
+  const { level, skill } = makingOf(item);
+  return levelFor(player[MAKING_SKILLS[skill].xpField]) < level
     ? `Needs ${skill} ${level}`
     : undefined;
 }
@@ -1164,7 +978,7 @@ export function levelRefusal(
 /** Why this can't be made right now, or undefined if it can. The panel's rows and the server's checks both read this. */
 export function makeRefusal(
   item: MakeItem,
-  player: HasInventory & Record<Recipe["xpField"], number>,
+  player: HasInventory & Record<MakingXpField, number>,
 ) {
   const tooLow = levelRefusal(item, player);
   if (tooLow) return tooLow;
@@ -1189,6 +1003,119 @@ export const yieldOf = (item: RecipeItem) =>
 export const doublesAt = (item: RecipeItem, level: number) =>
   (RECIPES[item] as { doublesAt?: number }).doublesAt !== undefined &&
   level >= (RECIPES[item] as { doublesAt?: number }).doublesAt!;
+
+/** What finishing one make does: refused, which ends a Make all, or done, with what the player now holds and is paid. */
+export type MakeOutcome =
+  | { refused: string }
+  | {
+      inventory: string[];
+      inventoryCounts: number[];
+      xp: [XpField, number][];
+      /** The id made; none when a burn consumed the materials (#221). */
+      made?: string;
+      /** A line for the player, such as a burn's. */
+      told?: string;
+    };
+
+const FULL = { refused: "Your inventory is full." } as const;
+
+/**
+ * Finishes one make of `item`: swaps the materials for the product and the experience, all at
+ * once on copies, or refuses with a line saying why. `player` is only read. Rolls in a fixed
+ * order, burn then improved or Delicious, and never after a refusal, so a seeded `random` replays.
+ * `extraBurnPercent` is the fire's, for Cooking over one (#224).
+ */
+export function make(
+  item: MakeItem,
+  player: HasInventory & Record<MakingXpField, number>,
+  random: () => number,
+  extraBurnPercent = 0,
+): MakeOutcome {
+  // Dropping during the wait is allowed, so the materials may have gone.
+  const refusal = makeRefusal(item, player);
+  if (refusal) return { refused: refusal };
+  const inventory = [...player.inventory];
+  const inventoryCounts = [...player.inventoryCounts];
+  const { xpField, cooks } = makingSkillOf(item);
+  const augmentation = augmentationOf(item);
+  if (augmentation) {
+    // No roll: the product is the first held cape's gossamer variant, keeping its Quality and Virtue (#217, #225).
+    const cape = capeIn(player)!;
+    const made = gossamerItem(cape);
+    removeItems(inventory, inventoryCounts, augmentation.reagent, 1);
+    removeItems(inventory, inventoryCounts, cape, 1);
+    const slot = slotFor(made, { inventory, inventoryCounts });
+    if (slot < 0) return FULL;
+    inventory[slot] = made;
+    inventoryCounts[slot]!++;
+    return {
+      inventory,
+      inventoryCounts,
+      xp: [[xpField, augmentation.xp]],
+      made,
+    };
+  }
+  const recipe = item as RecipeItem;
+  const level = levelFor(player[xpField]);
+  // A burn consumes the materials: no experience, no item, and Make all goes on (#221). It never rolls Delicious.
+  if (
+    cooks &&
+    random() < (burnPercent(recipe, level) + extraBurnPercent) / 100
+  ) {
+    for (const [cost, count] of costsOf(recipe))
+      removeItems(inventory, inventoryCounts, cost, count);
+    // "berryPerch" reads as "berry perch", like an item's name does.
+    const name = recipe.replace(
+      /[A-Z]/g,
+      (letter) => ` ${letter.toLowerCase()}`,
+    );
+    return {
+      inventory,
+      inventoryCounts,
+      xp: [],
+      told: `You burn the ${name}.`,
+    };
+  }
+  for (const [cost, count] of costsOf(recipe)) {
+    let left = count;
+    // A stand-in cost takes any tier of its kind, first held first, like an augmentation's cape (#228).
+    const takes: string[] = cost === LOG ? [...LOGS] : [cost];
+    inventory.forEach((held, slot) => {
+      if (!takes.includes(held) || !left) return;
+      const taken = Math.min(left, inventoryCounts[slot]!);
+      left -= taken;
+      inventoryCounts[slot]! -= taken;
+      if (!inventoryCounts[slot]) inventory[slot] = EMPTY_SLOT;
+    });
+  }
+  // On the copy, so the last ore in a full inventory leaves room for its bar. Gear never
+  // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
+  if (slotFor(recipe, { inventory, inventoryCounts }) < 0) return FULL;
+  // The improved chance is the making skill's, so a bow rolls on Fletching (#228).
+  const made = cooks
+    ? cookedItem(recipe, level, random)
+    : madeItem(recipe, level, random);
+  // A Delicious fish can't join a stack of plain ones, so it needs room of its own; a plain
+  // batch tops up every stack of it with room before filling empty slots, refusing whole if it
+  // doesn't all fit (#228). At a rune's doubling level one essence makes two runes, and each
+  // rune pays its experience (#232).
+  const times = doublesAt(recipe, level) ? 2 : 1;
+  if (made === recipe) {
+    if (addItems(inventory, inventoryCounts, made, yieldOf(recipe) * times))
+      return FULL;
+  } else {
+    const slot = slotFor(made, { inventory, inventoryCounts });
+    if (slot < 0) return FULL;
+    inventory[slot] = made;
+    inventoryCounts[slot]!++;
+  }
+  return {
+    inventory,
+    inventoryCounts,
+    xp: [[xpField, RECIPES[recipe].xp * times]],
+    made,
+  };
+}
 
 /** Why a click on this station is refused, or undefined if it isn't. The client shows it, and the server ignores the pick. The smithy's furnace and anvil open only for Odo's quest done (#231). */
 export function stationRefusal(
