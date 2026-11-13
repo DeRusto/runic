@@ -1,4 +1,4 @@
-import { STARTING_PINNED_SKILLS } from "@runic/shared";
+import { SKILLS, STARTING_PINNED_SKILLS } from "@runic/shared";
 import {
   index,
   integer,
@@ -20,29 +20,42 @@ export const accounts = sqliteTable("accounts", {
     .$defaultFn(() => new Date()),
 });
 
+type XpField = (typeof SKILLS)[number][1];
+/** The skills the first save had: their columns came before any default, so they have none. */
+const FOUNDING_SKILLS = [
+  "combatXp",
+  "defenseXp",
+  "herblawXp",
+  "hitpointsXp",
+] as const satisfies XpField[];
+type FoundingField = (typeof FOUNDING_SKILLS)[number];
+const xpColumn = (field: XpField) =>
+  integer(
+    field.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`),
+  ).notNull();
+const laterXpColumn = (field: XpField) => xpColumn(field).default(0);
+/** One experience column per skill, so a new row in `SKILLS` only needs `db:generate`. */
+const XP_COLUMNS = Object.fromEntries(
+  SKILLS.map(([, field]) => [
+    field,
+    (FOUNDING_SKILLS as readonly XpField[]).includes(field)
+      ? xpColumn(field)
+      : laterXpColumn(field),
+  ]),
+) as Record<FoundingField, ReturnType<typeof xpColumn>> &
+  Record<Exclude<XpField, FoundingField>, ReturnType<typeof laterXpColumn>>;
+
 /** One row per account that has ever been saved; no row means a new account. */
 export const players = sqliteTable("players", {
   accountId: integer("account_id")
     .primaryKey()
     .references(() => accounts.id),
-  combatXp: integer("combat_xp").notNull(),
-  defenseXp: integer("defense_xp").notNull(),
-  herblawXp: integer("herblaw_xp").notNull(),
-  hitpointsXp: integer("hitpoints_xp").notNull(),
+  ...XP_COLUMNS,
   x: integer().notNull(),
   y: integer().notNull(),
   health: integer().notNull(),
   inventory: text({ mode: "json" }).notNull().$type<string[]>(),
   // Every column below has a default, so a row from before them needs no conversion (spec D9).
-  miningXp: integer("mining_xp").notNull().default(0),
-  woodcuttingXp: integer("woodcutting_xp").notNull().default(0),
-  fishingXp: integer("fishing_xp").notNull().default(0),
-  cookingXp: integer("cooking_xp").notNull().default(0),
-  firemakingXp: integer("firemaking_xp").notNull().default(0),
-  craftingXp: integer("crafting_xp").notNull().default(0),
-  smithingXp: integer("smithing_xp").notNull().default(0),
-  blockingXp: integer("blocking_xp").notNull().default(0),
-  masteryXp: integer("mastery_xp").notNull().default(0),
   /** The fraction of a point of Mastery not yet earned, so small gains add up. */
   masteryHundredths: integer("mastery_hundredths").notNull().default(0),
   /** Parallel to `inventory`. A filled slot with no count is a stack of 1. */
