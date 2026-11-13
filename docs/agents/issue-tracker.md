@@ -26,6 +26,13 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## How work merges
+
+**Build branches go up as PRs to `main`; `main` is never pushed to directly.** When a
+branch is ready: push the branch, open a PR (`gh pr create`), and let reviews land.
+Fix any findings, push the fixes to the same branch, and merge only after the review
+is done. The session driving the work opens the PR; the owner reviews and merges.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
