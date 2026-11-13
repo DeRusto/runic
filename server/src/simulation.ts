@@ -86,7 +86,6 @@ import {
   SKILLS,
   slotFor,
   takeRefusal,
-  STARTING_PINNED_SKILLS,
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
@@ -96,8 +95,6 @@ import {
   depositRefusal,
   itemParts,
   ENEMIES,
-  STARTING_HEALTH,
-  STARTING_HITPOINTS_XP,
   aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
@@ -138,6 +135,7 @@ import {
   type XpField,
 } from "@runic/shared";
 import { GroundItem, GroundItems } from "./groundItems.ts";
+import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import {
   findPath,
@@ -146,6 +144,7 @@ import {
   tilesNextTo,
 } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
+import type { QuestProgress } from "@runic/shared";
 
 /** What opens and closes each kind of villager window, and what a hit makes the villager do. */
 const WINDOWS = {
@@ -183,26 +182,18 @@ const isBankSlot = (slot: number) =>
   Number.isInteger(slot) && slot >= 0 && slot < BANK_SLOTS;
 const isAmount = (amount: number) => Number.isInteger(amount) && amount > 0;
 
+const xpField = () => t.uint32().default(0);
+/** One synced experience field per skill, so a new row in `SKILLS` needs no edit here. */
+const XP_FIELDS = Object.fromEntries(
+  SKILLS.map(([, field]) => [field, xpField()]),
+) as Record<(typeof SKILLS)[number][1], ReturnType<typeof xpField>>;
+
 export const Player = schema(
   {
     username: t.string(),
     x: t.uint8(),
     y: t.uint8(),
-    combatXp: t.uint32(),
-    defenseXp: t.uint32(),
-    herblawXp: t.uint32(),
-    hitpointsXp: t.uint32(),
-    miningXp: t.uint32().default(0),
-    smithingXp: t.uint32().default(0),
-    woodcuttingXp: t.uint32().default(0),
-    fishingXp: t.uint32().default(0),
-    cookingXp: t.uint32().default(0),
-    firemakingXp: t.uint32().default(0),
-    craftingXp: t.uint32().default(0),
-    fletchingXp: t.uint32().default(0),
-    runecraftingXp: t.uint32().default(0),
-    blockingXp: t.uint32().default(0),
-    masteryXp: t.uint32().default(0),
+    ...XP_FIELDS,
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
     masteryHundredths: t.uint8().default(0),
     /** Each started quest's id, in the order they were started (#231). */
@@ -529,43 +520,22 @@ export class Simulation {
 
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
-    const {
-      inventory,
-      inventoryCounts = [],
-      pinnedSkills = STARTING_PINNED_SKILLS,
-      tools = [],
-      bank = [],
-      bankCounts = [],
-      // A save from before the quests has none, so nobody starts with progress (#231).
-      quests = {},
-      ...fields
-    } = this.loginSave(saved);
+    const login = this.loginSave(saved);
+    const fields = syncedOf(login);
+    const maxHealth = maxHealthTotal(fields);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: maxHealthTotal(fields),
+      maxHealth,
+      // Health saved under a Fortitude potion can be above the maximum it logs back in to.
+      health: Math.min(fields.health, maxHealth),
     });
-    player.pinnedSkills = new ArraySchema(...pinnedSkills);
-    player.tools = new ArraySchema(...tools);
-    player.quests = new ArraySchema(...Object.keys(quests));
+    // A save from before the quests has none, so nobody starts with progress (#231). The
+    // record isn't a synced field — syncedOf excludes it; the player holds the quest ids
+    // with the stages parallel, and the unsynced side keeps the repeat turn-ins.
+    const questProgress = login.quests ?? {};
+    player.quests = new ArraySchema(...Object.keys(questProgress));
     player.questStages = new ArraySchema(
-      ...Object.values(quests).map(({ stage }) => stage),
-    );
-    player.inventory = new ArraySchema(...inventory);
-    // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
-    player.inventoryCounts = new ArraySchema(
-      ...inventory.map((item, slot) =>
-        item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
-      ),
-    );
-    // A save from before the bank has none, so it starts empty (village spec §6).
-    player.bank = new ArraySchema(
-      ...Array.from(
-        { length: BANK_SLOTS },
-        (_, slot) => bank[slot] ?? EMPTY_SLOT,
-      ),
-    );
-    player.bankCounts = new ArraySchema(
-      ...Array.from({ length: BANK_SLOTS }, (_, slot) => bankCounts[slot] ?? 0),
+      ...Object.values(questProgress).map(({ stage }) => stage),
     );
     this.state.players.set(id, player);
     this.unsyncedPlayers.set(id, {
@@ -577,7 +547,7 @@ export class Simulation {
       healingPool: [],
       lockEndTick: 0,
       respawnTick: 0,
-      quests: new Map(Object.entries(quests)),
+      quests: new Map(Object.entries(questProgress)),
       ...this.timersOfLeavers.get(username),
     });
     this.timersOfLeavers.delete(username);
@@ -585,17 +555,7 @@ export class Simulation {
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
     const respawn = respawnTile(this.tiles);
-    if (!saved) {
-      return {
-        ...respawn,
-        combatXp: 0,
-        defenseXp: 0,
-        herblawXp: 0,
-        hitpointsXp: STARTING_HITPOINTS_XP,
-        health: STARTING_HEALTH,
-        inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
-      };
-    }
+    if (!saved) return newSave(respawn);
     const tile = this.tiles[saved.y]?.[saved.x];
     if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
@@ -630,90 +590,19 @@ export class Simulation {
   saveOf(id: string): PlayerSave | undefined {
     const player = this.state.players.get(id);
     if (!player) return undefined;
-    const {
-      x,
-      y,
-      combatXp,
-      defenseXp,
-      herblawXp,
-      hitpointsXp,
-      miningXp,
-      smithingXp,
-      woodcuttingXp,
-      fishingXp,
-      cookingXp,
-      firemakingXp,
-      craftingXp,
-      fletchingXp,
-      runecraftingXp,
-      blockingXp,
-      masteryXp,
-      masteryHundredths,
-      health,
-      weapon,
-      shield,
-      head,
-      body,
-      legs,
-      hands,
-      feet,
-      cape,
-      neck,
-      ring,
-      questPoints,
-      quests,
-      questStages,
-      identifiesEssence,
-    } = player;
-    const stages = [...questStages];
     return {
-      x,
-      y,
-      combatXp,
-      defenseXp,
-      herblawXp,
-      hitpointsXp,
-      miningXp,
-      smithingXp,
-      woodcuttingXp,
-      fishingXp,
-      cookingXp,
-      firemakingXp,
-      craftingXp,
-      fletchingXp,
-      runecraftingXp,
-      blockingXp,
-      masteryXp,
-      masteryHundredths,
-      health,
-      weapon,
-      shield,
-      head,
-      body,
-      legs,
-      hands,
-      feet,
-      cape,
-      neck,
-      ring,
-      questPoints,
-      identifiesEssence,
-      // Each quest's stage and repeat turn-ins done, beside the xp columns (#231).
+      ...saveOf(player),
+      // Each quest's stage and repeat turn-ins done, beside the xp columns (#231). The generic
+      // save writes `quests` as a plain array of ids, so the progress record replaces it.
       quests: Object.fromEntries(
-        [...quests].map((quest, at) => [
+        [...player.quests].map((quest, at) => [
           quest,
           {
-            stage: stages[at]!,
+            stage: player.questStages[at]!,
             turns: this.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
           },
         ]),
       ),
-      pinnedSkills: [...player.pinnedSkills],
-      inventory: [...player.inventory],
-      inventoryCounts: [...player.inventoryCounts],
-      tools: [...player.tools],
-      bank: [...player.bank],
-      bankCounts: [...player.bankCounts],
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.respawned(player)),
     };
@@ -1512,6 +1401,8 @@ export class Simulation {
         else {
           // The log is consumed at once, so a new click during the lighting loses it (#224).
           removeItems(player.inventory, player.inventoryCounts, log, 1);
+          // Or a walk in progress would carry them off the tile the fire was checked for.
+          unsynced.path = [];
           unsynced.action = {
             kind: "lighting",
             log: log as FireLog,
@@ -1840,13 +1731,22 @@ export class Simulation {
     const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
     const made = roll();
-    // A batch tops up every stack of it with room before filling empty slots, and refuses whole if it doesn't all fit (#228).
-    // At a rune's doubling level one essence makes two runes, and each rune pays its experience (#232).
+    // A Delicious fish can't join a stack of plain ones, so it needs room of its own; a plain
+    // batch tops up every stack of it with room before filling empty slots, refusing whole if it
+    // doesn't all fit (#228). At a rune's doubling level one essence makes two runes, and each
+    // rune pays its experience (#232).
     const times = doublesAt(item, levelFor(player[RECIPES[item].xpField]))
       ? 2
       : 1;
-    if (addItems(inventory, inventoryCounts, made, yieldOf(item) * times))
-      return told("Your inventory is full.");
+    if (made === item) {
+      if (addItems(inventory, inventoryCounts, made, yieldOf(item) * times))
+        return told("Your inventory is full.");
+    } else {
+      const madeSlot = slotFor(made, { inventory, inventoryCounts });
+      if (madeSlot < 0) return told("Your inventory is full.");
+      inventory[madeSlot] = made;
+      inventoryCounts[madeSlot]!++;
+    }
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
       player.inventoryCounts[i] = inventoryCounts[i]!;

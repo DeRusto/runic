@@ -309,6 +309,10 @@ _Avoid_: Passage, agility route
 A friend's login: a username and password. Each account has exactly one player, who goes by the account's username.
 _Avoid_: User, profile, character slot
 
+**Save**:
+What the server keeps of a player between logins: where they stand, their health, each skill's experience, their inventory, bank, worn gear, tools and pinned skills. A new account has none until its first save.
+_Avoid_: Profile, record, snapshot
+
 **Invite code**:
 The one shared secret a friend must give to create an account.
 _Avoid_: Referral, key

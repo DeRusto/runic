@@ -126,6 +126,17 @@ test("lighting takes a few ticks, then the fire appears on the player's tile and
   });
 });
 
+test("lighting stops a walk, so the fire appears on the tile it was checked for", () => {
+  light([["birchLog", 1]]);
+  sim.queueWalk("a", { x: 5, y: 1 });
+  run(1);
+  const { x, y } = player();
+  sim.queueLight("a", 0);
+  run(LIGHTING_TICKS + 1);
+  expect(player()).toMatchObject({ x, y });
+  expect(fires().map(([id]) => id)).toEqual([`${x},${y}`]);
+});
+
 test.each([
   ["birchLog", 10],
   ["oakLog", 25],

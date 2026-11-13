@@ -217,7 +217,11 @@ export function showSmithingPanel(room: WorldConnection) {
     /** Where to measure reach from: a fire's own tile, or the station's nearest. */
     const reached = (tile: Tile | undefined, kind: StationKind) =>
       tilesApart(me, tile ?? stationTile(kind, me)) <= 1;
-    if (me.dead) close();
+    /** Whether the fire the panel is for has burnt out, which a station never does. */
+    const burntOut = (fire: Tile | undefined) =>
+      !!fire && !state.fires.has(`${fire.x},${fire.y}`);
+    if (me.dead || burntOut(atFire)) close();
+    else if (burntOut(walkingToFire)) walkingTo = walkingToFire = undefined;
     else if (walkingTo && reached(walkingToFire, walkingTo))
       show(walkingTo, walkingToFire, me);
     // Panels stay open through presses elsewhere; walking away is what closes this one (spec §6).

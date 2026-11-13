@@ -24,7 +24,7 @@ export type XpField = Exclude<(typeof SKILLS)[number][1], "masteryXp">;
 /** Of the experience that lands in any other skill. The migration that backfilled Mastery has its own copy. */
 export const MASTERY_SHARE_PERCENT = 7;
 
-/** Moves up to `SKILLS`, with its column and synced field, when its content lands. Until then its experience is 0. */
+/** Moves up to `SKILLS` when its content lands, which builds its synced field and save column; then run `npm run db:generate -w server`. Until then its experience is 0. */
 const UPCOMING_SKILLS = [
   ["Attack", "attackXp"],
   ["Strength", "strengthXp"],

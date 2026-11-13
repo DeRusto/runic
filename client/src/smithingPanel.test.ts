@@ -100,15 +100,18 @@ const headers = () =>
 const buttons = (row: any) => row.children.filter((c: any) => c.type);
 /** Whether a Make button is off. Not `disabled`, which would hide the row's tooltip from the pointer over it. */
 const off = (button: any) => button.ariaDisabled === "true";
+/** The ids of the fires burning now. */
+let fires: Set<string>;
 const patch = (next: SyncedPlayer) => {
   current = next;
-  onState({ players: new Map([["a", current]]) });
+  onState({ players: new Map([["a", current]]), fires });
 };
 
 beforeEach(() => {
   byId = new Map();
   listeners = new Map();
   send.mockClear();
+  fires = new Set();
   current = me([]);
   open = showSmithingPanel({
     sessionId: "a",
@@ -595,4 +598,21 @@ test("leaving the room closes it and lets go of the page", () => {
   leave();
   expect(panel().hidden).toBe(true);
   expect(listeners.size).toBe(0);
+});
+
+test("a fire burning out closes its panel, and cancels a walk to it", () => {
+  fires.add("5,2");
+  open("fire", { x: 5, y: 2 });
+  patch(current);
+  expect(panel().hidden).toBe(false);
+  fires.delete("5,2");
+  patch(current);
+  expect(panel().hidden).toBe(true);
+
+  fires.add("9,1");
+  open("fire", { x: 9, y: 1 });
+  fires.delete("9,1");
+  patch(current);
+  patch(me([], { x: 8, y: 1 }));
+  expect(panel().hidden).toBe(true);
 });
