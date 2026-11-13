@@ -1,13 +1,18 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  AUGMENTATIONS,
   burnPercent,
+  capeIn,
+  capesIn,
   cookedItem,
   countOf,
   levelRefusal,
   madeItem,
   makeRefusal,
+  materialLines,
   RECIPES,
   stationRefusal,
+  xpLines,
 } from "./making.ts";
 import { xpForLevel } from "./skills.ts";
 
@@ -16,15 +21,17 @@ const holding = (
   smithingXp = 0,
   miningXp = 0,
   cookingXp = 0,
+  craftingXp = 0,
 ) => ({
   smithingXp,
   miningXp,
   cookingXp,
+  craftingXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are the rebalance spec §3's Making table, and #221's range after it", () => {
+test("the recipes are the rebalance spec §3's Making table, and #221's range and #225's workbench after it", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -377,6 +384,33 @@ test("the recipes are the rebalance spec §3's Making table, and #221's range af
       ticks: 6,
       xp: { cookingXp: 100 },
     },
+    rope: {
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 1,
+      costs: { spiderSilk: 2 },
+      ticks: 6,
+      xp: { craftingXp: 8 },
+    },
+    torch: {
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 5,
+      costs: { birchLog: 1, rope: 1 },
+      ticks: 6,
+      xp: { craftingXp: 14 },
+    },
+    vial: {
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 10,
+      costs: { cinderglass: 1 },
+      ticks: 6,
+      xp: { craftingXp: 20 },
+    },
   });
 });
 
@@ -558,6 +592,138 @@ describe("cooking at the range (#221)", () => {
     expect(burnPercent("cookedTrout", 10)).toBe(25);
     expect(burnPercent("cookedTrout", 11)).toBe(24);
     expect(burnPercent("berryPike", 30)).toBe(20);
+  });
+});
+
+describe("crafting at the workbench (#225)", () => {
+  test("rope, torch and vial are gated on Crafting at 1, 5 and 10", () => {
+    expect(makeRefusal("rope", holding([["spiderSilk", 2]]))).toBeUndefined();
+    expect(makeRefusal("rope", holding([["spiderSilk", 1]]))).toBe(
+      "Not enough materials",
+    );
+    expect(
+      makeRefusal(
+        "torch",
+        holding(
+          [
+            ["birchLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          xpForLevel(4),
+        ),
+      ),
+    ).toBe("Needs Crafting 5");
+    expect(
+      makeRefusal(
+        "torch",
+        holding(
+          [
+            ["birchLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          xpForLevel(5),
+        ),
+      ),
+    ).toBeUndefined();
+    expect(
+      makeRefusal(
+        "vial",
+        holding([["cinderglass", 1]], 0, 0, 0, xpForLevel(9)),
+      ),
+    ).toBe("Needs Crafting 10");
+    expect(
+      makeRefusal(
+        "vial",
+        holding([["cinderglass", 1]], 0, 0, 0, xpForLevel(10)),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("the workbench needs no tool, like the furnace and range", () => {
+    expect(stationRefusal("workbench", { tools: [] })).toBeUndefined();
+  });
+});
+
+describe("the gossamer cloak's augmentation (#217, #225)", () => {
+  test("it is gated on Crafting 15, and needs the silk and a cape of any tier", () => {
+    const crafting15 = xpForLevel(15);
+    expect(
+      makeRefusal("gossamerCloak", holding([["copperMightCape", 1]])),
+    ).toBe("Needs Crafting 15");
+    expect(makeRefusal("gossamerCloak", holding([], 0, 0, 0, crafting15))).toBe(
+      "Not enough materials",
+    );
+    expect(
+      makeRefusal(
+        "gossamerCloak",
+        holding([["spiderSilk", 1]], 0, 0, 0, crafting15),
+      ),
+    ).toBe("Not enough materials");
+    expect(
+      makeRefusal(
+        "gossamerCloak",
+        holding(
+          [
+            ["spiderSilk", 1],
+            ["emberiteAvoidanceCape", 1],
+          ],
+          0,
+          0,
+          0,
+          crafting15,
+        ),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("the first cape held is the one it works on, and an augmented one is no longer an input", () => {
+    const player = holding(
+      [
+        ["copperMightCape:uncommon:fortitude", 1],
+        ["bronzeFortitudeCape", 1],
+        ["copperMightCape:rare:avoidance:gossamer", 1],
+      ],
+      0,
+      0,
+      0,
+      xpForLevel(15),
+    );
+    expect(capeIn(player)).toBe("copperMightCape:uncommon:fortitude");
+    expect(capesIn(player)).toBe(2);
+    expect(
+      capeIn(holding([["copperMightCape:rare:avoidance:gossamer", 1]])),
+    ).toBeUndefined();
+    expect(capesIn(holding([["copperSword", 1]]))).toBe(0);
+  });
+
+  test("a cloak's materials read as the silk and one cape of any tier", () => {
+    expect(materialLines("gossamerCloak")).toEqual([
+      ["spiderSilk", 1],
+      ["cape", 1],
+    ]);
+    expect(xpLines("gossamerCloak")).toEqual([["craftingXp", 25]]);
+    expect(materialLines("torch")).toEqual([
+      ["birchLog", 1],
+      ["rope", 1],
+    ]);
+  });
+
+  test("the augmentation keeps #217's decided gate, wait and experience", () => {
+    expect(AUGMENTATIONS.gossamerCloak).toEqual({
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 15,
+      reagent: "spiderSilk",
+      ticks: 6,
+      xp: 25,
+    });
   });
 });
 

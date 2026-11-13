@@ -1,11 +1,11 @@
 { "columns":24,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":448,
+ "imagewidth":464,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":28,
+ "tilecount":29,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -369,6 +369,20 @@
                  "name":"bush",
                  "type":"string",
                  "value":"emberbloomBush"
+                }]
+        },
+        {
+         "id":28,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"station",
+                 "type":"string",
+                 "value":"workbench"
                 }]
         }],
  "tilewidth":16,

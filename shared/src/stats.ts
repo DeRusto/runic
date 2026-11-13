@@ -3,6 +3,7 @@ import {
   AVOIDANCE_TENTHS_PER_POINT,
   BLOCK_CHANCE_PER_BLOCKING_LEVEL,
   gearOf,
+  variantAvoidanceOf,
   virtueOf,
   type GearSlot,
 } from "./gear.ts";
@@ -30,10 +31,12 @@ export const maxHealthOf = (player: { hitpointsXp: number } & Worn) => ({
   gear: virtueOf(player, "fortitude"),
 });
 
-/** The Defense and worn-gear parts of a player's Avoidance, in points (spec §5). */
+/** The Defense and worn-gear parts of a player's Avoidance, in points (spec §5). A gossamer cloak's variant adds its own tenths (#217). */
 export const avoidanceOf = (player: { defenseXp: number } & Worn) => ({
   skill: AVOIDANCE_POINTS_PER_DEFENSE_LEVEL * (levelFor(player.defenseXp) - 1),
-  gear: virtueOf(player, "avoidance") / AVOIDANCE_TENTHS_PER_POINT,
+  gear:
+    (virtueOf(player, "avoidance") + variantAvoidanceOf(player)) /
+    AVOIDANCE_TENTHS_PER_POINT,
 });
 
 /** An enemy's chance (0..1) to hit a player with `avoidance` points: base + accuracy − Avoidance, floored (spec §5). */

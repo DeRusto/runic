@@ -8,7 +8,8 @@ import {
   removeItems,
   type Quality,
 } from "./items.ts";
-import { costsOf, RECIPES, type RecipeItem } from "./making.ts";
+import { capeOfGossamer } from "./gear.ts";
+import { AUGMENTATIONS, costsOf, RECIPES, type RecipeItem } from "./making.ts";
 import { POTIONS, type PotionId } from "./potions.ts";
 
 /**
@@ -40,6 +41,24 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   dewpetal: 6,
   nightbloom: 12,
   emberbloom: 20,
+  // The silk waits for Phase 8's Spider drop (#217), and is priced like the emberbone.
+  spiderSilk: 10,
+  // #217's capes, priced by their tier: their Leatherworking recipes will set the final ones.
+  copperMightCape: 20,
+  copperFortitudeCape: 20,
+  copperAvoidanceCape: 20,
+  bronzeMightCape: 35,
+  bronzeFortitudeCape: 35,
+  bronzeAvoidanceCape: 35,
+  ironMightCape: 50,
+  ironFortitudeCape: 50,
+  ironAvoidanceCape: 50,
+  steelMightCape: 70,
+  steelFortitudeCape: 70,
+  steelAvoidanceCape: 70,
+  emberiteMightCape: 90,
+  emberiteFortitudeCape: 90,
+  emberiteAvoidanceCape: 90,
 };
 
 /** How many times its common version's value an item of each Quality is worth (village spec §5). Delicious food is as rare as a rare piece, and worth the same multiple (#221). */
@@ -58,6 +77,10 @@ export const QUALITY_VALUE_TIMES: Record<Quality, number> = {
 export function valueOf(item: string): number {
   const { base, quality } = itemParts(item);
   if (base === COINS) return 0;
+  // A gossamer cloak is the cape it was made from plus the silk that went into it (#217).
+  const cape = capeOfGossamer(item);
+  if (cape !== undefined)
+    return valueOf(cape) + valueOf(AUGMENTATIONS.gossamerCloak.reagent);
   let common = RAW_VALUES[base];
   if (common === undefined && Object.hasOwn(RECIPES, base))
     common = costsOf(base as RecipeItem).reduce(

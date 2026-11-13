@@ -31,7 +31,7 @@ The body of water in the region, where players fish from the bank. Water can't b
 _Avoid_: Pond, mere
 
 **Smithy**:
-The part of the village where the furnace, anvil, range and Blacksmith stand.
+The part of the village where the furnace, anvil, range, workbench and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
@@ -64,7 +64,7 @@ _Avoid_: Smelter, forge
 
 **Anvil**:
 A fixed tile where a player turns bars into gear.
-_Avoid_: Forge, workbench
+_Avoid_: Forge
 
 **Range**:
 A fixed tile in the smithy, beside the furnace, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
@@ -74,8 +74,12 @@ _Avoid_: Stove, oven, cooker
 A cooking station a player lights with a tinderbox from one log, on the tile they stand on. It burns for a while that depends on the log — birch, oak or charwood — cooks like the range but burns a fish more, and is then simply gone, leaving nothing. It gives light, never blocks walking, and only one burns on a tile.
 _Avoid_: Campfire, bonfire
 
+**Workbench**:
+A fixed tile in the smithy, between the range and the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
+_Avoid_: Crafting table, work table
+
 **Station**:
-A furnace, an anvil or a range: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
+A furnace, an anvil, a range or a workbench: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -241,6 +245,10 @@ _Avoid_: Chef work, cookery
 The skill trained by lighting fires from logs. It gates each log's fire, and pays the fire's experience when it appears.
 _Avoid_: Burning
 
+**Crafting**:
+The skill trained by making the game's utilities and working reagents into capes at the workbench: rope from spider silk, torches from a log and a rope, vials from a gem, and the Gossamer cloak from a cape and silk (#225). It gates each product and pays its experience.
+_Avoid_: Handicraft, construction
+
 ### Players
 
 **Account**:
@@ -344,7 +352,7 @@ An ember-orange flower picked from its own bush in the deepest Thicket, at Herbl
 _Avoid_: Ember flower
 
 **Vial**:
-A small empty bottle the general store sells from day one. One holds a potion while it is mixed, and is used up with the plant.
+A small empty bottle the general store sells from day one, and Crafting makes a second supply of from a cinderglass at the workbench (#225). One holds a potion while it is mixed, and is used up with the plant.
 _Avoid_: Flask, bottle
 
 **Potion**:
@@ -387,6 +395,18 @@ _Avoid_: Ingot
 Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.
 _Avoid_: Trophy, token
 
+**Spider silk**:
+A thread a Spider sometimes leaves behind, needed to make rope and to augment capes. Phase 8 owns drop tables, so nothing gives it yet.
+_Avoid_: Web, thread
+
+**Rope**:
+A length spun from two spider silk at the workbench. Nothing uses it yet: it waits for Agility's shortcuts, and sells at the general store until then.
+_Avoid_: Cord, line
+
+**Torch**:
+A stick made at the workbench from a birch log and a rope. Nothing uses it yet: it waits for a dark place to light, gives no light of its own, and sells at the general store until then.
+_Avoid_: Lamp, candle
+
 **Gear**:
 What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
@@ -406,6 +426,18 @@ _Avoid_: Bonus (a sword's hit bonus and Mastery's share use that word), affix, e
 **Armour**:
 Gear worn on the body that reduces the damage of hits that land, by a percentage. It doesn't make a hit less likely to land: that's Defense.
 _Avoid_: Protection, plate
+
+**Cape**:
+Gear worn on the back: small armour, on the hands' line, and the slot an augmentation works on. Leatherworking will make one of three Virtues for each tier (#217); today only the rules about them exist, with nothing that drops or makes one.
+_Avoid_: Cloak (that's the Gossamer cloak), mantle
+
+**Gossamer cloak**:
+A cape that has taken its reagent's gift: the first augmentation turns a cape and one spider silk into it at the workbench. It keeps the cape's Quality and Virtue and adds a little Avoidance, and reads as the cape in every way but its name and that bonus (#217, #225).
+_Avoid_: Cape (that's what it was)
+
+**Augmentation**:
+A reagent worked into a piece of gear at the workbench, owned by Crafting: the gear and its reagent become the gear's variant, which keeps the gear's Quality and Virtue and adds the reagent's gift. The Gossamer cloak is the first; more reagents later mean more of them (#217, #225).
+_Avoid_: Enchanting, upgrade
 
 **Gear slot**:
 Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
@@ -428,7 +460,7 @@ A skill a player has chosen to show on the bottom bar, up to six. Every skill al
 _Avoid_: Favourite skill, tracked skill
 
 **Smithing panel**:
-The panel a player opens by clicking a furnace or anvil, to choose what to make there.
+The panel a player opens by clicking a station, to choose what to make there.
 _Avoid_: Crafting menu, recipe list
 
 **Social panel**:

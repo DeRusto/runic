@@ -68,6 +68,7 @@ const IS = {
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
   range: (tile) => tile.station === "range",
+  workbench: (tile) => tile.station === "workbench",
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   house: (tile) => !!tile.house,
@@ -121,6 +122,7 @@ const STATIONS_AND_BLACKSMITH = [
   "furnace",
   "anvil",
   "range",
+  "workbench",
   "blacksmith",
 ] as const;
 const TREES = ["birch", "oak", "charwood"] as const;
@@ -145,6 +147,7 @@ describe("the region", () => {
     ["furnace", 4],
     ["anvil", 1],
     ["range", 1],
+    ["workbench", 1],
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
@@ -410,6 +413,11 @@ describe("the region", () => {
     expect(tilesOf("range")).toEqual([[x + 3, y]]);
   });
 
+  it("stands the workbench between the range and the anvil (#226)", () => {
+    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+    expect(tilesOf("workbench")).toEqual([[x + 3, y + 1]]);
+  });
+
   it("hides none of the smithy from the default camera, which looks north-west", () => {
     const isTall = (tile: TileKind) =>
       !!tile.house ||
@@ -463,6 +471,7 @@ describe("parseRegion", () => {
     ["F", { ground: "grass", station: "furnace", blocks: true }],
     ["N", { ground: "grass", station: "anvil", blocks: true }],
     ["G", { ground: "grass", station: "range", blocks: true }],
+    ["w", { ground: "grass", station: "workbench", blocks: true }],
     ["B", { ground: "grass", villager: "odo", blocks: true }],
     ["H", { ground: "grass", house: "wall", blocks: true }],
     ["D", { ground: "grass", house: "door", blocks: true }],

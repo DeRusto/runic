@@ -42,10 +42,19 @@ describe("ITEMS", () => {
     expect(ITEMS.avoidancePotion.stack).toBe(20);
   });
 
-  test("every tier has its bar, sword, shield, helmet, chestplate and leggings, and its ore if it has veins", () => {
-    // Food 10, Emberbone 1, finds 5, six per tier, three ores, three logs, three
-    // raw fish, the three plants, the vial, the three potions and coins (#222).
-    expect(Object.keys(ITEMS)).toHaveLength(64);
+  test("every tier has its bar, sword, shield, helmet, chestplate, leggings and cape, and its ore if it has veins", () => {
+    // Food 10, Emberbone 1, finds 5, seven per tier (the capes three), three ores,
+    // three logs, three raw fish, the three plants, the vial, the three potions, the
+    // silk, the rope and torch, and coins (#217, #222, #225).
+    expect(Object.keys(ITEMS)).toHaveLength(82);
+  });
+
+  test("the silk, the rope and the torch stack to 20, and a cape takes a whole slot (#225)", () => {
+    expect(ITEMS.spiderSilk.stack).toBe(20);
+    expect(ITEMS.rope.stack).toBe(20);
+    expect(ITEMS.torch.stack).toBe(20);
+    expect(ITEMS.copperMightCape.stack).toBe(1);
+    expect(ITEMS.emberiteAvoidanceCape.stack).toBe(1);
   });
 });
 
