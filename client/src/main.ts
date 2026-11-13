@@ -22,6 +22,7 @@ import { showFires } from "./fires.ts";
 import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
 import { showGroundItems } from "./groundItemSacks.ts";
+import { showJournal } from "./journal.ts";
 import { forgetToken, joinWorld } from "./login.ts";
 import { showLogoutConfirm } from "./logoutConfirm.ts";
 import { watchPanels } from "./panels.ts";
@@ -103,6 +104,7 @@ function enterWorld(room: WorldConnection) {
     openMenu,
   );
   showSocialPanel(room);
+  showJournal(room);
   showFights(room);
   showBuffs(room);
   showDialogueBox(room);

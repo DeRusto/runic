@@ -15,6 +15,7 @@ const buttons: Record<string, ReturnType<typeof button>> = {
   "turn-left": button("Turn view left", "Q"),
   "turn-right": button("Turn view right", "E"),
   character: button("Character sheet", "C"),
+  "journal-button": button("Journal", "J"),
   "social-button": button("Social", "O"),
   logout: button("Log out"),
 };
@@ -68,11 +69,13 @@ describe("the square bar buttons (spec §7)", () => {
       expect(buttons.character.classList.has("pressed")).toBe(false);
     });
 
-    test("presses the turn buttons with Q and E", () => {
+    test("presses the turn buttons with Q and E, and the journal with J", () => {
       key("keydown", "Q");
       key("keydown", "e");
+      key("keydown", "j");
       expect(buttons["turn-left"].classList.has("pressed")).toBe(true);
       expect(buttons["turn-right"].classList.has("pressed")).toBe(true);
+      expect(buttons["journal-button"].classList.has("pressed")).toBe(true);
     });
 
     test("leaving the window lets go of every held button", () => {

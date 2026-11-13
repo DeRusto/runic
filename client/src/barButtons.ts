@@ -6,6 +6,7 @@ const BAR_BUTTON_IDS = [
   "turn-left",
   "turn-right",
   "character",
+  "journal-button",
   "social-button",
   "logout",
 ];
