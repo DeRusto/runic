@@ -1,6 +1,6 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-87 are rendered by client/render-icons, 64 from the CC0 models below and 22 from
+87 are rendered by client/render-icons, 64 from the CC0 models below and 23 from
 our own geometry. The other one is a Craftpix file.
 
 ------------------------------------------------------------------------
@@ -27,7 +27,7 @@ a licence to anyone else: this file is not CC0, and if you want it for your own
 project, get it from Craftpix under their terms.
 
 ------------------------------------------------------------------------
-2. The rendered 58
+2. The rendered 64
 ------------------------------------------------------------------------
 
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
@@ -46,7 +46,8 @@ steel and emberite
     character's helmet, body and leg meshes
 pickaxe, hammer, axe
     KayKit RPG Tools Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
-perch and trout from the model fish.glb, and pike from fish-large.glb, all tinted
+perch and trout from the model fish.glb, and pike from fish-large.glb, all tinted;
+the cooked, berry and herb perch, trout and pike from the same models, tinted
     Kenney Survival Kit (www.kenney.nl)
 berry
     Kenney Food Kit 2.0 (www.kenney.nl), the model grapes.glb
@@ -67,6 +68,6 @@ coins
     KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com), the model coin_stack_small
 
 emberbone.png, tin.png, ashstone.png, cinderglass.png, heartflame.png, rod.png,
-gossamerCloak.png and the fifteen cape icons are from no pack: they are Runic's
+gossamerCloak.png, tinderbox.png and the fifteen cape icons are from no pack: they are Runic's
 own, drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted
 by its tier, and its Virtue shows in the name only (#217).
