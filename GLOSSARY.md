@@ -413,6 +413,10 @@ _Avoid_: Floor item
 What an enemy leaves when it dies: a ground item on the enemy's tile for each player who won it, belonging to that player for the first minute.
 _Avoid_: Drop, reward
 
+**Loot table**:
+An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range.
+_Avoid_: Drop table
+
 **Pile**:
 All the ground items on one tile. A tile holds any number of them.
 _Avoid_: Heap, stack

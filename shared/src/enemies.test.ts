@@ -13,6 +13,7 @@ test("a Spider's numbers are the first slice's", () => {
     wanderChance: 0.1,
     wanderTiles: 5,
     leashTiles: 4,
+    loot: [],
   });
 });
 
@@ -28,7 +29,7 @@ test("#238's three docile creatures stand, never swing, and pay their hide", () 
       maxDamage: 0,
       wanderChance: 0,
       docile: true,
-      hide,
+      loot: [{ category: "material", chance: 1, items: [{ item: hide }] }],
     });
   }
 });
@@ -46,6 +47,8 @@ test("a Skeleton's numbers are spec §5's, and otherwise a Spider's", () => {
     wanderTiles: 3,
     noticeTiles: 3,
     leashTiles: 4,
-    emberboneChance: 0.25,
+    loot: [
+      { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
+    ],
   });
 });

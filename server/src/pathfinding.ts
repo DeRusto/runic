@@ -66,3 +66,8 @@ export function findPath(tiles: TileKind[][], from: Tile, to: Tile): Tile[] {
   }
   return path;
 }
+
+/** Next to is one legal step away or on the same tile (spec D1). */
+export const nextTo = (tiles: TileKind[][], a: Tile, b: Tile) =>
+  (a.x === b.x && a.y === b.y) ||
+  legalSteps(tiles, a).some(({ x, y }) => x === b.x && y === b.y);

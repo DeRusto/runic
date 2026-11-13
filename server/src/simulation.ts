@@ -2,19 +2,12 @@ import { ArraySchema, schema, t } from "@colyseus/schema";
 import {
   addItems,
   addXp,
-  armourPercentOf,
   AUGMENTATIONS,
-  augmentationOf,
   attemptChance,
-  avoidanceOf,
-  blockOf,
-  BLOCKING_XP_PER_BLOCK,
   COMBAT_LOCK_TICKS,
   COINS,
   dealRefusal,
   dealTotals,
-  DEFENSE_XP_PER_DAMAGE_TAKEN,
-  DEFENSE_XP_PER_ENEMY_SWING,
   DELICIOUS_BUFF_INTERVAL_TICKS,
   DELICIOUS_BUFF_PERCENT,
   DELICIOUS_BUFF_TICKS,
@@ -22,7 +15,6 @@ import {
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
-  enemyHitChance,
   FIGHT_BACK_DELAY_TICKS,
   FIRES,
   FOOD_HEALS,
@@ -34,8 +26,6 @@ import {
   GEAR_SLOTS,
   gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
-  HEALTH_PER_HITPOINTS_LEVEL,
-  hitOf,
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
@@ -62,8 +52,6 @@ import {
   MIGHT_POTION_HIT,
   mixRefusal,
   removeItems,
-  PLAYER_CRIT_CHANCE,
-  PLAYER_CRIT_MULTIPLIER,
   PLAYER_DEAD_TICKS,
   RECIPES,
   REGEN_INTERVAL_TICKS,
@@ -87,7 +75,6 @@ import {
   bankSlotFor,
   depositRefusal,
   itemParts,
-  ENEMIES,
   aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
@@ -110,26 +97,28 @@ import {
   type GatheringLeftField,
   type GatheringSkill,
   type PlayerAction,
-  type EnemyKind,
-  type EnemyState,
   type FireLog,
   type GearSlot,
   type ItemId,
   type SitePool,
   type StationKind,
   type Virtue,
-  XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
   type WorldEvent,
   type XpField,
+  enemyHit,
+  playerHit,
+  type LootWon,
 } from "@runic/shared";
+import { Enemies, Enemy } from "./enemies.ts";
 import { GroundItem, GroundItems } from "./groundItems.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import {
   findPath,
   legalSteps,
+  nextTo,
   pathNextTo,
   tilesNextTo,
 } from "./pathfinding.ts";
@@ -223,18 +212,6 @@ export const Player = schema(
     dead: t.boolean().default(false),
   },
   "Player",
-);
-
-export const Enemy = schema(
-  {
-    x: t.uint8(),
-    y: t.uint8(),
-    kind: t.string<EnemyKind>(),
-    health: t.uint16(),
-    target: t.string().default(""),
-    state: t.string<EnemyState>().default("idle"),
-  },
-  "Enemy",
 );
 
 export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
@@ -369,19 +346,8 @@ export class Simulation {
     string,
     { nextAttemptTick: number; nextEatTick: number }
   >();
-  /** What an enemy needs that clients don't: its home tile, timers and who has damaged it. */
-  private unsyncedEnemies = new Map<
-    string,
-    {
-      home: Tile;
-      nextStepTick: number;
-      nextSwingTick: number;
-      returnTick: number;
-      fightStart: Tile;
-      /** Who has damaged it since it last recovered or returned. Not saved (spec §6). */
-      damagers: Set<string>;
-    }
-  >();
+  /** Every enemy, which fights on its own and tells the world its swings and loot. */
+  private enemies: Enemies;
   /** Every gathering site, by the tile that keys it. */
   private sites = new Map<string, GatheringSite>();
   private villagers = new Map<VillagerId, Tile>();
@@ -425,34 +391,16 @@ export class Simulation {
     this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { enemy, villager, station } = kind;
+        const { villager, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const siteKind = kind[GATHERING[skill].site];
           if (siteKind) this.addSite(skill, siteKind, { x, y });
         }
-        if (!enemy) return;
-        const id = String(this.unsyncedEnemies.size);
-        this.unsyncedEnemies.set(id, {
-          home: { x, y },
-          nextStepTick: 0,
-          nextSwingTick: 0,
-          returnTick: 0,
-          fightStart: { x, y },
-          damagers: new Set(),
-        });
-        this.state.enemies.set(
-          id,
-          Object.assign(new Enemy(), {
-            x,
-            y,
-            kind: enemy,
-            health: ENEMIES[enemy].health,
-          }),
-        );
       }),
     );
+    this.enemies = new Enemies(this.tiles, this.state.enemies, this.random);
     this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
     for (const pool of this.pools)
       for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
@@ -619,8 +567,7 @@ export class Simulation {
     this.windows.delete(id);
     this.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
-    for (const enemy of this.unsyncedEnemies.values())
-      enemy.damagers.delete(id);
+    this.enemies.forget(id);
   }
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
@@ -1349,10 +1296,21 @@ export class Simulation {
     this.advanceVisits();
     this.advanceTakes();
     this.advancePlayerSwings();
-    this.advanceEnemies();
+    this.enemies.advance({
+      tick: this.state.tick,
+      players: () =>
+        [...this.unsyncedPlayers].map(([id, { dropped }]) => ({
+          id,
+          player: this.state.players.get(id)!,
+          dropped: !!dropped,
+        })),
+      player: (id) => this.state.players.get(id),
+      swing: (enemyId, playerId) => this.enemySwing(enemyId, playerId),
+    });
     this.advancePlayerTimers();
     this.advanceSites();
-    this.advanceEnemyReturns();
+    for (const enemy of this.enemies.returnDead(this.state.tick))
+      this.events.push({ type: "enemyReturned", enemy });
     this.groundItems.advance(this.state.tick);
     this.shelf.advance(this.state.tick);
   }
@@ -1786,7 +1744,7 @@ export class Simulation {
       const player = this.state.players.get(id)!;
       const enemy = this.state.enemies.get(action.enemy)!;
       if (this.state.tick < unsynced.nextSwingTick) continue;
-      if (!this.nextTo(player, enemy)) continue;
+      if (!nextTo(this.tiles, player, enemy)) continue;
       unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
       this.playerSwing(id, player, action.enemy, enemy);
     }
@@ -1805,22 +1763,6 @@ export class Simulation {
     }
   }
 
-  /** Next to is one legal step away or on the same tile (spec D1). */
-  private nextTo(a: Tile, b: Tile) {
-    return (
-      (a.x === b.x && a.y === b.y) ||
-      legalSteps(this.tiles, a).some(({ x, y }) => x === b.x && y === b.y)
-    );
-  }
-
-  /** The damage of one swing, 0 for a miss. */
-  private rollDamage(hitChance: number, maxDamage: number) {
-    const min = HEALTH_PER_HITPOINTS_LEVEL;
-    return this.random() < hitChance
-      ? min + Math.floor(this.random() * (maxDamage - min + 1))
-      : 0;
-  }
-
   private playerSwing(
     id: string,
     player: InstanceType<typeof Player>,
@@ -1828,26 +1770,18 @@ export class Simulation {
     enemy: InstanceType<typeof Enemy>,
   ) {
     this.lock(id);
-    const { chance, max, gear } = hitOf(player);
-    const rolled = this.rollDamage(chance, max);
     // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
-    const buffed =
-      gear +
-      (this.unsyncedPlayers.get(id)!.potion?.virtue === "might"
+    const might =
+      this.unsyncedPlayers.get(id)!.potion?.virtue === "might"
         ? MIGHT_POTION_HIT
-        : 0);
-    // Only on a hit, as 0 means a miss.
-    const hit = rolled && rolled + buffed;
-    const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
-    const damage = Math.min(
-      critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
-      enemy.health, // No XP for overkill.
+        : 0;
+    const { damage, critical, xp } = playerHit(
+      player,
+      might,
+      enemy.health,
+      this.random,
     );
-    const xp = Math.round(
-      (damage * XP_PER_DAMAGE_DEALT) / HEALTH_PER_HITPOINTS_LEVEL,
-    );
-    this.earnXp(player, "combatXp", xp);
-    this.earnXp(player, "hitpointsXp", xp);
+    for (const [field, gained] of xp) this.earnXp(player, field, gained);
     this.fitHealth(id);
     this.events.push({
       type: "playerSwing",
@@ -1856,28 +1790,10 @@ export class Simulation {
       damage,
       critical,
     });
-
-    const unsyncedEnemy = this.unsyncedEnemies.get(enemyId)!;
-    const { noticeTiles, docile } = ENEMIES[enemy.kind];
-    // A docile creature never fights back or targets anyone: it stands while it is hit (#238).
-    // One that attacks first ignores players on its way home, though they can attack it (spec §4).
-    if (
-      !docile &&
-      (enemy.state !== "going home" || noticeTiles === undefined)
-    ) {
-      if (enemy.state !== "fighting") this.startFight(enemy, unsyncedEnemy);
-      enemy.target = id;
-    }
-    if (damage) unsyncedEnemy.damagers.add(id);
-    enemy.health -= damage;
-    if (enemy.health > 0) return;
-
-    enemy.state = "dead";
-    enemy.target = "";
-    unsyncedEnemy.returnTick =
-      this.state.tick + ENEMIES[enemy.kind].returnTicks;
+    const loot = this.enemies.struck(this.state.tick, enemyId, id, damage);
+    if (!loot) return;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    this.rollLoot(enemy, unsyncedEnemy.damagers);
+    for (const won of loot) this.placeLoot(enemy, won);
     for (const unsynced of this.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
@@ -1886,164 +1802,61 @@ export class Simulation {
     }
   }
 
-  /**
-   * Each damager's own loot, and then it starts over, as it can't be damaged until it
-   * returns: a Skeleton's Emberbone by its chance (spec §4), and #238's docile creature's
-   * hide for every damager, at 100%.
-   */
-  private rollLoot(enemy: InstanceType<typeof Enemy>, damagers: Set<string>) {
-    const { emberboneChance = 0, hide } = ENEMIES[enemy.kind];
-    for (const id of emberboneChance || hide ? damagers : []) {
-      const { username } = this.state.players.get(id)!;
-      if (emberboneChance && this.random() < emberboneChance) {
-        this.groundItems.spawn(
-          enemy,
-          "emberbone",
-          1,
-          username,
-          this.state.tick,
-        );
-        const line = "You find an [Emberbone]. It is on the ground.";
-        this.events.push({ type: "told", player: id, line });
-      }
-      if (hide) {
-        this.groundItems.spawn(enemy, hide, 1, username, this.state.tick);
-        // "tarnHide" reads as "tarn hide", like an item's name does.
-        const name = hide.replace(
-          /[A-Z]/g,
-          (letter) => ` ${letter.toLowerCase()}`,
-        );
-        this.events.push({
-          type: "told",
-          player: id,
-          line: `You find a [${name.charAt(0).toUpperCase() + name.slice(1)}]. It is on the ground.`,
-        });
-      }
-    }
-    damagers.clear();
-  }
-
-  private startFight(
-    enemy: InstanceType<typeof Enemy>,
-    unsynced: { fightStart: Tile; nextSwingTick: number },
-  ) {
-    enemy.state = "fighting";
-    unsynced.fightStart = { x: enemy.x, y: enemy.y };
-    // Its timer outlives a fight, like the player's (spec D2).
-    unsynced.nextSwingTick = Math.max(
-      unsynced.nextSwingTick,
-      this.state.tick + ENEMIES[enemy.kind].firstSwingDelayTicks,
+  /** One winner's loot, on the enemy's tile and theirs for the first minute, with a line saying so. */
+  private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
+    const { username } = this.state.players.get(id)!;
+    this.groundItems.spawn(at, item, count, username, this.state.tick);
+    // "tarnHide" reads as "Tarn hide", like an item's name does.
+    const words = item.replace(
+      /[A-Z]/g,
+      (letter) => ` ${letter.toLowerCase()}`,
     );
+    const name = words.charAt(0).toUpperCase() + words.slice(1);
+    const amount =
+      count > 1 ? String(count) : /^[aeiou]/i.test(name) ? "an" : "a";
+    this.events.push({
+      type: "told",
+      player: id,
+      line: `You find ${amount} [${name}]. It is on the ground.`,
+    });
   }
 
-  /** The nearest live, connected player in range that no other Skeleton is after (spec §4). */
-  private noticedBy(enemy: InstanceType<typeof Enemy>, noticeTiles: number) {
-    const chased = new Set(
-      [...this.state.enemies.values()]
-        .filter(
-          ({ kind, state }) => kind === enemy.kind && state === "fighting",
-        )
-        .map(({ target }) => target),
-    );
-    let nearest: string | undefined;
-    let nearestTiles = noticeTiles + 1;
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const player = this.state.players.get(id)!;
-      const tiles = tilesApart(enemy, player);
-      if (player.dead || unsynced.dropped || chased.has(id)) continue;
-      // Strictly nearer, so a tie stays with whoever was checked first.
-      if (tiles >= nearestTiles) continue;
-      nearest = id;
-      nearestTiles = tiles;
-    }
-    return nearest;
-  }
-
-  /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
-  private stepEnemy(
-    enemy: InstanceType<typeof Enemy>,
-    unsynced: { nextStepTick: number },
-    to: Tile,
-    stopNextTo: boolean,
-  ) {
-    if (this.state.tick < unsynced.nextStepTick) return;
-    const path = findPath(this.tiles, enemy, to);
-    if (stopNextTo) path.pop();
-    if (!path.length) return;
-    Object.assign(enemy, path[0]);
-    unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
-  }
-
-  private enemySwing(
-    id: string,
-    enemy: InstanceType<typeof Enemy>,
-    player: InstanceType<typeof Player>,
-    unsynced: { nextSwingTick: number },
-  ) {
-    if (
-      this.state.tick < unsynced.nextSwingTick ||
-      !this.nextTo(enemy, player)
-    ) {
-      return;
-    }
-    const { maxDamage, swingIntervalTicks } = ENEMIES[enemy.kind];
-    unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
-    this.lock(enemy.target);
-    const avoidance = avoidanceOf(player);
+  /** A swing an enemy is due, rolled against the player's Avoidance and shield, then applied. */
+  private enemySwing(enemyId: string, playerId: string) {
+    const enemy = this.state.enemies.get(enemyId)!;
+    const player = this.state.players.get(playerId)!;
+    this.lock(playerId);
     // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
-    const buffed =
-      avoidance.skill +
-      avoidance.gear +
-      (this.unsyncedPlayers.get(enemy.target)!.potion?.virtue === "avoidance"
+    const avoidance =
+      this.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
         ? AVOIDANCE_POTION_POINTS
-        : 0);
-    const rolled = this.rollDamage(
-      enemyHitChance(enemy.kind, buffed),
-      maxDamage,
-    );
-    const blocked = rolled > 0 && this.rollBlock(player);
-    const landed = blocked ? 0 : rolled;
-    // Armour never turns a landed hit into 0, and the health cap comes after it, or a big hit could leave the player alive.
-    const armoured =
-      landed &&
-      Math.max(1, Math.round((landed * (100 - armourPercentOf(player))) / 100));
-    const damage = Math.min(armoured, player.health);
-    if (blocked) this.earnXp(player, "blockingXp", BLOCKING_XP_PER_BLOCK);
-    // From the hit before armour, so better armour doesn't slow Defense training.
-    const defenseXpDamage = Math.min(landed, player.health);
-    player.health -= damage;
-    this.earnXp(
+        : 0;
+    const { damage, blocked, hit, xp } = enemyHit(
+      enemy.kind,
       player,
-      "defenseXp",
-      Math.round(
-        DEFENSE_XP_PER_ENEMY_SWING +
-          (defenseXpDamage * DEFENSE_XP_PER_DAMAGE_TAKEN) /
-            HEALTH_PER_HITPOINTS_LEVEL,
-      ),
+      avoidance,
+      this.random,
     );
+    player.health -= damage;
+    for (const [field, gained] of xp) this.earnXp(player, field, gained);
     this.events.push({
       type: "enemySwing",
-      enemy: id,
-      player: enemy.target,
+      enemy: enemyId,
+      player: playerId,
       damage,
       blocked,
     });
     // A blocked swing still hits; only a miss leaves the window open.
-    const open = this.windows.get(enemy.target);
-    if (rolled && open) {
+    const open = this.windows.get(playerId);
+    if (hit && open) {
       const { name } = VILLAGERS[open.villager];
       this.shutWindow(
-        enemy.target,
+        playerId,
         `You're hit, and ${name} ${WINDOWS[open.kind].hit}.`,
       );
     }
-    if (player.health === 0) this.die(enemy.target, player);
-    else if (player.action === "") this.fightBack(enemy.target, player, id);
-  }
-
-  private rollBlock(player: InstanceType<typeof Player>) {
-    const block = blockOf(player);
-    return !!block && this.random() < block.shield + block.skill;
+    if (player.health === 0) this.die(playerId, player);
+    else if (player.action === "") this.fightBack(playerId, player, enemyId);
   }
 
   /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
@@ -2141,71 +1954,6 @@ export class Simulation {
         this.fitHealth(id);
       }
       if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
-    }
-  }
-
-  private advanceEnemyReturns() {
-    for (const [id, unsynced] of this.unsyncedEnemies) {
-      const enemy = this.state.enemies.get(id)!;
-      if (enemy.state !== "dead" || this.state.tick < unsynced.returnTick) {
-        continue;
-      }
-      Object.assign(enemy, {
-        ...unsynced.home,
-        health: ENEMIES[enemy.kind].health,
-        state: "idle",
-      });
-      this.events.push({ type: "enemyReturned", enemy: id });
-    }
-  }
-
-  private advanceEnemies() {
-    for (const [id, unsynced] of this.unsyncedEnemies) {
-      const enemy = this.state.enemies.get(id)!;
-      // A docile creature stands: no noticing, wandering or fighting, dead or alive (#238).
-      if (ENEMIES[enemy.kind].docile) continue;
-      const { noticeTiles } = ENEMIES[enemy.kind];
-      if (enemy.state === "idle" && noticeTiles !== undefined) {
-        const noticed = this.noticedBy(enemy, noticeTiles);
-        if (noticed !== undefined) {
-          this.startFight(enemy, unsynced);
-          enemy.target = noticed;
-        }
-      }
-      if (enemy.state === "fighting") {
-        const target = this.state.players.get(enemy.target);
-        if (
-          target &&
-          target.health > 0 &&
-          tilesApart(target, unsynced.fightStart) <=
-            ENEMIES[enemy.kind].leashTiles
-        ) {
-          this.stepEnemy(enemy, unsynced, target, true);
-          this.enemySwing(id, enemy, target, unsynced);
-          if (target.health > 0) continue;
-        }
-        enemy.state = "going home";
-        enemy.target = "";
-      }
-      if (enemy.state === "going home") {
-        this.stepEnemy(enemy, unsynced, unsynced.home, false);
-        if (tilesApart(enemy, unsynced.home) === 0) {
-          enemy.health = ENEMIES[enemy.kind].health;
-          enemy.state = "idle";
-          unsynced.damagers.clear();
-        }
-        continue;
-      }
-      if (enemy.state !== "idle" || this.state.tick < unsynced.nextStepTick) {
-        continue;
-      }
-      const { wanderChance, wanderTiles } = ENEMIES[enemy.kind];
-      if (this.random() >= wanderChance) continue;
-      const steps = legalSteps(this.tiles, enemy).filter(
-        (step) => tilesApart(step, unsynced.home) <= wanderTiles,
-      );
-      Object.assign(enemy, steps[Math.floor(this.random() * steps.length)]);
-      unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
   }
 }
