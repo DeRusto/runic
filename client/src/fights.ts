@@ -21,6 +21,7 @@ import {
 } from "./players.ts";
 import { enemyFigures, enemyOverheads } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
+import { STATION_LOOKS } from "./stationLooks.ts";
 import { stationTile } from "./stations.ts";
 
 /** How far through a gathering clip the result shows (spec §7). */
@@ -178,7 +179,8 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "make") {
         const figure = playerFigures.get(event.player);
         if (!figure) continue;
-        const hammer = event.station === "anvil";
+        const hammer =
+          event.station !== "fire" && !!STATION_LOOKS[event.station].hammer;
         // Lighting a fire has no station to face yet, and none while it burns (#224).
         figure.work =
           event.station === "fire"
