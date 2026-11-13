@@ -100,11 +100,19 @@ import {
   VILLAGERS,
   WALK_TICKS_PER_TILE,
   choicesNodeOf,
+  countOf,
+  QUEST_DONE,
+  openingNodeOf,
+  questOfVillager,
+  stageOf,
   type Deal,
   type DealLine,
   offers,
   type DialogueAction,
   nodesOf,
+  type Quest,
+  type QuestTurnIn,
+  type Tool,
   type Villager,
   type VillagerId,
   xpOf,
@@ -193,6 +201,12 @@ export const Player = schema(
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
     masteryHundredths: t.uint8().default(0),
+    /** Each started quest's id, in the order they were started (#231). */
+    quests: t.array("string"),
+    /** Parallel to `quests`: the stage it's on, or "done" (#231). */
+    questStages: t.array("string"),
+    /** The quest points finished quests have awarded (#231). */
+    questPoints: t.uint16().default(0),
     /** In any order; the sheet's order decides how they show. */
     pinnedSkills: t.array("string"),
     health: t.uint16(),
@@ -293,7 +307,11 @@ type GatheringSite = Tile & {
 type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
-  | { kind: "visiting"; villager: VillagerId; then?: DialogueAction }
+  | {
+      kind: "visiting";
+      villager: VillagerId;
+      then?: Exclude<DialogueAction, "quest">;
+    }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
   /**
@@ -320,7 +338,7 @@ export class Simulation {
     | { to: Tile }
     | { enemy: string }
     | { gather: GatheringSkill; site: string }
-    | { villager: VillagerId; then?: DialogueAction }
+    | { villager: VillagerId; then?: Exclude<DialogueAction, "quest"> }
     | { make: MakeItem; all: boolean; at?: Tile }
     | { light: number }
     | { take: string }
@@ -350,6 +368,8 @@ export class Simulation {
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
+      /** Each started quest's progress, by quest id, kept for the save (#231). */
+      quests: Map<string, { stage: string; turns: number }>;
       dropped?: boolean;
     }
   >();
@@ -386,9 +406,9 @@ export class Simulation {
     string,
     { kind: VillagerWindow; villager: VillagerId; node?: string }
   >();
-  /** What each choice's action does, with the villager who offered it; the choice has already been checked. */
+  /** What each choice's action but a quest's does, with the villager who offered it; the choice has already been checked. A quest's runs in `choose`, where it decides where the talk moves to (#231). */
   private readonly dialogueActions: Record<
-    DialogueAction,
+    Exclude<DialogueAction, "quest">,
     (id: string, villager: VillagerId) => void
   > = {
     giveTools: (id, villager) => this.giveTools(id, villager),
@@ -510,6 +530,8 @@ export class Simulation {
       tools = [],
       bank = [],
       bankCounts = [],
+      // A save from before the quests has none, so nobody starts with progress (#231).
+      quests = {},
       ...fields
     } = this.loginSave(saved);
     const player = Object.assign(new Player(), fields, {
@@ -518,6 +540,10 @@ export class Simulation {
     });
     player.pinnedSkills = new ArraySchema(...pinnedSkills);
     player.tools = new ArraySchema(...tools);
+    player.quests = new ArraySchema(...Object.keys(quests));
+    player.questStages = new ArraySchema(
+      ...Object.values(quests).map(({ stage }) => stage),
+    );
     player.inventory = new ArraySchema(...inventory);
     // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
     player.inventoryCounts = new ArraySchema(
@@ -545,6 +571,7 @@ export class Simulation {
       healingPool: [],
       lockEndTick: 0,
       respawnTick: 0,
+      quests: new Map(Object.entries(quests)),
       ...this.timersOfLeavers.get(username),
     });
     this.timersOfLeavers.delete(username);
@@ -626,7 +653,11 @@ export class Simulation {
       cape,
       neck,
       ring,
+      questPoints,
+      quests,
+      questStages,
     } = player;
+    const stages = [...questStages];
     return {
       x,
       y,
@@ -656,6 +687,17 @@ export class Simulation {
       cape,
       neck,
       ring,
+      questPoints,
+      // Each quest's stage and repeat turn-ins done, beside the xp columns (#231).
+      quests: Object.fromEntries(
+        [...quests].map((quest, at) => [
+          quest,
+          {
+            stage: stages[at]!,
+            turns: this.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
+          },
+        ]),
+      ),
       pinnedSkills: [...player.pinnedSkills],
       inventory: [...player.inventory],
       inventoryCounts: [...player.inventoryCounts],
@@ -842,7 +884,10 @@ export class Simulation {
     const visit = { villager: villager as VillagerId };
     if (then === undefined) this.queuedActions.set(id, visit);
     else if (offers(visit.villager, then))
-      this.queuedActions.set(id, { ...visit, then: then as DialogueAction });
+      this.queuedActions.set(id, {
+        ...visit,
+        then: then as Exclude<DialogueAction, "quest">,
+      });
   }
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
@@ -851,6 +896,15 @@ export class Simulation {
     if (!talk?.node || !Number.isInteger(choice)) return;
     const picked = nodesOf(talk.villager)[talk.node]!.choices![choice];
     if (!picked || !this.beside(id, talk.villager)) return;
+    // A quest choice is the server's check: a turn-in it refuses keeps the node, which the box shows again from its first line (#231).
+    if (picked.action === "quest") {
+      if (!this.advanceQuest(id, talk.villager)) {
+        this.moveTalk(id, talk.villager, talk.node);
+        return;
+      }
+      this.moveTalk(id, talk.villager, picked.to);
+      return;
+    }
     this.moveTalk(id, talk.villager, picked.to);
     if (picked.action) this.dialogueActions[picked.action](id, talk.villager);
   }
@@ -897,6 +951,15 @@ export class Simulation {
   /** The player closed it, so walking away later says nothing. */
   private closeWindow(id: string, kind: VillagerWindow) {
     if (this.windowOf(id, kind)) this.windows.delete(id);
+  }
+
+  /** The node this villager's conversation opens with: the stage-appropriate one, or their own start (#231). */
+  private openingNode(id: string, villager: VillagerId) {
+    const quest = questOfVillager(villager);
+    return openingNodeOf(
+      villager,
+      quest && this.unsyncedPlayers.get(id)!.quests.get(quest.id),
+    );
   }
 
   /** Closes the player's window from the server's side, with the line saying why. */
@@ -998,14 +1061,112 @@ export class Simulation {
     if (player) moveStack(player.bank, player.bankCounts, from, to);
   }
 
-  private giveTools(id: string, villager: VillagerId) {
+  private giveTools(id: string, villager: VillagerId, given?: readonly Tool[]) {
     const player = this.state.players.get(id)!;
     const { name, tools = [] }: Villager = VILLAGERS[villager];
-    const lacking = tools.filter((tool) => !player.tools.includes(tool));
+    const lacking = (given ?? tools).filter(
+      (tool) => !player.tools.includes(tool),
+    );
     if (!lacking.length) return;
     player.tools.push(...lacking);
     const line = `${name} gives you ${lacking.map(aTool).join(" and ")}.`;
     this.events.push({ type: "told", player: id, line });
+  }
+
+  /** Rewrites the player's synced quest arrays from their unsynced progress (#231). */
+  private syncQuests(id: string) {
+    const player = this.state.players.get(id)!;
+    const quests = this.unsyncedPlayers.get(id)!.quests;
+    player.quests = new ArraySchema(...quests.keys());
+    player.questStages = new ArraySchema(
+      ...[...quests.values()].map(({ stage }) => stage),
+    );
+  }
+
+  /**
+   * Runs the quest this villager gives, for the choice picked: starting it, or turning in the
+   * stage's or a repeat's items. False when what it asks for isn't there yet, so the talk
+   * stays on the node (#231).
+   */
+  private advanceQuest(id: string, villager: VillagerId) {
+    const quest = questOfVillager(villager);
+    if (!quest) return false;
+    const player = this.state.players.get(id)!;
+    const progress = this.unsyncedPlayers.get(id)!.quests.get(quest.id);
+    return progress
+      ? this.advanceStage(id, player, quest, progress)
+      : this.startQuest(id, player, quest);
+  }
+
+  /** Sets the first stage, and hands over the work's tools. Starting a quest never fails. */
+  private startQuest(
+    id: string,
+    player: InstanceType<typeof Player>,
+    quest: Quest,
+  ) {
+    this.unsyncedPlayers
+      .get(id)!
+      .quests.set(quest.id, { stage: quest.stages[0]!.id, turns: 0 });
+    if (quest.gives) this.giveTools(id, quest.villager, quest.gives);
+    this.syncQuests(id);
+    return true;
+  }
+
+  /** Moves a started quest on one stage, taking its turn-in or a repeat's, and finishes it with its points. */
+  private advanceStage(
+    id: string,
+    player: InstanceType<typeof Player>,
+    quest: Quest,
+    progress: { stage: string; turns: number },
+  ) {
+    if (progress.stage === QUEST_DONE) {
+      const repeat = quest.repeat;
+      if (!repeat || progress.turns >= repeat.turns) return false;
+      if (!this.takeTurnIn(id, player, repeat.turnIn)) return false;
+      progress.turns++;
+      // Quest experience earns no Mastery share (glossary: Mastery).
+      player[repeat.xpField] = addXp(player[repeat.xpField], repeat.xp);
+      return true;
+    }
+    const stage = stageOf(quest, progress.stage)!;
+    if (stage.turnIn && !this.takeTurnIn(id, player, stage.turnIn))
+      return false;
+    const next = quest.stages[quest.stages.indexOf(stage) + 1];
+    if (next) progress.stage = next.id;
+    else {
+      progress.stage = QUEST_DONE;
+      player.questPoints += quest.points;
+      this.events.push({
+        type: "told",
+        player: id,
+        line: `You finish ${quest.title}. You earn ${quest.points} quest point${quest.points === 1 ? "" : "s"}.`,
+      });
+    }
+    this.syncQuests(id);
+    return true;
+  }
+
+  /** Takes a turn-in out of the inventory, or says what's missing. */
+  private takeTurnIn(
+    id: string,
+    player: InstanceType<typeof Player>,
+    { item, count }: QuestTurnIn,
+  ) {
+    if (countOf(item, player) < count) {
+      // "copperOre" reads as "copper ore", like an item's name does.
+      const name = item.replace(
+        /[A-Z]/g,
+        (letter) => ` ${letter.toLowerCase()}`,
+      );
+      this.events.push({
+        type: "told",
+        player: id,
+        line: `You have no ${name} to hand over.`,
+      });
+      return false;
+    }
+    removeItems(player.inventory, player.inventoryCounts, item, count);
+    return true;
   }
 
   closeStore(id: string) {
@@ -1784,7 +1945,12 @@ export class Simulation {
       if (action?.kind !== "visiting" || unsynced.path.length) continue;
       unsynced.action = undefined;
       if (action.then) this.dialogueActions[action.then](id, action.villager);
-      else this.moveTalk(id, action.villager, VILLAGERS[action.villager].start);
+      else
+        this.moveTalk(
+          id,
+          action.villager,
+          this.openingNode(id, action.villager),
+        );
     }
     for (const [id, { villager }] of this.windows) {
       if (!this.beside(id, villager))

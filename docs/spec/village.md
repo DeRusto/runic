@@ -16,6 +16,7 @@ From [Who is the village cast?](https://github.com/DeRusto/runic/issues/194) and
 - A conversation shows the villager's lines in the dialogue box above the bar, under their portrait, name and role ("Odo, blacksmith"). Each line types itself out; a click or Space shows the rest of it, and the next click or Space moves on. The player's choices follow as buttons (number keys pick them). Escape closes it.
 - The server checks the player is still beside the villager before it carries out a choice.
 - Odo gives the tools a player lacks only when asked in conversation, no longer on arrival.
+- Odo's copper-ore quest opens the smithy: the furnace and anvil refuse a player who hasn't finished it ("You need to help Odo first."), and handing over the ore he asks for finishes it for a quest point. After that he still takes three more ores, each paying Mining experience. The journal lists the quest and its stage (#231).
 - Right-clicking Marta offers **Trade**, and Aldous **Bank**: the player walks over and the window opens on arrival, skipping the talk.
 
 **Ending.** A conversation, the store window and the bank each close when the player walks away from the villager ("You walk away from Marta.") or is hit. A blocked swing counts as a hit; a miss does not. A player has at most one of the three open.

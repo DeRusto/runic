@@ -2,6 +2,7 @@ import {
   EMPTY_SLOT,
   INVENTORY_SLOTS,
   parseRegion,
+  QUEST_DONE,
   xpForLevel,
   type WorldEvent,
 } from "@runic/shared";
@@ -24,7 +25,7 @@ beforeEach(() => {
 
 const player = (id = "a") => sim.state.players.get(id)!;
 
-/** Adds a player holding `held`, a hammer, and standing next to both stations unless told otherwise. */
+/** Adds a player holding `held`, a hammer, Odo's quest done, and standing next to both stations unless told otherwise. */
 function add(
   held: [string, number][],
   {
@@ -36,6 +37,10 @@ function add(
     tools = ["hammer"],
     fill = "",
     fillCount = 0,
+    // Odo's quest done, with its repeats spent, so the smithy's stations open (#231).
+    quests = {
+      odoCopper: { stage: QUEST_DONE, turns: 3 },
+    } as Record<string, { stage: string; turns: number }>,
   } = {},
 ) {
   const inventory = Array<string>(INVENTORY_SLOTS).fill(fill);
@@ -59,6 +64,7 @@ function add(
       herblawXp: 0,
       hitpointsXp: 4050,
       health: 10,
+      quests,
     },
     id,
   );
@@ -93,6 +99,14 @@ test("picking walks next to the station and starts work on arrival", () => {
       event: { type: "make", player: "a", station: "furnace", ticks: 6 },
     },
   ]);
+});
+
+test("the smithy's stations ignore a player who hasn't helped Odo (#231)", () => {
+  add([["copperOre", 1]], { quests: {} });
+  sim.queueMake("a", { item: "copperBar", all: false });
+  run(1);
+  expect(player().action).toBe("");
+  expect(makes()).toEqual([]);
 });
 
 test("materials leave and the item and experience arrive together at the end of the wait", () => {

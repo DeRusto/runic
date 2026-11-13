@@ -8,6 +8,7 @@ import {
   EVENTS,
   LOGOUT_INTENT,
   PIN_INTENT,
+  QUEST_DONE,
   respawnTile,
   SAVE_INTERVAL_TICKS,
   TAKE_OFF_INTENT,
@@ -240,6 +241,30 @@ test("the Blacksmith's tools, asked for in conversation, reach the client with a
 
   const back = await joined(client);
   expect([...synced(back).tools]).toEqual(BOTH);
+});
+
+test("quest progress and points survive logging out, and a fresh account has none", async () => {
+  const fresh = await joined(await clientFor("Unquested"));
+  expect([...(fresh.state as any).players.get(fresh.sessionId).quests]).toEqual(
+    [],
+  );
+  const client = await clientFor("Quester");
+  const room = await joined(client);
+  const world = matchMaker.getLocalRoomById(room.roomId) as WorldRoom;
+  const me = world.sim.state.players.get(room.sessionId)!;
+  me.quests.push("odoCopper");
+  me.questStages.push(QUEST_DONE);
+  me.questPoints = 1;
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect([...synced(back).quests]).toEqual(["odoCopper"]);
+  expect([...synced(back).questStages]).toEqual([QUEST_DONE]);
+  expect(synced(back).questPoints).toBe(1);
 });
 
 test("stack counts survive logging out, and clients see them change", async () => {

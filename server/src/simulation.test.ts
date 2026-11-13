@@ -1,4 +1,4 @@
-import { parseRegion } from "@runic/shared";
+import { parseRegion, QUEST_DONE } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
 import { seededRandom } from "./gatheringHarness.ts";
 import { Simulation } from "./simulation.ts";
@@ -359,6 +359,8 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     cape: "",
     neck: "",
     ring: "",
+    quests: {},
+    questPoints: 0,
   });
 });
 
@@ -397,6 +399,8 @@ const SAVED = {
   cape: "",
   neck: "",
   ring: "",
+  quests: { odoCopper: { stage: QUEST_DONE, turns: 2 } },
+  questPoints: 3,
 };
 
 test("a returning player comes back exactly as saved", () => {
