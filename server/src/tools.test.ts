@@ -172,7 +172,7 @@ test("dropping every slot leaves tools alone", () => {
   expect(tools()).toEqual(BOTH);
 });
 
-test("the Forester gives only the axe, and the Blacksmith never does", () => {
+test("the Forester gives the axe and tinderbox, and the Blacksmith never does", () => {
   sim = new Simulation(
     parseRegion(
       ["TTTTTTTTT", "TR.....BT", "Tf......T", "TTTTTTTTT"].join("\n"),
@@ -191,10 +191,10 @@ test("the Forester gives only the axe, and the Blacksmith never does", () => {
     ),
   );
   ticks(1);
-  expect(tools()).toEqual([...BOTH, "axe"]);
+  expect(tools()).toEqual([...BOTH, "axe", "tinderbox"]);
   expect(told.at(-1)).toEqual({
     type: "told",
     player: "a",
-    line: "Bram gives you an axe.",
+    line: "Bram gives you an axe and a tinderbox.",
   });
 });

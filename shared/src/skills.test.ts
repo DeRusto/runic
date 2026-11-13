@@ -67,6 +67,7 @@ test("only the skills that can be trained reach the sheet, the bar and pinning",
     "Woodcutting",
     "Fishing",
     "Cooking",
+    "Firemaking",
     "Blocking",
     "Mastery",
   ]);

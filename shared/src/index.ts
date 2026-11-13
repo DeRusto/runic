@@ -33,6 +33,8 @@ export const DROP_INTENT = "drop";
 export const MOVE_INTENT = "move";
 /** The mix intent's message type, for using a vial on a plant (#222); its payload is the plant's inventory slot's index. */
 export const MIX_INTENT = "mix";
+/** The light intent's message type, for lighting a fire (#224); its payload is the clicked inventory slot's index, holding a log. */
+export const LIGHT_INTENT = "light";
 /** The deposit intent's message type; its payload is `{ slot, amount }` for an inventory slot, and an amount over the stack deposits it all. */
 export const DEPOSIT_INTENT = "deposit";
 /** The withdraw intent's message type; its payload is `{ slot, amount }` for a bank slot, and the server takes as many as fit. */
@@ -104,6 +106,8 @@ export const SWING_INTERVAL_TICKS = 8;
 export const EAT_SWING_DELAY_TICKS = 4;
 export const FIGHT_BACK_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
+/** How long lighting a fire takes (#224). */
+export const LIGHTING_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 
@@ -150,7 +154,7 @@ export const PLAYER_CRIT_MULTIPLIER = 1.5;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
-  "" | "walking" | GatheringSkill | "smithing" | "fighting";
+  "" | "walking" | GatheringSkill | "smithing" | "lighting" | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
@@ -183,7 +187,7 @@ export type WorldEvent =
       finds: ItemId[];
     }
   | { type: GatheringVerb; player: string; success: false; count?: never }
-  /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
+  /** One at the start of each item's wait, or of lighting a fire (#224); `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }
   /** An item finished at a station, by its id, so the client can name an improved one (spec §5). */
   | { type: "made"; player: string; item: string }
@@ -214,6 +218,7 @@ export type WorldEvent =
 export * from "./bank.ts";
 export * from "./dialogue.ts";
 export * from "./enemies.ts";
+export * from "./firemaking.ts";
 export * from "./herblaw.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";

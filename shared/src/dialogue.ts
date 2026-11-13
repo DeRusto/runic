@@ -145,7 +145,7 @@ export const VILLAGERS = {
     name: "Bram",
     role: "forester",
     start: "greet",
-    tools: ["axe"],
+    tools: ["axe", "tinderbox"],
     nodes: {
       greet: {
         lines: [
@@ -155,14 +155,20 @@ export const VILLAGERS = {
           ),
         ],
         choices: [
-          { text: "Can I have an axe?", to: "axe", action: "giveTools" },
+          {
+            text: "Can I have an axe and a tinderbox?",
+            to: "tools",
+            action: "giveTools",
+          },
           { text: "Bye.", to: "bye" },
         ],
       },
-      axe: {
+      tools: {
         lines: [
-          you("Can I have an axe?"),
-          villager("Here. Start on the birch, and let the stumps grow back."),
+          you("Can I have an axe and a tinderbox?"),
+          villager(
+            "Here. The axe for the trees, the tinderbox for what you cut down.",
+          ),
         ],
       },
       bye: { lines: [you("Bye."), villager("Mind the roots.")] },

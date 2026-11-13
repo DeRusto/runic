@@ -25,6 +25,7 @@ import {
   EMPTY_SLOT,
   enemyHitChance,
   FIGHT_BACK_DELAY_TICKS,
+  FIRES,
   FOOD_HEALS,
   gatheringSource,
   gatherRefusal,
@@ -39,6 +40,8 @@ import {
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
+  LIGHTING_TICKS,
+  lightRefusal,
   logoutRefusal,
   maxHealthOf,
   madeItem,
@@ -100,6 +103,7 @@ import {
   type PlayerAction,
   type EnemyKind,
   type EnemyState,
+  type FireLog,
   type GearSlot,
   type ItemId,
   type RecipeItem,
@@ -172,6 +176,7 @@ export const Player = schema(
     woodcuttingXp: t.uint32().default(0),
     fishingXp: t.uint32().default(0),
     cookingXp: t.uint32().default(0),
+    firemakingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -227,6 +232,12 @@ export const Tree = schema({ chopsLeft: t.uint8() }, "Tree");
 
 export const FishingSpot = schema({ catchesLeft: t.uint8() }, "FishingSpot");
 
+/** A fire a player has lit, keyed in state by its tile: the log it burns, which sets its tier, and the tick it despawns on (#224). */
+export const Fire = schema(
+  { log: t.string<FireLog>(), endTick: t.uint32() },
+  "Fire",
+);
+
 const SITE_SCHEMAS = {
   bushes: Bush,
   veins: Vein,
@@ -243,6 +254,8 @@ export const WorldState = schema(
     veins: t.map(Vein),
     trees: t.map(Tree),
     fishingSpots: t.map(FishingSpot),
+    /** Every burning fire, keyed by its tile, visible to everyone (#224). */
+    fires: t.map(Fire),
     /** Tagged for views: the room adds each one to the views of the players who can see it. */
     groundItems: t.map(GroundItem).view(),
     /** The general store's shelf, the same for every player: item ids, and parallel to them how many. */
@@ -272,7 +285,15 @@ type UnsyncedAction =
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
   /** `doneTick` stays unset until arrival starts the first wait. */
-  | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
+  | {
+      kind: "smithing";
+      item: RecipeItem;
+      all: boolean;
+      at?: Tile;
+      doneTick?: number;
+    }
+  /** The log is already burnt: a new click or a death during the lighting loses it (#224). */
+  | { kind: "lighting"; log: FireLog; doneTick: number };
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -284,7 +305,8 @@ export class Simulation {
     | { enemy: string }
     | { gather: GatheringSkill; site: string }
     | { villager: VillagerId; then?: DialogueAction }
-    | { make: RecipeItem; all: boolean }
+    | { make: RecipeItem; all: boolean; at?: Tile }
+    | { light: number }
     | { take: string }
     | { follow: string }
   >();
@@ -571,6 +593,7 @@ export class Simulation {
       woodcuttingXp,
       fishingXp,
       cookingXp,
+      firemakingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -598,6 +621,7 @@ export class Simulation {
       woodcuttingXp,
       fishingXp,
       cookingXp,
+      firemakingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -747,18 +771,44 @@ export class Simulation {
 
   /**
    * Comes straight off the network, so anything but a recipe's item is ignored, as is choosing
-   * an anvil recipe with no hammer. Level and materials wait for arrival (spec §4).
+   * an anvil recipe with no hammer. `at` names the fire to cook at instead of the range, and is
+   * refused unless one burns there. Level and materials wait for arrival (spec §4).
    */
-  queueMake(id: string, intent: { item: string; all: boolean }) {
+  queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
     const player = this.state.players.get(id);
-    const { item, all } = intent ?? {};
+    const { item, all, at } = intent ?? {};
     // A string first: an array of one would pass hasOwn by turning into its element.
     if (!player || player.dead || typeof item !== "string") return;
     if (!Object.hasOwn(RECIPES, item)) return;
     const make = item as RecipeItem;
     const { station } = RECIPES[make];
-    if (!this.stations[station] || stationRefusal(station, player)) return;
-    this.queuedActions.set(id, { make, all: all === true });
+    // `at` names the fire to cook at, which stands in for the range (#224).
+    let fire: Tile | undefined;
+    if (at) {
+      const { x, y } = at as Partial<Tile>;
+      if (
+        station !== "range" ||
+        !Number.isInteger(x) ||
+        !Number.isInteger(y) ||
+        !this.state.fires.has(siteId({ x, y } as Tile))
+      )
+        return;
+      fire = { x: x!, y: y! };
+    } else if (!this.stations[station] || stationRefusal(station, player)) {
+      return;
+    }
+    this.queuedActions.set(id, { make, all: all === true, at: fire });
+  }
+
+  /**
+   * `slot` comes straight off the network, so anything but an inventory slot's index is
+   * ignored. The log, the tinderbox and the tile all wait for the tick, since the player is
+   * standing on the tile already (#224).
+   */
+  queueLight(id: string, slot: number) {
+    if (!this.alive(id)) return;
+    if (!isInventorySlot(slot)) return;
+    this.queuedActions.set(id, { light: slot });
   }
 
   /**
@@ -1216,7 +1266,9 @@ export class Simulation {
     this.applyIntents();
     this.advancePlayers();
     for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
+    this.advanceFires();
     this.advanceMaking();
+    this.advanceLighting();
     this.advanceVisits();
     this.advanceTakes();
     this.advancePlayerSwings();
@@ -1241,11 +1293,39 @@ export class Simulation {
       if ("enemy" in intent) {
         unsynced.action = { kind: "fighting", enemy: intent.enemy };
       } else if ("make" in intent) {
-        goNextTo({
+        const action: UnsyncedAction = {
           kind: "smithing",
           item: intent.make,
           all: intent.all,
-        });
+          at: intent.at,
+        };
+        // A fire the player is standing on or beside needs no walk (#224).
+        if (intent.at && tilesApart(player, intent.at) <= 1) {
+          unsynced.action = action;
+          unsynced.path = [];
+        } else {
+          goNextTo(action);
+        }
+      } else if ("light" in intent) {
+        const log = player.inventory[intent.light]!;
+        const refusal = lightRefusal(log, this.lightTileAt(player), player);
+        if (refusal)
+          this.events.push({ type: "told", player: id, line: refusal });
+        else {
+          // The log is consumed at once, so a new click during the lighting loses it (#224).
+          removeItems(player.inventory, player.inventoryCounts, log, 1);
+          unsynced.action = {
+            kind: "lighting",
+            log: log as FireLog,
+            doneTick: this.state.tick + LIGHTING_TICKS,
+          };
+          this.events.push({
+            type: "make",
+            player: id,
+            station: "fire",
+            ticks: LIGHTING_TICKS,
+          });
+        }
       } else if ("villager" in intent) {
         goNextTo({
           kind: "visiting",
@@ -1295,7 +1375,7 @@ export class Simulation {
   /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
     if (action?.kind === "smithing")
-      return this.stations[RECIPES[action.item].station];
+      return action.at ?? this.stations[RECIPES[action.item].station];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
@@ -1417,9 +1497,14 @@ export class Simulation {
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action: making } = unsynced;
       if (making?.kind !== "smithing" || unsynced.path.length) continue;
+      // A fire can burn out mid-job, ending the cooking on it (#224).
+      if (making.at && !this.state.fires.has(siteId(making.at))) {
+        unsynced.action = undefined;
+        continue;
+      }
       if (making.doneTick !== undefined) {
         if (this.state.tick < making.doneTick) continue;
-        if (!this.finishItem(id, making.item) || !making.all) {
+        if (!this.finishItem(id, making) || !making.all) {
           unsynced.action = undefined;
           continue;
         }
@@ -1438,7 +1523,10 @@ export class Simulation {
   }
 
   /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
-  private finishItem(id: string, item: RecipeItem) {
+  private finishItem(
+    id: string,
+    { item, at }: { item: RecipeItem; at?: Tile },
+  ) {
     const player = this.state.players.get(id)!;
     const told = (line: string) => {
       this.events.push({ type: "told", player: id, line });
@@ -1451,7 +1539,11 @@ export class Simulation {
     // next one (#221). It never rolls Delicious.
     if (RECIPES[item].station === "range") {
       const level = levelFor(player.cookingXp);
-      if (this.random() < burnPercent(item, level) / 100) {
+      // A fire burns more than the range, by the points of the log it burns (#224).
+      const fire = at ? this.state.fires.get(siteId(at)) : undefined;
+      const burn =
+        burnPercent(item, level) + (fire ? FIRES[fire.log].burnPercent : 0);
+      if (this.random() < burn / 100) {
         for (const [cost, count] of costsOf(item))
           removeItems(player.inventory, player.inventoryCounts, cost, count);
         // "berryPerch" reads as "berry perch", like an item's name does.
@@ -1513,6 +1605,63 @@ export class Simulation {
       this.earnXp(player, field, gained);
     this.events.push({ type: "made", player: id, item: made });
     return true;
+  }
+
+  /**
+   * What the player's tile is like for lighting a fire on it (#224). The tile kind gives the
+   * ground and any prop; a fire of their own and an enemy standing there come from state.
+   */
+  private lightTileAt({ x, y }: Tile) {
+    const kind = this.tiles[y]![x]!;
+    return {
+      fire: this.state.fires.has(siteId({ x, y })),
+      ground: kind.ground,
+      prop: kind.prop,
+      enemy: [...this.state.enemies.values()].some(
+        (enemy) => enemy.state !== "dead" && enemy.x === x && enemy.y === y,
+      ),
+    };
+  }
+
+  /** A fire of `log`'s tier on the player's own tile, and a station of kind "fire" while it burns (#224). */
+  private placeFire({ x, y }: Tile, log: FireLog) {
+    this.state.fires.set(
+      siteId({ x, y }),
+      Object.assign(new Fire(), {
+        log,
+        endTick: this.state.tick + FIRES[log].ticks,
+      }),
+    );
+    (this.stations.fire ??= []).push({ x, y });
+  }
+
+  /** Fires despawn silently when their time is up, and stop being stations (#224). */
+  private advanceFires() {
+    for (const [id, fire] of this.state.fires) {
+      if (this.state.tick < fire.endTick) continue;
+      this.state.fires.delete(id);
+      const [x, y] = id.split(",").map(Number) as [number, number];
+      const tiles = this.stations.fire!;
+      tiles.splice(
+        tiles.findIndex((tile) => tile.x === x && tile.y === y),
+        1,
+      );
+    }
+  }
+
+  /** When the lighting is over, the fire appears and pays its experience (#224). */
+  private advanceLighting() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const { action } = unsynced;
+      if (action?.kind !== "lighting" || this.state.tick < action.doneTick)
+        continue;
+      unsynced.action = undefined;
+      const player = this.state.players.get(id)!;
+      // A rival may have lit one here first; the log already burnt, so nothing is placed.
+      if (this.lightTileAt(player).fire) continue;
+      this.placeFire(player, action.log);
+      this.earnXp(player, "firemakingXp", FIRES[action.log].xp);
+    }
   }
 
   /** Mastery's share is of what lands, so experience lost to the cap earns none. */

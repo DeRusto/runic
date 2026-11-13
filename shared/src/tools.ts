@@ -1,7 +1,7 @@
 import { VILLAGERS, type Villager } from "./dialogue.ts";
 
 /** Every tool. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). Each villager's `tools` says who gives which. */
-export const TOOLS = ["pickaxe", "hammer", "axe", "rod"] as const;
+export const TOOLS = ["pickaxe", "hammer", "axe", "rod", "tinderbox"] as const;
 export type Tool = (typeof TOOLS)[number];
 
 /** "a pickaxe", "an axe". */

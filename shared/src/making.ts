@@ -290,7 +290,7 @@ export const RECIPES = {
     ticks: 12,
     xp: { smithingXp: 108 },
   },
-  /** #221's range: one raw fish each, and the same fish again with a berry or a herb (spec #219's shape). Each pays Cooking, and all take as long as a bar. */
+  /** #221's range: one raw fish each, and the same fish again with a berry or a herb (spec #219's shape). Each pays Cooking, and all take as long as a bar. A fire cooks these too, adding its log's burn points (#224). */
   cookedPerch: {
     station: "range",
     skill: "Cooking",

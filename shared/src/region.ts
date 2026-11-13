@@ -14,8 +14,8 @@ export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
 /** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
 export type VeinTier = Exclude<Tier, "bronze" | "steel">;
-/** A furnace smelts ore, an anvil makes gear, and a range cooks food (#221). */
-export type StationKind = "furnace" | "anvil" | "range";
+/** A furnace smelts ore, an anvil makes gear, and a range or a fire cooks food (#221, #224). Only a fire is player-placed and burns out, and no tile is one. */
+export type StationKind = "furnace" | "anvil" | "range" | "fire";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
