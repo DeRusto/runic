@@ -1790,7 +1790,7 @@ export class Simulation {
       damage,
       critical,
     });
-    const loot = this.enemies.struck(this.state.tick, enemyId, id, damage);
+    const loot = this.enemies.takeHit(this.state.tick, enemyId, id, damage);
     if (!loot) return;
     this.events.push({ type: "enemyDied", enemy: enemyId });
     for (const won of loot) this.placeLoot(enemy, won);

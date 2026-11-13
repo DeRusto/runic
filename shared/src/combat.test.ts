@@ -89,19 +89,19 @@ describe("enemyHit", () => {
 describe("rollLoot", () => {
   test("certain loot takes no roll: every damager gets a docile creature's hide (#238)", () => {
     const random = rolls();
-    expect(rollLoot("tarnOx", ["a", "b"], random)).toEqual([
+    expect(rollLoot(ENEMIES.tarnOx.loot, ["a", "b"], random)).toEqual([
       { player: "a", item: "tarnHide", count: 1 },
       { player: "b", item: "tarnHide", count: 1 },
     ]);
   });
 
   test("each damager rolls a Skeleton's Emberbone chance on their own (spec §4)", () => {
-    expect(rollLoot("skeleton", ["a", "b", "c"], rolls(0.1, 0.5, 0.2))).toEqual(
-      [
-        { player: "a", item: "emberbone", count: 1 },
-        { player: "c", item: "emberbone", count: 1 },
-      ],
-    );
+    expect(
+      rollLoot(ENEMIES.skeleton.loot, ["a", "b", "c"], rolls(0.1, 0.5, 0.2)),
+    ).toEqual([
+      { player: "a", item: "emberbone", count: 1 },
+      { player: "c", item: "emberbone", count: 1 },
+    ]);
   });
 
   test("a table rolls each category's picks, then picks by weight, then a count from its range", () => {
@@ -122,17 +122,11 @@ describe("rollLoot", () => {
       },
       { category: "quest", chance: 0.05, items: [{ item: "emberbone" }] },
     ] as const;
-    const spiderLoot = ENEMIES.spider.loot;
-    ENEMIES.spider.loot = loot;
-    try {
-      // Gear: a hit picking 0.8 of 4 (the shield), then a miss. Coins: 0 of 16 steps.
-      // Quest: a miss.
-      expect(rollLoot("spider", ["a"], rolls(0.1, 0.8, 0.9, 0, 0.5))).toEqual([
-        { player: "a", item: "copperShield", count: 1 },
-        { player: "a", item: "coins", count: 10 },
-      ]);
-    } finally {
-      ENEMIES.spider.loot = spiderLoot;
-    }
+    // Gear: a hit picking 0.8 of 4 (the shield), then a miss. Coins: 0 of 16 steps.
+    // Quest: a miss.
+    expect(rollLoot(loot, ["a"], rolls(0.1, 0.8, 0.9, 0, 0.5))).toEqual([
+      { player: "a", item: "copperShield", count: 1 },
+      { player: "a", item: "coins", count: 10 },
+    ]);
   });
 });

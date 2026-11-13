@@ -97,7 +97,7 @@ export class Enemies {
    * docile (#238) or attacks first and is on its way home (spec §4). Returns each damager's loot
    * if this killed it, and undefined if it lives.
    */
-  struck(
+  takeHit(
     tick: number,
     enemyId: string,
     playerId: string,
@@ -120,7 +120,11 @@ export class Enemies {
     enemy.target = "";
     memory.returnTick = tick + returnTicks;
     // It starts over, as it can't be damaged until it returns.
-    const loot = rollLoot(enemy.kind, memory.damagers, this.random);
+    const loot = rollLoot(
+      ENEMIES[enemy.kind].loot,
+      memory.damagers,
+      this.random,
+    );
     memory.damagers.clear();
     return loot;
   }

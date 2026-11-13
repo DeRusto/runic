@@ -1,4 +1,9 @@
-import { ENEMIES, type EnemyKind, type LootItem } from "./enemies.ts";
+import {
+  ENEMIES,
+  type EnemyKind,
+  type LootCategoryRow,
+  type LootItem,
+} from "./enemies.ts";
 import { armourPercentOf, type GearSlot } from "./gear.ts";
 import {
   BLOCKING_XP_PER_BLOCK,
@@ -123,19 +128,19 @@ function pick(items: readonly LootItem[], random: () => number) {
 }
 
 /**
- * What each damager wins from a `kind` that died: each player rolls the whole loot table, in
+ * What each damager wins from a loot table, such as a dead enemy's: each player rolls the whole table, in
  * table order. Each of a category's picks rolls its chance, then an item by weight, then a count
  * from its range. A certain outcome (a chance of 1, one item, a fixed count) takes no roll, so
  * tables that change nothing replay the same rolls.
  */
 export function rollLoot(
-  kind: EnemyKind,
+  table: readonly LootCategoryRow[],
   damagers: Iterable<string>,
   random: () => number,
 ): LootWon[] {
   const won: LootWon[] = [];
   for (const player of damagers)
-    for (const { chance, picks = 1, items } of ENEMIES[kind].loot)
+    for (const { chance, picks = 1, items } of table)
       for (let i = 0; i < picks; i++) {
         if (chance < 1 && random() >= chance) continue;
         const { item, count = 1 } = pick(items, random);

@@ -109,7 +109,7 @@ describe("a Skeleton", () => {
     w.run(enemies, 1);
     target.x = 10;
     w.run(enemies, 1);
-    enemies.struck(w.tick, "0", "target", 100);
+    enemies.takeHit(w.tick, "0", "target", 100);
     expect(synced.get("0")).toMatchObject({
       state: "going home",
       health: 2300,
@@ -118,9 +118,9 @@ describe("a Skeleton", () => {
 
   test("a killing blow returns each damager's Emberbone roll, then it comes back after its return time", () => {
     const { enemies, synced } = region(["K"], 0.1, MISS);
-    enemies.struck(1, "0", "a", 100);
-    enemies.struck(2, "0", "b", 100);
-    expect(enemies.struck(3, "0", "a", 2200)).toEqual([
+    enemies.takeHit(1, "0", "a", 100);
+    enemies.takeHit(2, "0", "b", 100);
+    expect(enemies.takeHit(3, "0", "a", 2200)).toEqual([
       { player: "a", item: "emberbone", count: 1 },
     ]);
     expect(synced.get("0")).toMatchObject({ state: "dead", target: "" });
@@ -137,14 +137,14 @@ describe("a Spider", () => {
     const w = world({ a: at(1) });
     w.run(enemies, 3);
     expect(synced.get("0")).toMatchObject({ state: "idle", target: "" });
-    enemies.struck(w.tick, "0", "a", 0);
+    enemies.takeHit(w.tick, "0", "a", 0);
     expect(synced.get("0")).toMatchObject({ state: "fighting", target: "a" });
   });
 
   test("stops fighting a player its swing kills, settling at once when already home", () => {
     const { enemies, synced } = region(["S.."]);
     const w = world({ a: at(1) }, 1000);
-    enemies.struck(0, "0", "a", 0);
+    enemies.takeHit(0, "0", "a", 0);
     w.run(enemies, ENEMIES.spider.firstSwingDelayTicks);
     expect(w.swings).toHaveLength(1);
     expect(synced.get("0")).toMatchObject({ state: "idle", target: "", x: 0 });
@@ -161,9 +161,9 @@ describe("a Spider", () => {
 describe("a docile creature (#238)", () => {
   test("never turns to fight, and every damager gets its hide with no roll", () => {
     const { enemies, synced } = region(["X.."]);
-    enemies.struck(1, "0", "a", 100);
+    enemies.takeHit(1, "0", "a", 100);
     expect(synced.get("0")).toMatchObject({ state: "idle", target: "" });
-    expect(enemies.struck(2, "0", "b", 100)).toEqual([
+    expect(enemies.takeHit(2, "0", "b", 100)).toEqual([
       { player: "a", item: "tarnHide", count: 1 },
       { player: "b", item: "tarnHide", count: 1 },
     ]);
@@ -180,9 +180,9 @@ describe("a docile creature (#238)", () => {
 
 test("a player who leaves wins no loot (spec D8)", () => {
   const { enemies } = region(["X"]);
-  enemies.struck(1, "0", "a", 100);
+  enemies.takeHit(1, "0", "a", 100);
   enemies.forget("a");
-  expect(enemies.struck(2, "0", "b", 100)).toEqual([
+  expect(enemies.takeHit(2, "0", "b", 100)).toEqual([
     { player: "b", item: "tarnHide", count: 1 },
   ]);
 });
