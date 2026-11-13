@@ -19,6 +19,7 @@ const STARTING_SHELF = [
   ["copperOre", 5],
   ["coal", 5],
   ["vial", 20],
+  ["feather", 20],
 ];
 
 let sim: Simulation;
@@ -282,12 +283,12 @@ describe("the shelf", () => {
       ],
     });
     ticks(199);
-    expect(shelf().slice(5)).toEqual([
+    expect(shelf().slice(6)).toEqual([
       ["tin", 1],
       ["ironSword:rare:might", 1],
     ]);
     ticks(200);
-    expect(shelf().slice(5)).toEqual([["ironSword:rare:might", 1]]);
+    expect(shelf().slice(6)).toEqual([["ironSword:rare:might", 1]]);
     ticks(4000);
     expect(shelf()).toEqual(STARTING_SHELF);
   });

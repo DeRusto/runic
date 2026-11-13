@@ -486,6 +486,56 @@ test("a bar is never improved, even on the luckiest roll", () => {
   expect(items()).toEqual([["copperBar", 1]]);
 });
 
+test("one bar of a tier makes ten arrowheads of it, for 6 Smithing (#228)", () => {
+  add([["copperBar", 1]]);
+  sim.queueMake("a", { item: "copperArrowhead", all: false });
+  run(7);
+  expect(items()).toEqual([["copperArrowhead", 10]]);
+  expect(player().smithingXp).toBe(6);
+  expect(seen.map(({ event }) => event)).toContainEqual({
+    type: "made",
+    player: "a",
+    item: "copperArrowhead",
+  });
+});
+
+test("Make all tops up the batch's stack before filling another slot (#228)", () => {
+  add([["copperBar", 3]]);
+  sim.queueMake("a", { item: "copperArrowhead", all: true });
+  run(25);
+  // The third batch's stack takes the slot the last bar freed.
+  expect(items()).toEqual([
+    ["copperArrowhead", 10],
+    ["copperArrowhead", 20],
+  ]);
+  expect(player().smithingXp).toBe(18);
+});
+
+test("an Emberite arrowhead needs no Emberbone, unlike the gear and the knife (#228)", () => {
+  add([["emberiteBar", 1]], { smithingXp: xpForLevel(20) });
+  sim.queueMake("a", { item: "emberiteArrowhead", all: false });
+  run(7);
+  expect(items()).toEqual([["emberiteArrowhead", 10]]);
+});
+
+test("a throwing knife takes an Emberbone too at Emberite, like the gear (#228)", () => {
+  add([["emberiteBar", 1]], { smithingXp: xpForLevel(20) });
+  sim.queueMake("a", { item: "emberiteThrowingKnife", all: false });
+  run(7);
+  expect(items()).toEqual([["emberiteBar", 1]]);
+  expect(lines()).toEqual(["Not enough materials"]);
+  add(
+    [
+      ["emberiteBar", 1],
+      ["emberbone", 1],
+    ],
+    { id: "b", smithingXp: xpForLevel(20) },
+  );
+  sim.queueMake("b", { item: "emberiteThrowingKnife", all: false });
+  run(7);
+  expect(items("b")).toEqual([["emberiteThrowingKnife", 1]]);
+});
+
 // The range is at (4,1), with (3,1) and (5,1) beside it, and no enemies to spend rolls on.
 const RANGE_TILES = parseRegion(
   ["TTTTTTT", "TR..G.T", "T.....T", "TTTTTTT"].join("\n"),
@@ -753,6 +803,208 @@ describe("crafting at the workbench (#225)", () => {
     sim.queueMake("a", { item: "rope", all: false });
     run(7);
     expect(items()).toEqual([["rope", 1]]);
+  });
+});
+
+// The workbench is at (4,1), with (3,1) and (5,1) beside it, and no enemies to spend rolls on.
+
+describe("fletching at the workbench (#228)", () => {
+  let sim: Simulation;
+  let seen: { tick: number; event: WorldEvent }[];
+
+  beforeEach(() => {
+    sim = new Simulation(WORKBENCH_TILES, () => 0.99);
+    seen = [];
+  });
+
+  /** Adds a player holding `held` next to the workbench, with `fletchingXp` and a random source. */
+  function fletch(
+    held: [string, number][],
+    {
+      id = "a",
+      x = 5,
+      y = 1,
+      fletchingXp = 0,
+      smithingXp = 0,
+      random = (() => 0.99) as () => number,
+    } = {},
+  ) {
+    if (random !== undefined) sim = new Simulation(WORKBENCH_TILES, random);
+    const inventory = Array<string>(INVENTORY_SLOTS).fill("");
+    const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(0);
+    held.forEach(([item, count], slot) => {
+      inventory[slot] = item;
+      inventoryCounts[slot] = count;
+    });
+    sim.addPlayer(
+      id,
+      {
+        x,
+        y,
+        combatXp: 0,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        fletchingXp,
+        smithingXp,
+        inventory,
+        inventoryCounts,
+      },
+      id,
+    );
+  }
+
+  const run = (ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      sim.tick();
+      for (const event of sim.events.splice(0))
+        seen.push({ tick: sim.state.tick, event });
+    }
+  };
+  const lines = () =>
+    seen.flatMap(({ event }) => (event.type === "told" ? [event.line] : []));
+  const items = (id = "a") =>
+    [...sim.state.players.get(id)!.inventory]
+      .map((item, slot) => [
+        item,
+        sim.state.players.get(id)!.inventoryCounts[slot],
+      ])
+      .filter(([item]) => item !== EMPTY_SLOT);
+
+  test("a log of any tier splits into ten shafts, for 2 Fletching", () => {
+    fletch([["birchLog", 1]]);
+    sim.queueMake("a", { item: "arrowShaft", all: false });
+    run(7);
+    expect(items()).toEqual([["arrowShaft", 10]]);
+    expect(sim.state.players.get("a")!.fletchingXp).toBe(2);
+    fletch([["charwoodLog", 1]], { id: "b" });
+    sim.queueMake("b", { item: "arrowShaft", all: false });
+    run(7);
+    expect(items("b")).toEqual([["arrowShaft", 10]]);
+    expect(sim.state.players.get("b")!.fletchingXp).toBe(2);
+  });
+
+  test("Make all keeps fletching shafts from two logs into one stack (#228)", () => {
+    fletch([["oakLog", 2]]);
+    sim.queueMake("a", { item: "arrowShaft", all: true });
+    run(14);
+    expect(items()).toEqual([["arrowShaft", 20]]);
+    expect(sim.state.players.get("a")!.fletchingXp).toBe(4);
+  });
+
+  test("an arrow costs ten of each of its parts, and the head's tier is its own", () => {
+    fletch(
+      [
+        ["arrowShaft", 10],
+        ["ironArrowhead", 10],
+        ["feather", 10],
+      ],
+      { random: () => 0.99 },
+    );
+    sim.queueMake("a", { item: "ironArrow", all: false });
+    run(7);
+    expect(items()).toEqual([["ironArrow", 10]]);
+    expect(sim.state.players.get("a")!.fletchingXp).toBe(8);
+    // The copper head doesn't fit the iron arrow, and a missing feather is noticed too.
+    fletch(
+      [
+        ["arrowShaft", 10],
+        ["copperArrowhead", 10],
+        ["feather", 10],
+      ],
+      { id: "b" },
+    );
+    sim.queueMake("b", { item: "ironArrow", all: false });
+    run(7);
+    expect(items("b")).toEqual([
+      ["arrowShaft", 10],
+      ["copperArrowhead", 10],
+      ["feather", 10],
+    ]);
+    expect(lines()).toEqual(["Not enough materials"]);
+  });
+
+  test("a shaft's batch never rolls improved, like a bar", () => {
+    const random = vi.fn(() => 0.99);
+    fletch([["birchLog", 1]], { random });
+    sim.queueMake("a", { item: "arrowShaft", all: false });
+    run(7);
+    expect(items()).toEqual([["arrowShaft", 10]]);
+    expect(random).not.toHaveBeenCalled();
+  });
+
+  test("a bow rolls improved like all gear, at its Fletching level", () => {
+    const random = vi.fn().mockReturnValue(0);
+    fletch(
+      [
+        ["birchLog", 1],
+        ["rope", 1],
+      ],
+      { fletchingXp: xpForLevel(20), random },
+    );
+    sim.queueMake("a", { item: "birchBow", all: false });
+    run(7);
+    // At Fletching 20 the improved chance is 7.8%, so the first roll improves it.
+    expect(items()).toEqual([["birchBow:rare:fortitude", 1]]);
+    expect(random).toHaveBeenCalledTimes(3);
+    expect(sim.state.players.get("a")!.fletchingXp).toBe(xpForLevel(20) + 20);
+  });
+
+  test("a bow's improved chance is the Fletching level's, not the Smithing level's", () => {
+    // 7.8% at Fletching 20: just over refuses, though Smithing 99 would have improved it.
+    fletch(
+      [
+        ["birchLog", 1],
+        ["rope", 1],
+      ],
+      {
+        fletchingXp: xpForLevel(20),
+        smithingXp: xpForLevel(99),
+        random: () => 0.078,
+      },
+    );
+    sim.queueMake("a", { item: "birchBow", all: false });
+    run(7);
+    expect(items()).toEqual([["birchBow", 1]]);
+    fletch(
+      [
+        ["birchLog", 1],
+        ["rope", 1],
+      ],
+      { id: "b", fletchingXp: xpForLevel(20), random: () => 0.0779 },
+    );
+    sim.queueMake("b", { item: "birchBow", all: false });
+    run(7);
+    expect(items("b")).toEqual([["birchBow:rare:fortitude", 1]]);
+  });
+
+  test("a bow costs its own wood and a rope, gated on Fletching at 1, 10 and 20", () => {
+    fletch(
+      [
+        ["oakLog", 1],
+        ["rope", 1],
+      ],
+      { fletchingXp: xpForLevel(9) },
+    );
+    sim.queueMake("a", { item: "oakBow", all: false });
+    run(7);
+    expect(items()).toEqual([
+      ["oakLog", 1],
+      ["rope", 1],
+    ]);
+    expect(lines()).toEqual(["Needs Fletching 10"]);
+    fletch(
+      [
+        ["birchLog", 1],
+        ["rope", 1],
+      ],
+      { id: "b" },
+    );
+    sim.queueMake("b", { item: "birchBow", all: false });
+    run(7);
+    expect(items("b")).toEqual([["birchBow", 1]]);
+    expect(sim.state.players.get("b")!.fletchingXp).toBe(20);
   });
 });
 

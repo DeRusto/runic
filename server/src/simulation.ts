@@ -51,6 +51,9 @@ import {
   madeItem,
   makeRefusal,
   makingOf,
+  LOG,
+  LOGS,
+  yieldOf,
   type AugmentationKind,
   type MakeItem,
   moveStack,
@@ -185,6 +188,7 @@ export const Player = schema(
     cookingXp: t.uint32().default(0),
     firemakingXp: t.uint32().default(0),
     craftingXp: t.uint32().default(0),
+    fletchingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -607,6 +611,7 @@ export class Simulation {
       cookingXp,
       firemakingXp,
       craftingXp,
+      fletchingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -636,6 +641,7 @@ export class Simulation {
       cookingXp,
       firemakingXp,
       craftingXp,
+      fletchingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -1580,7 +1586,13 @@ export class Simulation {
     const roll =
       RECIPES[recipe].station === "range"
         ? () => cookedItem(recipe, levelFor(player.cookingXp), this.random)
-        : () => madeItem(recipe, levelFor(player.smithingXp), this.random);
+        : // The improved chance is the making skill's, so a bow rolls on Fletching (#228).
+          () =>
+            madeItem(
+              recipe,
+              levelFor(player[RECIPES[recipe].xpField]),
+              this.random,
+            );
     return this.craftItem(id, player, recipe, roll);
   }
 
@@ -1633,8 +1645,10 @@ export class Simulation {
     const inventoryCounts = [...player.inventoryCounts];
     for (const [cost, count] of costsOf(item)) {
       let left = count;
+      // A stand-in cost takes any tier of its kind, first held first, like an augmentation's cape (#228).
+      const takes: string[] = cost === LOG ? [...LOGS] : [cost];
       inventory.forEach((held, slot) => {
-        if (held !== cost || !left) return;
+        if (!takes.includes(held) || !left) return;
         const taken = Math.min(left, inventoryCounts[slot]!);
         left -= taken;
         inventoryCounts[slot]! -= taken;
@@ -1646,8 +1660,9 @@ export class Simulation {
     const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
     const made = roll();
-    inventory[slot] = made;
-    inventoryCounts[slot]!++;
+    // A batch tops up every stack of it with room before filling empty slots, and refuses whole if it doesn't all fit (#228).
+    if (addItems(inventory, inventoryCounts, made, yieldOf(item)))
+      return told("Your inventory is full.");
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
       player.inventoryCounts[i] = inventoryCounts[i]!;
