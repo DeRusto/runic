@@ -63,6 +63,8 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     craftingXp: 0,
     fletchingXp: 0,
     runecraftingXp: 0,
+    leatherworkingXp: 0,
+    jewelsmithingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -131,7 +133,7 @@ test("starts closed, and opens at a station with that station's rows", () => {
   expect(shownRows()).toHaveLength(5);
   open("anvil");
   expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-  expect(shownRows()).toHaveLength(35);
+  expect(shownRows()).toHaveLength(45);
 });
 
 test("the range lists every cooking recipe under one Cooking section (#221)", () => {
@@ -152,8 +154,9 @@ test("the workbench lists Crafting's and Fletching's recipes under two sections 
   expect(headers()).toEqual([
     ["Crafting", "", true],
     ["Fletching", "", true],
+    ["Leatherworking", "", true],
   ]);
-  expect(shownRows()).toHaveLength(13);
+  expect(shownRows()).toHaveLength(38);
   expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Rope"]);
   expect(line(shownRows()[1])).toEqual([
     "Torch",
@@ -270,7 +273,7 @@ test("a cooking row is refused on Cooking, whatever the Smithing level", () => {
   expect(line(shownRows()[3])).toEqual(["Cooked trout", "1 Trout"]);
 });
 
-test("the anvil at Smithing 1 opens Copper and folds the other tiers with their gates", () => {
+test("the anvil at Smithing 1 opens Copper and folds the other tiers with their gates, beside the Jewelsmithing section", () => {
   open("anvil");
   expect(headers()).toEqual([
     ["Copper", "", true],
@@ -278,7 +281,86 @@ test("the anvil at Smithing 1 opens Copper and folds the other tiers with their 
     ["Iron", "Smithing 10", false],
     ["Steel", "Smithing 15", false],
     ["Emberite", "Smithing 20", false],
+    ["Jewelsmithing", "", true],
   ]);
+});
+
+test("the anvil lists the ten necks and rings under one Jewelsmithing section (#238)", () => {
+  open("anvil");
+  const jewels = sections().find(
+    (s: any) => texts(s.children[0])[0] === "Jewelsmithing",
+  )!;
+  expect(jewels.children).toHaveLength(11);
+  expect(texts(jewels.children[1])).toEqual([
+    expect.any(String),
+    "Copper amulet",
+    "1 Copper bar · Not enough materials",
+    expect.anything(),
+    expect.anything(),
+  ]);
+  expect(line(jewels.children[6])).toEqual([
+    "Iron ring",
+    "1 Iron bar + 1 Ashstone · Needs Jewelsmithing 10",
+  ]);
+  // A Smithing level alone doesn't lift a Jewelsmithing row.
+  patch(
+    me(
+      [
+        ["steelBar", 1],
+        ["cinderglass", 1],
+      ],
+      { smithingXp: xpForLevel(99) },
+    ),
+  );
+  expect(line(jewels.children[7])).toEqual([
+    "Steel amulet",
+    "1 Steel bar + 1 Cinderglass · Needs Jewelsmithing 15",
+  ]);
+  patch(
+    me(
+      [
+        ["steelBar", 1],
+        ["cinderglass", 1],
+      ],
+      { jewelsmithingXp: xpForLevel(15) },
+    ),
+  );
+  expect(line(jewels.children[7])).toEqual([
+    "Steel amulet",
+    "1 Steel bar + 1 Cinderglass",
+  ]);
+});
+
+test("the workbench lists Leatherworking's hides and capes under its own section (#238)", () => {
+  open("workbench");
+  const leather = sections().find(
+    (s: any) => texts(s.children[0])[0] === "Leatherworking",
+  )!;
+  expect(leather.children).toHaveLength(26);
+  expect(texts(leather.children[1]).slice(1, 3)).toEqual([
+    "Copper gloves",
+    "2 Tarn hide · Not enough materials",
+  ]);
+  expect(texts(leather.children[2]).slice(1, 3)).toEqual([
+    "Copper boots",
+    "2 Tarn hide · Not enough materials",
+  ]);
+  expect(line(leather.children[14])).toEqual([
+    "Bronze might cape",
+    "2 Tarn hide + 1 Rope · Needs Leatherworking 5",
+  ]);
+  expect(line(leather.children[25])).toEqual([
+    "Emberite avoidance cape",
+    "2 Cinder hide + 1 Rope · Needs Leatherworking 20",
+  ]);
+  // A Crafting level alone doesn't lift a Leatherworking row.
+  patch(me([["tarnHide", 3]], { craftingXp: xpForLevel(99) }));
+  expect(line(leather.children[3])).toEqual([
+    "Bronze gloves",
+    "3 Tarn hide · Needs Leatherworking 5",
+  ]);
+  patch(me([["tarnHide", 3]], { leatherworkingXp: xpForLevel(5) }));
+  expect(line(leather.children[3])).toEqual(["Bronze gloves", "3 Tarn hide"]);
 });
 
 test("the anvil's arrowhead and knife rows name the piece alone, and a fletching row opens with the materials held (#228)", () => {
@@ -526,7 +608,7 @@ describe("clicking a station from afar", () => {
     patch(me([], { x: 7, y: 2 }));
     expect(panel().hidden).toBe(false);
     expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-    expect(shownRows()).toHaveLength(35);
+    expect(shownRows()).toHaveLength(45);
   });
 
   test("already next to it, opens at once and leaves the action alone", () => {

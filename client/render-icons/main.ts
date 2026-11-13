@@ -266,6 +266,25 @@ const ICONS: Icon[] = [
     turn: FLAT,
     look: { tint: 0xe8e4da },
   },
+  // #238's hides: the ResourceBits' folded cloth, browned by its creature and charred at Cinderhorn.
+  {
+    id: "tarnHide",
+    url: `${RESOURCE}/Textiles_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0xb08968 },
+  },
+  {
+    id: "bristleHide",
+    url: `${RESOURCE}/Textiles_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0x8a6f56 },
+  },
+  {
+    id: "cinderHide",
+    url: `${RESOURCE}/Textiles_A.gltf`,
+    turn: FLAT,
+    look: { tint: 0x5a443a, glow: 0x4a1c08 },
+  },
   {
     id: "coal",
     url: "/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_E_Color1.gltf",
@@ -457,6 +476,90 @@ applyLook(cloak, { tint: 0xd8dcd4 });
 draw(cloak, WORN);
 pngs.set("gossamerCloak", await toPng(renderer.domElement));
 
+/** A mitt with its cuff: no pack has a glove on its own (#238). */
+function glove() {
+  const group = new THREE.Group();
+  const leather = new THREE.MeshStandardMaterial({ roughness: 0.7 });
+  const mitt = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 8), leather);
+  mitt.scale.set(1, 0.8, 1.25);
+  const cuff = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.48, 0.5, 12),
+    leather,
+  );
+  cuff.rotation.x = Math.PI / 2;
+  cuff.position.set(0, 0, -0.55);
+  group.add(mitt, cuff);
+  return group;
+}
+
+/** A boot's shaft and foot: no pack has a boot on its own (#238). */
+function boot() {
+  const group = new THREE.Group();
+  const leather = new THREE.MeshStandardMaterial({ roughness: 0.7 });
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.38, 0.44, 1.2, 12),
+    leather,
+  );
+  shaft.position.y = 0.55;
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 1.05), leather);
+  foot.position.set(0, -0.25, 0.25);
+  group.add(shaft, foot);
+  return group;
+}
+
+/** A cord's ring with a cut gem hung from it: no pack has an amulet on its own (#238). */
+function pendant() {
+  const group = new THREE.Group();
+  group.add(
+    new THREE.Mesh(
+      new THREE.TorusGeometry(0.75, 0.08, 8, 24),
+      new THREE.MeshStandardMaterial({ roughness: 0.7 }),
+    ),
+  );
+  const stone = gem(0xffffff);
+  stone.scale.setScalar(0.55);
+  stone.position.y = -0.95;
+  group.add(stone);
+  return group;
+}
+
+/** A band with a cut gem set in it: no pack has a ring on its own (#238). */
+function band() {
+  const group = new THREE.Group();
+  group.add(
+    new THREE.Mesh(
+      new THREE.TorusGeometry(0.65, 0.18, 8, 24),
+      new THREE.MeshStandardMaterial({ metalness: 0.5, roughness: 0.4 }),
+    ),
+  );
+  const stone = gem(0xffffff);
+  stone.scale.setScalar(0.45);
+  stone.position.y = 0.75;
+  group.add(stone);
+  return group;
+}
+
+// Leatherworking's hands and feet (#238), the same mitt and boot tinted by their tier; the hides keep the ICONS' cloth. A flat turn, as they lie.
+for (const [tier, look] of Object.entries(TIER_LOOKS)) {
+  const mitt = glove();
+  applyLook(mitt, look);
+  draw(mitt, FLAT);
+  pngs.set(`${tier}Gloves`, await toPng(renderer.domElement));
+  const shoe = boot();
+  applyLook(shoe, look);
+  draw(shoe, LEAN);
+  pngs.set(`${tier}Boots`, await toPng(renderer.domElement));
+  // Jewelsmithing's neck and ring (#238), the same pendant and band tinted by their tier.
+  const necklace = pendant();
+  applyLook(necklace, look);
+  draw(necklace, FLAT);
+  pngs.set(`${tier}Amulet`, await toPng(renderer.domElement));
+  const ringIcon = band();
+  applyLook(ringIcon, look);
+  draw(ringIcon, FLAT);
+  pngs.set(`${tier}Ring`, await toPng(renderer.domElement));
+}
+
 // Fletching's stock (#228). The bows are the weapons pack's, tinted pale, as cut and charred like the logs; the arrows and throwing knives are tinted by their tier.
 const BOW_LOOKS: Record<string, Look> = {
   birchBow: { tint: 0xf0e6cc },
@@ -634,25 +737,7 @@ function essence() {
   return group;
 }
 
-/** Kenney's rune slabs, tinted by their element where they have one: no pack has a 3D rune (#232). The tint leaves the slab's own alpha. */
-async function rune(file: string, tint?: number) {
-  const image = new Image();
-  image.src = `/kenney-game-assets/2D assets/Rune Pack/PNG/Grey/Slab/${file}.png`;
-  await image.decode();
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = SIZE;
-  const context = canvas.getContext("2d")!;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(image, 0, 0, SIZE, SIZE);
-  if (tint !== undefined) {
-    context.globalCompositeOperation = "multiply";
-    context.fillStyle = `#${tint.toString(16).padStart(6, "0")}`;
-    context.fillRect(0, 0, SIZE, SIZE);
-    context.globalCompositeOperation = "destination-in";
-    context.drawImage(image, 0, 0, SIZE, SIZE);
-  }
-  return toPng(canvas);
-}
+/** Kenney's rune slabs are gone: #238 re-renders the runes from the owner's four medallions (shown for review). */
 
 const bone = emberbone();
 applyLook(bone, EMBERITE);
@@ -684,10 +769,19 @@ draw(strange, FLAT);
 pngs.set("strangeMaterial", await toPng(renderer.domElement));
 draw(essence(), FLAT);
 pngs.set("runeEssence", await toPng(renderer.domElement));
-pngs.set("airRune", await rune("runeGrey_slab_001"));
-pngs.set("waterRune", await rune("runeGrey_slab_002", 0x3c6ebe));
-pngs.set("earthRune", await rune("runeGrey_slab_003", 0x82552d));
-pngs.set("fireRune", await rune("runeGrey_slab_004", 0xd8421e));
+// The owner's four rune medallions, rendered from their own models as the runes (#238),
+// shown for the owner's review in place of the Kenney slabs.
+const RUNES = [
+  ["airRune", "Meshy_AI_Air_Rune_Medallion_1113121225_texture.glb"],
+  ["waterRune", "Meshy_AI_Water_Rune_Medallion_1113121244_texture.glb"],
+  ["earthRune", "Meshy_AI_Earth_Rune_Medallion_1113121251_texture.glb"],
+  ["fireRune", "Meshy_AI_Fire_Rune_Medallion_1113121238_texture.glb"],
+] as const;
+for (const [id, file] of RUNES) {
+  const { scene: medallion } = await loader.loadAsync(`/personal/${file}`);
+  draw(medallion, FLAT);
+  pngs.set(id, await toPng(renderer.domElement));
+}
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {

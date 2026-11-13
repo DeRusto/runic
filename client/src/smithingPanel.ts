@@ -60,7 +60,7 @@ export function showSmithingPanel(room: WorldConnection) {
 
   const items = Object.keys(RECIPES) as RecipeItem[];
   const augmentations = Object.keys(AUGMENTATIONS) as AugmentationKind[];
-  /** One folding section: a tier of the furnace or anvil, the range's Cooking or the workbench's Crafting list (#221, #225). */
+  /** One folding section: a tier of the furnace or anvil, the range's Cooking, or a workbench or anvil skill's list (#221, #225, #238). */
   const section = (
     station: StationKind,
     makes: MakeItem[],
@@ -78,9 +78,10 @@ export function showSmithingPanel(room: WorldConnection) {
       icon.src = iconUrl(item);
       icon.alt = "";
       const [name, cost] = [part(), part()];
-      // At the anvil the tier's header names the metal, so a row names only the piece: "Chestplate", or "Throwing knife" for the two-word one (#228).
+      // In a tier's section the header names the metal, so a row names only the piece:
+      // "Chestplate", or "Throwing knife" for the two-word one (#228).
       name.textContent =
-        station === "anvil" ? pieceName(item, tier!) : itemName(item);
+        station === "anvil" && tier ? pieceName(item, tier) : itemName(item);
       const button = (label: string, all: boolean) => {
         const make = document.createElement("button");
         make.type = "button";
@@ -131,12 +132,20 @@ export function showSmithingPanel(room: WorldConnection) {
           station,
           items.filter(
             (item) =>
-              RECIPES[item].station === station && item.startsWith(tier),
+              RECIPES[item].station === station &&
+              item.startsWith(tier) &&
+              // The anvil's Jewelsmithing gets its own section below (#238).
+              (station === "anvil" ? RECIPES[item].skill === "Smithing" : true),
           ),
           itemName(tier),
           tier,
         ),
       ),
+    ),
+    section(
+      "anvil",
+      items.filter((item) => RECIPES[item].skill === "Jewelsmithing"),
+      "Jewelsmithing",
     ),
     section(
       "range",
@@ -163,6 +172,11 @@ export function showSmithingPanel(room: WorldConnection) {
           RECIPES[item].skill === "Fletching",
       ),
       "Fletching",
+    ),
+    section(
+      "workbench",
+      items.filter((item) => RECIPES[item].skill === "Leatherworking"),
+      "Leatherworking",
     ),
     section(
       "altar",

@@ -13,7 +13,14 @@ import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
 import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
-import { loadCharacters, loadSkeletons, loadSpiders } from "./characters.ts";
+import {
+  loadBristleback,
+  loadCharacters,
+  loadCinderhorn,
+  loadSkeletons,
+  loadSpiders,
+  loadTarnOx,
+} from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { showBuffs } from "./delicious.ts";
 import { showDialogueBox } from "./dialogueBox.ts";
@@ -56,23 +63,34 @@ const spots = pools.flatMap(({ skill, kind, spots }) =>
 );
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newSpider, newSkeleton, setSiteLook, villagerUnder] =
-  await Promise.all([
-    loadCharacters(),
-    loadSpiders(),
-    loadSkeletons(),
-    addRegionMeshes(scene, tiles),
-    addVillagers(tiles),
-  ])
-    // Loads still in flight after a failure would look for a bar that is gone.
-    .finally(() => (DefaultLoadingManager.onProgress = () => {}))
-    .catch((error) => {
-      loading.dataset.failed = "";
-      loading.setAttribute("role", "alert");
-      loading.removeAttribute("aria-label");
-      loading.textContent = "Could not load the game. Reload to try again.";
-      throw error;
-    });
+const [
+  newFigure,
+  newSpider,
+  newSkeleton,
+  newTarnOx,
+  newBristleback,
+  newCinderhorn,
+  setSiteLook,
+  villagerUnder,
+] = await Promise.all([
+  loadCharacters(),
+  loadSpiders(),
+  loadSkeletons(),
+  loadTarnOx(),
+  loadBristleback(),
+  loadCinderhorn(),
+  addRegionMeshes(scene, tiles),
+  addVillagers(tiles),
+])
+  // Loads still in flight after a failure would look for a bar that is gone.
+  .finally(() => (DefaultLoadingManager.onProgress = () => {}))
+  .catch((error) => {
+    loading.dataset.failed = "";
+    loading.setAttribute("role", "alert");
+    loading.removeAttribute("aria-label");
+    loading.textContent = "Could not load the game. Reload to try again.";
+    throw error;
+  });
 for (const id of spots) setSiteLook(id, "gone");
 // The splash stays behind the login form until the first join settles.
 loading.remove();
@@ -92,7 +110,13 @@ function enterWorld(room: WorldConnection) {
   walkOnClick(
     room,
     tiles,
-    showEnemies(room, { spider: newSpider, skeleton: newSkeleton }),
+    showEnemies(room, {
+      spider: newSpider,
+      skeleton: newSkeleton,
+      tarnOx: newTarnOx,
+      bristleback: newBristleback,
+      cinderhorn: newCinderhorn,
+    }),
     showGatheringSites(room, tiles, spots, setSiteLook),
     stationUnder,
     showFires(room),

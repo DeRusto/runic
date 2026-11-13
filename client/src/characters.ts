@@ -43,6 +43,14 @@ export const SPIDER_GAIT = {
 };
 const SPIDER_WIDTH = 1.1;
 
+/** The docile creatures' clips, as the Farm Animals pack names them (#238). They never walk: they stand. */
+const CREATURE_GAIT = {
+  idle: "Idle",
+  move: "Walk",
+  moveSpeed: 1,
+  fight: "Idle",
+};
+
 const CHARACTERS = ["Knight", "Barbarian"] as const;
 const CLIP_PACKS = [
   "Rig_Medium_General",
@@ -149,6 +157,23 @@ export const ENEMY_CLIPS: Record<
     death: "Death_A",
     hit: "Hit_A",
     returns: "respawn",
+  },
+  // #238's docile creatures never swing, and a dying one falls into the ground like a
+  // Spider does, then grows back.
+  tarnOx: {
+    swing: () => ({ clip: "Idle", contactMs: 0 }),
+    death: "Death",
+    returns: "reappear",
+  },
+  bristleback: {
+    swing: () => ({ clip: "Idle", contactMs: 0 }),
+    death: "Death",
+    returns: "reappear",
+  },
+  cinderhorn: {
+    swing: () => ({ clip: "Idle", contactMs: 0 }),
+    death: "Death",
+    returns: "reappear",
   },
 };
 
@@ -646,6 +671,71 @@ export async function loadSkeletons() {
 
 export function fitSpider(model: THREE.Object3D) {
   fit(model, (size) => SPIDER_WIDTH / Math.max(size.x, size.z));
+}
+
+/** Fits a ground creature by its wide side across the tile (#238). */
+function fitCreature(model: THREE.Object3D, width: number) {
+  fit(model, (size) => width / Math.max(size.x, size.z));
+}
+
+/** The widths #238's docile creatures are fitted to, wide side across the tile. */
+const CREATURE_WIDTHS = {
+  tarnOx: 1.5,
+  bristleback: 1.1,
+  cinderhorn: 1.4,
+} as const;
+
+/**
+ * The two clips a docile creature with no animations of its own still needs: an empty
+ * idle stands in the bind pose, and an empty death gives the Figure something to hold
+ * while it sinks (#238).
+ */
+function stillClips() {
+  return new Map(
+    ["Idle", "Death"].map(
+      (name) => [name, new THREE.AnimationClip(name, 0.4, [])] as const,
+    ),
+  );
+}
+
+/** Loads the Tarn Ox once, whose Farm Animals model carries its own clips (#238). */
+export async function loadTarnOx() {
+  const { scene, animations } = await load("TarnOx");
+  fitCreature(scene, CREATURE_WIDTHS.tarnOx);
+  const clips = new Map(animations.map((c) => [c.name, c]));
+  return (tile: Tile) =>
+    new Figure(
+      tile,
+      withOwnMaterials(cloneSkinned(scene)),
+      clips,
+      CREATURE_GAIT,
+    );
+}
+
+/** Loads a #238 docile creature once, whose Meshy model has no animations of its own. */
+export async function loadBristleback() {
+  const { scene } = await load("Bristleback");
+  fitCreature(scene, CREATURE_WIDTHS.bristleback);
+  return (tile: Tile) =>
+    new Figure(
+      tile,
+      withOwnMaterials(cloneSkinned(scene)),
+      stillClips(),
+      CREATURE_GAIT,
+    );
+}
+
+/** Loads a #238 docile creature once, whose Meshy model has no animations of its own. */
+export async function loadCinderhorn() {
+  const { scene } = await load("Cinderhorn");
+  fitCreature(scene, CREATURE_WIDTHS.cinderhorn);
+  return (tile: Tile) =>
+    new Figure(
+      tile,
+      withOwnMaterials(cloneSkinned(scene)),
+      stillClips(),
+      CREATURE_GAIT,
+    );
 }
 
 /** Loads the Spider once; every Figure it then makes shares its clips. */

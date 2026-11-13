@@ -56,7 +56,11 @@ const SLOT_KINDS = {
   head: "Head armour",
   body: "Body armour",
   legs: "Leg armour",
+  hands: "Hand armour",
+  feet: "Foot armour",
   cape: "Cape",
+  neck: "Amulet",
+  ring: "Ring",
 };
 
 function kindOf(item: string) {

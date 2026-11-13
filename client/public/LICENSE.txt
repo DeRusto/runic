@@ -26,6 +26,12 @@ models/
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.
+    TarnOx.glb
+        Converted from Quaternius's Farm Animals Animated pack (quaternius.com).
+        CC0: see models/LICENSE-Quaternius-Farm-Animals.txt.
+    Bristleback.glb, Cinderhorn.glb
+        Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
+        not from a pack. No licence is granted for them here.
     ore.glb
         Made for Runic by DeRusto. No licence is granted for it here.
 

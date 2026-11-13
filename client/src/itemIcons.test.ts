@@ -86,7 +86,7 @@ describe("coloured names", () => {
 describe("the committed icons", () => {
   const pngs = readdirSync(ICONS_DIR).filter((file) => file.endsWith(".png"));
 
-  test("cover every item, the workbench's cloak and the five tools, 114 in all (spec §7)", () => {
+  test("cover every item, the workbench's cloak and the five tools, 137 in all (spec §7)", () => {
     expect(pngs.sort()).toEqual(
       [
         ...Object.keys(ITEMS),
@@ -100,7 +100,7 @@ describe("the committed icons", () => {
         .map((id) => `${id}.png`)
         .sort(),
     );
-    expect(pngs).toHaveLength(114);
+    expect(pngs).toHaveLength(137);
   });
 
   test("each is the file iconUrl names, and a real PNG", () => {
