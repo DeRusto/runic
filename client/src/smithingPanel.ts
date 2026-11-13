@@ -25,6 +25,12 @@ import { addTip } from "./tooltip.ts";
 
 const part = () => document.createElement("span");
 
+/** A piece's name without its tier's: `copperThrowingKnife` is "Throwing knife" (#228). */
+const pieceName = (item: string, tier: string) => {
+  const suffix = itemName(item).replace(itemName(tier), "").trimStart();
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1);
+};
+
 /** Which panel section a station opens: a fire cooks like the range (#224). */
 const sectionOf = (station: StationKind) =>
   station === "fire" ? "range" : station;
@@ -72,9 +78,9 @@ export function showSmithingPanel(room: WorldConnection) {
       icon.src = iconUrl(item);
       icon.alt = "";
       const [name, cost] = [part(), part()];
-      // At the anvil the tier's header names the metal, so a row names only the piece.
+      // At the anvil the tier's header names the metal, so a row names only the piece: "Chestplate", or "Throwing knife" for the two-word one (#228).
       name.textContent =
-        station === "anvil" ? item.slice(tier!.length) : itemName(item);
+        station === "anvil" ? pieceName(item, tier!) : itemName(item);
       const button = (label: string, all: boolean) => {
         const make = document.createElement("button");
         make.type = "button";
@@ -140,10 +146,23 @@ export function showSmithingPanel(room: WorldConnection) {
     section(
       "workbench",
       [
-        ...items.filter((item) => RECIPES[item].station === "workbench"),
+        ...items.filter(
+          (item) =>
+            RECIPES[item].station === "workbench" &&
+            RECIPES[item].skill === "Crafting",
+        ),
         ...augmentations,
       ],
       "Crafting",
+    ),
+    section(
+      "workbench",
+      items.filter(
+        (item) =>
+          RECIPES[item].station === "workbench" &&
+          RECIPES[item].skill === "Fletching",
+      ),
+      "Fletching",
     ),
   ];
   const rows = sections.flatMap((s) => s.rows);

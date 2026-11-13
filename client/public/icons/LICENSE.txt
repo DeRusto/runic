@@ -1,6 +1,6 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-87 are rendered by client/render-icons, 64 from the CC0 models below and 22 from
+107 are rendered by client/render-icons, 77 from the CC0 models below and 29 from
 our own geometry. The other one is a Craftpix file.
 
 ------------------------------------------------------------------------
@@ -38,7 +38,10 @@ and steelBar tinted from the copper and iron bars; birchLog, oakLog and charwood
 from the model Wood_Log_A, two of them tinted
     KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 copperSword, ironSword, copperShield, ironShield, emberiteShield, and the bronze
-and steel sword and shield tinted from the copper and iron ones
+and steel sword and shield tinted from the copper and iron ones; birchBow, oakBow
+and charwoodBow from the model bow_A_withString, two of them tinted like the
+logs; the arrows from the model arrow_A, the throwing knives from dagger_A, and
+the bronze, steel and emberite ones tinted from the copper and iron ones
     KayKit Fantasy Weapons Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 copperHelmet, copperChestplate, copperLeggings, and the same in bronze, iron,
 steel and emberite
@@ -67,6 +70,7 @@ coins
     KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com), the model coin_stack_small
 
 emberbone.png, tin.png, ashstone.png, cinderglass.png, heartflame.png, rod.png,
-gossamerCloak.png and the fifteen cape icons are from no pack: they are Runic's
-own, drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted
-by its tier, and its Virtue shows in the name only (#217).
+arrowShaft.png, feather.png, the five arrowhead icons, gossamerCloak.png and the
+fifteen cape icons are from no pack: they are Runic's own, drawn by three.js
+geometry in client/render-icons/main.ts. A cape is tinted by its tier, and its
+Virtue shows in the name only (#217); an arrowhead by its tier (#228).

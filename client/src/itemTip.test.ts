@@ -13,6 +13,7 @@ const player = (
   smithingXp: xpForLevel(smithingLevel),
   cookingXp: 0,
   craftingXp: xpForLevel(craftingLevel),
+  fletchingXp: 0,
   inventory: ["copperBar", ""],
   inventoryCounts: [5, 0],
 });

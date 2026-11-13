@@ -456,6 +456,36 @@ const cloak = capeMesh();
 applyLook(cloak, { tint: 0xd8dcd4 });
 draw(cloak, WORN);
 pngs.set("gossamerCloak", await toPng(renderer.domElement));
+
+// Fletching's stock (#228). The bows are the weapons pack's, tinted pale, as cut and charred like the logs; the arrows and throwing knives are tinted by their tier.
+const BOW_LOOKS: Record<string, Look> = {
+  birchBow: { tint: 0xf0e6cc },
+  oakBow: {},
+  charwoodBow: { tint: 0x6a3a30 },
+};
+for (const [id, look] of Object.entries(BOW_LOOKS)) {
+  const { scene: model } = await loader.loadAsync(
+    `${WEAPONS}/bow_A_withString.gltf`,
+  );
+  applyLook(model, look);
+  draw(model, LEAN);
+  pngs.set(id, await toPng(renderer.domElement));
+}
+for (const [tier, look] of Object.entries(TIER_LOOKS)) {
+  const { scene: arrow } = await loader.loadAsync(`${WEAPONS}/arrow_A.gltf`);
+  applyLook(arrow, look);
+  draw(arrow, LEAN);
+  pngs.set(`${tier}Arrow`, await toPng(renderer.domElement));
+  const { scene: knife } = await loader.loadAsync(`${WEAPONS}/dagger_A.gltf`);
+  applyLook(knife, look);
+  draw(knife, LEAN);
+  pngs.set(`${tier}ThrowingKnife`, await toPng(renderer.domElement));
+  const head = arrowhead();
+  applyLook(head, look);
+  draw(head, FLAT);
+  pngs.set(`${tier}Arrowhead`, await toPng(renderer.domElement));
+}
+
 /** A pile of small lumps: no pack has a tin nugget on its own. */
 function nuggets() {
   const group = new THREE.Group();
@@ -540,6 +570,45 @@ function gem(color: number, emissive?: number) {
   return mesh;
 }
 
+/** A slender tapered stick: no pack has a bare shaft (#228). */
+function arrowShaft() {
+  const group = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color: 0xc9b48a });
+  group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 3), wood));
+  return group;
+}
+
+/** A flat vane on a quill: no pack has a feather (#228). */
+function feather() {
+  const group = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xf2efe6,
+    roughness: 0.6,
+    side: THREE.DoubleSide,
+  });
+  const vane = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 8), material);
+  vane.scale.set(0.16, 1.5, 0.45);
+  const quill = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 2.6),
+    material,
+  );
+  quill.rotation.z = Math.PI / 2;
+  group.add(vane, quill);
+  return group;
+}
+
+/** A small flaked blade: no pack has an arrowhead on its own (#228). */
+function arrowhead() {
+  const material = new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+    flatShading: true,
+  });
+  const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 4), material);
+  mesh.scale.z = 0.35;
+  return mesh;
+}
+
 const bone = emberbone();
 applyLook(bone, EMBERITE);
 draw(bone, LEAN);
@@ -557,6 +626,10 @@ draw(rod(), LEAN);
 pngs.set("rod", await toPng(renderer.domElement));
 draw(tinderbox(), LEAN);
 pngs.set("tinderbox", await toPng(renderer.domElement));
+draw(arrowShaft(), LEAN);
+pngs.set("arrowShaft", await toPng(renderer.domElement));
+draw(feather(), FLAT);
+pngs.set("feather", await toPng(renderer.domElement));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {

@@ -61,6 +61,7 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     miningXp: 0,
     cookingXp: 0,
     craftingXp: 0,
+    fletchingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -126,7 +127,7 @@ test("starts closed, and opens at a station with that station's rows", () => {
   expect(shownRows()).toHaveLength(5);
   open("anvil");
   expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-  expect(shownRows()).toHaveLength(25);
+  expect(shownRows()).toHaveLength(35);
 });
 
 test("the range lists every cooking recipe under one Cooking section (#221)", () => {
@@ -141,11 +142,14 @@ test("the range lists every cooking recipe under one Cooking section (#221)", ()
   ]);
 });
 
-test("the workbench lists Crafting's recipes and the cloak's augmentation under one section (#225)", () => {
+test("the workbench lists Crafting's and Fletching's recipes under two sections (#225, #228)", () => {
   open("workbench");
   expect(byId.get("smithing-title")!.textContent).toBe("Workbench");
-  expect(headers()).toEqual([["Crafting", "", true]]);
-  expect(shownRows()).toHaveLength(4);
+  expect(headers()).toEqual([
+    ["Crafting", "", true],
+    ["Fletching", "", true],
+  ]);
+  expect(shownRows()).toHaveLength(13);
   expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Rope"]);
   expect(line(shownRows()[1])).toEqual([
     "Torch",
@@ -159,6 +163,31 @@ test("the workbench lists Crafting's recipes and the cloak's augmentation under 
   expect(line(shownRows()[3])).toEqual([
     "Gossamer cloak",
     "1 Spider silk + 1 Cape · Needs Crafting 15",
+  ]);
+  // A shaft's log is any tier's, and the arrow's head is its own tier's.
+  expect(line(shownRows()[4])).toEqual([
+    "Arrow shaft",
+    "1 Log · Not enough materials",
+  ]);
+  expect(line(shownRows()[5])).toEqual([
+    "Copper arrow",
+    "10 Arrow shaft + 10 Copper arrowhead + 10 Feather · Not enough materials",
+  ]);
+  expect(line(shownRows()[9])).toEqual([
+    "Emberite arrow",
+    "10 Arrow shaft + 10 Emberite arrowhead + 10 Feather · Not enough materials",
+  ]);
+  expect(line(shownRows()[10])).toEqual([
+    "Birch bow",
+    "1 Birch log + 1 Rope · Not enough materials",
+  ]);
+  expect(line(shownRows()[11])).toEqual([
+    "Oak bow",
+    "1 Oak log + 1 Rope · Needs Fletching 10",
+  ]);
+  expect(line(shownRows()[12])).toEqual([
+    "Charwood bow",
+    "1 Charwood log + 1 Rope · Needs Fletching 20",
   ]);
 });
 
@@ -218,6 +247,31 @@ test("the anvil at Smithing 1 opens Copper and folds the other tiers with their 
   ]);
 });
 
+test("the anvil's arrowhead and knife rows name the piece alone, and a fletching row opens with the materials held (#228)", () => {
+  patch(
+    me(
+      [
+        ["copperBar", 2],
+        ["birchLog", 1],
+        ["rope", 1],
+        ["arrowShaft", 10],
+        ["copperArrowhead", 10],
+        ["feather", 10],
+      ],
+      { fletchingXp: xpForLevel(1) },
+    ),
+  );
+  open("anvil");
+  expect(line(shownRows()[5])).toEqual(["Arrowhead", "1 bars"]);
+  expect(line(shownRows()[6])).toEqual(["Throwing knife", "1 bars"]);
+  open("workbench");
+  expect(line(shownRows()[4])).toEqual(["Arrow shaft", "1 Log"]);
+  expect(line(shownRows()[5])).toEqual([
+    "Copper arrow",
+    "10 Arrow shaft + 10 Copper arrowhead + 10 Feather",
+  ]);
+});
+
 test("the furnace folds on Mining, whatever the Smithing level", () => {
   patch(me([], { smithingXp: xpForLevel(50), miningXp: xpForLevel(15) }));
   open("furnace");
@@ -255,7 +309,7 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   ];
   patch(me(held, { smithingXp: xpForLevel(19) }));
   open("anvil");
-  const sword = shownRows()[20];
+  const sword = shownRows()[28];
   expect(line(sword)).toEqual([
     "Sword",
     "3 bars + 2 Emberbone · Needs Smithing 20",
@@ -278,7 +332,7 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   patch(me([held[0]!, ["emberbone", 2]], { smithingXp: xpForLevel(20) }));
   expect(sword.className).toBe("");
   expect(buttons(sword).every((b: any) => !off(b))).toBe(true);
-  expect(shownRows()[21].className).toBe("cant");
+  expect(shownRows()[29].className).toBe("cant");
 });
 
 test("a row shows its icon, piece and short cost, with the full cost and experience in its tooltip", () => {
@@ -312,7 +366,7 @@ test("a row shows its icon, piece and short cost, with the full cost and experie
 test("a row that can't be made is greyed with the reason, and its buttons are off", () => {
   patch(me([["ironBar", 20]], { smithingXp: xpForLevel(9) }));
   open("anvil");
-  const iron = shownRows()[10];
+  const iron = shownRows()[14];
   expect(iron.className).toBe("cant");
   expect(tipOf(iron)).toContain("Needs Smithing 10");
   expect(buttons(iron).every(off)).toBe(true);
@@ -389,7 +443,7 @@ test("the row greys itself as a pick uses up the materials, with the panel still
 test("a level gained while it's open lifts that row's level reason", () => {
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(9) }));
   open("anvil");
-  const iron = shownRows()[10];
+  const iron = shownRows()[14];
   expect(tipOf(iron)).toContain("Needs Smithing 10");
   patch(me([["ironBar", 3]], { smithingXp: xpForLevel(10) }));
   expect(iron.className).toBe("");
@@ -438,7 +492,7 @@ describe("clicking a station from afar", () => {
     patch(me([], { x: 7, y: 2 }));
     expect(panel().hidden).toBe(false);
     expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
-    expect(shownRows()).toHaveLength(25);
+    expect(shownRows()).toHaveLength(35);
   });
 
   test("already next to it, opens at once and leaves the action alone", () => {

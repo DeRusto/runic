@@ -70,6 +70,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
     cookingXp: 0,
     firemakingXp: 0,
     craftingXp: 0,
+    fletchingXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     pinnedSkills,
@@ -397,6 +398,7 @@ describe("the Skills tab", () => {
       "Cooking 1",
       "Firemaking 1",
       "Crafting 1",
+      "Fletching 1",
       "Blocking 1",
       "Mastery 1",
     ]);
