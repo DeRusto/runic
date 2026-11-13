@@ -5,6 +5,7 @@ import { CloseCode, matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
   COMBAT_LOCK_TICKS,
+  REGEN_INTERVAL_TICKS,
   SAVE_INTERVAL_TICKS,
   TAKEN_OVER_CLOSE_CODE,
   TICK_MS,
@@ -124,6 +125,11 @@ test("a dropped player leaves when the lock runs out, and is saved", async () =>
   const room = await joined(await clientFor("LockEnds"));
   room.reconnection.enabled = false;
   const id = accountOf(room);
+  // Start the lock on a regen boundary, so it ends 34 ticks past one and the
+  // leaving save can never follow a regen tick's heal (see #233).
+  const sim = worldOf(room).sim;
+  sim.state.tick =
+    Math.ceil(sim.state.tick / REGEN_INTERVAL_TICKS) * REGEN_INTERVAL_TICKS;
   lock(room);
   await dropSocket(room);
   await twoTicks();
