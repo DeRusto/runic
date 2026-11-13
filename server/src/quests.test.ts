@@ -183,6 +183,117 @@ describe("Odo's repeat turn-ins", () => {
   });
 });
 
+describe("Odo's second quest, the strange material (#232)", () => {
+  /** Puts `count` strange material in the player's first slot. */
+  const holdsEssence = (count: number) => {
+    me().inventory[0] = count ? "strangeMaterial" : "";
+    me().inventoryCounts[0] = count;
+  };
+  /** Runs Odo's first quest and its three repeats, so the forge talk is next. */
+  const spendsTheForge = () => {
+    starts();
+    finishes();
+    for (let turns = 1; turns <= 3; turns++) {
+      holds(1);
+      talkToOdo();
+      choose(TURN_IN);
+    }
+  };
+
+  test("the forge's offer starts it once the copper ore and its repeats are done", () => {
+    spendsTheForge();
+    events = [];
+    talkToOdo();
+    expect(events).toEqual([talk("forge")]);
+    // "About the strange material the veins give..."
+    expect(choose(0)).toEqual([talk("essence")]);
+    expect([...me().quests]).toEqual(["odoCopper", "odoEssence"]);
+    expect([...me().questStages]).toEqual([QUEST_DONE, "essence"]);
+    expect(me().questPoints).toBe(1);
+  });
+
+  test("while the strange material is asked for, Odo opens with the stage's node", () => {
+    spendsTheForge();
+    talkToOdo();
+    choose(0);
+    events = [];
+    talkToOdo();
+    expect(events).toEqual([talk("essenceQuest")]);
+  });
+
+  test("handing over a piece names it and moves to the proof", () => {
+    spendsTheForge();
+    talkToOdo();
+    choose(0);
+    holdsEssence(1);
+    talkToOdo();
+    events = [];
+    expect(choose(TURN_IN)).toEqual([talk("essenceGiven")]);
+    expect([...me().questStages]).toEqual([QUEST_DONE, "proof"]);
+    // The second quest's point comes with the second stage's turn-in.
+    expect(me().questPoints).toBe(1);
+    expect(me().identifiesEssence).toBe(false);
+  });
+
+  test("a turn-in without the piece keeps the stage, and says what's missing", () => {
+    spendsTheForge();
+    talkToOdo();
+    choose(0);
+    talkToOdo();
+    events = [];
+    expect(choose(TURN_IN)).toEqual([
+      told("You have no strange material to hand over."),
+      talk("essenceQuest"),
+    ]);
+    expect([...me().questStages]).toEqual([QUEST_DONE, "essence"]);
+  });
+
+  test("the proof's three finish the quest: they teach identification, and what's held turns", () => {
+    spendsTheForge();
+    talkToOdo();
+    choose(0);
+    holdsEssence(1);
+    talkToOdo();
+    choose(TURN_IN);
+    holdsEssence(3);
+    // Two more besides the proof's three, and five in the bank.
+    me().inventory[1] = "strangeMaterial";
+    me().inventoryCounts[1] = 2;
+    me().bank[0] = "strangeMaterial";
+    me().bankCounts[0] = 5;
+    talkToOdo();
+    events = [];
+    expect(choose(TURN_IN)).toEqual([
+      told("You finish The strange material. You earn 1 quest point."),
+      talk("taught"),
+    ]);
+    expect(me().questPoints).toBe(2);
+    // The teaching sets the flag at once, and every strange material held —
+    // inventory and bank alike — turns to rune essence. The turn-in took the
+    // proof's three from the last slot first, so one stack of two is left.
+    expect(me().identifiesEssence).toBe(true);
+    expect([...me().inventory].slice(0, 2)).toEqual(["runeEssence", ""]);
+    expect(me().inventoryCounts[0]).toBe(2);
+    expect(me().bank[0]).toBe("runeEssence");
+    expect(me().bankCounts[0]).toBe(5);
+  });
+
+  test("done, the conversation opens with the runes' node", () => {
+    spendsTheForge();
+    talkToOdo();
+    choose(0);
+    holdsEssence(1);
+    talkToOdo();
+    choose(TURN_IN);
+    holdsEssence(3);
+    talkToOdo();
+    choose(TURN_IN);
+    events = [];
+    talkToOdo();
+    expect(events).toEqual([talk("runes")]);
+  });
+});
+
 describe("the quest is saved with the player", () => {
   test("a save carries each quest's stage and repeat turn-ins, and the points", () => {
     starts();

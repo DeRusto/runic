@@ -1173,3 +1173,141 @@ describe("the gossamer cloak's augmentation on the server (#217, #225)", () => {
     expect(sim.state.players.get("a")!.cape).toBe("copperMightCape:gossamer");
   });
 });
+
+// The altar is at (4,1), with (3,1) beside it, and no enemies to spend rolls on (#232).
+const ALTAR_TILES = parseRegion(
+  ["TTTTTTT", "TR..O..T", "T......T", "TTTTTTT"].join("\n"),
+);
+
+describe("runecrafting at the altar (#232)", () => {
+  let sim: Simulation;
+  let seen: { tick: number; event: WorldEvent }[];
+
+  beforeEach(() => {
+    sim = new Simulation(ALTAR_TILES, () => 0.99);
+    seen = [];
+  });
+
+  /** Adds a player holding `held` next to the altar, with `runecraftingXp`. */
+  function craft(
+    held: [string, number][],
+    {
+      id = "a",
+      x = 3,
+      y = 1,
+      runecraftingXp = 0,
+    }: { id?: string; x?: number; y?: number; runecraftingXp?: number } = {},
+  ) {
+    const inventory = Array<string>(INVENTORY_SLOTS).fill("");
+    const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(0);
+    held.forEach(([item, count], slot) => {
+      inventory[slot] = item;
+      inventoryCounts[slot] = count;
+    });
+    sim.addPlayer(
+      id,
+      {
+        x,
+        y,
+        combatXp: 0,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        runecraftingXp,
+        inventory,
+        inventoryCounts,
+      },
+      id,
+    );
+  }
+
+  const run = (ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      sim.tick();
+      for (const event of sim.events.splice(0))
+        seen.push({ tick: sim.state.tick, event });
+    }
+  };
+  const lines = () =>
+    seen.flatMap(({ event }) => (event.type === "told" ? [event.line] : []));
+  const makes = () => seen.filter(({ event }) => event.type === "make");
+  const items = (id = "a") =>
+    [...sim.state.players.get(id)!.inventory]
+      .map((item, slot) => [
+        item,
+        sim.state.players.get(id)!.inventoryCounts[slot],
+      ])
+      .filter(([item]) => item !== EMPTY_SLOT);
+
+  test("the altar needs no quest and no tool, and the air rune is the first rune", () => {
+    craft([["runeEssence", 1]]);
+    sim.queueMake("a", { item: "airRune", all: false });
+    run(7);
+    expect(items()).toEqual([["airRune", 1]]);
+    expect(sim.state.players.get("a")!.runecraftingXp).toBe(5);
+    expect(
+      seen.flatMap(({ event }) =>
+        event.type === "make" ? [event.station] : [],
+      ),
+    ).toEqual(["altar"]);
+    expect(lines()).toEqual([]);
+  });
+
+  test("each rune is gated on Runecrafting, one essence to one rune, and never fails", () => {
+    craft([["runeEssence", 2]], { runecraftingXp: xpForLevel(4) });
+    sim.queueMake("a", { item: "waterRune", all: true });
+    run(14);
+    expect(lines()).toEqual(["Needs Runecrafting 5"]);
+    expect(items()).toEqual([["runeEssence", 2]]);
+    craft([["runeEssence", 2]], {
+      id: "b",
+      runecraftingXp: xpForLevel(5),
+    });
+    sim.queueMake("b", { item: "waterRune", all: true });
+    run(14);
+    expect(items("b")).toEqual([["waterRune", 2]]);
+    expect(sim.state.players.get("b")!.runecraftingXp).toBe(xpForLevel(5) + 16);
+  });
+
+  test("at a rune's doubling level one essence makes two runes and pays for both", () => {
+    // Air doubles at 20; at 19 the same essence gives one rune and 5 experience.
+    craft([["runeEssence", 1]], { runecraftingXp: xpForLevel(19) });
+    sim.queueMake("a", { item: "airRune", all: false });
+    run(7);
+    expect(items()).toEqual([["airRune", 1]]);
+    expect(sim.state.players.get("a")!.runecraftingXp).toBe(xpForLevel(19) + 5);
+    craft([["runeEssence", 1]], {
+      id: "b",
+      runecraftingXp: xpForLevel(20),
+    });
+    sim.queueMake("b", { item: "airRune", all: false });
+    run(7);
+    expect(items("b")).toEqual([["airRune", 2]]);
+    expect(sim.state.players.get("b")!.runecraftingXp).toBe(
+      xpForLevel(20) + 10,
+    );
+  });
+
+  test("Make all keeps the doubling rune by rune, until the essence runs out", () => {
+    craft(
+      [
+        ["runeEssence", 3],
+        ["airRune", 16],
+      ],
+      { runecraftingXp: xpForLevel(20) },
+    );
+    sim.queueMake("a", { item: "airRune", all: true });
+    run(26);
+    expect(items()).toEqual([
+      // The essence's own slot empties first, so the last make's two runes fill it.
+      ["airRune", 2],
+      ["airRune", 20],
+    ]);
+    expect(sim.state.players.get("a")!.runecraftingXp).toBe(
+      xpForLevel(20) + 30,
+    );
+    // Make all runs out of essence on its next try, and says so once.
+    expect(lines()).toEqual(["Not enough materials"]);
+  });
+});

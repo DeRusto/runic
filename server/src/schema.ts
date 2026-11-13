@@ -41,6 +41,7 @@ export const players = sqliteTable("players", {
   firemakingXp: integer("firemaking_xp").notNull().default(0),
   craftingXp: integer("crafting_xp").notNull().default(0),
   fletchingXp: integer("fletching_xp").notNull().default(0),
+  runecraftingXp: integer("runecrafting_xp").notNull().default(0),
   smithingXp: integer("smithing_xp").notNull().default(0),
   blockingXp: integer("blocking_xp").notNull().default(0),
   masteryXp: integer("mastery_xp").notNull().default(0),
@@ -80,6 +81,10 @@ export const players = sqliteTable("players", {
     .default({}),
   /** The quest points finished quests have awarded (#231). */
   questPoints: integer("quest_points").notNull().default(0),
+  /** Whether the player knows the veins' strange material for rune essence, taught by Odo's second quest (#232). */
+  identifiesEssence: integer("identifies_essence", { mode: "boolean" })
+    .notNull()
+    .default(false),
 });
 
 /**

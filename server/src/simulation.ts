@@ -79,6 +79,8 @@ import {
   respawnTile,
   rollCatch,
   rollFinds,
+  findItemOf,
+  identifyEssence,
   siteId,
   SHELF_SLOTS,
   SKILLS,
@@ -102,8 +104,9 @@ import {
   choicesNodeOf,
   countOf,
   QUEST_DONE,
+  currentQuestOf,
+  doublesAt,
   openingNodeOf,
-  questOfVillager,
   stageOf,
   type Deal,
   type DealLine,
@@ -197,6 +200,7 @@ export const Player = schema(
     firemakingXp: t.uint32().default(0),
     craftingXp: t.uint32().default(0),
     fletchingXp: t.uint32().default(0),
+    runecraftingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -207,6 +211,8 @@ export const Player = schema(
     questStages: t.array("string"),
     /** The quest points finished quests have awarded (#231). */
     questPoints: t.uint16().default(0),
+    /** Whether the player knows the veins' strange material for rune essence, taught by Odo's second quest (#232). */
+    identifiesEssence: t.boolean().default(false),
     /** In any order; the sheet's order decides how they show. */
     pinnedSkills: t.array("string"),
     health: t.uint16(),
@@ -639,6 +645,7 @@ export class Simulation {
       firemakingXp,
       craftingXp,
       fletchingXp,
+      runecraftingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -656,6 +663,7 @@ export class Simulation {
       questPoints,
       quests,
       questStages,
+      identifiesEssence,
     } = player;
     const stages = [...questStages];
     return {
@@ -673,6 +681,7 @@ export class Simulation {
       firemakingXp,
       craftingXp,
       fletchingXp,
+      runecraftingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -688,6 +697,7 @@ export class Simulation {
       neck,
       ring,
       questPoints,
+      identifiesEssence,
       // Each quest's stage and repeat turn-ins done, beside the xp columns (#231).
       quests: Object.fromEntries(
         [...quests].map((quest, at) => [
@@ -953,13 +963,9 @@ export class Simulation {
     if (this.windowOf(id, kind)) this.windows.delete(id);
   }
 
-  /** The node this villager's conversation opens with: the stage-appropriate one, or their own start (#231). */
+  /** The node this villager's conversation opens with: the chain's current quest's stage-appropriate one, or their own start (#231, #232). */
   private openingNode(id: string, villager: VillagerId) {
-    const quest = questOfVillager(villager);
-    return openingNodeOf(
-      villager,
-      quest && this.unsyncedPlayers.get(id)!.quests.get(quest.id),
-    );
+    return openingNodeOf(villager, this.unsyncedPlayers.get(id)!.quests);
   }
 
   /** Closes the player's window from the server's side, with the line saying why. */
@@ -1084,12 +1090,15 @@ export class Simulation {
   }
 
   /**
-   * Runs the quest this villager gives, for the choice picked: starting it, or turning in the
-   * stage's or a repeat's items. False when what it asks for isn't there yet, so the talk
-   * stays on the node (#231).
+   * Runs the quest of this villager's chain that the player is on, for the choice picked:
+   * starting it, or turning in the stage's or a repeat's items. False when what it asks for
+   * isn't there yet, so the talk stays on the node (#231, #232).
    */
   private advanceQuest(id: string, villager: VillagerId) {
-    const quest = questOfVillager(villager);
+    const quest = currentQuestOf(
+      villager,
+      this.unsyncedPlayers.get(id)!.quests,
+    );
     if (!quest) return false;
     const player = this.state.players.get(id)!;
     const progress = this.unsyncedPlayers.get(id)!.quests.get(quest.id);
@@ -1136,6 +1145,12 @@ export class Simulation {
     else {
       progress.stage = QUEST_DONE;
       player.questPoints += quest.points;
+      // Odo's teaching sets the flag at once, and every strange material the player holds,
+      // bank included, turns with it (#232).
+      if (quest.teaches === "essence") {
+        player.identifiesEssence = true;
+        identifyEssence(player);
+      }
       this.events.push({
         type: "told",
         player: id,
@@ -1630,7 +1645,11 @@ export class Simulation {
         this.random() < source.doubleChance
           ? DOUBLE_YIELD
           : 1;
-      const finds = success ? rollFinds(source, this.random) : [];
+      const finds = success
+        ? rollFinds(source, this.random).map((found) =>
+            findItemOf(found, player.identifiesEssence),
+          )
+        : [];
       this.events.push(
         success
           ? { type: verb, player: id, success, count, finds }
@@ -1822,14 +1841,18 @@ export class Simulation {
     if (slot < 0) return told("Your inventory is full.");
     const made = roll();
     // A batch tops up every stack of it with room before filling empty slots, and refuses whole if it doesn't all fit (#228).
-    if (addItems(inventory, inventoryCounts, made, yieldOf(item)))
+    // At a rune's doubling level one essence makes two runes, and each rune pays its experience (#232).
+    const times = doublesAt(item, levelFor(player[RECIPES[item].xpField]))
+      ? 2
+      : 1;
+    if (addItems(inventory, inventoryCounts, made, yieldOf(item) * times))
       return told("Your inventory is full.");
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
       player.inventoryCounts[i] = inventoryCounts[i]!;
     });
     for (const [field, gained] of xpOf(item))
-      this.earnXp(player, field, gained);
+      this.earnXp(player, field, gained * times);
     this.events.push({ type: "made", player: id, item: made });
     return true;
   }

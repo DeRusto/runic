@@ -332,6 +332,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     firemakingXp: 0,
     craftingXp: 0,
     fletchingXp: 0,
+    runecraftingXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     masteryHundredths: 0,
@@ -361,6 +362,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     ring: "",
     quests: {},
     questPoints: 0,
+    identifiesEssence: false,
   });
 });
 
@@ -379,6 +381,7 @@ const SAVED = {
   firemakingXp: 13,
   craftingXp: 14,
   fletchingXp: 15,
+  runecraftingXp: 16,
   blockingXp: 6,
   masteryXp: 7,
   masteryHundredths: 8,
@@ -401,6 +404,7 @@ const SAVED = {
   ring: "",
   quests: { odoCopper: { stage: QUEST_DONE, turns: 2 } },
   questPoints: 3,
+  identifiesEssence: true,
 };
 
 test("a returning player comes back exactly as saved", () => {

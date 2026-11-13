@@ -91,7 +91,7 @@ test("a double gives two ore for one success's experience, and uses one hold", (
         player: "a",
         success: true,
         count: 2,
-        finds: ["tin"],
+        finds: ["tin", "strangeMaterial"],
       },
     },
   ]);
@@ -100,6 +100,8 @@ test("a double gives two ore for one success's experience, and uses one hold", (
   expect(player().inventoryCounts[0]).toBe(2);
   expect(player().inventory[1]).toBe("tin");
   expect(player().inventoryCounts[1]).toBe(1);
+  expect(player().inventory[2]).toBe("strangeMaterial");
+  expect(player().inventoryCounts[2]).toBe(1);
   expect(minesLeft(COPPER)).toBe(2);
   expect(player().action).toBe("");
 });
@@ -157,6 +159,9 @@ test("over many mines each find's share matches its vein's chance, and none on t
   const copper = mineMany(COPPER, 4, 1, 500).finds;
   expect(share(copper, "tin", 500)).toBeGreaterThan(1 / 3 - 0.07);
   expect(share(copper, "tin", 500)).toBeLessThan(1 / 3 + 0.07);
+  // Every vein also rolls the essence find, still masked (#232).
+  expect(share(copper, "strangeMaterial", 500)).toBeGreaterThan(0.2 - 0.07);
+  expect(share(copper, "strangeMaterial", 500)).toBeLessThan(0.2 + 0.07);
   expect(copper.get("coal")).toBeUndefined();
   expect(copper.get("ashstone")).toBeUndefined();
   expect(copper.get("cinderglass")).toBeUndefined();
@@ -166,6 +171,8 @@ test("over many mines each find's share matches its vein's chance, and none on t
   expect(share(iron, "tin", 500)).toBeLessThan(1 / 6 + 0.05);
   expect(share(iron, "coal", 500)).toBeGreaterThan(1 / 2 - 0.07);
   expect(share(iron, "coal", 500)).toBeLessThan(1 / 2 + 0.07);
+  expect(share(iron, "strangeMaterial", 500)).toBeGreaterThan(0.2 - 0.07);
+  expect(share(iron, "strangeMaterial", 500)).toBeLessThan(0.2 + 0.07);
   expect(iron.get("ashstone")).toBeUndefined();
   expect(iron.get("cinderglass")).toBeUndefined();
   expect(iron.get("heartflame")).toBeUndefined();
@@ -184,6 +191,8 @@ test("over many mines each find's share matches its vein's chance, and none on t
   expect((emberite.get("cinderglass") ?? 0) / gems).toBeLessThan(0.25 + 0.15);
   expect((emberite.get("heartflame") ?? 0) / gems).toBeGreaterThan(0.05 - 0.04);
   expect((emberite.get("heartflame") ?? 0) / gems).toBeLessThan(0.05 + 0.1);
+  expect(share(emberite, "strangeMaterial", 5000)).toBeGreaterThan(0.2 - 0.05);
+  expect(share(emberite, "strangeMaterial", 5000)).toBeLessThan(0.2 + 0.05);
   expect(emberite.get("tin")).toBeUndefined();
   expect(emberite.get("coal")).toBeUndefined();
 });
@@ -204,7 +213,7 @@ test("a double with one free slot puts one ore in it and one on the ground, owne
         player: "b",
         success: true,
         count: 2,
-        finds: ["tin"],
+        finds: ["tin", "strangeMaterial"],
       },
     },
   ]);
@@ -212,8 +221,8 @@ test("a double with one free slot puts one ore in it and one on the ground, owne
   expect(player("b").inventoryCounts[INVENTORY_SLOTS - 1]).toBe(1);
   expect(minesLeft(COPPER)).toBe(2);
   const ground = [...sim.state.groundItems.values()];
-  expect(ground).toHaveLength(2);
-  for (const item of ["copperOre", "tin"]) {
+  expect(ground).toHaveLength(3);
+  for (const item of ["copperOre", "tin", "strangeMaterial"]) {
     expect(ground).toContainEqual(
       expect.objectContaining({ item, count: 1, x: 4, y: 1, owner: "b" }),
     );
@@ -238,14 +247,14 @@ test("a find goes to the ground when the ore tops up a stack and there is no roo
         player: "b",
         success: true,
         count: 2,
-        finds: ["tin"],
+        finds: ["tin", "strangeMaterial"],
       },
     },
   ]);
   expect(player("b").inventoryCounts[0]).toBe(20);
   const ground = [...sim.state.groundItems.values()];
-  expect(ground).toHaveLength(2);
-  for (const item of ["copperOre", "tin"]) {
+  expect(ground).toHaveLength(3);
+  for (const item of ["copperOre", "tin", "strangeMaterial"]) {
     expect(ground).toContainEqual(
       expect.objectContaining({ item, count: 1, x: 4, y: 1, owner: "b" }),
     );
@@ -269,7 +278,20 @@ test("a find lands in the inventory and stacks", () => {
   mine(COPPER, "b");
   expect(player("b").inventory[1]).toBe("tin");
   expect(player("b").inventoryCounts[1]).toBe(2);
+  expect(player("b").inventory[2]).toBe("strangeMaterial");
+  expect(player("b").inventoryCounts[2]).toBe(2);
   expect(player("b").inventoryCounts[0]).toBe(4);
+});
+
+test("once the player identifies essence, the find comes as rune essence (#232)", () => {
+  addAt("b", 0);
+  roll = DOUBLE;
+  mine(COPPER, "b");
+  expect(player("b").inventory[2]).toBe("strangeMaterial");
+  player("b").identifiesEssence = true;
+  mine(COPPER, "b");
+  expect(player("b").inventory[3]).toBe("runeEssence");
+  expect(player("b").inventoryCounts[3]).toBe(1);
 });
 
 test("a save from before finds loads unchanged", () => {
