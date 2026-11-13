@@ -216,6 +216,7 @@ export type WorldEvent =
   | { type: "bankClosed"; player: string };
 
 export * from "./bank.ts";
+export * from "./combat.ts";
 export * from "./dialogue.ts";
 export * from "./enemies.ts";
 export * from "./firemaking.ts";

@@ -4,6 +4,28 @@ export type EnemyKind =
   "spider" | "skeleton" | "tarnOx" | "bristleback" | "cinderhorn";
 export type EnemyState = "idle" | "fighting" | "going home" | "dead";
 
+/** What a loot category is for. A label only for now: a quest category may later give only to players on its quest. */
+export type LootCategory = "gear" | "material" | "quest";
+
+/** One item a loot category can give: its weight against the category's others, and how many, fixed or a range. */
+export type LootItem = {
+  item: ItemId;
+  /** Against the category's other items; 1 if left out. */
+  weight?: number;
+  /** How many one pick gives: a whole number, or an inclusive [min, max] range. 1 if left out. */
+  count?: number | readonly [number, number];
+};
+
+/** One category of an enemy's loot table: up to `picks` items, each at `chance`, chosen by weight. */
+export type LootCategoryRow = {
+  category: LootCategory;
+  /** 0..1, rolled once per pick. */
+  chance: number;
+  /** The most items it gives each player; 1 if left out. */
+  picks?: number;
+  items: readonly LootItem[];
+};
+
 /** Hit chances are 0..1. Damage on a hit is any whole number from 100 to maxDamage. */
 type EnemyStats = {
   health: number;
@@ -19,12 +41,10 @@ type EnemyStats = {
   leashTiles: number;
   /** Only an enemy with this attacks first. */
   noticeTiles?: number;
-  /** Per player who damaged it. */
-  emberboneChance?: number;
   /** Set on #238's docile creatures: they never fight back, never leash and never wander — they stand where they are while they are hit. */
   docile?: true;
-  /** The hide every player who damaged it finds on the ground when it dies, at 100% (#238). */
-  hide?: ItemId;
+  /** What each player who damaged it rolls for when it dies. */
+  loot: readonly LootCategoryRow[];
 };
 
 /** Spec §5. */
@@ -40,6 +60,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderChance: 0.1,
     wanderTiles: 5,
     leashTiles: 4,
+    // Spider silk waits for its own change (#217).
+    loot: [],
   },
   skeleton: {
     health: 2400,
@@ -53,7 +75,10 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 3,
     noticeTiles: 3,
     leashTiles: 4,
-    emberboneChance: 0.25,
+    // Spec §4: one Emberbone in four, per player who damaged it.
+    loot: [
+      { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
+    ],
   },
   // #238's three docile creatures, on the hide bands 1/10/20. Their combat tuning is
   // Phase 8's: they never fight back, never leash and never wander — they stand, and each
@@ -73,7 +98,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 0,
     leashTiles: 0,
     docile: true,
-    hide: "tarnHide",
+    // Every player who damaged it finds its hide (#238).
+    loot: [{ category: "material", chance: 1, items: [{ item: "tarnHide" }] }],
   },
   bristleback: {
     health: 500,
@@ -87,7 +113,10 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 0,
     leashTiles: 0,
     docile: true,
-    hide: "bristleHide",
+    // Every player who damaged it finds its hide (#238).
+    loot: [
+      { category: "material", chance: 1, items: [{ item: "bristleHide" }] },
+    ],
   },
   cinderhorn: {
     health: 1000,
@@ -101,6 +130,9 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 0,
     leashTiles: 0,
     docile: true,
-    hide: "cinderHide",
+    // Every player who damaged it finds its hide (#238).
+    loot: [
+      { category: "material", chance: 1, items: [{ item: "cinderHide" }] },
+    ],
   },
 };
