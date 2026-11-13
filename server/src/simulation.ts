@@ -286,7 +286,7 @@ type UnsyncedAction =
    * first wait.
    */
   | {
-      kind: "smithing";
+      kind: "making";
       item: MakeItem;
       all: boolean;
       at?: Tile;
@@ -295,21 +295,26 @@ type UnsyncedAction =
   /** The log is already burnt: a new click or a death during the lighting loses it (#224). */
   | { kind: "lighting"; log: FireLog; doneTick: number };
 
+/** A click waiting for the next tick, named for the action it starts. */
+type QueuedAction =
+  | { kind: "walking"; to: Tile }
+  | { kind: "fighting"; enemy: string }
+  | { kind: "gathering"; skill: GatheringSkill; site: string }
+  | {
+      kind: "visiting";
+      villager: VillagerId;
+      then?: Exclude<DialogueAction, "quest">;
+    }
+  | { kind: "making"; item: MakeItem; all: boolean; at?: Tile }
+  | { kind: "lighting"; slot: number }
+  | { kind: "taking"; groundItem: string }
+  | { kind: "following"; player: string };
+
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
   state = new WorldState();
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
-  private queuedActions = new Map<
-    string,
-    | { to: Tile }
-    | { enemy: string }
-    | { gather: GatheringSkill; site: string }
-    | { villager: VillagerId; then?: Exclude<DialogueAction, "quest"> }
-    | { make: MakeItem; all: boolean; at?: Tile }
-    | { light: number }
-    | { take: string }
-    | { follow: string }
-  >();
+  private queuedActions = new Map<string, QueuedAction>();
   /** What a player's action and timers need that clients don't. */
   private unsyncedPlayers = new Map<
     string,
@@ -621,7 +626,7 @@ export class Simulation {
     if (!this.alive(id)) return;
     if (!Number.isInteger(to?.x) || !Number.isInteger(to?.y)) return;
     if (!this.tiles[to.y]?.[to.x]) return;
-    this.queuedActions.set(id, { to: { x: to.x, y: to.y } });
+    this.queuedActions.set(id, { kind: "walking", to: { x: to.x, y: to.y } });
   }
 
   /** `enemy` comes straight off the network, so anything but a live enemy's id is ignored. */
@@ -629,19 +634,19 @@ export class Simulation {
     if (!this.alive(id)) return;
     const target = this.state.enemies.get(enemy);
     if (!target || target.state === "dead") return;
-    this.queuedActions.set(id, { enemy });
+    this.queuedActions.set(id, { kind: "fighting", enemy });
   }
 
   /** `target` is a player's session id, checked by the room's /follow command. */
   follow(id: string, target: string) {
     if (!this.alive(id)) return;
-    this.queuedActions.set(id, { follow: target });
+    this.queuedActions.set(id, { kind: "following", player: target });
   }
 
   /** The session id of the player this one follows, if any. A queued intent counts already, since it replaces the action on the next tick. */
   following(id: string) {
     const queued = this.queuedActions.get(id);
-    if (queued) return "follow" in queued ? queued.follow : undefined;
+    if (queued) return queued.kind === "following" ? queued.player : undefined;
     const action = this.unsyncedPlayers.get(id)?.action;
     return action?.kind === "following" ? action.player : undefined;
   }
@@ -658,7 +663,7 @@ export class Simulation {
     const found = this.sites.get(site);
     if (!player || found?.skill !== skill || player.dead) return;
     if (this.siteRefusal(found, player)) return;
-    this.queuedActions.set(id, { gather: skill, site });
+    this.queuedActions.set(id, { kind: "gathering", skill, site });
   }
 
   private siteRefusal(
@@ -699,7 +704,12 @@ export class Simulation {
     } else if (!this.stations[station] || stationRefusal(station, player)) {
       return;
     }
-    this.queuedActions.set(id, { make: wanted, all: all === true, at: fire });
+    this.queuedActions.set(id, {
+      kind: "making",
+      item: wanted,
+      all: all === true,
+      at: fire,
+    });
   }
 
   /**
@@ -710,7 +720,7 @@ export class Simulation {
   queueLight(id: string, slot: number) {
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
-    this.queuedActions.set(id, { light: slot });
+    this.queuedActions.set(id, { kind: "lighting", slot });
   }
 
   /**
@@ -719,7 +729,10 @@ export class Simulation {
    */
   queueVisit(id: string, villager: string, then?: string) {
     if (!this.alive(id) || !this.villagers.has(villager as VillagerId)) return;
-    const visit = { villager: villager as VillagerId };
+    const visit = {
+      kind: "visiting",
+      villager: villager as VillagerId,
+    } as const;
     if (then === undefined) this.queuedActions.set(id, visit);
     else if (offers(visit.villager, then))
       this.queuedActions.set(id, {
@@ -1057,7 +1070,7 @@ export class Simulation {
   queueTake(id: string, groundItem: string) {
     if (typeof groundItem !== "string") return;
     if (!this.alive(id) || !this.canSee(id, groundItem)) return;
-    this.queuedActions.set(id, { take: groundItem });
+    this.queuedActions.set(id, { kind: "taking", groundItem });
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
@@ -1323,28 +1336,29 @@ export class Simulation {
         unsynced.path = path ?? [];
         unsynced.action = path && action;
       };
-      if ("enemy" in intent) {
-        unsynced.action = { kind: "fighting", enemy: intent.enemy };
-      } else if ("make" in intent) {
-        const action: UnsyncedAction = {
-          kind: "smithing",
-          item: intent.make,
-          all: intent.all,
-          at: intent.at,
-        };
-        // A fire the player is standing on or beside needs no walk (#224).
-        if (intent.at && tilesApart(player, intent.at) <= 1) {
-          unsynced.action = action;
-          unsynced.path = [];
-        } else {
-          goNextTo(action);
+      switch (intent.kind) {
+        case "fighting":
+          unsynced.action = { kind: "fighting", enemy: intent.enemy };
+          break;
+        case "making": {
+          const { kind, item, all, at } = intent;
+          const action: UnsyncedAction = { kind, item, all, at };
+          // A fire the player is standing on or beside needs no walk (#224).
+          if (at && tilesApart(player, at) <= 1) {
+            unsynced.action = action;
+            unsynced.path = [];
+          } else {
+            goNextTo(action);
+          }
+          break;
         }
-      } else if ("light" in intent) {
-        const log = player.inventory[intent.light]!;
-        const refusal = lightRefusal(log, this.lightTileAt(player), player);
-        if (refusal)
-          this.events.push({ type: "told", player: id, line: refusal });
-        else {
+        case "lighting": {
+          const log = player.inventory[intent.slot]!;
+          const refusal = lightRefusal(log, this.lightTileAt(player), player);
+          if (refusal) {
+            this.events.push({ type: "told", player: id, line: refusal });
+            break;
+          }
           // The log is consumed at once, so a new click during the lighting loses it (#224).
           removeItems(player.inventory, player.inventoryCounts, log, 1);
           // Or a walk in progress would carry them off the tile the fire was checked for.
@@ -1360,36 +1374,34 @@ export class Simulation {
             station: "fire",
             ticks: LIGHTING_TICKS,
           });
+          break;
         }
-      } else if ("villager" in intent) {
-        goNextTo({
-          kind: "visiting",
-          ...intent,
-        });
-      } else if ("take" in intent) {
-        // Onto its tile, not next to it. It may have gone since the intent arrived.
-        const groundItem = this.state.groundItems.get(intent.take);
-        unsynced.path = groundItem
-          ? findPath(this.tiles, player, groundItem)
-          : [];
-        unsynced.action = groundItem && {
-          kind: "taking",
-          groundItem: intent.take,
-        };
-      } else if ("follow" in intent) {
-        // The target may have left or died since the intent arrived.
-        unsynced.action = this.alive(intent.follow)
-          ? { kind: "following", player: intent.follow }
-          : undefined;
-        unsynced.path = [];
-      } else if ("gather" in intent) {
-        goNextTo({
-          kind: intent.gather,
-          site: intent.site,
-        });
-      } else {
-        unsynced.action = undefined;
-        unsynced.path = findPath(this.tiles, player, intent.to);
+        case "visiting":
+          goNextTo(intent);
+          break;
+        case "taking": {
+          // Onto its tile, not next to it. It may have gone since the intent arrived.
+          const groundItem = this.state.groundItems.get(intent.groundItem);
+          unsynced.path = groundItem
+            ? findPath(this.tiles, player, groundItem)
+            : [];
+          unsynced.action = groundItem && intent;
+          break;
+        }
+        case "following":
+          // The target may have left or died since the intent arrived.
+          unsynced.action = this.alive(intent.player) ? intent : undefined;
+          unsynced.path = [];
+          break;
+        case "gathering":
+          goNextTo({ kind: intent.skill, site: intent.site });
+          break;
+        case "walking":
+          unsynced.action = undefined;
+          unsynced.path = findPath(this.tiles, player, intent.to);
+          break;
+        default:
+          intent satisfies never;
       }
     }
     this.queuedActions.clear();
@@ -1409,7 +1421,7 @@ export class Simulation {
 
   /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
-    if (action?.kind === "smithing")
+    if (action?.kind === "making")
       return action.at ?? this.stations[stationOf(action.item)];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action && "site" in action) return this.sites.get(action.site);
@@ -1535,7 +1547,7 @@ export class Simulation {
   private advanceMaking() {
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action: making } = unsynced;
-      if (making?.kind !== "smithing" || unsynced.path.length) continue;
+      if (making?.kind !== "making" || unsynced.path.length) continue;
       // A fire can burn out mid-job, ending the cooking on it (#224).
       if (making.at && !this.state.fires.has(siteId(making.at))) {
         unsynced.action = undefined;
