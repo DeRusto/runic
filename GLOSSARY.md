@@ -279,6 +279,10 @@ _Avoid_: Gathering, quarrying
 A skill trained by taking items from a **site**, a tile that runs out and grows back, either where it was or at another spot of its site pool: Herblaw from bushes, Mining from veins, Woodcutting from trees and Fishing from fishing spots. It names the family, and is no other name for any one skill.
 _Avoid_: Resource skill, harvesting
 
+**Making skill**:
+A skill trained by turning materials into a product at a place it names: Mining's smelting at the furnace, Smithing and Jewelsmithing at the anvil, Cooking at the range or a fire, Crafting, Fletching and Leatherworking at the workbench, and Runecrafting at the altar. It names the family, and is no other name for any one skill. Mixing a potion is not one: it needs no place and takes no time.
+_Avoid_: Production skill, artisan skill
+
 **Smithing**:
 The skill trained by turning bars into gear, arrowheads and throwing knives at an anvil. Smelting ore into bars is Mining.
 _Avoid_: Crafting, forging
