@@ -167,24 +167,18 @@ const isBankSlot = (slot: number) =>
   Number.isInteger(slot) && slot >= 0 && slot < BANK_SLOTS;
 const isAmount = (amount: number) => Number.isInteger(amount) && amount > 0;
 
+const xpField = () => t.uint32().default(0);
+/** One synced experience field per skill, so a new row in `SKILLS` needs no edit here. */
+const XP_FIELDS = Object.fromEntries(
+  SKILLS.map(([, field]) => [field, xpField()]),
+) as Record<(typeof SKILLS)[number][1], ReturnType<typeof xpField>>;
+
 export const Player = schema(
   {
     username: t.string(),
     x: t.uint8(),
     y: t.uint8(),
-    combatXp: t.uint32(),
-    defenseXp: t.uint32(),
-    herblawXp: t.uint32(),
-    hitpointsXp: t.uint32(),
-    miningXp: t.uint32().default(0),
-    smithingXp: t.uint32().default(0),
-    woodcuttingXp: t.uint32().default(0),
-    fishingXp: t.uint32().default(0),
-    cookingXp: t.uint32().default(0),
-    firemakingXp: t.uint32().default(0),
-    craftingXp: t.uint32().default(0),
-    blockingXp: t.uint32().default(0),
-    masteryXp: t.uint32().default(0),
+    ...XP_FIELDS,
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
     masteryHundredths: t.uint8().default(0),
     /** In any order; the sheet's order decides how they show. */
