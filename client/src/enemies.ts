@@ -1,7 +1,7 @@
 import { Callbacks } from "@colyseus/sdk";
 import { ENEMIES, type EnemyKind, type EnemyState } from "@runic/shared";
 import type * as THREE from "three";
-import { ENEMY_CLIPS, type Figure, type loadSpiders } from "./characters.ts";
+import { ENEMY_LOOKS, type Figure } from "./characters.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
 import type { WorldConnection } from "./players.ts";
@@ -13,7 +13,7 @@ export const enemyOverheads = new Map<string, Overhead>();
 /** Draws every enemy, and returns what finds the live enemy under a click's ray. */
 export function showEnemies(
   room: WorldConnection,
-  newFigure: Record<EnemyKind, Awaited<ReturnType<typeof loadSpiders>>>,
+  newFigure: Record<EnemyKind, (tile: { x: number; y: number }) => Figure>,
 ) {
   const figures: { id: string; figure: Figure; hitBox: THREE.Mesh }[] = [];
   const hitBoxes = new Map<
@@ -29,7 +29,7 @@ export function showEnemies(
     figures.push({ id, figure, hitBox });
     hitBoxes.set(hitBox, { id, tile: enemy });
     if (enemy.state === "dead")
-      figure.alreadyGone(ENEMY_CLIPS[enemy.kind].death);
+      figure.alreadyGone(ENEMY_LOOKS[enemy.kind].death);
     enemyFigures.set(id, figure);
     enemyOverheads.set(id, new Overhead(""));
   });

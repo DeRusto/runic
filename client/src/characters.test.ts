@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import { describe, expect, it, test, vi } from "vitest";
 import {
   addSeeThroughOutline,
   characterFor,
+  ENEMY_LOOKS,
   Figure,
-  fitSpider,
+  loadEnemies,
   paintGear,
   SPIDER_GAIT,
   swingFor,
@@ -468,6 +469,68 @@ describe("fight clips", () => {
   });
 });
 
+/** A stand-in model 2 wide, 1 tall and 1 deep, with a right hand slot, a clip named for its file, and the idle clips a Figure starts on. */
+async function fakeModel(path: string) {
+  const scene = new THREE.Group();
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1)));
+  const hand = new THREE.Object3D();
+  hand.name = "handslotr";
+  scene.add(hand);
+  scene.name = path;
+  return {
+    scene,
+    animations: [`${path} clip`, "Idle", "Spider_Idle", "Idle_A"].map(
+      (name) => new THREE.AnimationClip(name, 1, []),
+    ),
+  } as unknown as GLTF;
+}
+
+describe("loadEnemies", () => {
+  const tile = { x: 0, y: 0 };
+  const sizeOf = (model: THREE.Object3D) => {
+    model.position.x = model.position.z = 0;
+    return new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
+  };
+
+  it("names a committed model for every kind, and its held weapon", () => {
+    for (const { file, held } of Object.values(ENEMY_LOOKS)) {
+      expect(existsSync(`client/public/models/${file}`)).toBe(true);
+      if (held)
+        expect(existsSync(`client/public/models/${held.file}`)).toBe(true);
+    }
+  });
+
+  it("sizes each kind by its row: its wide side across the tile, or the Skeleton by height", async () => {
+    const newEnemy = await loadEnemies(fakeModel);
+    for (const [kind, { fit }] of Object.entries(ENEMY_LOOKS)) {
+      const size = sizeOf(newEnemy[kind as keyof typeof newEnemy](tile).model);
+      if ("height" in fit) expect(size.y).toBeCloseTo(fit.height);
+      else expect(Math.max(size.x, size.z)).toBeCloseTo(fit.width);
+    }
+  });
+
+  it("gives each kind its clips: its own, the players' packs, or stand-ins made per Figure", async () => {
+    const newEnemy = await loadEnemies(fakeModel);
+    const clipsOf = (figure: Figure) => [...figure["clips"].keys()];
+    expect(clipsOf(newEnemy.spider(tile))).toContain("Spider.glb clip");
+    expect(clipsOf(newEnemy.tarnOx(tile))).toContain("TarnOx.glb clip");
+    expect(clipsOf(newEnemy.skeleton(tile))).toContain(
+      "Rig_Medium_General.glb clip",
+    );
+    const [one, two] = [newEnemy.bristleback(tile), newEnemy.bristleback(tile)];
+    expect(clipsOf(one)).toEqual(["Idle", "Death"]);
+    expect(one["clips"]).not.toBe(two["clips"]);
+  });
+
+  it("puts the Skeleton's blade in its hand and keeps it armed, and no one else's", async () => {
+    const newEnemy = await loadEnemies(fakeModel);
+    const skeleton = newEnemy.skeleton(tile);
+    expect(skeleton.model.getObjectByName("Skeleton_Blade.gltf")).toBeDefined();
+    expect(skeleton.alwaysArmed).toBe(true);
+    expect(newEnemy.spider(tile).alwaysArmed).toBeFalsy();
+  });
+});
+
 describe("Spider.glb", () => {
   const load = async () => {
     const { buffer } = readFileSync("client/public/models/Spider.glb");
@@ -495,8 +558,13 @@ describe("Spider.glb", () => {
 
   it("fits to about 1.1 units wide, standing on the ground", async () => {
     const { scene } = await load();
-    fitSpider(scene);
-    const box = new THREE.Box3().setFromObject(scene);
+    const newEnemy = await loadEnemies(async (path) =>
+      path === "Spider.glb" ? load() : fakeModel(path),
+    );
+    scene.position.set(0, 0, 0);
+    const box = new THREE.Box3().setFromObject(
+      newEnemy.spider({ x: 0, y: 0 }).model,
+    );
     const size = box.getSize(new THREE.Vector3());
     expect(Math.max(size.x, size.z)).toBeCloseTo(1.1);
     expect(box.min.y).toBeCloseTo(0);

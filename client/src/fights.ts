@@ -12,7 +12,7 @@ import {
   itemTag,
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
-import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
+import { BLOCK_CLIP, ENEMY_LOOKS, swingFor } from "./characters.ts";
 import { chatItems } from "./itemIcons.ts";
 import {
   playerFigures,
@@ -51,7 +51,7 @@ function atContact(
 
 /** Plays each tick's events on the figures. */
 export function showFights(room: WorldConnection) {
-  const clipsOf = (id: string) => ENEMY_CLIPS[room.state.enemies.get(id)!.kind];
+  const clipsOf = (id: string) => ENEMY_LOOKS[room.state.enemies.get(id)!.kind];
   /** When each player's latest swing connects, by Date.now(). */
   const ownContactAt = new Map<string, number>();
   /** Waits for the player's own swing to connect, as playing now would cut it off before its blow lands. */
@@ -78,9 +78,9 @@ export function showFights(room: WorldConnection) {
         const figure = enemyFigures.get(id)!;
         const dead = enemy.state === "dead";
         if (dead && !figure.downed)
-          figure.dieAndSink(ENEMY_CLIPS[enemy.kind].death);
+          figure.dieAndSink(ENEMY_LOOKS[enemy.kind].death);
         else if (!dead && figure.downed)
-          figure[ENEMY_CLIPS[enemy.kind].returns]();
+          figure[ENEMY_LOOKS[enemy.kind].returns]();
       });
     }),
   );
