@@ -54,7 +54,7 @@ export function showPlayers(
       figure.shield = itemParts(player?.shield ?? "").base;
       const action = player?.action;
       figure.action = action ?? "";
-      if (action !== "smithing") figure.work = undefined;
+      if (action !== "making") figure.work = undefined;
       figure.update(now);
       hitBoxes
         .get(id)!
