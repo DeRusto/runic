@@ -1,6 +1,7 @@
 import { parseRegion } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
 import { seededRandom } from "./gatheringHarness.ts";
+import { NO_EXPERIENCE } from "./playerSave.ts";
 import { Simulation } from "./simulation.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -320,19 +321,8 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
   expect(sim.saveOf("a")).toEqual({
     x: 1,
     y: 1,
-    combatXp: 0,
-    defenseXp: 0,
-    herblawXp: 0,
+    ...NO_EXPERIENCE,
     hitpointsXp: 4050,
-    miningXp: 0,
-    smithingXp: 0,
-    woodcuttingXp: 0,
-    fishingXp: 0,
-    cookingXp: 0,
-    firemakingXp: 0,
-    craftingXp: 0,
-    blockingXp: 0,
-    masteryXp: 0,
     masteryHundredths: 0,
     pinnedSkills: [
       "Combat",

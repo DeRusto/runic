@@ -5,6 +5,7 @@ import {
   INVENTORY_SLOTS,
   STARTING_HEALTH,
   STARTING_HITPOINTS_XP,
+  SKILLS,
   STARTING_PINNED_SKILLS,
   type Tile,
 } from "@runic/shared";
@@ -18,12 +19,15 @@ const SAVED_FIELDS = Object.keys(getTableColumns(players)).filter(
   (field) => field !== "accountId",
 ) as (keyof PlayerSave)[];
 
+/** Every skill at 0 experience. */
+export const NO_EXPERIENCE = Object.fromEntries(
+  SKILLS.map(([, field]) => [field, 0]),
+) as Record<(typeof SKILLS)[number][1], number>;
+
 /** A new account's save, standing on `tile`. */
 export const newSave = (tile: Tile): PlayerSave => ({
   ...tile,
-  combatXp: 0,
-  defenseXp: 0,
-  herblawXp: 0,
+  ...NO_EXPERIENCE,
   hitpointsXp: STARTING_HITPOINTS_XP,
   health: STARTING_HEALTH,
   inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
