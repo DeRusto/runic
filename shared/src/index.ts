@@ -233,6 +233,7 @@ export * from "./regionMap.ts";
 export * from "./skills.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
+export * from "./quests.ts";
 export * from "./social.ts";
 export * from "./woodcutting.ts";
 export * from "./fishing.ts";

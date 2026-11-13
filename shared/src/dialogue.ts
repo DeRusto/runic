@@ -3,8 +3,12 @@ import type { Tool } from "./tools.ts";
 /** A conversation's line, said by the villager or by the player, whose words the chosen choice puts in their mouth. */
 export type DialogueLine = { speaker: "villager" | "you"; text: string };
 
-/** What the server does when a choice is picked, once it has checked the player is still beside the villager. */
-export type DialogueAction = "giveTools" | "openStore" | "openBank";
+/**
+ * What the server does when a choice is picked, once it has checked the player is still beside
+ * the villager. `quest` runs the villager's own quest: it starts it, or takes the turn-in the
+ * player's stage or its repeats ask for (#231).
+ */
+export type DialogueAction = "giveTools" | "openStore" | "openBank" | "quest";
 
 /** `to` is the node the conversation moves to. */
 export type DialogueChoice = {
@@ -40,7 +44,8 @@ const you = (text: string): DialogueLine => ({ speaker: "you", text });
 
 /** Every villager, by id. Add one by adding a row (village spec §2). */
 export const VILLAGERS = {
-  // The prototype's lines, kept by the owner (#195). The repeat turn-in offer is Phase 11's.
+  // The prototype's lines, kept by the owner (#195), wired through the quest engine (#231):
+  // the node the conversation opens with follows the player's progress on Odo's quest.
   odo: {
     name: "Odo",
     role: "blacksmith",
@@ -67,7 +72,7 @@ export const VILLAGERS = {
           ),
         ],
         choices: [
-          { text: "I'll fetch it.", to: "accept" },
+          { text: "I'll fetch it.", to: "accept", action: "quest" },
           { text: "Not right now.", to: "later" },
         ],
       },
@@ -98,6 +103,51 @@ export const VILLAGERS = {
         ],
       },
       bye: { lines: [you("Bye."), villager("Mind how you go.")] },
+      // Odo's quest stage, while the ore is asked for: the server checks the turn-in.
+      quest: {
+        lines: [
+          villager("Any luck with that ore? The vein's past the east road."),
+        ],
+        choices: [
+          { text: "I've got the ore. Here.", to: "ore", action: "quest" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      // The ore handed over: the forge is the player's.
+      ore: {
+        lines: [
+          you("I've got the ore. Here."),
+          villager(
+            "Ha! That's the stuff. The forge is yours. Furnace and anvil, whenever you like.",
+          ),
+        ],
+      },
+      // Done, with Odo still taking ore for what he teaches about the veins (#75).
+      repeat: {
+        lines: [
+          villager(
+            "That ore keeps the forge hot. Bring me more and I'll teach you a trick or two for the veins.",
+          ),
+        ],
+        choices: [
+          { text: "Here's more ore.", to: "oreAgain", action: "quest" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      oreAgain: {
+        lines: [
+          you("Here's more ore."),
+          villager("Good stuff. The trick's in the swing."),
+        ],
+      },
+      forge: {
+        lines: [
+          villager(
+            "Forge treating you well? Furnace and anvil are yours whenever you like.",
+          ),
+        ],
+        choices: [{ text: "Bye.", to: "bye" }],
+      },
     },
   },
   marta: {

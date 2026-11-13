@@ -87,7 +87,7 @@ A named person who stands on one tile and talks to players: most in the village,
 _Avoid_: NPC, townsfolk, character
 
 **Blacksmith**:
-Odo, the villager at the smithy, who gives players whichever of a pickaxe and a hammer they don't have, for free, when they ask in conversation.
+Odo, the villager at the smithy, who gives players whichever of a pickaxe and a hammer they don't have, for free, when they ask in conversation, and whose copper-ore quest opens the smithy's furnace and anvil to them.
 _Avoid_: Smith, vendor
 
 **Conversation**:
@@ -169,6 +169,28 @@ _Avoid_: Aggro range, chase radius
 **Tick**:
 The fixed step the world moves in; every move, swing, pick and timer happens on a tick.
 _Avoid_: Frame, turn, cycle
+
+### Quests
+
+**Quest**:
+Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first. Each quest is a row of the shared quests table, and the server holds each player's progress in it. Phase 11 owns the quests beyond the first.
+_Avoid_: Mission, task (that's the Action), errand
+
+**Stage**:
+One step of a quest: what the journal says while it is current, and what finishes it — a turn-in, or a choice in the villager's conversation. The server checks it; clients send choices as today.
+_Avoid_: Step, phase, objective
+
+**Turn-in**:
+The items a stage's completion asks the player to hand over from their inventory, such as Odo's copper ore. A villager may still take turn-ins after their quest is done, each paying experience.
+_Avoid_: Delivery, hand-in
+
+**Quest points**:
+What finishing a quest awards, kept per player and shown in the journal. They gate later quests and areas, from Phase 11; the number exists now.
+_Avoid_: QP, quest score
+
+**Journal**:
+The panel a player opens with J or the Journal button on the bottom bar. It lists each quest they have started with its current stage, and the quest points they have earned.
+_Avoid_: Quest log, quest list
 
 ### Skills
 
@@ -464,7 +486,7 @@ Where a piece of gear goes when it is equipped, out of the inventory. A player h
 _Avoid_: Equipment slot
 
 **Panel**:
-A window that opens over the world: the character sheet, the smithing panel, the social panel or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.
+A window that opens over the world: the character sheet, the smithing panel, the social panel, the journal or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.
 _Avoid_: Window (alone), dialog, menu
 
 **Tooltip**:

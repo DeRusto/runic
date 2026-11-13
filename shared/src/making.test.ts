@@ -722,12 +722,16 @@ test("too few materials are refused", () => {
 });
 
 test("the anvil needs a hammer and the furnace and range need nothing", () => {
-  expect(stationRefusal("anvil", { tools: ["pickaxe"] })).toBe(
+  // Helped Odo, as the quest tests own the gate on the smithy's stations.
+  const helped = { quests: ["odoCopper"], questStages: ["done"] };
+  expect(stationRefusal("anvil", { tools: ["pickaxe"], ...helped })).toBe(
     "You need a hammer. The Blacksmith will give you one.",
   );
-  expect(stationRefusal("anvil", { tools: ["hammer"] })).toBeUndefined();
-  expect(stationRefusal("furnace", { tools: [] })).toBeUndefined();
-  expect(stationRefusal("range", { tools: [] })).toBeUndefined();
+  expect(
+    stationRefusal("anvil", { tools: ["hammer"], ...helped }),
+  ).toBeUndefined();
+  expect(stationRefusal("furnace", { tools: [], ...helped })).toBeUndefined();
+  expect(stationRefusal("range", { tools: [], ...helped })).toBeUndefined();
 });
 
 describe("cooking at the range (#221)", () => {

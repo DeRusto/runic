@@ -1,4 +1,4 @@
-import { STARTING_PINNED_SKILLS } from "@runic/shared";
+import { STARTING_PINNED_SKILLS, type QuestProgress } from "@runic/shared";
 import {
   index,
   integer,
@@ -73,6 +73,13 @@ export const players = sqliteTable("players", {
     .notNull()
     .$type<number[]>()
     .default([]),
+  /** Each started quest's progress, keyed by quest id (#231). */
+  quests: text({ mode: "json" })
+    .notNull()
+    .$type<Record<string, QuestProgress>>()
+    .default({}),
+  /** The quest points finished quests have awarded (#231). */
+  questPoints: integer("quest_points").notNull().default(0),
 });
 
 /**
