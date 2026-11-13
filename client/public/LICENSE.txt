@@ -20,6 +20,9 @@ models/
     workbench.glb
         Kenney Survival Kit 2.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Survival-Kit.txt.
+    altarStone.glb
+        Kenney Graveyard Kit 5.0 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Graveyard-Kit.txt.
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.

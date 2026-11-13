@@ -164,6 +164,11 @@ export function showSmithingPanel(room: WorldConnection) {
       ),
       "Fletching",
     ),
+    section(
+      "altar",
+      items.filter((item) => RECIPES[item].station === "altar"),
+      "Runecrafting",
+    ),
   ];
   const rows = sections.flatMap((s) => s.rows);
   document

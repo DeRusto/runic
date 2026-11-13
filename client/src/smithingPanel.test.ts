@@ -62,6 +62,7 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     cookingXp: 0,
     craftingXp: 0,
     fletchingXp: 0,
+    runecraftingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -189,6 +190,36 @@ test("the workbench lists Crafting's and Fletching's recipes under two sections 
     "Charwood bow",
     "1 Charwood log + 1 Rope · Needs Fletching 20",
   ]);
+});
+
+test("the altar lists the four elemental runes under one Runecrafting section (#232)", () => {
+  open("altar");
+  expect(byId.get("smithing-title")!.textContent).toBe("Altar");
+  expect(headers()).toEqual([["Runecrafting", "", true]]);
+  expect(shownRows()).toHaveLength(4);
+  expect(line(shownRows()[0])).toEqual([
+    "Air rune",
+    "1 Rune essence · Not enough materials",
+  ]);
+  expect(line(shownRows()[1])).toEqual([
+    "Water rune",
+    "1 Rune essence · Needs Runecrafting 5",
+  ]);
+  expect(line(shownRows()[3])).toEqual([
+    "Fire rune",
+    "1 Rune essence · Needs Runecrafting 20",
+  ]);
+});
+
+test("a rune row is refused on Runecrafting alone, whatever the Smithing level", () => {
+  open("altar");
+  patch(me([], { runecraftingXp: xpForLevel(9), smithingXp: xpForLevel(99) }));
+  expect(line(shownRows()[2])).toEqual([
+    "Earth rune",
+    "1 Rune essence · Needs Runecrafting 10",
+  ]);
+  patch(me([["runeEssence", 1]], { runecraftingXp: xpForLevel(10) }));
+  expect(line(shownRows()[2])).toEqual(["Earth rune", "1 Rune essence"]);
 });
 
 test("a crafting row is refused on Crafting, and the cloak also on its cape and silk", () => {

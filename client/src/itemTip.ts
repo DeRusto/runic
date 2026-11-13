@@ -18,6 +18,7 @@ import {
   MIGHT_POTION_HIT,
   POTION_BUFF_TICKS,
   potionOf,
+  RUNES,
   TICK_MS,
   TOOLS,
   virtueDoes,
@@ -68,6 +69,7 @@ function kindOf(item: string) {
     return `Food, heals ${food.perTick * food.ticks} over ${food.ticks} ticks`;
   if ((TOOLS as readonly string[]).includes(item)) return "Tool";
   if (GEMS.includes(item)) return "Gem";
+  if ((RUNES as readonly string[]).includes(item)) return "Rune";
   const fire = fireOf(item);
   return fire ? `Log, lights a fire at Firemaking ${fire.level}` : "Material";
 }

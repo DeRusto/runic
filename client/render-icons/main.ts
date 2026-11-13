@@ -609,6 +609,51 @@ function arrowhead() {
   return mesh;
 }
 
+/** A cluster of pale crystals: no pack has rune essence on its own (#232). */
+function essence() {
+  const group = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xbfe3f2,
+    roughness: 0.25,
+    metalness: 0.1,
+    flatShading: true,
+    emissive: 0x3a6f8a,
+    emissiveIntensity: GLOW_INTENSITY,
+  });
+  for (const [x, z, height] of [
+    [0, 0, 1],
+    [0.45, 0.15, 0.65],
+    [-0.4, -0.1, 0.55],
+  ] as const) {
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), material);
+    crystal.position.set(x, 0, z);
+    crystal.scale.set(0.8, height * 1.5, 0.8);
+    crystal.rotation.z = 0.2;
+    group.add(crystal);
+  }
+  return group;
+}
+
+/** Kenney's rune slabs, tinted by their element where they have one: no pack has a 3D rune (#232). The tint leaves the slab's own alpha. */
+async function rune(file: string, tint?: number) {
+  const image = new Image();
+  image.src = `/kenney-game-assets/2D assets/Rune Pack/PNG/Grey/Slab/${file}.png`;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = SIZE;
+  const context = canvas.getContext("2d")!;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, SIZE, SIZE);
+  if (tint !== undefined) {
+    context.globalCompositeOperation = "multiply";
+    context.fillStyle = `#${tint.toString(16).padStart(6, "0")}`;
+    context.fillRect(0, 0, SIZE, SIZE);
+    context.globalCompositeOperation = "destination-in";
+    context.drawImage(image, 0, 0, SIZE, SIZE);
+  }
+  return toPng(canvas);
+}
+
 const bone = emberbone();
 applyLook(bone, EMBERITE);
 draw(bone, LEAN);
@@ -630,6 +675,19 @@ draw(arrowShaft(), LEAN);
 pngs.set("arrowShaft", await toPng(renderer.domElement));
 draw(feather(), FLAT);
 pngs.set("feather", await toPng(renderer.domElement));
+
+// #232's essence: the strange material is the tin's lumps, dull, and the essence a cluster
+// of pale crystals. The runes are Kenney's rune slabs, tinted by their element.
+const strange = nuggets();
+applyLook(strange, { tint: 0x716a56 });
+draw(strange, FLAT);
+pngs.set("strangeMaterial", await toPng(renderer.domElement));
+draw(essence(), FLAT);
+pngs.set("runeEssence", await toPng(renderer.domElement));
+pngs.set("airRune", await rune("runeGrey_slab_001"));
+pngs.set("waterRune", await rune("runeGrey_slab_002", 0x3c6ebe));
+pngs.set("earthRune", await rune("runeGrey_slab_003", 0x82552d));
+pngs.set("fireRune", await rune("runeGrey_slab_004", 0xd8421e));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {
