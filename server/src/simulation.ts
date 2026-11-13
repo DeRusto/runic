@@ -3,11 +3,14 @@ import {
   addItems,
   addXp,
   armourPercentOf,
+  AUGMENTATIONS,
+  augmentationOf,
   attemptChance,
   avoidanceOf,
   blockOf,
   BLOCKING_XP_PER_BLOCK,
   burnPercent,
+  capeIn,
   COMBAT_LOCK_TICKS,
   COINS,
   cookedItem,
@@ -34,6 +37,7 @@ import {
   gearOf,
   GEAR_SLOTS,
   gearRefusal,
+  gossamerItem,
   HEALING_POOL_INTERVAL_TICKS,
   HEALTH_PER_HITPOINTS_LEVEL,
   hitOf,
@@ -46,6 +50,9 @@ import {
   maxHealthOf,
   madeItem,
   makeRefusal,
+  makingOf,
+  type AugmentationKind,
+  type MakeItem,
   moveStack,
   MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
@@ -177,6 +184,7 @@ export const Player = schema(
     fishingXp: t.uint32().default(0),
     cookingXp: t.uint32().default(0),
     firemakingXp: t.uint32().default(0),
+    craftingXp: t.uint32().default(0),
     blockingXp: t.uint32().default(0),
     masteryXp: t.uint32().default(0),
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
@@ -284,10 +292,14 @@ type UnsyncedAction =
   | { kind: "visiting"; villager: VillagerId; then?: DialogueAction }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
-  /** `doneTick` stays unset until arrival starts the first wait. */
+  /**
+   * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
+   * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
+   * first wait.
+   */
   | {
       kind: "smithing";
-      item: RecipeItem;
+      item: MakeItem;
       all: boolean;
       at?: Tile;
       doneTick?: number;
@@ -305,7 +317,7 @@ export class Simulation {
     | { enemy: string }
     | { gather: GatheringSkill; site: string }
     | { villager: VillagerId; then?: DialogueAction }
-    | { make: RecipeItem; all: boolean; at?: Tile }
+    | { make: MakeItem; all: boolean; at?: Tile }
     | { light: number }
     | { take: string }
     | { follow: string }
@@ -594,6 +606,7 @@ export class Simulation {
       fishingXp,
       cookingXp,
       firemakingXp,
+      craftingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -622,6 +635,7 @@ export class Simulation {
       fishingXp,
       cookingXp,
       firemakingXp,
+      craftingXp,
       blockingXp,
       masteryXp,
       masteryHundredths,
@@ -770,18 +784,20 @@ export class Simulation {
   }
 
   /**
-   * Comes straight off the network, so anything but a recipe's item is ignored, as is choosing
-   * an anvil recipe with no hammer. `at` names the fire to cook at instead of the range, and is
-   * refused unless one burns there. Level and materials wait for arrival (spec §4).
+   * Comes straight off the network, so anything but a recipe's product or an augmentation is
+   * ignored, as is choosing an anvil recipe with no hammer. `at` names the fire to cook at
+   * instead of the range, and is refused unless one burns there. Level and materials wait for
+   * arrival (spec §4, #225).
    */
   queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
     const player = this.state.players.get(id);
     const { item, all, at } = intent ?? {};
     // A string first: an array of one would pass hasOwn by turning into its element.
     if (!player || player.dead || typeof item !== "string") return;
-    if (!Object.hasOwn(RECIPES, item)) return;
-    const make = item as RecipeItem;
-    const { station } = RECIPES[make];
+    if (!Object.hasOwn(RECIPES, item) && !Object.hasOwn(AUGMENTATIONS, item))
+      return;
+    const make = item as MakeItem;
+    const { station } = makingOf(make);
     // `at` names the fire to cook at, which stands in for the range (#224).
     let fire: Tile | undefined;
     if (at) {
@@ -1375,7 +1391,7 @@ export class Simulation {
   /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
     if (action?.kind === "smithing")
-      return action.at ?? this.stations[RECIPES[action.item].station];
+      return action.at ?? this.stations[makingOf(action.item).station];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
@@ -1516,17 +1532,14 @@ export class Simulation {
         this.events.push({ type: "told", player: id, line: refusal });
         continue;
       }
-      const { station, ticks } = RECIPES[making.item];
+      const { station, ticks } = makingOf(making.item);
       making.doneTick = this.state.tick + ticks;
       this.events.push({ type: "make", player: id, station, ticks });
     }
   }
 
   /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
-  private finishItem(
-    id: string,
-    { item, at }: { item: RecipeItem; at?: Tile },
-  ) {
+  private finishItem(id: string, { item, at }: { item: MakeItem; at?: Tile }) {
     const player = this.state.players.get(id)!;
     const told = (line: string) => {
       this.events.push({ type: "told", player: id, line });
@@ -1535,19 +1548,23 @@ export class Simulation {
     // Dropping during the wait is allowed, so they may have gone.
     const refusal = makeRefusal(item, player);
     if (refusal) return told(refusal);
+    // An augmentation has no roll: its product is the cape's own gossamer variant (#217, #225).
+    if (Object.hasOwn(AUGMENTATIONS, item))
+      return this.finishAugment(id, player, item as AugmentationKind);
+    const recipe = item as RecipeItem;
     // A burn consumes the fish: no experience, no item, and Make all goes on to the
     // next one (#221). It never rolls Delicious.
-    if (RECIPES[item].station === "range") {
+    if (RECIPES[recipe].station === "range") {
       const level = levelFor(player.cookingXp);
       // A fire burns more than the range, by the points of the log it burns (#224).
       const fire = at ? this.state.fires.get(siteId(at)) : undefined;
       const burn =
-        burnPercent(item, level) + (fire ? FIRES[fire.log].burnPercent : 0);
+        burnPercent(recipe, level) + (fire ? FIRES[fire.log].burnPercent : 0);
       if (this.random() < burn / 100) {
-        for (const [cost, count] of costsOf(item))
+        for (const [cost, count] of costsOf(recipe))
           removeItems(player.inventory, player.inventoryCounts, cost, count);
         // "berryPerch" reads as "berry perch", like an item's name does.
-        const name = item.replace(
+        const name = recipe.replace(
           /[A-Z]/g,
           (letter) => ` ${letter.toLowerCase()}`,
         );
@@ -1561,10 +1578,44 @@ export class Simulation {
     }
     // Rolled after the room check below, so a refused make rolls nothing.
     const roll =
-      RECIPES[item].station === "range"
-        ? () => cookedItem(item, levelFor(player.cookingXp), this.random)
-        : () => madeItem(item, levelFor(player.smithingXp), this.random);
-    return this.craftItem(id, player, item, roll);
+      RECIPES[recipe].station === "range"
+        ? () => cookedItem(recipe, levelFor(player.cookingXp), this.random)
+        : () => madeItem(recipe, levelFor(player.smithingXp), this.random);
+    return this.craftItem(id, player, recipe, roll);
+  }
+
+  /**
+   * Swaps the reagent and the first cape held for its gossamer variant, which keeps the cape's
+   * Quality and Virtue, on a copy so a full inventory can refuse first (#217, #225).
+   */
+  private finishAugment(
+    id: string,
+    player: InstanceType<typeof Player>,
+    item: AugmentationKind,
+  ) {
+    const told = (line: string) => {
+      this.events.push({ type: "told", player: id, line });
+      return false;
+    };
+    const { reagent, xp, xpField } = AUGMENTATIONS[item];
+    // The refusal has already found a cape to work on.
+    const cape = capeIn(player)!;
+    const made = gossamerItem(cape);
+    const inventory = [...player.inventory];
+    const inventoryCounts = [...player.inventoryCounts];
+    removeItems(inventory, inventoryCounts, reagent, 1);
+    removeItems(inventory, inventoryCounts, cape, 1);
+    const slot = slotFor(made, { inventory, inventoryCounts });
+    if (slot < 0) return told("Your inventory is full.");
+    inventory[slot] = made;
+    inventoryCounts[slot]!++;
+    inventory.forEach((held, i) => {
+      player.inventory[i] = held;
+      player.inventoryCounts[i] = inventoryCounts[i]!;
+    });
+    this.earnXp(player, xpField, xp);
+    this.events.push({ type: "made", player: id, item: made });
+    return true;
   }
 
   /** Swaps the materials for what `roll` makes, on a copy so a full inventory can refuse first. */
