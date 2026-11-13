@@ -40,6 +40,7 @@ export const players = sqliteTable("players", {
   cookingXp: integer("cooking_xp").notNull().default(0),
   firemakingXp: integer("firemaking_xp").notNull().default(0),
   craftingXp: integer("crafting_xp").notNull().default(0),
+  fletchingXp: integer("fletching_xp").notNull().default(0),
   smithingXp: integer("smithing_xp").notNull().default(0),
   blockingXp: integer("blocking_xp").notNull().default(0),
   masteryXp: integer("mastery_xp").notNull().default(0),

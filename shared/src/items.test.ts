@@ -45,8 +45,9 @@ describe("ITEMS", () => {
   test("every tier has its bar, sword, shield, helmet, chestplate, leggings and cape, and its ore if it has veins", () => {
     // Food 10, Emberbone 1, finds 5, seven per tier (the capes three), three ores,
     // three logs, three raw fish, the three plants, the vial, the three potions, the
-    // silk, the rope and torch, and coins (#217, #222, #225).
-    expect(Object.keys(ITEMS)).toHaveLength(82);
+    // silk, the rope and torch, and coins (#217, #222, #225), plus Fletching's
+    // twenty: a shaft, a feather, five arrowheads, five arrows, five knives, three bows (#228).
+    expect(Object.keys(ITEMS)).toHaveLength(102);
   });
 
   test("the silk, the rope and the torch stack to 20, and a cape takes a whole slot (#225)", () => {
@@ -55,6 +56,19 @@ describe("ITEMS", () => {
     expect(ITEMS.torch.stack).toBe(20);
     expect(ITEMS.copperMightCape.stack).toBe(1);
     expect(ITEMS.emberiteAvoidanceCape.stack).toBe(1);
+  });
+
+  test("Fletching's shafts, arrowheads, arrows and throwing knives stack to 20, and a bow takes a whole slot (#228)", () => {
+    expect(ITEMS.arrowShaft.stack).toBe(20);
+    expect(ITEMS.feather.stack).toBe(20);
+    expect(ITEMS.copperArrowhead.stack).toBe(20);
+    expect(ITEMS.emberiteArrowhead.stack).toBe(20);
+    expect(ITEMS.copperArrow.stack).toBe(20);
+    expect(ITEMS.emberiteArrow.stack).toBe(20);
+    expect(ITEMS.copperThrowingKnife.stack).toBe(20);
+    expect(ITEMS.emberiteThrowingKnife.stack).toBe(20);
+    expect(ITEMS.birchBow.stack).toBe(1);
+    expect(ITEMS.charwoodBow.stack).toBe(1);
   });
 });
 

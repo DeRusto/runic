@@ -234,7 +234,7 @@ A skill trained by taking items from a **site**, a tile that runs out and grows 
 _Avoid_: Resource skill, harvesting
 
 **Smithing**:
-The skill trained by turning bars into gear at an anvil. Smelting ore into bars is Mining.
+The skill trained by turning bars into gear, arrowheads and throwing knives at an anvil. Smelting ore into bars is Mining.
 _Avoid_: Crafting, forging
 
 **Cooking**:
@@ -248,6 +248,10 @@ _Avoid_: Burning
 **Crafting**:
 The skill trained by making the game's utilities and working reagents into capes at the workbench: rope from spider silk, torches from a log and a rope, vials from a gem, and the Gossamer cloak from a cape and silk (#225). It gates each product and pays its experience.
 _Avoid_: Handicraft, construction
+
+**Fletching**:
+The skill trained by making the archer's stock at the workbench: arrow shafts from a log, arrows from shafts, arrowheads and feathers, and bows from a log and a rope (#228). It gates each product and pays its experience.
+_Avoid_: Woodwork, carpentry
 
 ### Players
 
@@ -407,9 +411,25 @@ _Avoid_: Cord, line
 A stick made at the workbench from a birch log and a rope. Nothing uses it yet: it waits for a dark place to light, gives no light of its own, and sells at the general store until then.
 _Avoid_: Lamp, candle
 
+**Arrow shaft**:
+A stick split from a log at the workbench, ten to the log. A log of any tier makes the same shafts (#228).
+_Avoid_: Shaft (alone), stick
+
+**Feather**:
+A feather the general store sells from day one, for an arrow's flight. Phase 8 will let enemies leave one behind; until then the shelf is the only source (#228).
+_Avoid_: Plume, quill
+
+**Throwing knife**:
+A small thrown weapon smithed from one bar at the anvil, plus an Emberbone at Emberite, one tier of five. It stacks like a material for now: Phase 8 decides what a throw spends and gives it combat meaning (#228).
+_Avoid_: Dagger, knife (alone)
+
 **Gear**:
 What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
+
+**Bow**:
+A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot and adds to the hit like a sword, at the Combat level its wood's gate sits at; Phase 8 re-gates it on Ranged and tunes the bonus (#228). It rolls improved versions like all gear.
+_Avoid_: Ranged weapon, longbow
 
 **Improved item**:
 Gear of uncommon or rare Quality, which carries a Virtue. Today only making gives one, but nothing rules out enemy loot giving one later.

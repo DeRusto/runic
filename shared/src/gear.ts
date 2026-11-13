@@ -48,6 +48,9 @@ const sword = (level: number, hitBonus: number): Gear => ({
   hitBonus,
 });
 
+/** A bow mirrors the sword ladder's hit bonuses (#228). They are placeholders: Phase 8 re-gates bows on Ranged and tunes them. */
+const bow = sword;
+
 const shield = (level: number, blockPercent: number): Gear => ({
   slot: "shield",
   level,
@@ -77,6 +80,9 @@ const cape = (level: number, armourPercent: number): Gear => ({
 /** Added to a shield's chance per Blocking level above 1 (spec §5). */
 export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
 
+/** Each wood's tier number, at the metal tier its bow's Combat gate matches (#228). */
+const WOOD_TIERS = { birch: 1, oak: 3, charwood: 5 } as const;
+
 /** Spec §5, with Bronze and Steel at the midpoints (rebalance spec §3 Gear), by item id. Anything in here can be equipped. */
 export const GEAR = new Map<string, Gear>([
   ["copperSword", sword(1, 100)],
@@ -84,6 +90,10 @@ export const GEAR = new Map<string, Gear>([
   ["ironSword", sword(10, 200)],
   ["steelSword", sword(15, 250)],
   ["emberiteSword", sword(20, 300)],
+  // #228's bows, at the Combat levels their woods' Woodcutting gates sit at: 1, 10, 20.
+  ["birchBow", bow(1, 100)],
+  ["oakBow", bow(10, 200)],
+  ["charwoodBow", bow(20, 300)],
   ["copperShield", shield(1, 10)],
   ["bronzeShield", shield(5, 15)],
   ["ironShield", shield(10, 20)],
@@ -152,11 +162,16 @@ const VIRTUE_EFFECTS: Record<
   },
 };
 
-/** The size of `item`'s Virtue, 0 for a common piece. Its unit is multiplied by the tier number, read from the base id's prefix, and rare is double uncommon (spec §3). */
+/** The size of `item`'s Virtue, 0 for a common piece. Its unit is multiplied by the tier number, read from the base id's prefix, and rare is double uncommon (spec §3). A bow is sized by the wood tier at the metal tier its Combat gate matches (#228). */
 function virtueSize(item: string) {
   const { base, quality, virtue } = itemParts(item);
   if (!virtue) return 0;
-  const tier = TIERS.findIndex((name) => base.startsWith(name)) + 1;
+  const wood = Object.entries(WOOD_TIERS).find(([name]) =>
+    base.startsWith(name),
+  );
+  const tier = wood
+    ? wood[1]
+    : TIERS.findIndex((name) => base.startsWith(name)) + 1;
   return VIRTUE_EFFECTS[virtue].unit * tier * (quality === "rare" ? 2 : 1);
 }
 

@@ -90,6 +90,36 @@ test("a sword goes in the weapon slot and says what it does", () => {
   });
 });
 
+test("the bows are the first weapons without a blade, and mirror the sword ladder's hit bonuses (#228)", () => {
+  expect(GEAR.get("birchBow")?.hitBonus).toBe(100);
+  expect(GEAR.get("oakBow")?.hitBonus).toBe(200);
+  expect(GEAR.get("charwoodBow")?.hitBonus).toBe(300);
+  expect(GEAR.get("birchBow")).toMatchObject({
+    slot: "weapon",
+    does: "Adds 100 to your minimum and maximum hit",
+  });
+  // The gate is Combat for now, at the levels their woods' gates sit at: Phase 8 re-gates on Ranged and tunes.
+  expect(gearRefusal("birchBow", combat(0))).toBeUndefined();
+  expect(gearRefusal("oakBow", combat(4049))).toBe(
+    "You need Combat 10 to equip this.",
+  );
+  expect(gearRefusal("oakBow", combat(4050))).toBeUndefined();
+  expect(gearRefusal("charwoodBow", combat(18049))).toBe(
+    "You need Combat 20 to equip this.",
+  );
+  expect(gearRefusal("charwoodBow", combat(18050))).toBeUndefined();
+});
+
+test("a bow's Virtue sizes like the metal tier its Combat gate matches (#228)", () => {
+  expect(virtueOf({ weapon: "birchBow:uncommon:fortitude" }, "fortitude")).toBe(
+    20,
+  );
+  expect(virtueOf({ weapon: "oakBow:uncommon:might" }, "might")).toBe(9);
+  expect(virtueOf({ weapon: "charwoodBow:rare:avoidance" }, "avoidance")).toBe(
+    10,
+  );
+});
+
 test("armour takes 2/4/2% up to 6/12/6% by tier, for 8%, 12%, 16%, 20% and 24% a set", () => {
   const set = (tier: string) => ({
     head: `${tier}Helmet`,

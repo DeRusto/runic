@@ -6,6 +6,7 @@ import {
   capesIn,
   cookedItem,
   countOf,
+  heldOf,
   levelRefusal,
   madeItem,
   makeRefusal,
@@ -22,16 +23,18 @@ const holding = (
   miningXp = 0,
   cookingXp = 0,
   craftingXp = 0,
+  fletchingXp = 0,
 ) => ({
   smithingXp,
   miningXp,
   cookingXp,
   craftingXp,
+  fletchingXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are the rebalance spec §3's Making table, and #221's range and #225's workbench after it", () => {
+test("the recipes are the rebalance spec §3's Making table, and #221's range, #225's Crafting and #228's Fletching at the workbench after it", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -303,6 +306,101 @@ test("the recipes are the rebalance spec §3's Making table, and #221's range an
       ticks: 12,
       xp: { smithingXp: 108 },
     },
+    copperArrowhead: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 1,
+      costs: { copperBar: 1 },
+      ticks: 6,
+      yield: 10,
+      xp: { smithingXp: 6 },
+    },
+    bronzeArrowhead: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 1 },
+      ticks: 6,
+      yield: 10,
+      xp: { smithingXp: 6 },
+    },
+    ironArrowhead: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 10,
+      costs: { ironBar: 1 },
+      ticks: 6,
+      yield: 10,
+      xp: { smithingXp: 6 },
+    },
+    steelArrowhead: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 1 },
+      ticks: 6,
+      yield: 10,
+      xp: { smithingXp: 6 },
+    },
+    emberiteArrowhead: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 20,
+      costs: { emberiteBar: 1 },
+      ticks: 6,
+      yield: 10,
+      xp: { smithingXp: 6 },
+    },
+    copperThrowingKnife: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 1,
+      costs: { copperBar: 1 },
+      ticks: 6,
+      xp: { smithingXp: 6 },
+    },
+    bronzeThrowingKnife: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 5,
+      costs: { bronzeBar: 1 },
+      ticks: 6,
+      xp: { smithingXp: 12 },
+    },
+    ironThrowingKnife: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 10,
+      costs: { ironBar: 1 },
+      ticks: 6,
+      xp: { smithingXp: 18 },
+    },
+    steelThrowingKnife: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 15,
+      costs: { steelBar: 1 },
+      ticks: 6,
+      xp: { smithingXp: 27 },
+    },
+    emberiteThrowingKnife: {
+      station: "anvil",
+      skill: "Smithing",
+      xpField: "smithingXp",
+      level: 20,
+      costs: { emberiteBar: 1, emberbone: 1 },
+      ticks: 6,
+      xp: { smithingXp: 36 },
+    },
     cookedPerch: {
       station: "range",
       skill: "Cooking",
@@ -410,6 +508,93 @@ test("the recipes are the rebalance spec §3's Making table, and #221's range an
       costs: { cinderglass: 1 },
       ticks: 6,
       xp: { craftingXp: 20 },
+    },
+    arrowShaft: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { log: 1 },
+      ticks: 6,
+      yield: 10,
+      xp: { fletchingXp: 2 },
+    },
+    copperArrow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { arrowShaft: 10, copperArrowhead: 10, feather: 10 },
+      ticks: 6,
+      yield: 10,
+      xp: { fletchingXp: 8 },
+    },
+    bronzeArrow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { arrowShaft: 10, bronzeArrowhead: 10, feather: 10 },
+      ticks: 6,
+      yield: 10,
+      xp: { fletchingXp: 8 },
+    },
+    ironArrow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { arrowShaft: 10, ironArrowhead: 10, feather: 10 },
+      ticks: 6,
+      yield: 10,
+      xp: { fletchingXp: 8 },
+    },
+    steelArrow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { arrowShaft: 10, steelArrowhead: 10, feather: 10 },
+      ticks: 6,
+      yield: 10,
+      xp: { fletchingXp: 8 },
+    },
+    emberiteArrow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { arrowShaft: 10, emberiteArrowhead: 10, feather: 10 },
+      ticks: 6,
+      yield: 10,
+      xp: { fletchingXp: 8 },
+    },
+    birchBow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 1,
+      costs: { birchLog: 1, rope: 1 },
+      ticks: 6,
+      xp: { fletchingXp: 20 },
+    },
+    oakBow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 10,
+      costs: { oakLog: 1, rope: 1 },
+      ticks: 6,
+      xp: { fletchingXp: 50 },
+    },
+    charwoodBow: {
+      station: "workbench",
+      skill: "Fletching",
+      xpField: "fletchingXp",
+      level: 20,
+      costs: { charwoodLog: 1, rope: 1 },
+      ticks: 6,
+      xp: { fletchingXp: 90 },
     },
   });
 });
@@ -647,6 +832,193 @@ describe("crafting at the workbench (#225)", () => {
 
   test("the workbench needs no tool, like the furnace and range", () => {
     expect(stationRefusal("workbench", { tools: [] })).toBeUndefined();
+  });
+});
+
+describe("smithing arrowheads and throwing knives (#228)", () => {
+  test("a tier's arrowheads come from one bar, ten to the batch, gated at the bar's tier", () => {
+    expect(
+      makeRefusal("copperArrowhead", holding([["copperBar", 1]])),
+    ).toBeUndefined();
+    expect(
+      makeRefusal("ironArrowhead", holding([["ironBar", 1]], xpForLevel(9))),
+    ).toBe("Needs Smithing 10");
+    expect(
+      makeRefusal("steelArrowhead", holding([["steelBar", 1]], xpForLevel(14))),
+    ).toBe("Needs Smithing 15");
+    expect(
+      makeRefusal("emberiteArrowhead", holding([["emberiteBar", 1]])),
+    ).toBe("Needs Smithing 20");
+    expect(
+      makeRefusal(
+        "emberiteArrowhead",
+        holding([["emberiteBar", 1]], xpForLevel(20)),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("a throwing knife costs one bar, and an Emberbone too at Emberite, mirroring the gear", () => {
+    expect(
+      makeRefusal("copperThrowingKnife", holding([["copperBar", 1]])),
+    ).toBeUndefined();
+    expect(
+      makeRefusal(
+        "emberiteThrowingKnife",
+        holding([["emberiteBar", 1]], xpForLevel(20)),
+      ),
+    ).toBe("Not enough materials");
+    expect(
+      makeRefusal(
+        "emberiteThrowingKnife",
+        holding(
+          [
+            ["emberiteBar", 1],
+            ["emberbone", 1],
+          ],
+          xpForLevel(20),
+        ),
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("fletching at the workbench (#228)", () => {
+  test("shafts come from any tier's log, ten to the batch, at Fletching 1", () => {
+    expect(
+      makeRefusal("arrowShaft", holding([["birchLog", 1]])),
+    ).toBeUndefined();
+    expect(makeRefusal("arrowShaft", holding([["oakLog", 1]]))).toBeUndefined();
+    expect(
+      makeRefusal("arrowShaft", holding([["charwoodLog", 1]])),
+    ).toBeUndefined();
+    expect(makeRefusal("arrowShaft", holding([["rope", 5]]))).toBe(
+      "Not enough materials",
+    );
+    // Any log counts, so held amounts add up across the tiers.
+    expect(
+      heldOf(
+        "log",
+        holding([
+          ["birchLog", 20],
+          ["oakLog", 3],
+        ]),
+      ),
+    ).toBe(23);
+  });
+
+  test("an arrow costs ten shafts, ten heads of its own tier and ten feathers, at Fletching 1", () => {
+    expect(
+      makeRefusal(
+        "copperArrow",
+        holding([
+          ["arrowShaft", 10],
+          ["copperArrowhead", 10],
+          ["feather", 10],
+        ]),
+      ),
+    ).toBeUndefined();
+    // The head's tier is the arrow's, so a copper head doesn't fit an iron arrow.
+    expect(
+      makeRefusal(
+        "ironArrow",
+        holding([
+          ["arrowShaft", 10],
+          ["copperArrowhead", 10],
+          ["feather", 10],
+        ]),
+      ),
+    ).toBe("Not enough materials");
+    expect(
+      makeRefusal(
+        "emberiteArrow",
+        holding([
+          ["arrowShaft", 10],
+          ["emberiteArrowhead", 10],
+        ]),
+      ),
+    ).toBe("Not enough materials");
+  });
+
+  test("bows cost their own wood and a rope, gated on Fletching at 1, 10 and 20", () => {
+    expect(
+      makeRefusal(
+        "birchBow",
+        holding([
+          ["birchLog", 1],
+          ["rope", 1],
+        ]),
+      ),
+    ).toBeUndefined();
+    expect(
+      makeRefusal(
+        "oakBow",
+        holding(
+          [
+            ["oakLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          0,
+          xpForLevel(9),
+        ),
+      ),
+    ).toBe("Needs Fletching 10");
+    expect(
+      makeRefusal(
+        "charwoodBow",
+        holding(
+          [
+            ["charwoodLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          0,
+          xpForLevel(19),
+        ),
+      ),
+    ).toBe("Needs Fletching 20");
+    expect(
+      makeRefusal(
+        "charwoodBow",
+        holding(
+          [
+            ["charwoodLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          0,
+          xpForLevel(20),
+        ),
+      ),
+    ).toBeUndefined();
+    // The oak's rope isn't enough for the charwood bow.
+    expect(
+      makeRefusal(
+        "charwoodBow",
+        holding(
+          [
+            ["oakLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          0,
+          xpForLevel(20),
+        ),
+      ),
+    ).toBe("Not enough materials");
+  });
+
+  test("a shaft's materials read as one log of any tier", () => {
+    expect(materialLines("arrowShaft")).toEqual([["log", 1]]);
+    expect(xpLines("arrowShaft")).toEqual([["fletchingXp", 2]]);
   });
 });
 

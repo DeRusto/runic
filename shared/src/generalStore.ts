@@ -59,6 +59,25 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   emberiteMightCape: 90,
   emberiteFortitudeCape: 90,
   emberiteAvoidanceCape: 90,
+  // Fletching's stock (#228), hand-set because a make gives a batch of ten. A feather is the store's to sell, like the vial, and arrows outprice their shaft, head and feather.
+  arrowShaft: 2,
+  feather: 3,
+  copperArrowhead: 2,
+  bronzeArrowhead: 3,
+  ironArrowhead: 4,
+  steelArrowhead: 6,
+  emberiteArrowhead: 10,
+  copperArrow: 12,
+  bronzeArrow: 16,
+  ironArrow: 20,
+  steelArrow: 26,
+  emberiteArrow: 40,
+  // A throwing knife is a small weapon from one bar, plus an Emberbone at Emberite.
+  copperThrowingKnife: 6,
+  bronzeThrowingKnife: 12,
+  ironThrowingKnife: 16,
+  steelThrowingKnife: 24,
+  emberiteThrowingKnife: 60,
 };
 
 /** How many times its common version's value an item of each Quality is worth (village spec §5). Delicious food is as rare as a rare piece, and worth the same multiple (#221). */
@@ -113,6 +132,8 @@ export const STARTING_STOCK: Partial<Record<ItemId, number>> = {
   coal: 5,
   /** From day one, so a new Herblaw can get mixing (#222). */
   vial: 20,
+  /** From day one, so a new Fletching can get arrows (#228); a mob drop is Phase 8's. */
+  feather: 20,
 };
 /** One of each item below its starting stock comes back this often: 30 s (village spec §5). */
 export const RESTOCK_TICKS = 100;

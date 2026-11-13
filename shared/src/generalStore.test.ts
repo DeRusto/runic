@@ -29,6 +29,31 @@ describe("value", () => {
     expect(valueOf("vial")).toBe(3); // The store's value stays the low-level one.
   });
 
+  test("Fletching's stock is hand-set, because a make gives a batch of ten (#228)", () => {
+    expect(valueOf("arrowShaft")).toBe(2);
+    expect(valueOf("feather")).toBe(3); // The store's to sell, like the vial.
+    expect(valueOf("copperArrowhead")).toBe(2);
+    expect(valueOf("emberiteArrowhead")).toBe(10);
+    // An arrow outprices its shaft, head and feather.
+    expect(valueOf("copperArrow")).toBe(12);
+    expect(valueOf("bronzeArrow")).toBe(16);
+    expect(valueOf("ironArrow")).toBe(20);
+    expect(valueOf("steelArrow")).toBe(26);
+    expect(valueOf("emberiteArrow")).toBe(40);
+    // A bow is worth its wood and the rope, like the utilities.
+    expect(valueOf("birchBow")).toBe(23);
+    expect(valueOf("oakBow")).toBe(26);
+    expect(valueOf("charwoodBow")).toBe(32);
+  });
+
+  test("a throwing knife is worth two bars, the Emberbone's cost included at Emberite (#228)", () => {
+    expect(valueOf("copperThrowingKnife")).toBe(6);
+    expect(valueOf("bronzeThrowingKnife")).toBe(12);
+    expect(valueOf("ironThrowingKnife")).toBe(16);
+    expect(valueOf("steelThrowingKnife")).toBe(24);
+    expect(valueOf("emberiteThrowingKnife")).toBe(60);
+  });
+
   test("a cape has a hand-set value by tier, and a gossamer cloak is its cape plus the silk (#217)", () => {
     expect(valueOf("copperMightCape")).toBe(20);
     expect(valueOf("emberiteFortitudeCape")).toBe(90);

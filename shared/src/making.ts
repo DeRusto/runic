@@ -6,16 +6,20 @@ import { levelFor, type XpField } from "./skills.ts";
 
 type Recipe = {
   station: StationKind;
-  /** The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing, the range's Cooking and the workbench's Crafting (#225). */
-  skill: "Mining" | "Smithing" | "Cooking" | "Crafting";
+  /** The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing, the range's Cooking, and the workbench's Crafting and Fletching (#225, #228). */
+  skill: "Mining" | "Smithing" | "Cooking" | "Crafting" | "Fletching";
   /** That skill's synced experience field. */
-  xpField: "miningXp" | "smithingXp" | "cookingXp" | "craftingXp";
+  xpField:
+    "miningXp" | "smithingXp" | "cookingXp" | "craftingXp" | "fletchingXp";
   /** That skill's level needed. */
   level: number;
-  costs: Partial<Record<ItemId, number>>;
+  /** A cost may be a stand-in: `log` is any tier's log (#228). */
+  costs: Partial<Record<ItemId | typeof LOG, number>>;
   ticks: number;
   /** What finishing one grants, in each skill. */
   xp: Partial<Record<XpField, number>>;
+  /** How many of the product one make gives, for #228's batches; 1 for the rest. */
+  yield?: number;
 };
 
 /** Spec §5, as revised by the rebalance spec §3 Making. The order here is the order of the Smithing panel's rows. */
@@ -290,6 +294,102 @@ export const RECIPES = {
     ticks: 12,
     xp: { smithingXp: 108 },
   },
+  /** #228's anvil pieces: arrowheads for Fletching's arrows, and throwing knives for Phase 8's combat. A tier's batch of arrowheads costs one bar and pays 6, and a knife one bar, plus an Emberbone at Emberite like the gear. */
+  copperArrowhead: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 1,
+    costs: { copperBar: 1 },
+    ticks: 6,
+    yield: 10,
+    xp: { smithingXp: 6 },
+  },
+  bronzeArrowhead: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 5,
+    costs: { bronzeBar: 1 },
+    ticks: 6,
+    yield: 10,
+    xp: { smithingXp: 6 },
+  },
+  ironArrowhead: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 10,
+    costs: { ironBar: 1 },
+    ticks: 6,
+    yield: 10,
+    xp: { smithingXp: 6 },
+  },
+  steelArrowhead: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 15,
+    costs: { steelBar: 1 },
+    ticks: 6,
+    yield: 10,
+    xp: { smithingXp: 6 },
+  },
+  emberiteArrowhead: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 20,
+    costs: { emberiteBar: 1 },
+    ticks: 6,
+    yield: 10,
+    xp: { smithingXp: 6 },
+  },
+  copperThrowingKnife: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 1,
+    costs: { copperBar: 1 },
+    ticks: 6,
+    xp: { smithingXp: 6 },
+  },
+  bronzeThrowingKnife: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 5,
+    costs: { bronzeBar: 1 },
+    ticks: 6,
+    xp: { smithingXp: 12 },
+  },
+  ironThrowingKnife: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 10,
+    costs: { ironBar: 1 },
+    ticks: 6,
+    xp: { smithingXp: 18 },
+  },
+  steelThrowingKnife: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 15,
+    costs: { steelBar: 1 },
+    ticks: 6,
+    xp: { smithingXp: 27 },
+  },
+  emberiteThrowingKnife: {
+    station: "anvil",
+    skill: "Smithing",
+    xpField: "smithingXp",
+    level: 20,
+    costs: { emberiteBar: 1, emberbone: 1 },
+    ticks: 6,
+    xp: { smithingXp: 36 },
+  },
   /** #221's range: one raw fish each, and the same fish again with a berry or a herb (spec #219's shape). Each pays Cooking, and all take as long as a bar. A fire cooks these too, adding its log's burn points (#224). */
   cookedPerch: {
     station: "range",
@@ -400,6 +500,94 @@ export const RECIPES = {
     ticks: 6,
     xp: { craftingXp: 20 },
   },
+  /** #228's workbench: Fletching's stock. A shaft comes from any tier's log, an arrow from ten of each part, and a bow from its own wood and a rope. */
+  arrowShaft: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { log: 1 },
+    ticks: 6,
+    yield: 10,
+    xp: { fletchingXp: 2 },
+  },
+  copperArrow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { arrowShaft: 10, copperArrowhead: 10, feather: 10 },
+    ticks: 6,
+    yield: 10,
+    xp: { fletchingXp: 8 },
+  },
+  bronzeArrow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { arrowShaft: 10, bronzeArrowhead: 10, feather: 10 },
+    ticks: 6,
+    yield: 10,
+    xp: { fletchingXp: 8 },
+  },
+  ironArrow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { arrowShaft: 10, ironArrowhead: 10, feather: 10 },
+    ticks: 6,
+    yield: 10,
+    xp: { fletchingXp: 8 },
+  },
+  steelArrow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { arrowShaft: 10, steelArrowhead: 10, feather: 10 },
+    ticks: 6,
+    yield: 10,
+    xp: { fletchingXp: 8 },
+  },
+  emberiteArrow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { arrowShaft: 10, emberiteArrowhead: 10, feather: 10 },
+    ticks: 6,
+    yield: 10,
+    xp: { fletchingXp: 8 },
+  },
+  birchBow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 1,
+    costs: { birchLog: 1, rope: 1 },
+    ticks: 6,
+    xp: { fletchingXp: 20 },
+  },
+  oakBow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 10,
+    costs: { oakLog: 1, rope: 1 },
+    ticks: 6,
+    xp: { fletchingXp: 50 },
+  },
+  charwoodBow: {
+    station: "workbench",
+    skill: "Fletching",
+    xpField: "fletchingXp",
+    level: 20,
+    costs: { charwoodLog: 1, rope: 1 },
+    ticks: 6,
+    xp: { fletchingXp: 90 },
+  },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
 
@@ -426,6 +614,10 @@ export type MakeItem = RecipeItem | AugmentationKind;
 
 /** The stand-in material id for an augmentation's cape, which any cape counts as (#217). */
 export const CAPE = "cape";
+/** The stand-in material id for a shaft's log, which any tier's log counts as (#228). */
+export const LOG = "log";
+/** The logs a `log` cost stands for, cheapest first (#228). */
+export const LOGS = ["birchLog", "oakLog", "charwoodLog"] as const;
 
 /**
  * The recipe this make names, or undefined if it names an augmentation. The hasOwn check is
@@ -459,9 +651,13 @@ export function capeIn(player: HasInventory) {
 export const capesIn = (player: HasInventory) =>
   [...player.inventory].filter(isCape).length;
 
-/** How many of a make's material the player holds: a stack's count, or, for the cape material, how many capes (#225). */
+/** How many of a make's material the player holds: a stack's count, or, for the cape and log stand-ins, how many of the kind (#225, #228). */
 export const heldOf = (material: string, player: HasInventory) =>
-  material === CAPE ? capesIn(player) : countOf(material, player);
+  material === CAPE
+    ? capesIn(player)
+    : material === LOG
+      ? LOGS.reduce((total, log) => total + countOf(log, player), 0)
+      : countOf(material, player);
 
 /**
  * A make's materials as [id, count] pairs, as a recipe's costs give them: an augmentation's
@@ -546,7 +742,7 @@ export const burnPercent = (item: RecipeItem, level: number) =>
   );
 
 export const costsOf = (item: RecipeItem) =>
-  Object.entries(RECIPES[item].costs) as [ItemId, number][];
+  Object.entries(RECIPES[item].costs) as [ItemId | typeof LOG, number][];
 
 export const xpOf = (item: RecipeItem) =>
   Object.entries(RECIPES[item].xp) as [XpField, number][];
@@ -586,12 +782,14 @@ export function makeRefusal(
       return "Not enough materials";
     return undefined;
   }
-  if (
-    materialLines(item).some(([cost, count]) => countOf(cost, player) < count)
-  )
+  if (materialLines(item).some(([cost, count]) => heldOf(cost, player) < count))
     return "Not enough materials";
   return undefined;
 }
+
+/** How many of a recipe's product one make gives: 1 for everything but #228's batches. */
+export const yieldOf = (item: RecipeItem) =>
+  (RECIPES[item] as { yield?: number }).yield ?? 1;
 
 /** Why a click on this station is refused, or undefined if it isn't. The client shows it, and the server ignores the pick. */
 export function stationRefusal(
