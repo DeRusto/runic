@@ -610,6 +610,23 @@ describe("cooking at the range (#221)", () => {
     });
   });
 
+  test("a Delicious fish starts its own stack beside plain ones, leaving them plain", () => {
+    const random = vi.fn().mockReturnValueOnce(0.5).mockReturnValue(0);
+    cook(
+      [
+        ["perch", 1],
+        ["cookedPerch", 2],
+      ],
+      { random },
+    );
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([
+      ["cookedPerch:delicious", 1],
+      ["cookedPerch", 2],
+    ]);
+  });
+
   test("a dish costs its fish and its berry, and burns both", () => {
     const cooking5 = xpForLevel(5);
     cook(

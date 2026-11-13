@@ -492,9 +492,12 @@ export class Simulation {
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
     const fields = syncedOf(this.loginSave(saved));
+    const maxHealth = maxHealthTotal(fields);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: maxHealthTotal(fields),
+      maxHealth,
+      // Health saved under a Fortitude potion can be above the maximum it logs back in to.
+      health: Math.min(fields.health, maxHealth),
     });
     this.state.players.set(id, player);
     this.unsyncedPlayers.set(id, {
@@ -1224,6 +1227,8 @@ export class Simulation {
         else {
           // The log is consumed at once, so a new click during the lighting loses it (#224).
           removeItems(player.inventory, player.inventoryCounts, log, 1);
+          // Or a walk in progress would carry them off the tile the fire was checked for.
+          unsynced.path = [];
           unsynced.action = {
             kind: "lighting",
             log: log as FireLog,
@@ -1540,8 +1545,12 @@ export class Simulation {
     const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
     const made = roll();
-    inventory[slot] = made;
-    inventoryCounts[slot]!++;
+    // A Delicious fish can't join a stack of plain ones, so it needs room of its own.
+    const madeSlot =
+      made === item ? slot : slotFor(made, { inventory, inventoryCounts });
+    if (madeSlot < 0) return told("Your inventory is full.");
+    inventory[madeSlot] = made;
+    inventoryCounts[madeSlot]!++;
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
       player.inventoryCounts[i] = inventoryCounts[i]!;
