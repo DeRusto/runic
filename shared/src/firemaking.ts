@@ -1,4 +1,12 @@
-import { groundBlocks, type GroundKind, type PropKind } from "./region.ts";
+import { siteId } from "./gathering.ts";
+import type { EnemyState } from "./enemies.ts";
+import {
+  groundBlocks,
+  type GroundKind,
+  type PropKind,
+  type Tile,
+  type TileKind,
+} from "./region.ts";
 import { levelFor } from "./skills.ts";
 import { toolRefusal } from "./tools.ts";
 
@@ -22,6 +30,27 @@ export type LightTile = {
   /** Whether an enemy is standing on the tile. */
   enemy: boolean;
 };
+
+/** What `tile` is like for lighting a fire, from the map, the burning fires and the enemies, the same on client and server (#224). A dead enemy isn't there. */
+export function lightTileAt(
+  tile: Tile,
+  world: {
+    tiles: readonly (readonly TileKind[])[];
+    fires: { has(id: string): boolean };
+    enemies: Iterable<Tile & { state: EnemyState }>;
+  },
+): LightTile {
+  const { ground, prop } = world.tiles[tile.y]![tile.x]!;
+  return {
+    fire: world.fires.has(siteId(tile)),
+    ground,
+    prop,
+    enemy: [...world.enemies].some(
+      (enemy) =>
+        enemy.state !== "dead" && enemy.x === tile.x && enemy.y === tile.y,
+    ),
+  };
+}
 
 /**
  * Why a fire can't be lit from `log` on the player's own tile, or undefined if it can. The

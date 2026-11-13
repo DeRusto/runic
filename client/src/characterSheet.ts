@@ -18,8 +18,9 @@ import {
   totalLevel,
   type GearSlot,
   virtueDoes,
+  itemName,
 } from "@runic/shared";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { iconUrl } from "./itemIcons.ts";
 import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";

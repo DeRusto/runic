@@ -9,10 +9,11 @@ import {
   EVENTS,
   WITHDRAW_INTENT,
   type WorldEvent,
+  itemName,
 } from "@runic/shared";
 import { shortCount, takeOverSlots } from "./bottomBar.ts";
 import type { OpenMenu, SyncedPlayer } from "./characterSheet.ts";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { iconUrl } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { amountChoices, dragToReorder } from "./movingItems.ts";
 import { addPanel } from "./panels.ts";

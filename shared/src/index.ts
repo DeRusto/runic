@@ -199,7 +199,13 @@ export type WorldEvent =
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
-  | { type: "told"; player: string; line: string }
+  | {
+      type: "told";
+      player: string;
+      line: string;
+      /** The items the line names, in order, each written as its `itemTag` for the client to style. */
+      items?: string[];
+    }
   /** A conversation opened or moved on: the client shows `node`'s lines, then the choices that follow them. */
   | { type: "talk"; player: string; villager: VillagerId; node: string }
   /** The server ended a conversation the client may still be showing, on a walk away or a hit. */

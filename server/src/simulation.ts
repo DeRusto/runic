@@ -108,6 +108,8 @@ import {
   type WorldEvent,
   type XpField,
   enemyHit,
+  itemTag,
+  lightTileAt,
   playerHit,
   type LootWon,
 } from "@runic/shared";
@@ -994,15 +996,11 @@ export class Simulation {
     { item, count }: QuestTurnIn,
   ) {
     if (countOf(item, player) < count) {
-      // "copperOre" reads as "copper ore", like an item's name does.
-      const name = item.replace(
-        /[A-Z]/g,
-        (letter) => ` ${letter.toLowerCase()}`,
-      );
       this.events.push({
         type: "told",
         player: id,
-        line: `You have no ${name} to hand over.`,
+        line: `You have no ${itemTag(item)} to hand over.`,
+        items: [item],
       });
       return false;
     }
@@ -1590,7 +1588,7 @@ export class Simulation {
     for (const [field, gained] of outcome.xp)
       this.earnXp(player, field, gained);
     if (outcome.told)
-      this.events.push({ type: "told", player: id, line: outcome.told });
+      this.events.push({ type: "told", player: id, ...outcome.told });
     if (outcome.made)
       this.events.push({ type: "made", player: id, item: outcome.made });
     return true;
@@ -1600,16 +1598,12 @@ export class Simulation {
    * What the player's tile is like for lighting a fire on it (#224). The tile kind gives the
    * ground and any prop; a fire of their own and an enemy standing there come from state.
    */
-  private lightTileAt({ x, y }: Tile) {
-    const kind = this.tiles[y]![x]!;
-    return {
-      fire: this.state.fires.has(siteId({ x, y })),
-      ground: kind.ground,
-      prop: kind.prop,
-      enemy: [...this.state.enemies.values()].some(
-        (enemy) => enemy.state !== "dead" && enemy.x === x && enemy.y === y,
-      ),
-    };
+  private lightTileAt(tile: Tile) {
+    return lightTileAt(tile, {
+      tiles: this.tiles,
+      fires: this.state.fires,
+      enemies: this.state.enemies.values(),
+    });
   }
 
   /** A fire of `log`'s tier on the player's own tile, and a station of kind "fire" while it burns (#224). */
@@ -1806,18 +1800,14 @@ export class Simulation {
   private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
     const { username } = this.state.players.get(id)!;
     this.groundItems.spawn(at, item, count, username, this.state.tick);
-    // "tarnHide" reads as "Tarn hide", like an item's name does.
-    const words = item.replace(
-      /[A-Z]/g,
-      (letter) => ` ${letter.toLowerCase()}`,
-    );
-    const name = words.charAt(0).toUpperCase() + words.slice(1);
+    // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
     const amount =
-      count > 1 ? String(count) : /^[aeiou]/i.test(name) ? "an" : "a";
+      count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
     this.events.push({
       type: "told",
       player: id,
-      line: `You find ${amount} [${name}]. It is on the ground.`,
+      line: `You find ${amount} ${itemTag(item)}. It is on the ground.`,
+      items: [item],
     });
   }
 

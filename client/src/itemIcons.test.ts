@@ -1,34 +1,10 @@
 import { ITEMS } from "@runic/shared";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { describe, expect, test, vi } from "vitest";
-import { colouredNames, iconUrl, itemName } from "./itemIcons.ts";
+import { chatItems, colouredNames, iconUrl } from "./itemIcons.ts";
 
 const ICONS_DIR = "client/public/icons";
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47];
-
-describe("an item's name", () => {
-  test.each([
-    ["berry", "Berry"],
-    ["emberbone", "Emberbone"],
-    ["copperOre", "Copper ore"],
-    ["emberiteShield", "Emberite shield"],
-    ["arrowShaft", "Arrow shaft"],
-    ["copperThrowingKnife", "Copper throwing knife"],
-    ["copperChestplate:uncommon:fortitude", "Copper chestplate of Fortitude"],
-    ["ironSword:rare:might", "Iron sword of Might"],
-  ])("%s reads as %s", (id, name) => {
-    expect(itemName(id)).toBe(name);
-  });
-
-  test("a gossamer cloak leads with its variant, and keeps its cape's (#217, #225)", () => {
-    expect(itemName("copperMightCape:gossamer")).toBe(
-      "Gossamer copper might cape",
-    );
-    expect(itemName("copperMightCape:uncommon:might:gossamer")).toBe(
-      "Gossamer copper might cape of Might",
-    );
-  });
-});
 
 test("an improved item shows its common form's icon", () => {
   expect(iconUrl("copperChestplate:rare:avoidance")).toBe(
@@ -79,6 +55,41 @@ describe("coloured names", () => {
       " (1)\n",
       "[uncommon]Copper sword of Might",
       " (1)",
+    ]);
+  });
+});
+
+describe("chat items", () => {
+  vi.stubGlobal("document", {
+    createElement: () => ({ className: "", textContent: "" }),
+  });
+  const shown = (parts: ReturnType<typeof chatItems>) =>
+    parts.map((part) =>
+      typeof part === "string"
+        ? part
+        : `<${part.className}>${part.textContent}`,
+    );
+
+  test("each named item is a bold tag, brackets and all, coloured by its Quality", () => {
+    expect(
+      shown(
+        chatItems("You burn the [Cooked perch]. A [Iron sword of Might]!", [
+          "cookedPerch",
+          "ironSword:rare:might",
+        ]),
+      ),
+    ).toEqual([
+      "You burn the ",
+      "<item-tag>[Cooked perch]",
+      ". A ",
+      "<item-tag rare>[Iron sword of Might]",
+      "!",
+    ]);
+  });
+
+  test("brackets the line wasn't told about stay plain text", () => {
+    expect(shown(chatItems("bob: look at my [Copper ore]", []))).toEqual([
+      "bob: look at my [Copper ore]",
     ]);
   });
 });

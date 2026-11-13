@@ -645,7 +645,7 @@ describe("cooking at the range (#221)", () => {
     run(7);
     expect(items()).toEqual([]);
     expect(sim.state.players.get("a")!.cookingXp).toBe(0);
-    expect(lines()).toEqual(["You burn the cooked perch."]);
+    expect(lines()).toEqual(["You burn the [Cooked perch]."]);
   });
 
   test("Make all cooks on through a burn, until the fish run out", () => {
@@ -654,8 +654,8 @@ describe("cooking at the range (#221)", () => {
     run(20);
     expect(items()).toEqual([]);
     expect(lines()).toEqual([
-      "You burn the cooked perch.",
-      "You burn the cooked perch.",
+      "You burn the [Cooked perch].",
+      "You burn the [Cooked perch].",
       "Not enough materials",
     ]);
   });
@@ -703,7 +703,7 @@ describe("cooking at the range (#221)", () => {
     sim.queueMake("a", { item: "berryPerch", all: false });
     run(7);
     expect(items()).toEqual([]);
-    expect(lines()).toEqual(["You burn the berry perch."]);
+    expect(lines()).toEqual(["You burn the [Berry perch]."]);
     cook(
       [
         ["perch", 1],

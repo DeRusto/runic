@@ -1,4 +1,4 @@
-import { itemName } from "./itemIcons.ts";
+import { itemName } from "@runic/shared";
 
 /** What the client reads of one synced ground item. */
 export type SeenGroundItem = { item: string; count: number; owner: string };

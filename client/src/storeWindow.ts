@@ -12,10 +12,11 @@ import {
   valueOf,
   type Deal,
   type WorldEvent,
+  itemName,
 } from "@runic/shared";
 import { takeOverSlots } from "./bottomBar.ts";
 import type { OpenMenu } from "./characterSheet.ts";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { iconUrl } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { amountChoices } from "./movingItems.ts";
 import { addPanel } from "./panels.ts";

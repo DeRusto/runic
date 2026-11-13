@@ -26,8 +26,8 @@ import {
   xpLines,
   type MakeItem,
   type PotionId,
+  itemName,
 } from "@runic/shared";
-import { itemName } from "./itemIcons.ts";
 
 /** What a Delicious item's tooltip says under its kind (#221). */
 const DELICIOUS_LINE = "Delicious: an extra healing tick for 60 seconds.";

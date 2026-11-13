@@ -16,9 +16,10 @@ import {
   type RecipeItem,
   type StationKind,
   type Tile,
+  itemName,
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { iconUrl } from "./itemIcons.ts";
 import { addPanel } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { stationTile } from "./stations.ts";

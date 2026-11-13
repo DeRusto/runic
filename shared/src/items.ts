@@ -196,6 +196,24 @@ export function itemParts(id: string) {
   return { base: base as ItemId, quality, virtue, variant };
 }
 
+const capitalised = (words: string) =>
+  words.charAt(0).toUpperCase() + words.slice(1);
+
+/** The name a player reads for an item id: `copperOre` is "Copper ore", `copperChestplate:uncommon:fortitude` is "Copper chestplate of Fortitude", and a cloak leads with its variant, as in "Gossamer copper might cape" (#217, #225). */
+export function itemName(id: string) {
+  const { base, virtue, variant } = itemParts(id);
+  const name = capitalised(
+    base.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`),
+  );
+  const named = variant
+    ? `${capitalised(variant)} ${name.charAt(0).toLowerCase()}${name.slice(1)}`
+    : name;
+  return virtue ? `${named} of ${capitalised(virtue)}` : named;
+}
+
+/** An item as the chat names it: its name in square brackets, which the client styles by its Quality. */
+export const itemTag = (id: string) => `[${itemName(id)}]`;
+
 /** The rare finds from Emberite veins, rarest last. Nothing uses them yet (spec §3). */
 export const GEMS = ["ashstone", "cinderglass", "heartflame"];
 

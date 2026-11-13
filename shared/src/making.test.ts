@@ -1554,7 +1554,7 @@ describe("make", () => {
       inventory: ["perch"],
       inventoryCounts: [1],
       xp: [],
-      told: "You burn the cooked perch.",
+      told: { line: "You burn the [Cooked perch].", items: ["cookedPerch"] },
     });
   });
 
@@ -1565,7 +1565,7 @@ describe("make", () => {
       made: "cookedPerch",
     });
     expect(make("cookedPerch", player, rolls(0.1), 20)).toMatchObject({
-      told: "You burn the cooked perch.",
+      told: { line: "You burn the [Cooked perch].", items: ["cookedPerch"] },
     });
   });
 
