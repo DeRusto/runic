@@ -275,6 +275,22 @@ _Avoid_: Handicraft, construction
 The skill trained by making the archer's stock at the workbench: arrow shafts from a log, arrows from shafts, arrowheads and feathers, and bows from a log and a rope (#228). It gates each product and pays its experience.
 _Avoid_: Woodwork, carpentry
 
+**Agility**:
+The skill trained only by crossing obstacles, on a course or a shortcut. It gates each shortcut and raises the chance that a player's landed hits are critical. It does not count toward combat level. Runic has no run energy, and Agility adds none (#234).
+_Avoid_: Running, stamina
+
+**Obstacle**:
+A fixed place a player crosses for Agility experience, such as a log to balance on or a net to climb. Crossing one near its level can fail, which costs a little health but never kills.
+_Avoid_: Hurdle
+
+**Course**:
+A loop of obstacles crossed in order. Each obstacle pays experience, and finishing the loop pays a lap bonus.
+_Avoid_: Track, circuit
+
+**Shortcut**:
+An obstacle that leads somewhere: most open a pocket of the region that can't be reached any other way, and a few cut a long walk short. Each needs an Agility level. Some must first be **rigged** with a rope, which is spent once and keeps that shortcut open for that player for good.
+_Avoid_: Passage, agility route
+
 ### Players
 
 **Account**:
