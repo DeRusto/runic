@@ -13,14 +13,7 @@ import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
 import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
-import {
-  loadBristleback,
-  loadCharacters,
-  loadCinderhorn,
-  loadSkeletons,
-  loadSpiders,
-  loadTarnOx,
-} from "./characters.ts";
+import { loadCharacters, loadEnemies } from "./characters.ts";
 import { walkOnClick } from "./clicks.ts";
 import { showBuffs } from "./delicious.ts";
 import { showDialogueBox } from "./dialogueBox.ts";
@@ -63,22 +56,9 @@ const spots = pools.flatMap(({ skill, kind, spots }) =>
 );
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [
-  newFigure,
-  newSpider,
-  newSkeleton,
-  newTarnOx,
-  newBristleback,
-  newCinderhorn,
-  setSiteLook,
-  villagerUnder,
-] = await Promise.all([
+const [newFigure, newEnemy, setSiteLook, villagerUnder] = await Promise.all([
   loadCharacters(),
-  loadSpiders(),
-  loadSkeletons(),
-  loadTarnOx(),
-  loadBristleback(),
-  loadCinderhorn(),
+  loadEnemies(),
   addRegionMeshes(scene, tiles),
   addVillagers(tiles),
 ])
@@ -110,13 +90,7 @@ function enterWorld(room: WorldConnection) {
   walkOnClick(
     room,
     tiles,
-    showEnemies(room, {
-      spider: newSpider,
-      skeleton: newSkeleton,
-      tarnOx: newTarnOx,
-      bristleback: newBristleback,
-      cinderhorn: newCinderhorn,
-    }),
+    showEnemies(room, newEnemy),
     showGatheringSites(room, tiles, spots, setSiteLook),
     stationUnder,
     showFires(room),

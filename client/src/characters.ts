@@ -9,7 +9,7 @@ import {
   type VillagerId,
 } from "@runic/shared";
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
 import { GLOW_INTENSITY, TIER_LOOKS, type TierLook } from "./tierLooks.ts";
 
@@ -41,7 +41,6 @@ export const SPIDER_GAIT = {
   moveSpeed: 2.9,
   fight: "Spider_Idle",
 };
-const SPIDER_WIDTH = 1.1;
 
 /** The docile creatures' clips, as the Farm Animals pack names them (#238). They never walk: they stand. */
 const CREATURE_GAIT = {
@@ -134,47 +133,63 @@ export function swingFor(weapon: string, id: string, tick: number) {
   return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }
 
+/** How a model is sized: to a height, or by its wide side across the tile. */
+type EnemyFit = { height: number } | { width: number };
+
 /**
- * The clips each kind plays that aren't in its Figure's gait, and which of the Figure's returns
- * it uses. `hit` is played when a blow lands on it, if anything.
+ * How each enemy looks and moves on the client. `file` is its model, sized by `fit`. Its clips
+ * are its own model's, the players' shared packs, or (for a model with none) two empty stand-ins.
+ * `held` is a weapon model put in a hand slot, and `armed` keeps it out in every stance. The
+ * clips it plays that aren't in its gait follow, and `hit` is played when a blow lands, if any.
  */
-export const ENEMY_CLIPS: Record<
-  EnemyKind,
-  {
-    swing: (id: string, tick: number) => { clip: string; contactMs: number };
-    death: string;
-    hit?: string;
-    returns: "reappear" | "respawn";
-  }
-> = {
+type EnemyLook = {
+  file: string;
+  fit: EnemyFit;
+  clips: "own" | "players" | "still";
+  gait?: typeof PLAYER_GAIT;
+  held?: { file: string; slot: string };
+  armed?: true;
+  swing: (id: string, tick: number) => { clip: string; contactMs: number };
+  death: string;
+  hit?: string;
+  returns: "reappear" | "respawn";
+};
+
+/** #238's docile creatures never swing, and a dying one falls into the ground like a Spider does, then grows back. */
+const DOCILE = {
+  clips: "still",
+  gait: CREATURE_GAIT,
+  swing: () => ({ clip: "Idle", contactMs: 0 }),
+  death: "Death",
+  returns: "reappear",
+} as const;
+
+export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
   spider: {
+    file: "Spider.glb",
+    fit: { width: 1.1 },
+    clips: "own",
+    gait: SPIDER_GAIT,
     swing: () => ({ clip: "Spider_Attack", contactMs: 450 }),
     death: "Spider_Death",
     returns: "reappear",
   },
+  // On the players' rig, so it shares their clips (spec D16), with its blade always out.
   skeleton: {
+    file: "Skeleton_Warrior.glb",
+    fit: { height: HEIGHT },
+    clips: "players",
+    held: { file: "Skeleton_Blade.gltf", slot: "handslotr" },
+    armed: true,
     swing: armedSwing,
     death: "Death_A",
     hit: "Hit_A",
     returns: "respawn",
   },
-  // #238's docile creatures never swing, and a dying one falls into the ground like a
-  // Spider does, then grows back.
-  tarnOx: {
-    swing: () => ({ clip: "Idle", contactMs: 0 }),
-    death: "Death",
-    returns: "reappear",
-  },
-  bristleback: {
-    swing: () => ({ clip: "Idle", contactMs: 0 }),
-    death: "Death",
-    returns: "reappear",
-  },
-  cinderhorn: {
-    swing: () => ({ clip: "Idle", contactMs: 0 }),
-    death: "Death",
-    returns: "reappear",
-  },
+  // The Farm Animals Tarn Ox carries its own clips; the two Meshy models have none.
+  tarnOx: { ...DOCILE, file: "TarnOx.glb", fit: { width: 1.5 }, clips: "own" },
+  bristleback: { ...DOCILE, file: "Bristleback.glb", fit: { width: 1.1 } },
+  cinderhorn: { ...DOCILE, file: "Cinderhorn.glb", fit: { width: 1.4 } },
 };
 
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
@@ -519,10 +534,17 @@ const loadGltf = (file: string) =>
 const castShadows = (model: THREE.Object3D) =>
   model.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
 
+/** Fetches a model by its path under /models, file extension and all. */
+export type LoadModel = (path: string) => Promise<GLTF>;
+const fetchModel: LoadModel = (path) =>
+  new GLTFLoader().loadAsync(`/models/${path}`);
+
 let clipsLoaded: Promise<Map<string, THREE.AnimationClip>> | undefined;
 /** The clip packs, loaded once for everyone who shares them. */
-const loadClips = () =>
-  (clipsLoaded ??= Promise.all(CLIP_PACKS.map(load)).then(
+const loadClips = (loadModel: LoadModel = fetchModel) =>
+  (clipsLoaded ??= Promise.all(
+    CLIP_PACKS.map((pack) => loadModel(`${pack}.glb`)),
+  ).then(
     (packs) =>
       new Map(packs.flatMap((pack) => pack.animations).map((c) => [c.name, c])),
   ));
@@ -648,43 +670,6 @@ function withOwnMaterials(model: THREE.Object3D) {
   return model;
 }
 
-/** Loads the Skeleton once. Every Figure it then makes shares the players' clips (spec D16). */
-export async function loadSkeletons() {
-  const [{ scene }, blade, clips] = await Promise.all([
-    load("Skeleton_Warrior"),
-    loadGltf("Skeleton_Blade"),
-    loadClips(),
-  ]);
-  fit(scene, (size) => HEIGHT / size.y);
-  castShadows(blade.scene);
-  scene.getObjectByName("handslotr")!.add(blade.scene);
-  return (tile: Tile) => {
-    const figure = new Figure(
-      tile,
-      withOwnMaterials(cloneSkinned(scene)),
-      clips,
-    );
-    figure.alwaysArmed = true;
-    return figure;
-  };
-}
-
-export function fitSpider(model: THREE.Object3D) {
-  fit(model, (size) => SPIDER_WIDTH / Math.max(size.x, size.z));
-}
-
-/** Fits a ground creature by its wide side across the tile (#238). */
-function fitCreature(model: THREE.Object3D, width: number) {
-  fit(model, (size) => width / Math.max(size.x, size.z));
-}
-
-/** The widths #238's docile creatures are fitted to, wide side across the tile. */
-const CREATURE_WIDTHS = {
-  tarnOx: 1.5,
-  bristleback: 1.1,
-  cinderhorn: 1.4,
-} as const;
-
 /**
  * The two clips a docile creature with no animations of its own still needs: an empty
  * idle stands in the bind pose, and an empty death gives the Figure something to hold
@@ -698,51 +683,47 @@ function stillClips() {
   );
 }
 
-/** Loads the Tarn Ox once, whose Farm Animals model carries its own clips (#238). */
-export async function loadTarnOx() {
-  const { scene, animations } = await load("TarnOx");
-  fitCreature(scene, CREATURE_WIDTHS.tarnOx);
-  const clips = new Map(animations.map((c) => [c.name, c]));
-  return (tile: Tile) =>
-    new Figure(
-      tile,
-      withOwnMaterials(cloneSkinned(scene)),
-      clips,
-      CREATURE_GAIT,
-    );
-}
-
-/** Loads a #238 docile creature once, whose Meshy model has no animations of its own. */
-export async function loadBristleback() {
-  const { scene } = await load("Bristleback");
-  fitCreature(scene, CREATURE_WIDTHS.bristleback);
-  return (tile: Tile) =>
-    new Figure(
-      tile,
-      withOwnMaterials(cloneSkinned(scene)),
-      stillClips(),
-      CREATURE_GAIT,
-    );
-}
-
-/** Loads a #238 docile creature once, whose Meshy model has no animations of its own. */
-export async function loadCinderhorn() {
-  const { scene } = await load("Cinderhorn");
-  fitCreature(scene, CREATURE_WIDTHS.cinderhorn);
-  return (tile: Tile) =>
-    new Figure(
-      tile,
-      withOwnMaterials(cloneSkinned(scene)),
-      stillClips(),
-      CREATURE_GAIT,
-    );
-}
-
-/** Loads the Spider once; every Figure it then makes shares its clips. */
-export async function loadSpiders() {
-  const { scene, animations } = await load("Spider");
-  fitSpider(scene);
-  const clips = new Map(animations.map((c) => [c.name, c]));
-  return (tile: Tile) =>
-    new Figure(tile, withOwnMaterials(cloneSkinned(scene)), clips, SPIDER_GAIT);
+/**
+ * Loads every enemy's model once, each sized by its row, and returns what makes a Figure of each
+ * kind. Every Figure of a kind shares its clips, except stand-ins, which are made per Figure.
+ */
+export async function loadEnemies(loadModel: LoadModel = fetchModel) {
+  const kinds = Object.keys(ENEMY_LOOKS) as EnemyKind[];
+  const made = await Promise.all(
+    kinds.map(async (kind) => {
+      const look = ENEMY_LOOKS[kind];
+      const [{ scene, animations }, held, shared] = await Promise.all([
+        loadModel(look.file),
+        look.held && loadModel(look.held.file),
+        look.clips === "players" ? loadClips(loadModel) : undefined,
+      ]);
+      const { fit: size } = look;
+      fit(scene, (box) =>
+        "height" in size
+          ? size.height / box.y
+          : size.width / Math.max(box.x, box.z),
+      );
+      if (held) {
+        castShadows(held.scene);
+        scene.getObjectByName(look.held!.slot)!.add(held.scene);
+      }
+      const own = new Map(animations.map((c) => [c.name, c]));
+      const clipsFor = () =>
+        look.clips === "still" ? stillClips() : (shared ?? own);
+      return [
+        kind,
+        (tile: Tile) => {
+          const figure = new Figure(
+            tile,
+            withOwnMaterials(cloneSkinned(scene)),
+            clipsFor(),
+            look.gait,
+          );
+          if (look.armed) figure.alwaysArmed = true;
+          return figure;
+        },
+      ] as const;
+    }),
+  );
+  return Object.fromEntries(made) as Record<EnemyKind, (tile: Tile) => Figure>;
 }
