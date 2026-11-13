@@ -53,10 +53,51 @@ export const ITEMS = {
   birchLog: STACKS,
   oakLog: STACKS,
   charwoodLog: STACKS,
-  /** From fishing spots (#210), caught raw: not food until Cooking (Phase 6). */
+  /** The Herblaw potion plants (#222), each from its own bush. The base herb is Cooking material, not a potion plant. */
+  dewpetal: STACKS,
+  nightbloom: STACKS,
+  emberbloom: STACKS,
+  /** Holds one potion while it's mixed (#222). */
+  vial: STACKS,
+  /** The Virtue potions (#222), mixed anywhere from a vial and a plant. */
+  mightPotion: STACKS,
+  fortitudePotion: STACKS,
+  avoidancePotion: STACKS,
+  /** Spiders leave it behind at about a kill in three (#217); Phase 8 owns drop tables. */
+  spiderSilk: STACKS,
+  /** Crafting's utilities (#225), dormant until Agility's shortcuts and dark places want them. */
+  rope: STACKS,
+  torch: STACKS,
+  /** #217's capes, three Virtues to a tier, which Leatherworking will make and Crafting augments. */
+  copperMightCape: SINGLE,
+  copperFortitudeCape: SINGLE,
+  copperAvoidanceCape: SINGLE,
+  bronzeMightCape: SINGLE,
+  bronzeFortitudeCape: SINGLE,
+  bronzeAvoidanceCape: SINGLE,
+  ironMightCape: SINGLE,
+  ironFortitudeCape: SINGLE,
+  ironAvoidanceCape: SINGLE,
+  steelMightCape: SINGLE,
+  steelFortitudeCape: SINGLE,
+  steelAvoidanceCape: SINGLE,
+  emberiteMightCape: SINGLE,
+  emberiteFortitudeCape: SINGLE,
+  emberiteAvoidanceCape: SINGLE,
+  /** From fishing spots (#210), caught raw: a material until the range cooks it into food (#221). */
   perch: STACKS,
   trout: STACKS,
   pike: STACKS,
+  /** From the range (#221), and the fish's dishes with a berry or a herb. */
+  cookedPerch: STACKS,
+  cookedTrout: STACKS,
+  cookedPike: STACKS,
+  berryPerch: STACKS,
+  berryTrout: STACKS,
+  berryPike: STACKS,
+  herbPerch: STACKS,
+  herbTrout: STACKS,
+  herbPike: STACKS,
   /** All of a player's coins share one slot with no cap (village spec §3). */
   coins: { stack: Infinity },
 } as const;
@@ -65,21 +106,35 @@ export type ItemId = keyof typeof ITEMS;
 /** The id of coins, which the general store pays in (village spec §3). */
 export const COINS = "coins";
 
-/** The Qualities an item can be made at, lowest first; common is a plain id (spec §2). */
-export const QUALITIES = ["common", "uncommon", "rare"] as const;
+/** The Qualities an item can be at, lowest first: the three gear is made at, and a food's Delicious. A common item is a plain id (spec §2, ADR 0004). */
+export const QUALITIES = ["common", "uncommon", "rare", "delicious"] as const;
 export type Quality = (typeof QUALITIES)[number];
 /** The Virtues an improved item can carry, as they appear in its id (spec §2). */
 export const VIRTUES = ["fortitude", "might", "avoidance"] as const;
 export type Virtue = (typeof VIRTUES)[number];
+/** The reagent variants an id can carry as a fourth segment, after the Virtue: #217's gossamer cloak (#225). */
+export const VARIANTS = ["gossamer"] as const;
+export type Variant = (typeof VARIANTS)[number];
 
-/** Splits an id held in state or a save into its base id, Quality and Virtue: `copperChestplate:uncommon:fortitude`, or a plain id for a common item (ADR 0004). Every lookup by item id reads `base`. */
+/**
+ * Splits an id held in state or a save into its base id, Quality, Virtue and reagent variant:
+ * `copperChestplate:uncommon:fortitude`, `cookedPerch:delicious`, or a plain id for a common
+ * item (ADR 0004, and #221's food suffix). The segments may come in any order after the base,
+ * and every lookup by item id reads `base`.
+ */
 export function itemParts(id: string) {
-  const [base, quality = "common", virtue] = id.split(":");
-  return {
-    base: base as ItemId,
-    quality: quality as Quality,
-    virtue: virtue as Virtue | undefined,
-  };
+  const [base] = id.split(":");
+  let quality: Quality = "common";
+  let virtue: Virtue | undefined;
+  let variant: Variant | undefined;
+  for (const part of id.split(":").slice(1)) {
+    if ((VARIANTS as readonly string[]).includes(part))
+      variant = part as Variant;
+    else if ((QUALITIES as readonly string[]).includes(part))
+      quality = part as Quality;
+    else virtue = part as Virtue;
+  }
+  return { base: base as ItemId, quality, virtue, variant };
 }
 
 /** The rare finds from Emberite veins, rarest last. Nothing uses them yet (spec §3). */

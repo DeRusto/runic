@@ -1,6 +1,11 @@
 import type { TileKind } from "@runic/shared";
 import { expect, test, vi } from "vitest";
-import { addStations, stationTile } from "./stations.ts";
+import {
+  addFireTile,
+  addStations,
+  removeFireTile,
+  stationTile,
+} from "./stations.ts";
 
 // The real hit boxes join the three.js scene, which needs a browser.
 vi.mock("./hitBoxes.ts", () => ({
@@ -27,4 +32,13 @@ test("a station facing picks its tile nearest the player, the first in row order
   expect(stationTile("furnace", { x: 3, y: 0 })).toEqual({ x: 2, y: 1 });
   expect(stationTile("furnace", { x: 2, y: 0 })).toEqual({ x: 1, y: 1 });
   expect(stationTile("anvil", { x: 0, y: 0 })).toEqual({ x: 5, y: 1 });
+});
+
+test("a fire's tile joins the stations while it burns and leaves with it (#224)", () => {
+  addFireTile({ x: 1, y: 2 });
+  addFireTile({ x: 3, y: 2 });
+  expect(stationTile("fire", { x: 0, y: 2 })).toEqual({ x: 1, y: 2 });
+  expect(stationTile("fire", { x: 4, y: 2 })).toEqual({ x: 3, y: 2 });
+  removeFireTile({ x: 1, y: 2 });
+  expect(stationTile("fire", { x: 0, y: 2 })).toEqual({ x: 3, y: 2 });
 });

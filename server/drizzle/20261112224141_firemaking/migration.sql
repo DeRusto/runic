@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `firemaking_xp` integer DEFAULT 0 NOT NULL;

@@ -49,7 +49,10 @@ const IS = {
   respawn: (tile) => !!tile.respawn,
   thicket: (tile) => tile.ground === "thicket",
   berryBush: (tile) => tile.bush === "berryBush",
+  dewpetalBush: (tile) => tile.bush === "dewpetalBush",
   herbBush: (tile) => tile.bush === "herbBush",
+  nightbloomBush: (tile) => tile.bush === "nightbloomBush",
+  emberbloomBush: (tile) => tile.bush === "emberbloomBush",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
   copper: (tile) => tile.vein === "copper",
@@ -64,6 +67,8 @@ const IS = {
   path: (tile) => tile.ground === "path",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
+  range: (tile) => tile.station === "range",
+  workbench: (tile) => tile.station === "workbench",
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   house: (tile) => !!tile.house,
@@ -106,8 +111,20 @@ const nearestSteps = (kind: string, from: Map<string, number>) =>
 const key2 = ([x, y]: readonly [number, number]) => key(x, y);
 const asTile = ([x, y]: readonly [number, number]) => ({ x, y });
 const VEINS = ["copper", "iron", "emberite"] as const;
-const BUSHES = ["berryBush", "herbBush"] as const;
-const STATIONS_AND_BLACKSMITH = ["furnace", "anvil", "blacksmith"] as const;
+const BUSHES = [
+  "berryBush",
+  "dewpetalBush",
+  "herbBush",
+  "nightbloomBush",
+  "emberbloomBush",
+] as const;
+const STATIONS_AND_BLACKSMITH = [
+  "furnace",
+  "anvil",
+  "range",
+  "workbench",
+  "blacksmith",
+] as const;
 const TREES = ["birch", "oak", "charwood"] as const;
 
 describe("the region", () => {
@@ -129,6 +146,8 @@ describe("the region", () => {
     ["skeleton", 6],
     ["furnace", 4],
     ["anvil", 1],
+    ["range", 1],
+    ["workbench", 1],
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
@@ -142,7 +161,10 @@ describe("the region", () => {
     ["iron", "mining", 6, 12],
     ["emberite", "mining", 5, 9],
     ["berryBush", "herblaw", 12, 24],
+    ["dewpetalBush", "herblaw", 5, 8],
     ["herbBush", "herblaw", 6, 12],
+    ["nightbloomBush", "herblaw", 4, 8],
+    ["emberbloomBush", "herblaw", 3, 8],
   ] as const)(
     "keeps %s in one %s pool, %i active of %i spots, and none fixed",
     (kind, skill, active, spots) => {
@@ -272,6 +294,13 @@ describe("the region", () => {
     );
   });
 
+  it("puts the potion plants deeper into the Thicket by their pick gate (#222)", () => {
+    const nearest = (kind: string) => nearestSteps(kind, reachable);
+    expect(nearest("berryBush")).toBeLessThan(nearest("dewpetalBush"));
+    expect(nearest("dewpetalBush")).toBeLessThan(nearest("nightbloomBush"));
+    expect(nearest("nightbloomBush")).toBeLessThan(nearest("emberbloomBush"));
+  });
+
   it("paints the Lake in the north-west, and makes every water tile at its bank a spot of one fishing pool, 3 active", () => {
     const water = tilesOf("water");
     expect(water.length).toBeGreaterThan(0);
@@ -379,17 +408,28 @@ describe("the region", () => {
     ]);
   });
 
+  it("stands the range beside the furnace's north-east corner (#221)", () => {
+    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+    expect(tilesOf("range")).toEqual([[x + 3, y]]);
+  });
+
+  it("stands the workbench between the range and the anvil (#226)", () => {
+    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+    expect(tilesOf("workbench")).toEqual([[x + 3, y + 1]]);
+  });
+
   it("hides none of the smithy from the default camera, which looks north-west", () => {
     const isTall = (tile: TileKind) =>
       !!tile.house ||
-      tile.station === "furnace" ||
+      tile.station !== undefined ||
       ["tree", "well", "lamp"].includes(tile.prop ?? "");
-    const furnace = new Set(tilesOf("furnace").map(([x, y]) => key(x, y)));
+    const stations = new Set(
+      tilesOf(...STATIONS_AND_BLACKSMITH).map(([x, y]) => key(x, y)),
+    );
     for (const [x, y] of tilesOf(...STATIONS_AND_BLACKSMITH)) {
       for (let dx = 0; dx <= 4; dx++) {
         for (let dy = 0; dy <= 4; dy++) {
-          // The furnace's own tiles stand south-east of one another.
-          if (furnace.has(key(x + dx, y + dy))) continue;
+          if (stations.has(key(x + dx, y + dy))) continue;
           if (dx || dy) expect(isTall(region[y + dy]![x + dx]!)).toBe(false);
         }
       }
@@ -430,6 +470,8 @@ describe("parseRegion", () => {
     ["e", { ground: "ashen", vein: "emberite", blocks: true }],
     ["F", { ground: "grass", station: "furnace", blocks: true }],
     ["N", { ground: "grass", station: "anvil", blocks: true }],
+    ["G", { ground: "grass", station: "range", blocks: true }],
+    ["w", { ground: "grass", station: "workbench", blocks: true }],
     ["B", { ground: "grass", villager: "odo", blocks: true }],
     ["H", { ground: "grass", house: "wall", blocks: true }],
     ["D", { ground: "grass", house: "door", blocks: true }],

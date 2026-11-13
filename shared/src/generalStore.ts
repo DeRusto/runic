@@ -8,7 +8,9 @@ import {
   removeItems,
   type Quality,
 } from "./items.ts";
-import { costsOf, RECIPES, type RecipeItem } from "./making.ts";
+import { capeOfGossamer } from "./gear.ts";
+import { AUGMENTATIONS, costsOf, RECIPES, type RecipeItem } from "./making.ts";
+import { POTIONS, type PotionId } from "./potions.ts";
 
 /**
  * The hand-set value of every raw item, in coins (village spec §5). The cheapest sellable item is worth 3,
@@ -34,13 +36,37 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   perch: 3,
   trout: 6,
   pike: 12,
+  // The empty vial is as cheap as a berry, and the plants rise by their pick gate (#222).
+  vial: 3,
+  dewpetal: 6,
+  nightbloom: 12,
+  emberbloom: 20,
+  // The silk waits for Phase 8's Spider drop (#217), and is priced like the emberbone.
+  spiderSilk: 10,
+  // #217's capes, priced by their tier: their Leatherworking recipes will set the final ones.
+  copperMightCape: 20,
+  copperFortitudeCape: 20,
+  copperAvoidanceCape: 20,
+  bronzeMightCape: 35,
+  bronzeFortitudeCape: 35,
+  bronzeAvoidanceCape: 35,
+  ironMightCape: 50,
+  ironFortitudeCape: 50,
+  ironAvoidanceCape: 50,
+  steelMightCape: 70,
+  steelFortitudeCape: 70,
+  steelAvoidanceCape: 70,
+  emberiteMightCape: 90,
+  emberiteFortitudeCape: 90,
+  emberiteAvoidanceCape: 90,
 };
 
-/** How many times its common version's value an item of each Quality is worth (village spec §5). */
+/** How many times its common version's value an item of each Quality is worth (village spec §5). Delicious food is as rare as a rare piece, and worth the same multiple (#221). */
 export const QUALITY_VALUE_TIMES: Record<Quality, number> = {
   common: 1,
   uncommon: 2,
   rare: 4,
+  delicious: 4,
 };
 
 /**
@@ -51,12 +77,21 @@ export const QUALITY_VALUE_TIMES: Record<Quality, number> = {
 export function valueOf(item: string): number {
   const { base, quality } = itemParts(item);
   if (base === COINS) return 0;
+  // A gossamer cloak is the cape it was made from plus the silk that went into it (#217).
+  const cape = capeOfGossamer(item);
+  if (cape !== undefined)
+    return valueOf(cape) + valueOf(AUGMENTATIONS.gossamerCloak.reagent);
   let common = RAW_VALUES[base];
   if (common === undefined && Object.hasOwn(RECIPES, base))
     common = costsOf(base as RecipeItem).reduce(
       (total, [cost, count]) => total + valueOf(cost) * count,
       0,
     );
+  // A potion is what its mixing costs: one vial and its plant (#222).
+  if (common === undefined && Object.hasOwn(POTIONS, base)) {
+    const { plant } = POTIONS[base as PotionId];
+    common = valueOf("vial") + valueOf(plant);
+  }
   if (common === undefined) throw new Error(`No store value for ${item}`);
   return common * QUALITY_VALUE_TIMES[quality];
 }
@@ -76,14 +111,17 @@ export const STARTING_STOCK: Partial<Record<ItemId, number>> = {
   herb: 10,
   copperOre: 5,
   coal: 5,
+  /** From day one, so a new Herblaw can get mixing (#222). */
+  vial: 20,
 };
 /** One of each item below its starting stock comes back this often: 30 s (village spec §5). */
 export const RESTOCK_TICKS = 100;
-/** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min and 20 min (village spec §5). */
+/** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min, 20 min, and Delicious with the rare (village spec §5, #221). */
 export const DRAIN_TICKS: Record<Quality, number> = {
   common: 200,
   uncommon: 1000,
   rare: 4000,
+  delicious: 4000,
 };
 
 /** What the shelf holds, as the synced state has it: parallel item ids and counts. */

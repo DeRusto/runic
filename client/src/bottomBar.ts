@@ -4,20 +4,30 @@ import {
   DROP_INTENT,
   EAT_INTENT,
   EQUIP_INTENT,
+  fireOf,
   FOOD_HEALS,
   gearOf,
   gearRefusal,
   INVENTORY_SLOTS,
+  itemParts,
   levelFor,
   levelProgress,
+  LIGHT_INTENT,
+  lightRefusal,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MAX_LEVEL,
+  MIX_INTENT,
   MOVE_INTENT,
+  potionOf,
+  potionFromPlant,
   PRIVATE_LINE,
+  siteId,
   SKILLS,
   xpForLevel,
   type ChatLine,
+  type LightTile,
+  type TileKind,
 } from "@runic/shared";
 import {
   showCharacterSheet,
@@ -80,6 +90,7 @@ export function revealResult() {
 export function showBottomBar(
   room: WorldConnection,
   sayOverhead: (id: string, text: string) => void,
+  tiles: TileKind[][],
 ) {
   room.onMessage(CHAT, ({ id, username, text, emote }: ChatLine) => {
     if (emote) {
@@ -107,18 +118,43 @@ export function showBottomBar(
 
   /** The player the slots last showed, whose levels decide what they refuse. */
   let shown: SyncedPlayer | undefined;
+  /** What the player's own tile is like for lighting a fire on it, from the map and the state (#224). */
+  const lightTileOf = (me: SyncedPlayer): LightTile => {
+    const kind = tiles[me.y]![me.x]!;
+    return {
+      fire: room.state.fires.has(siteId(me)),
+      ground: kind.ground,
+      prop: kind.prop,
+      enemy: [...room.state.enemies.values()].some(
+        (enemy) =>
+          enemy.state !== "dead" && enemy.x === me.x && enemy.y === me.y,
+      ),
+    };
+  };
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
     const eat = () => room.send(EAT_INTENT, i);
     const equip = () => room.send(EQUIP_INTENT, i);
-    // Only food and gear do anything on a left-click, so a material's slot sends nothing.
+    const mix = () => room.send(MIX_INTENT, { slot: i });
+    // The same checks the server makes, so a refused click says so at once (#224).
+    const light = () => {
+      if (!shown) return;
+      const refusal = lightRefusal(
+        slot.dataset.item,
+        lightTileOf(shown),
+        shown,
+      );
+      if (refusal) printChatLine(refusal);
+      else room.send(LIGHT_INTENT, i);
+    };
+    // Only food, potions and gear do anything on a left-click, so a material's slot sends nothing.
     // Not the slot's text, which shows coins in short form.
     const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
       if (takeover) return item && takeover.click(i, item);
-      if (FOOD_HEALS.has(item)) eat();
+      if (FOOD_HEALS.has(itemParts(item).base) || potionOf(item)) eat();
       if (gearOf(item)) equip();
     };
     slot.oncontextmenu = (event) => {
@@ -127,7 +163,14 @@ export function showBottomBar(
       if (!item) return;
       if (takeover) return openMenu(event, takeover.menu(i, item));
       openMenu(event, [
-        ...(FOOD_HEALS.has(item) ? ([["Eat", eat]] as const) : []),
+        ...(FOOD_HEALS.has(itemParts(item).base)
+          ? ([["Eat", eat]] as const)
+          : []),
+        ...(potionOf(item) ? ([["Drink", eat]] as const) : []),
+        ...(potionFromPlant(item) ? ([["Mix potion", mix]] as const) : []),
+        ...(fireOf(itemParts(item).base)
+          ? ([["Light fire", light]] as const)
+          : []),
         ...(gearOf(item) ? ([["Equip", equip]] as const) : []),
         ...amountChoices("Drop", count(), (amount) =>
           room.send(DROP_INTENT, { slot: i, amount }),

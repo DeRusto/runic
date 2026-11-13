@@ -17,6 +17,15 @@ describe("an item's name", () => {
   ])("%s reads as %s", (id, name) => {
     expect(itemName(id)).toBe(name);
   });
+
+  test("a gossamer cloak leads with its variant, and keeps its cape's (#217, #225)", () => {
+    expect(itemName("copperMightCape:gossamer")).toBe(
+      "Gossamer copper might cape",
+    );
+    expect(itemName("copperMightCape:uncommon:might:gossamer")).toBe(
+      "Gossamer copper might cape of Might",
+    );
+  });
 });
 
 test("an improved item shows its common form's icon", () => {
@@ -75,13 +84,21 @@ describe("coloured names", () => {
 describe("the committed icons", () => {
   const pngs = readdirSync(ICONS_DIR).filter((file) => file.endsWith(".png"));
 
-  test("cover every item and the four tools, 52 in all (spec §7)", () => {
+  test("cover every item, the workbench's cloak and the five tools, 88 in all (spec §7)", () => {
     expect(pngs.sort()).toEqual(
-      [...Object.keys(ITEMS), "pickaxe", "hammer", "axe", "rod"]
+      [
+        ...Object.keys(ITEMS),
+        "gossamerCloak",
+        "pickaxe",
+        "hammer",
+        "axe",
+        "rod",
+        "tinderbox",
+      ]
         .map((id) => `${id}.png`)
         .sort(),
     );
-    expect(pngs).toHaveLength(52);
+    expect(pngs).toHaveLength(88);
   });
 
   test("each is the file iconUrl names, and a real PNG", () => {

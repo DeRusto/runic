@@ -18,6 +18,7 @@ const STARTING_SHELF = [
   ["herb", 10],
   ["copperOre", 5],
   ["coal", 5],
+  ["vial", 20],
 ];
 
 let sim: Simulation;
@@ -281,12 +282,12 @@ describe("the shelf", () => {
       ],
     });
     ticks(199);
-    expect(shelf().slice(4)).toEqual([
+    expect(shelf().slice(5)).toEqual([
       ["tin", 1],
       ["ironSword:rare:might", 1],
     ]);
     ticks(200);
-    expect(shelf().slice(4)).toEqual([["ironSword:rare:might", 1]]);
+    expect(shelf().slice(5)).toEqual([["ironSword:rare:might", 1]]);
     ticks(4000);
     expect(shelf()).toEqual(STARTING_SHELF);
   });
@@ -310,12 +311,12 @@ describe("the shelf", () => {
     const pieces = ["copper", "bronze", "iron", "steel", "emberite"].flatMap(
       (tier) => gear.map((piece) => `${tier}${piece}`),
     );
-    // 4 starting items, 12 materials and 24 pieces of gear fill all 40 slots.
-    const stacks = [...sold, ...pieces.slice(0, 24)].map(
+    // 5 starting items, 12 materials and 23 pieces of gear fill all 40 slots.
+    const stacks = [...sold, ...pieces.slice(0, 23)].map(
       (item) => [item, 1] as [string, number],
     );
     addShopper("a", ...stacks.slice(0, 30));
-    addShopper("b", ...stacks.slice(30), [pieces[24]!, 1]);
+    addShopper("b", ...stacks.slice(30), [pieces[23]!, 1]);
     openStore("a");
     openStore("b");
     const sellAll = (id: string) =>
@@ -328,15 +329,15 @@ describe("the shelf", () => {
     sellAll("a");
     sellAll("b");
     expect(shelf()).toHaveLength(40);
-    expect(shelf().map(([item]) => item)).not.toContain(pieces[24]);
+    expect(shelf().map(([item]) => item)).not.toContain(pieces[23]);
     expect(held("b")).toEqual([[COINS, expect.any(Number)]]);
     // Buying out a sold item frees its slot, so the next sale fits.
     deal("b", { buy: [{ item: "tin", count: 1 }] });
-    addShopper("c", [pieces[24]!, 1]);
+    addShopper("c", [pieces[23]!, 1]);
     openStore("c");
     sellAll("c");
     expect(shelf().map(([item]) => item)).not.toContain("tin");
-    expect(shelf().at(-1)).toEqual([pieces[24], 1]);
+    expect(shelf().at(-1)).toEqual([pieces[23], 1]);
   });
 });
 

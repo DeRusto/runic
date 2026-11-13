@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { GEAR_SLOTS, parseRegion } from "@runic/shared";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { db, openDatabase } from "./db.ts";
+import { NO_EXPERIENCE } from "./playerSave.ts";
 import { readSave, writeSave } from "./saves.ts";
 import { accounts } from "./schema.ts";
 import { Simulation } from "./simulation.ts";
@@ -21,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting and Fishing.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking and Crafting.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -30,8 +31,11 @@ const LATEST_COLUMNS = [
   "bank_counts",
   "woodcutting_xp",
   "fishing_xp",
+  "cooking_xp",
+  "firemaking_xp",
+  "crafting_xp",
 ];
-const LATEST_MIGRATIONS = 9;
+const LATEST_MIGRATIONS = 12;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
@@ -131,6 +135,8 @@ describe("a save from the first slice, written before the stacks migration", () 
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
+      // Every skill the old row had no column for starts at 0.
+      ...NO_EXPERIENCE,
       combatXp: 1234,
       defenseXp: 567,
       herblawXp: 890,
@@ -139,11 +145,6 @@ describe("a save from the first slice, written before the stacks migration", () 
       y: 1,
       health: 600, // 6 before the rescale.
       inventory: INVENTORY,
-      miningXp: 0,
-      smithingXp: 0,
-      woodcuttingXp: 0,
-      fishingXp: 0,
-      blockingXp: 0,
       // 7% of 7,191.
       masteryXp: 503,
       masteryHundredths: 37,

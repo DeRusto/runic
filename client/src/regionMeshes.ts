@@ -19,6 +19,9 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { HOUSE_MODELS, houseParts } from "./houseParts.ts";
 
+/** The stations the map is built with; a fire is placed by a player and has its own look (#224). */
+type FixedStation = Exclude<StationKind, "fire">;
+
 const SLAB_HEIGHT = 0.2;
 const GROUND: Record<GroundKind, { color: number; top: number }> = {
   grass: { color: 0x5d9e3c, top: 0 },
@@ -28,7 +31,13 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   water: { color: 0x3b78b0, top: -0.12 },
 };
 const BUSH_WIDTH = 0.9;
-const BUSH_TINT = { berryBush: 0xffb0b0, herbBush: 0xb8f0ff };
+const BUSH_TINT: Record<BushKind, number> = {
+  berryBush: 0xffb0b0,
+  dewpetalBush: 0xaad4ff,
+  herbBush: 0xb8f0ff,
+  nightbloomBush: 0xb490e8,
+  emberbloomBush: 0xffa64d,
+};
 // Not gear's tints, which leave veins looking like plain or dark rock. They multiply the ore's near-white vein.
 const VEIN_TINT: Record<VeinTier, THREE.Color> = {
   copper: new THREE.Color(0xff8a3c),
@@ -36,11 +45,15 @@ const VEIN_TINT: Record<VeinTier, THREE.Color> = {
   emberite: new THREE.Color(0xd42a1a),
 };
 export const ORE_SCALE = 0.45;
-const STATIONS: Record<StationKind, { file: string; width: number }> = {
+const STATIONS: Record<FixedStation, { file: string; width: number }> = {
   // Kenney's building-smelter didn't read as a furnace at a tile's scale, so this is spec §15's first fallback.
   // House scale, on its 2×2 footprint.
   furnace: { file: "building_blacksmith_red.gltf", width: 2 },
   anvil: { file: "anvil.gltf", width: 0.8 },
+  // Kenney's kitchen stove, on its one tile (#221).
+  range: { file: "kitchenStove.glb", width: 0.9 },
+  // Kenney's survival workbench, on its one tile (#225).
+  workbench: { file: "workbench.glb", width: 0.9 },
 };
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 /** A spot with no site on it is drawn at nothing, so it looks like its plain ground. */
@@ -62,7 +75,10 @@ const SITE_FIELDS = GATHERING_SKILLS.map((skill) => GATHERING[skill].site);
 
 const BUSH_MODELS: Record<BushKind, string> = {
   berryBush: "Bush_2_B",
+  dewpetalBush: "Bush_4_B",
   herbBush: "Bush_4_B",
+  nightbloomBush: "Bush_2_B",
+  emberbloomBush: "Bush_2_B",
 };
 /** Each kind of tree its own model and tint, apart from the tree props' models so a choppable one reads as one. */
 const TREE_MODELS: Record<TreeKind, { model: string; tint: number }> = {
@@ -148,7 +164,7 @@ async function loadVillageModels(names: string[]) {
 }
 
 /** A station's model, scaled to its width. */
-async function loadStation({ file, width }: (typeof STATIONS)[StationKind]) {
+async function loadStation({ file, width }: (typeof STATIONS)[FixedStation]) {
   const { scene } = await new GLTFLoader().loadAsync(`/models/${file}`);
   scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
   const { max, min } = new THREE.Box3().setFromObject(scene);
@@ -167,10 +183,19 @@ export function oreParts(ore: THREE.Object3D) {
 /** A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites: returns how to show one full, run out or gone. A run-out tree is a stump. */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
-    [berryBush, herbBush, ...propMeshes],
+    [
+      berryBush,
+      dewpetalBush,
+      herbBush,
+      nightbloomBush,
+      emberbloomBush,
+      ...propMeshes
+    ],
     treeMeshes,
     furnace,
     anvil,
+    range,
+    workbench,
     oreModel,
     stumpModel,
     village,
@@ -186,6 +211,8 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ),
     loadStation(STATIONS.furnace),
     loadStation(STATIONS.anvil),
+    loadStation(STATIONS.range),
+    loadStation(STATIONS.workbench),
     new GLTFLoader().loadAsync("/models/ore.glb"),
     new GLTFLoader().loadAsync("/models/stump_round.glb"),
     loadVillageModels([
@@ -193,10 +220,12 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
     ]),
   ]);
-  const stations = { furnace, anvil };
-  const footprints = {
-    furnace: [] as THREE.Vector3[],
-    anvil: [] as THREE.Vector3[],
+  const stations = { furnace, anvil, range, workbench };
+  const footprints: Record<FixedStation, THREE.Vector3[]> = {
+    furnace: [],
+    anvil: [],
+    range: [],
+    workbench: [],
   };
   const ore = oreParts(oreModel.scene);
   const trees = Object.fromEntries(
@@ -206,7 +235,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const stump = bakeColours(
     stumpModel.scene.getObjectByProperty("type", "Mesh")!.parent as THREE.Group,
   );
-  const bushMeshes = { berryBush: berryBush!, herbBush: herbBush! };
+  const bushMeshes = {
+    berryBush: berryBush!,
+    dewpetalBush: dewpetalBush!,
+    herbBush: herbBush!,
+    nightbloomBush: nightbloomBush!,
+    emberbloomBush: emberbloomBush!,
+  };
   const propVariants = {} as Record<PropKind, THREE.BufferGeometry[]>;
   for (const [kind, { models }] of Object.entries(KAYKIT_PROPS)) {
     propVariants[kind as PropKind] = propMeshes
@@ -350,7 +385,8 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
 
       const { prop, station, house } = tile;
       const site = SITE_FIELDS.find((field) => tile[field]);
-      if (station) footprints[station].push(new THREE.Vector3(x, top, y));
+      if (station)
+        footprints[station as FixedStation].push(new THREE.Vector3(x, top, y));
       if (house) {
         for (const { part, angle, height } of houseParts(tiles, x, y)) {
           place(
@@ -401,7 +437,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   // One model per station, at the middle of the tiles it covers.
   for (const [kind, tilesUnder] of Object.entries(footprints)) {
     if (!tilesUnder.length) continue;
-    const model = stations[kind as StationKind];
+    const model = stations[kind as FixedStation];
     new THREE.Box3().setFromPoints(tilesUnder).getCenter(model.position);
     scene.add(model);
   }

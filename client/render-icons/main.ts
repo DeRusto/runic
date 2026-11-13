@@ -2,6 +2,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { GLOW_INTENSITY, TIER_LOOKS } from "../src/tierLooks.ts";
+import { VIRTUES } from "@runic/shared";
 
 const SIZE = 144;
 const RESOURCE = "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf";
@@ -138,15 +139,132 @@ const ICONS: Icon[] = [
     turn: FLAT,
     look: { tint: 0x7f9a66 },
   },
+  // The cooked fish and the berry and herb dishes, the same fish browned, rosy and herbal (#221).
+  {
+    id: "cookedPerch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xb07a3c },
+  },
+  {
+    id: "cookedTrout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xc08050 },
+  },
+  {
+    id: "cookedPike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x8a6a40 },
+  },
+  {
+    id: "berryPerch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xb05429 },
+  },
+  {
+    id: "berryTrout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0xc05837 },
+  },
+  {
+    id: "berryPike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x8a492c },
+  },
+  {
+    id: "herbPerch",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0x6e6320 },
+  },
+  {
+    id: "herbTrout",
+    url: `${SURVIVAL}/fish.glb`,
+    turn: FLAT,
+    look: { tint: 0x77692b },
+  },
+  {
+    id: "herbPike",
+    url: `${SURVIVAL}/fish-large.glb`,
+    turn: FLAT,
+    look: { tint: 0x565723 },
+  },
   {
     id: "berry",
     url: "/kenney-game-assets/3D assets/Food Kit/Models/GLB format/grapes.glb",
     turn: FLAT,
   },
+  // The herb and the potion plants, the same plant tinted apart (#222).
   {
     id: "herb",
     url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
     turn: [0.3, 0, 0],
+  },
+  {
+    id: "dewpetal",
+    url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
+    turn: [0.3, 0, 0],
+    look: { tint: 0x9fd0ff },
+  },
+  {
+    id: "nightbloom",
+    url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
+    turn: [0.3, 0, 0],
+    look: { tint: 0x9a6ad8 },
+  },
+  {
+    id: "emberbloom",
+    url: "/stylized-nature-megakit/glTF/Plant_1.gltf",
+    turn: [0.3, 0, 0],
+    look: { tint: 0xe8743c },
+  },
+  // The empty vial, and the three potions tinted by their Virtue (#222).
+  {
+    id: "vial",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/bottle_B_brown.gltf",
+    turn: FLAT,
+    look: { tint: 0xddeeff },
+  },
+  {
+    id: "mightPotion",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/bottle_A_green.gltf",
+    turn: FLAT,
+    look: { tint: 0xff5555 },
+  },
+  {
+    id: "fortitudePotion",
+    url: "/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/bottle_C_brown.gltf",
+    turn: FLAT,
+    look: { tint: 0x55e07a },
+  },
+  {
+    id: "avoidancePotion",
+    url: "/fantasy-props-megakit/Exports/glTF/Potion_4.gltf",
+    turn: FLAT,
+    look: { tint: 0x5599ff },
+  },
+  // Crafting's utilities (#225): the folded rope, the unlit torch, and the silk as pale cloth.
+  {
+    id: "rope",
+    url: "/fantasy-props-megakit/Exports/glTF/Rope_1.gltf",
+    turn: FLAT,
+  },
+  {
+    id: "torch",
+    url: "/fantasy-props-megakit/Exports/glTF/Torch_Metal.gltf",
+    turn: LEAN,
+    look: { tint: 0xb08a5a },
+  },
+  {
+    id: "spiderSilk",
+    url: "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf/Textiles_A.gltf",
+    turn: FLAT,
+    look: { tint: 0xe8e4da },
   },
   {
     id: "coal",
@@ -167,6 +285,30 @@ const ARMOUR = {
   Chestplate: ["Knight_Body"],
   Leggings: ["Knight_LegLeft", "Knight_LegRight"],
 };
+
+/** A cape: a draped half-cylinder and its shoulder yoke, as no pack has a cape (spec §7, #217). */
+function capeMesh() {
+  const cape = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+  const cloth = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      0.55,
+      1,
+      1.8,
+      20,
+      1,
+      true,
+      -Math.PI / 2,
+      Math.PI,
+    ),
+    material,
+  );
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(0.62, 20, 8), material);
+  yoke.scale.set(1.15, 0.35, 0.85);
+  yoke.position.y = 0.95;
+  cape.add(cloth, yoke);
+  return cape;
+}
 
 const renderer = new THREE.WebGLRenderer({
   alpha: true,
@@ -201,12 +343,16 @@ function greyVersion(map: THREE.Texture) {
 function applyLook(model: THREE.Object3D, { tint, glow }: Look) {
   model.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
-    const material = object.material as THREE.MeshStandardMaterial;
-    if (material.map) material.map = greyVersion(material.map);
-    if (tint !== undefined) material.color.setHex(tint);
-    if (glow !== undefined) {
-      material.emissive.setHex(glow);
-      material.emissiveIntensity = GLOW_INTENSITY;
+    // Some models give a mesh an array of materials, so a look covers each.
+    // Some models give a mesh an array of materials, so a look covers each.
+    const materials = [object.material].flat() as THREE.MeshStandardMaterial[];
+    for (const material of materials) {
+      if (material.map) material.map = greyVersion(material.map);
+      if (tint !== undefined) material.color.setHex(tint);
+      if (glow !== undefined) {
+        material.emissive.setHex(glow);
+        material.emissiveIntensity = GLOW_INTENSITY;
+      }
     }
   });
 }
@@ -293,6 +439,23 @@ for (const [piece, meshes] of Object.entries(ARMOUR)) {
     pngs.set(`${tier}${piece}`, await toPng(renderer.domElement));
   }
 }
+// The 15 capes (#217), the same cape tinted by its tier: its Virtue shows in the name only.
+for (const [tier, look] of Object.entries(TIER_LOOKS)) {
+  for (const virtue of VIRTUES) {
+    const cape = capeMesh();
+    applyLook(cape, look);
+    draw(cape, WORN);
+    pngs.set(
+      `${tier}${virtue[0]!.toUpperCase()}${virtue.slice(1)}Cape`,
+      await toPng(renderer.domElement),
+    );
+  }
+}
+// The workbench row's cloak, in the silk's pale grey: the cape it comes from varies (#225).
+const cloak = capeMesh();
+applyLook(cloak, { tint: 0xd8dcd4 });
+draw(cloak, WORN);
+pngs.set("gossamerCloak", await toPng(renderer.domElement));
 /** A pile of small lumps: no pack has a tin nugget on its own. */
 function nuggets() {
   const group = new THREE.Group();
@@ -313,6 +476,32 @@ function nuggets() {
     blob.scale.set(s * 2, s * 1.4, s * 1.6);
     group.add(blob);
   }
+  return group;
+}
+
+/** A steel case with its lid open and a striker across it: no pack has a tinderbox (#224). */
+function tinderbox() {
+  const group = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0xaab2ba,
+    roughness: 0.45,
+    metalness: 0.25,
+  });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 1.1), steel);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 1.1), steel);
+  lid.position.set(0, 0.35, -0.55);
+  lid.rotation.x = -0.9;
+  const striker = new THREE.Mesh(
+    new THREE.TorusGeometry(0.28, 0.07, 8, 16, Math.PI),
+    new THREE.MeshStandardMaterial({
+      color: 0x6a7077,
+      roughness: 0.35,
+      metalness: 0.3,
+    }),
+  );
+  striker.rotation.x = Math.PI / 2;
+  striker.position.set(0, 0.28, 0.15);
+  group.add(base, lid, striker);
   return group;
 }
 
@@ -366,6 +555,8 @@ pngs.set("heartflame", await toPng(renderer.domElement));
 pngs.set("emberiteSword", await craftpixSword());
 draw(rod(), LEAN);
 pngs.set("rod", await toPng(renderer.domElement));
+draw(tinderbox(), LEAN);
+pngs.set("tinderbox", await toPng(renderer.domElement));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {

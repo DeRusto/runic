@@ -1,6 +1,6 @@
 import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
 import type { VillagerId } from "./dialogue.ts";
-import type { ItemId } from "./items.ts";
+import type { ItemId, Virtue } from "./items.ts";
 import type { StationKind } from "./region.ts";
 
 export const SERVER_PORT = 2567;
@@ -31,6 +31,10 @@ export const EAT_INTENT = "eat";
 export const DROP_INTENT = "drop";
 /** The move intent's message type, for a drag in the inventory; its payload is `{ from, to }`, two slots' indexes. */
 export const MOVE_INTENT = "move";
+/** The mix intent's message type, for using a vial on a plant (#222); its payload is the plant's inventory slot's index. */
+export const MIX_INTENT = "mix";
+/** The light intent's message type, for lighting a fire (#224); its payload is the clicked inventory slot's index, holding a log. */
+export const LIGHT_INTENT = "light";
 /** The deposit intent's message type; its payload is `{ slot, amount }` for an inventory slot, and an amount over the stack deposits it all. */
 export const DEPOSIT_INTENT = "deposit";
 /** The withdraw intent's message type; its payload is `{ slot, amount }` for a bank slot, and the server takes as many as fit. */
@@ -102,6 +106,8 @@ export const SWING_INTERVAL_TICKS = 8;
 export const EAT_SWING_DELAY_TICKS = 4;
 export const FIGHT_BACK_DELAY_TICKS = 4;
 export const EAT_INTERVAL_TICKS = 4;
+/** How long lighting a fire takes (#224). */
+export const LIGHTING_TICKS = 4;
 export const PLAYER_DEAD_TICKS = 5;
 export const COMBAT_LOCK_TICKS = 34;
 
@@ -119,6 +125,12 @@ export function logoutRefusal(locked: boolean) {
 export const REGEN_INTERVAL_TICKS = 20;
 export const REGEN_PERCENT_OF_MAX_HEALTH = 5;
 export const HEALING_POOL_INTERVAL_TICKS = 4;
+/** A Delicious fish's buff runs this many ticks, or 60 s (#221). */
+export const DELICIOUS_BUFF_TICKS = 200;
+/** Within it, this often it heals (#221). */
+export const DELICIOUS_BUFF_INTERVAL_TICKS = 20;
+/** Each time, this percent of the fish's per-tick heal (#221). */
+export const DELICIOUS_BUFF_PERCENT = 20;
 export const SAVE_INTERVAL_TICKS = 100;
 /** How long after its drop only its owner can see a ground item: one minute (#71). */
 export const GROUND_ITEM_OWNER_TICKS = 200;
@@ -142,7 +154,7 @@ export const PLAYER_CRIT_MULTIPLIER = 1.5;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
-  "" | "walking" | GatheringSkill | "smithing" | "fighting";
+  "" | "walking" | GatheringSkill | "smithing" | "lighting" | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
@@ -175,11 +187,15 @@ export type WorldEvent =
       finds: ItemId[];
     }
   | { type: GatheringVerb; player: string; success: false; count?: never }
-  /** One at the start of each item's wait; `ticks` is that wait, for fitting the clip to it. */
+  /** One at the start of each item's wait, or of lighting a fire (#224); `ticks` is that wait, for fitting the clip to it. */
   | { type: "make"; player: string; station: StationKind; ticks: number }
   /** An item finished at a station, by its id, so the client can name an improved one (spec §5). */
   | { type: "made"; player: string; item: string }
   | { type: "eaten"; player: string }
+  /** A Delicious fish's buff started or was refreshed for `player`, with `ticks` of it left (#221). */
+  | { type: "delicious"; player: string; ticks: number }
+  /** A Virtue potion's buff started or was refreshed for `player`, with `ticks` of it left (#222). */
+  | { type: "potion"; player: string; virtue: Virtue; ticks: number }
   /** A healing tick that restored health; `amount` is what it actually restored. */
   | { type: "healed"; player: string; amount: number }
   /** A chat-box line only the server can decide. Everyone gets it, and only `player` prints it. */
@@ -202,6 +218,7 @@ export type WorldEvent =
 export * from "./bank.ts";
 export * from "./dialogue.ts";
 export * from "./enemies.ts";
+export * from "./firemaking.ts";
 export * from "./herblaw.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";
@@ -209,6 +226,7 @@ export * from "./generalStore.ts";
 export * from "./items.ts";
 export * from "./tools.ts";
 export * from "./making.ts";
+export * from "./potions.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./regionMap.ts";

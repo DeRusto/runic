@@ -5,7 +5,7 @@ import {
   xpForLevel,
   type WorldEvent,
 } from "@runic/shared";
-import { beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Simulation } from "./simulation.ts";
 
 // The furnace is at (4,1) and the anvil at (6,1), with (5,1) next to both.
@@ -307,8 +307,8 @@ test("gear takes a slot each", () => {
 test("eating and dropping don't interrupt it", () => {
   add([
     ["copperOre", 1],
-    ["herb", 2],
-    ["berry", 1],
+    ["berry", 2],
+    ["herb", 1],
   ]);
   sim.queueMake("a", { item: "copperBar", all: false });
   run(2);
@@ -317,7 +317,7 @@ test("eating and dropping don't interrupt it", () => {
   run(5);
   expect(items()).toEqual([
     ["copperBar", 1],
-    ["herb", 1],
+    ["berry", 1],
   ]);
   expect(makes()).toHaveLength(1);
 });
@@ -484,4 +484,443 @@ test("a bar is never improved, even on the luckiest roll", () => {
   sim.queueMake("a", { item: "copperBar", all: false });
   run(7);
   expect(items()).toEqual([["copperBar", 1]]);
+});
+
+// The range is at (4,1), with (3,1) and (5,1) beside it, and no enemies to spend rolls on.
+const RANGE_TILES = parseRegion(
+  ["TTTTTTT", "TR..G.T", "T.....T", "TTTTTTT"].join("\n"),
+);
+
+describe("cooking at the range (#221)", () => {
+  let sim: Simulation;
+  let seen: { tick: number; event: WorldEvent }[];
+
+  beforeEach(() => {
+    sim = new Simulation(RANGE_TILES, () => FAIL);
+    seen = [];
+  });
+
+  /** Adds a player holding `held` next to the range, with `cookingXp` and a random source. */
+  function cook(
+    held: [string, number][],
+    {
+      id = "a",
+      x = 5,
+      y = 1,
+      cookingXp = 0,
+      random = (() => FAIL) as () => number,
+    } = {},
+  ) {
+    if (random !== undefined) sim = new Simulation(RANGE_TILES, random);
+    const inventory = Array<string>(INVENTORY_SLOTS).fill("");
+    const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(0);
+    held.forEach(([item, count], slot) => {
+      inventory[slot] = item;
+      inventoryCounts[slot] = count;
+    });
+    sim.addPlayer(
+      id,
+      {
+        x,
+        y,
+        combatXp: 0,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        cookingXp,
+        inventory,
+        inventoryCounts,
+      },
+      id,
+    );
+  }
+
+  const run = (ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      sim.tick();
+      for (const event of sim.events.splice(0))
+        seen.push({ tick: sim.state.tick, event });
+    }
+  };
+  const lines = () =>
+    seen.flatMap(({ event }) => (event.type === "told" ? [event.line] : []));
+  const items = (id = "a") =>
+    [...sim.state.players.get(id)!.inventory]
+      .map((item, slot) => [
+        item,
+        sim.state.players.get(id)!.inventoryCounts[slot],
+      ])
+      .filter(([item]) => item !== EMPTY_SLOT);
+
+  test("a raw fish cooks into a cooked one, paying Cooking", () => {
+    cook([["perch", 1]]);
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([["cookedPerch", 1]]);
+    expect(sim.state.players.get("a")!.cookingXp).toBe(12);
+    expect(seen.map(({ event }) => event)).toContainEqual({
+      type: "make",
+      player: "a",
+      station: "range",
+      ticks: 6,
+    });
+  });
+
+  test("the range needs no tool", () => {
+    cook([["perch", 1]], { random: () => 1 });
+    sim.state.players.get("a")!.tools.length = 0;
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([["cookedPerch", 1]]);
+  });
+
+  test("a burn eats the fish: no item, no experience, and a line", () => {
+    cook([["perch", 1]], { random: () => 0 }); // Every roll burns or improves.
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([]);
+    expect(sim.state.players.get("a")!.cookingXp).toBe(0);
+    expect(lines()).toEqual(["You burn the cooked perch."]);
+  });
+
+  test("Make all cooks on through a burn, until the fish run out", () => {
+    cook([["perch", 2]], { random: () => 0 });
+    sim.queueMake("a", { item: "cookedPerch", all: true });
+    run(20);
+    expect(items()).toEqual([]);
+    expect(lines()).toEqual([
+      "You burn the cooked perch.",
+      "You burn the cooked perch.",
+      "Not enough materials",
+    ]);
+  });
+
+  test("a fish that doesn't burn can come out Delicious", () => {
+    const random = vi.fn().mockReturnValueOnce(0.5).mockReturnValue(0);
+    cook([["perch", 1]], { random });
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([["cookedPerch:delicious", 1]]);
+    expect(sim.state.players.get("a")!.cookingXp).toBe(12);
+    expect(seen.map(({ event }) => event)).toContainEqual({
+      type: "made",
+      player: "a",
+      item: "cookedPerch:delicious",
+    });
+  });
+
+  test("a Delicious fish starts its own stack beside plain ones, leaving them plain", () => {
+    const random = vi.fn().mockReturnValueOnce(0.5).mockReturnValue(0);
+    cook(
+      [
+        ["perch", 1],
+        ["cookedPerch", 2],
+      ],
+      { random },
+    );
+    sim.queueMake("a", { item: "cookedPerch", all: false });
+    run(7);
+    expect(items()).toEqual([
+      ["cookedPerch:delicious", 1],
+      ["cookedPerch", 2],
+    ]);
+  });
+
+  test("a dish costs its fish and its berry, and burns both", () => {
+    const cooking5 = xpForLevel(5);
+    cook(
+      [
+        ["perch", 1],
+        ["berry", 1],
+      ],
+      { cookingXp: cooking5, random: () => 0 },
+    );
+    sim.queueMake("a", { item: "berryPerch", all: false });
+    run(7);
+    expect(items()).toEqual([]);
+    expect(lines()).toEqual(["You burn the berry perch."]);
+    cook(
+      [
+        ["perch", 1],
+        ["berry", 1],
+      ],
+      { id: "b", cookingXp: cooking5, random: () => 0.99 },
+    );
+    sim.queueMake("b", { item: "berryPerch", all: false });
+    run(7);
+    expect(items("b")).toEqual([["berryPerch", 1]]);
+  });
+});
+
+// The workbench is at (4,1), with (3,1) and (5,1) beside it, and no enemies to spend rolls on.
+const WORKBENCH_TILES = parseRegion(
+  ["TTTTTTT", "TR..w..T", "T......T", "TTTTTTT"].join("\n"),
+);
+
+describe("crafting at the workbench (#225)", () => {
+  let sim: Simulation;
+  let seen: { tick: number; event: WorldEvent }[];
+
+  beforeEach(() => {
+    sim = new Simulation(WORKBENCH_TILES, () => 0.99);
+    seen = [];
+  });
+
+  /** Adds a player holding `held` next to the workbench, with `craftingXp` and a random source. */
+  function craft(
+    held: [string, number][],
+    {
+      id = "a",
+      x = 5,
+      y = 1,
+      craftingXp = 0,
+      random = (() => 0.99) as () => number,
+    } = {},
+  ) {
+    if (random !== undefined) sim = new Simulation(WORKBENCH_TILES, random);
+    const inventory = Array<string>(INVENTORY_SLOTS).fill("");
+    const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(0);
+    held.forEach(([item, count], slot) => {
+      inventory[slot] = item;
+      inventoryCounts[slot] = count;
+    });
+    sim.addPlayer(
+      id,
+      {
+        x,
+        y,
+        combatXp: 0,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        craftingXp,
+        inventory,
+        inventoryCounts,
+      },
+      id,
+    );
+  }
+
+  const run = (ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      sim.tick();
+      for (const event of sim.events.splice(0))
+        seen.push({ tick: sim.state.tick, event });
+    }
+  };
+  const lines = () =>
+    seen.flatMap(({ event }) => (event.type === "told" ? [event.line] : []));
+  const made = () =>
+    seen.flatMap(({ event }) => (event.type === "made" ? [event.item] : []));
+  const items = (id = "a") =>
+    [...sim.state.players.get(id)!.inventory]
+      .map((item, slot) => [
+        item,
+        sim.state.players.get(id)!.inventoryCounts[slot],
+      ])
+      .filter(([item]) => item !== EMPTY_SLOT);
+
+  test("a rope spins from two silk, paying Crafting, and never rolls improved", () => {
+    craft([["spiderSilk", 2]], { random: () => 0 });
+    sim.queueMake("a", { item: "rope", all: false });
+    run(7);
+    expect(items()).toEqual([["rope", 1]]);
+    expect(sim.state.players.get("a")!.craftingXp).toBe(8);
+    expect(made()).toEqual(["rope"]);
+    expect(seen.map(({ event }) => event)).toContainEqual({
+      type: "make",
+      player: "a",
+      station: "workbench",
+      ticks: 6,
+    });
+  });
+
+  test("a torch costs its birch log and its rope", () => {
+    craft(
+      [
+        ["birchLog", 1],
+        ["rope", 1],
+      ],
+      { craftingXp: xpForLevel(5) },
+    );
+    sim.queueMake("a", { item: "torch", all: false });
+    run(7);
+    expect(items()).toEqual([["torch", 1]]);
+    expect(sim.state.players.get("a")!.craftingXp).toBe(xpForLevel(5) + 14);
+  });
+
+  test("a vial needs Crafting 10 and comes from a cinderglass", () => {
+    craft([["cinderglass", 1]], { craftingXp: xpForLevel(9) });
+    sim.queueMake("a", { item: "vial", all: false });
+    run(7);
+    expect(items()).toEqual([["cinderglass", 1]]);
+    expect(lines()).toEqual(["Needs Crafting 10"]);
+    craft([["cinderglass", 1]], { id: "b", craftingXp: xpForLevel(10) });
+    sim.queueMake("b", { item: "vial", all: false });
+    run(7);
+    expect(items("b")).toEqual([["vial", 1]]);
+    expect(sim.state.players.get("b")!.craftingXp).toBe(xpForLevel(10) + 20);
+  });
+
+  test("the workbench needs no tool", () => {
+    craft([["spiderSilk", 2]]);
+    sim.state.players.get("a")!.tools.length = 0;
+    sim.queueMake("a", { item: "rope", all: false });
+    run(7);
+    expect(items()).toEqual([["rope", 1]]);
+  });
+});
+
+describe("the gossamer cloak's augmentation on the server (#217, #225)", () => {
+  let sim: Simulation;
+  let seen: { tick: number; event: WorldEvent }[];
+
+  beforeEach(() => {
+    sim = new Simulation(WORKBENCH_TILES, () => 0.99);
+    seen = [];
+  });
+
+  /** Adds a player holding `held` next to the workbench, at Crafting 15 or above unless told otherwise. */
+  function augment(
+    held: [string, number][],
+    { id = "a", x = 5, y = 1, craftingXp = xpForLevel(15) } = {},
+  ) {
+    const inventory = Array<string>(INVENTORY_SLOTS).fill("");
+    const inventoryCounts = Array<number>(INVENTORY_SLOTS).fill(0);
+    held.forEach(([item, count], slot) => {
+      inventory[slot] = item;
+      inventoryCounts[slot] = count;
+    });
+    sim.addPlayer(
+      id,
+      {
+        x,
+        y,
+        combatXp: 0,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 10,
+        craftingXp,
+        inventory,
+        inventoryCounts,
+      },
+      id,
+    );
+  }
+
+  const run = (ticks: number) => {
+    for (let i = 0; i < ticks; i++) {
+      sim.tick();
+      for (const event of sim.events.splice(0))
+        seen.push({ tick: sim.state.tick, event });
+    }
+  };
+  const lines = () =>
+    seen.flatMap(({ event }) => (event.type === "told" ? [event.line] : []));
+  const made = () =>
+    seen.flatMap(({ event }) => (event.type === "made" ? [event.item] : []));
+  const items = (id = "a") =>
+    [...sim.state.players.get(id)!.inventory]
+      .map((item, slot) => [
+        item,
+        sim.state.players.get(id)!.inventoryCounts[slot],
+      ])
+      .filter(([item]) => item !== EMPTY_SLOT);
+
+  test("a cape becomes its gossamer cloak, which keeps the cape's Quality and Virtue", () => {
+    augment([
+      ["spiderSilk", 1],
+      ["copperMightCape:uncommon:fortitude", 1],
+    ]);
+    sim.queueMake("a", { item: "gossamerCloak", all: false });
+    run(7);
+    expect(items()).toEqual([
+      ["copperMightCape:uncommon:fortitude:gossamer", 1],
+    ]);
+    expect(sim.state.players.get("a")!.craftingXp).toBe(xpForLevel(15) + 25);
+    expect(made()).toEqual(["copperMightCape:uncommon:fortitude:gossamer"]);
+  });
+
+  test("Make all goes cape by cape, each keeping its own rolls, until the capes or silk run out", () => {
+    augment([
+      ["spiderSilk", 2],
+      ["copperMightCape:uncommon:fortitude", 1],
+      ["bronzeFortitudeCape", 1],
+      ["copperAvoidanceCape:rare:avoidance:gossamer", 1],
+    ]);
+    sim.queueMake("a", { item: "gossamerCloak", all: true });
+    run(26);
+    expect(items()).toEqual([
+      ["bronzeFortitudeCape:gossamer", 1],
+      ["copperMightCape:uncommon:fortitude:gossamer", 1],
+      // An already-augmented cape is no input, and stays as it is.
+      ["copperAvoidanceCape:rare:avoidance:gossamer", 1],
+    ]);
+    expect(made()).toEqual([
+      "copperMightCape:uncommon:fortitude:gossamer",
+      "bronzeFortitudeCape:gossamer",
+    ]);
+    expect(sim.state.players.get("a")!.craftingXp).toBe(xpForLevel(15) + 50);
+    expect(lines()).toEqual(["Not enough materials"]);
+  });
+
+  test("with no cape, or one already augmented, nothing is made", () => {
+    augment([["spiderSilk", 1]]);
+    sim.queueMake("a", { item: "gossamerCloak", all: false });
+    run(7);
+    expect(items()).toEqual([["spiderSilk", 1]]);
+    expect(lines()).toEqual(["Not enough materials"]);
+    augment(
+      [
+        ["spiderSilk", 1],
+        ["ironMightCape:rare:fortitude:gossamer", 1],
+      ],
+      {
+        id: "b",
+      },
+    );
+    sim.queueMake("b", { item: "gossamerCloak", all: false });
+    run(7);
+    expect(items("b")).toEqual([
+      ["spiderSilk", 1],
+      ["ironMightCape:rare:fortitude:gossamer", 1],
+    ]);
+  });
+
+  test("the cloak takes the cape's slot, even in a full inventory", () => {
+    augment(
+      [
+        ["spiderSilk", 1],
+        ["copperMightCape", 1],
+      ],
+      { craftingXp: xpForLevel(15) },
+    );
+    const player = sim.state.players.get("a")!;
+    for (let slot = 2; slot < INVENTORY_SLOTS; slot++) {
+      player.inventory[slot] = "herb";
+      player.inventoryCounts[slot] = 20;
+    }
+    sim.queueMake("a", { item: "gossamerCloak", all: false });
+    run(7);
+    expect(items("a")).toEqual([
+      ["copperMightCape:gossamer", 1],
+      ...Array(28).fill(["herb", 20]),
+    ]);
+    expect(sim.state.players.get("a")!.craftingXp).toBe(xpForLevel(15) + 25);
+    expect(lines()).toEqual([]);
+  });
+
+  test("the cloak equips into the cape slot, at its cape's gate", () => {
+    augment([
+      ["spiderSilk", 1],
+      ["copperMightCape", 1],
+    ]);
+    sim.queueMake("a", { item: "gossamerCloak", all: false });
+    run(7);
+    sim.equip("a", 0);
+    expect(sim.state.players.get("a")!.cape).toBe("copperMightCape:gossamer");
+  });
 });

@@ -32,9 +32,29 @@ describe("ITEMS", () => {
     expect(ITEMS.emberiteShield.stack).toBe(1);
   });
 
-  test("every tier has its bar, sword, shield, helmet, chestplate and leggings, and its ore if it has veins", () => {
-    // Food 2, Emberbone 1, finds 5, six per tier, three ores, three logs, three fish and coins.
-    expect(Object.keys(ITEMS)).toHaveLength(48);
+  test("the potion plants, the vial and the potions all stack to 20 (#222)", () => {
+    expect(ITEMS.dewpetal.stack).toBe(20);
+    expect(ITEMS.nightbloom.stack).toBe(20);
+    expect(ITEMS.emberbloom.stack).toBe(20);
+    expect(ITEMS.vial.stack).toBe(20);
+    expect(ITEMS.mightPotion.stack).toBe(20);
+    expect(ITEMS.fortitudePotion.stack).toBe(20);
+    expect(ITEMS.avoidancePotion.stack).toBe(20);
+  });
+
+  test("every tier has its bar, sword, shield, helmet, chestplate, leggings and cape, and its ore if it has veins", () => {
+    // Food 10, Emberbone 1, finds 5, seven per tier (the capes three), three ores,
+    // three logs, three raw fish, the three plants, the vial, the three potions, the
+    // silk, the rope and torch, and coins (#217, #222, #225).
+    expect(Object.keys(ITEMS)).toHaveLength(82);
+  });
+
+  test("the silk, the rope and the torch stack to 20, and a cape takes a whole slot (#225)", () => {
+    expect(ITEMS.spiderSilk.stack).toBe(20);
+    expect(ITEMS.rope.stack).toBe(20);
+    expect(ITEMS.torch.stack).toBe(20);
+    expect(ITEMS.copperMightCape.stack).toBe(1);
+    expect(ITEMS.emberiteAvoidanceCape.stack).toBe(1);
   });
 });
 
@@ -110,6 +130,15 @@ describe("an item id's parts (ADR 0004)", () => {
       quality: "rare",
       virtue: "might",
     });
+  });
+
+  test("a Delicious food's suffix is a Quality with no Virtue (#221)", () => {
+    expect(itemParts("cookedPerch:delicious")).toEqual({
+      base: "cookedPerch",
+      quality: "delicious",
+      virtue: undefined,
+    });
+    expect(itemParts("cookedPerch:delicious").base).toBe("cookedPerch");
   });
 
   test("an improved piece stacks to 1, like its common form", () => {

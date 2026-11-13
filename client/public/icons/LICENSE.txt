@@ -1,7 +1,7 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-51 are rendered by client/render-icons, 45 from the CC0 models below and six from
-our own geometry. The other is a Craftpix file.
+87 are rendered by client/render-icons, 64 from the CC0 models below and 23 from
+our own geometry. The other one is a Craftpix file.
 
 ------------------------------------------------------------------------
 1. emberiteSword.png: CRAFTPIX, NOT CC0
@@ -27,7 +27,7 @@ a licence to anyone else: this file is not CC0, and if you want it for your own
 project, get it from Craftpix under their terms.
 
 ------------------------------------------------------------------------
-2. The rendered 51
+2. The rendered 64
 ------------------------------------------------------------------------
 
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
@@ -46,15 +46,28 @@ steel and emberite
     character's helmet, body and leg meshes
 pickaxe, hammer, axe
     KayKit RPG Tools Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
-perch and trout from the model fish.glb, and pike from fish-large.glb, all tinted
+perch and trout from the model fish.glb, and pike from fish-large.glb, all tinted;
+the cooked, berry and herb perch, trout and pike from the same models, tinted
     Kenney Survival Kit (www.kenney.nl)
 berry
     Kenney Food Kit 2.0 (www.kenney.nl), the model grapes.glb
 herb
     Stylized Nature MegaKit, free version, by Quaternius (quaternius.com), the model Plant_1
+dewpetal, nightbloom and emberbloom, tinted from the model Plant_1
+    Stylized Nature MegaKit, free version, by Quaternius (quaternius.com)
+vial from the model bottle_B_brown, mightPotion from bottle_A_green tinted red, and
+fortitudePotion from bottle_C_brown tinted green
+    KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com)
+avoidancePotion, and rope and torch from the models Rope_1 and Torch_Metal
+    Fantasy Props MegaKit, free version, by Quaternius (quaternius.com)
+spiderSilk, tinted pale, from the model Textiles_A
+    KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 coal
     KayKit Forest Nature Pack 1.0, by Kay Lousberg (www.kaylousberg.com), the model Rock_1_E_Color1
 coins
     KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com), the model coin_stack_small
 
-emberbone.png, tin.png, ashstone.png, cinderglass.png, heartflame.png and rod.png are from no pack: they are Runic's own, drawn by three.js geometry in client/render-icons/main.ts.
+emberbone.png, tin.png, ashstone.png, cinderglass.png, heartflame.png, rod.png,
+gossamerCloak.png, tinderbox.png and the fifteen cape icons are from no pack: they are Runic's
+own, drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted
+by its tier, and its Virtue shows in the name only (#217).

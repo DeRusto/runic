@@ -22,6 +22,21 @@ describe("value", () => {
     expect(valueOf("bronzeChestplate")).toBe(30);
   });
 
+  test("the crafted utilities are worth their materials (#225)", () => {
+    expect(valueOf("spiderSilk")).toBe(10);
+    expect(valueOf("rope")).toBe(20);
+    expect(valueOf("torch")).toBe(23); // Two silk's rope plus a birch log.
+    expect(valueOf("vial")).toBe(3); // The store's value stays the low-level one.
+  });
+
+  test("a cape has a hand-set value by tier, and a gossamer cloak is its cape plus the silk (#217)", () => {
+    expect(valueOf("copperMightCape")).toBe(20);
+    expect(valueOf("emberiteFortitudeCape")).toBe(90);
+    expect(valueOf("copperMightCape:gossamer")).toBe(30);
+    expect(valueOf("copperMightCape:uncommon:fortitude:gossamer")).toBe(50);
+    expect(valueOf("bronzeFortitudeCape:gossamer")).toBe(45);
+  });
+
   test("uncommon is worth twice its common version, and rare four times", () => {
     expect(valueOf("ironSword")).toBe(24);
     expect(valueOf("ironSword:uncommon:might")).toBe(48);

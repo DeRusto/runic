@@ -1,20 +1,43 @@
 import {
-  costsOf,
-  countOf,
+  AVOIDANCE_POTION_POINTS,
+  AVOIDANCE_TENTHS_PER_POINT,
+  augmentationOf,
+  fireOf,
+  FORTITUDE_POTION_PERCENT,
   FOOD_HEALS,
   gateOf,
   gearOf,
   gearRefusal,
   GEMS,
+  GOSSAMER_AVOIDANCE_TENTHS,
+  heldOf,
   itemParts,
   makeRefusal,
-  RECIPES,
+  makingOf,
+  materialLines,
+  MIGHT_POTION_HIT,
+  POTION_BUFF_TICKS,
+  potionOf,
+  TICK_MS,
   TOOLS,
   virtueDoes,
-  xpOf,
-  type RecipeItem,
+  variantDoes,
+  xpLines,
+  type MakeItem,
+  type PotionId,
 } from "@runic/shared";
 import { itemName } from "./itemIcons.ts";
+
+/** What a Delicious item's tooltip says under its kind (#221). */
+const DELICIOUS_LINE = "Delicious: an extra healing tick for 60 seconds.";
+
+/** What each potion's tooltip says drinking it does, for its buff's two minutes (#222). */
+const POTION_LINE: Record<PotionId, string> = {
+  mightPotion: `Drink: +${MIGHT_POTION_HIT} to your hit`,
+  fortitudePotion: `Drink: +${FORTITUDE_POTION_PERCENT}% max health`,
+  avoidancePotion: `Drink: +${AVOIDANCE_POTION_POINTS} to your Avoidance`,
+};
+const POTION_MINUTES = (POTION_BUFF_TICKS * TICK_MS) / 60_000;
 
 /** The lines of an item's tooltip, top to bottom (spec §5). */
 export type ItemTip = {
@@ -32,17 +55,21 @@ const SLOT_KINDS = {
   head: "Head armour",
   body: "Body armour",
   legs: "Leg armour",
+  cape: "Cape",
 };
 
 function kindOf(item: string) {
   const gear = gearOf(item);
   if (gear)
     return `${SLOT_KINDS[gear.slot]}, needs ${gateOf(item)!.skill} ${gear.level}`;
-  const food = FOOD_HEALS.get(item);
+  if (potionOf(itemParts(item).base)) return "Potion";
+  const food = FOOD_HEALS.get(itemParts(item).base);
   if (food)
     return `Food, heals ${food.perTick * food.ticks} over ${food.ticks} ticks`;
   if ((TOOLS as readonly string[]).includes(item)) return "Tool";
-  return GEMS.includes(item) ? "Gem" : "Material";
+  if (GEMS.includes(item)) return "Gem";
+  const fire = fireOf(item);
+  return fire ? `Log, lights a fire at Firemaking ${fire.level}` : "Material";
 }
 
 /** `item`'s tip, with the refusal to equip it when `player` is given. */
@@ -51,33 +78,58 @@ export function itemTip(
   player?: { combatXp: number; defenseXp: number },
 ): ItemTip {
   const does = gearOf(item)?.does;
+  const potion = potionOf(itemParts(item).base);
+  // A gossamer cloak's bonus is a stat of its own, under its cape's armour line (#217).
+  const variant = variantDoes(item);
   return {
     name: itemName(item),
     quality: itemParts(item).quality,
     kind: kindOf(item),
     // The Gear tab's wording, ended like the Virtue line under it.
-    stats: does ? [`${does}.`] : [],
+    stats: [
+      ...(does
+        ? [`${does}.`]
+        : // A potion's drink line, then a Delicious food's own line (#221, #222).
+          potion
+          ? [`${POTION_LINE[potion]} for ${POTION_MINUTES} minutes.`]
+          : itemParts(item).quality === "delicious"
+            ? [DELICIOUS_LINE]
+            : []),
+      ...(variant ? [variant] : []),
+    ],
     virtue: virtueDoes(item),
     refusal: player && gearRefusal(item, player),
   };
 }
 
-/** A smithing recipe's tip: what it makes with no Virtue, then its materials and experience, then why it can't be made. */
+/** A make's tip: what it makes with no Virtue, then its materials and experience, then why it can't be made (#225). */
 export function recipeTip(
-  item: RecipeItem,
+  item: MakeItem,
   player: Parameters<typeof makeRefusal>[1],
 ): ItemTip {
-  const materials = costsOf(item)
+  const materials = materialLines(item)
     .map(
       ([material, count]) =>
-        `${count} ${itemName(material)} (have ${countOf(material, player)})`,
+        `${count} ${itemName(material)} (have ${heldOf(material, player)})`,
     )
     .join(", ");
-  const xp = `${xpOf(item)[0]![1]} ${RECIPES[item].skill} experience`;
-  const tip = itemTip(item);
+  const xpLine = `${xpLines(item)[0]![1]} ${makingOf(item).skill} experience`;
+  const augmentation = augmentationOf(item);
+  const tip: ItemTip = augmentation
+    ? {
+        name: itemName(item),
+        quality: "common",
+        kind: SLOT_KINDS.cape,
+        stats: [
+          `Keeps the cape's Quality and Virtue, and adds ${
+            GOSSAMER_AVOIDANCE_TENTHS / AVOIDANCE_TENTHS_PER_POINT
+          } points of Avoidance.`,
+        ],
+      }
+    : itemTip(item);
   return {
     ...tip,
-    stats: [...tip.stats, materials, xp],
+    stats: [...tip.stats, materials, xpLine],
     refusal: makeRefusal(item, player),
   };
 }

@@ -58,8 +58,14 @@ const FEATURE_VALUES = {
   vein: VEINS,
   tree: TREES,
   fishingSpot: FISHING_SPOTS,
-  station: { furnace: 1, anvil: 1 } satisfies Record<
-    NonNullable<TileKind["station"]>,
+  station: {
+    furnace: 1,
+    anvil: 1,
+    range: 1,
+    workbench: 1,
+  } satisfies Record<
+    // A fire is never a tile's station: no map places one (#224).
+    Exclude<NonNullable<TileKind["station"]>, "fire">,
     1
   >,
   house: { wall: 1, door: 1 } satisfies Record<

@@ -30,6 +30,22 @@ describe("Avoidance", () => {
   test("a fresh player with no gear has none", () => {
     expect(avoidanceOf({ defenseXp: 0 })).toEqual({ skill: 0, gear: 0 });
   });
+
+  test("a worn gossamer cloak adds its 0.2 points on top of its cape's (#217)", () => {
+    // The uncommon cape's own Avoidance Virtue is 0.1 point at Copper, and the cloak adds 0.2.
+    expect(
+      avoidanceOf({
+        defenseXp: 0,
+        cape: "copperAvoidanceCape:uncommon:avoidance:gossamer",
+      }).gear,
+    ).toBe(0.3);
+    expect(
+      avoidanceOf({ defenseXp: 0, cape: "copperAvoidanceCape:gossamer" }).gear,
+    ).toBe(0.2);
+    expect(
+      avoidanceOf({ defenseXp: 0, cape: "copperAvoidanceCape" }).gear,
+    ).toBe(0);
+  });
 });
 
 describe("an enemy's chance to hit", () => {

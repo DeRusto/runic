@@ -2,11 +2,17 @@ import { xpForLevel } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 import { itemTip, recipeTip } from "./itemTip.ts";
 
-const player = (defenseLevel: number, smithingLevel = 1) => ({
+const player = (
+  defenseLevel: number,
+  smithingLevel = 1,
+  craftingLevel = 1,
+) => ({
   combatXp: 0,
   defenseXp: xpForLevel(defenseLevel),
   miningXp: 0,
   smithingXp: xpForLevel(smithingLevel),
+  cookingXp: 0,
+  craftingXp: xpForLevel(craftingLevel),
   inventory: ["copperBar", ""],
   inventoryCounts: [5, 0],
 });
@@ -52,9 +58,46 @@ describe("an item's tip (spec §5)", () => {
 
   test("food gives its total healing and its ticks", () => {
     expect(itemTip("berry")).toMatchObject({
-      kind: "Food, heals 400 over 4 ticks",
+      kind: "Food, heals 100 over 4 ticks",
       stats: [],
     });
+    expect(itemTip("cookedPike")).toMatchObject({
+      kind: "Food, heals 2000 over 4 ticks",
+      stats: [],
+    });
+  });
+
+  test("a Delicious fish's name is coloured by it, and its line promises the extra healing (#221)", () => {
+    expect(itemTip("cookedTrout:delicious")).toEqual({
+      name: "Cooked trout",
+      quality: "delicious",
+      kind: "Food, heals 1200 over 4 ticks",
+      stats: ["Delicious: an extra healing tick for 60 seconds."],
+      virtue: undefined,
+      refusal: undefined,
+    });
+  });
+
+  test("a potion is one, and its line says what drinking it does for two minutes (#222)", () => {
+    expect(itemTip("mightPotion")).toEqual({
+      name: "Might potion",
+      quality: "common",
+      kind: "Potion",
+      stats: ["Drink: +100 to your hit for 2 minutes."],
+      virtue: undefined,
+      refusal: undefined,
+    });
+    expect(itemTip("fortitudePotion").stats).toEqual([
+      "Drink: +25% max health for 2 minutes.",
+    ]);
+    expect(itemTip("avoidancePotion").stats).toEqual([
+      "Drink: +1 to your Avoidance for 2 minutes.",
+    ]);
+  });
+
+  test("a potion plant and the vial stay materials (#222)", () => {
+    expect(itemTip("dewpetal").kind).toBe("Material");
+    expect(itemTip("vial").kind).toBe("Material");
   });
 });
 
@@ -76,5 +119,28 @@ describe("a smithing recipe's tip (spec §5)", () => {
 
   test("ends with the refusal when the player can't make it", () => {
     expect(recipeTip("ironSword", player(1)).refusal).toBe("Needs Smithing 10");
+  });
+});
+
+describe("the gossamer cloak's augmentation tip (#225)", () => {
+  test("a crafting row for the cloak reads as a cape, with the silk and one cape for materials", () => {
+    expect(recipeTip("gossamerCloak", player(1, 1, 15))).toEqual({
+      name: "Gossamer cloak",
+      quality: "common",
+      kind: "Cape",
+      stats: [
+        "Keeps the cape's Quality and Virtue, and adds 0.2 points of Avoidance.",
+        "1 Spider silk (have 0), 1 Cape (have 0)",
+        "25 Crafting experience",
+      ],
+      virtue: undefined,
+      refusal: "Not enough materials",
+    });
+  });
+
+  test("it ends with the refusal while the player is a level short", () => {
+    expect(recipeTip("gossamerCloak", player(1, 1, 14)).refusal).toBe(
+      "Needs Crafting 15",
+    );
   });
 });

@@ -59,6 +59,8 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     dead: false,
     smithingXp: 0,
     miningXp: 0,
+    cookingXp: 0,
+    craftingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -96,15 +98,18 @@ const headers = () =>
 const buttons = (row: any) => row.children.filter((c: any) => c.type);
 /** Whether a Make button is off. Not `disabled`, which would hide the row's tooltip from the pointer over it. */
 const off = (button: any) => button.ariaDisabled === "true";
+/** The ids of the fires burning now. */
+let fires: Set<string>;
 const patch = (next: SyncedPlayer) => {
   current = next;
-  onState({ players: new Map([["a", current]]) });
+  onState({ players: new Map([["a", current]]), fires });
 };
 
 beforeEach(() => {
   byId = new Map();
   listeners = new Map();
   send.mockClear();
+  fires = new Set();
   current = me([]);
   open = showSmithingPanel({
     sessionId: "a",
@@ -125,6 +130,84 @@ test("starts closed, and opens at a station with that station's rows", () => {
   open("anvil");
   expect(byId.get("smithing-title")!.textContent).toBe("Anvil");
   expect(shownRows()).toHaveLength(25);
+});
+
+test("the range lists every cooking recipe under one Cooking section (#221)", () => {
+  open("range");
+  expect(byId.get("smithing-title")!.textContent).toBe("Range");
+  expect(headers()).toEqual([["Cooking", "", true]]);
+  expect(shownRows()).toHaveLength(9);
+  expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Cooked perch"]);
+  expect(line(shownRows()[1])).toEqual([
+    "Berry perch",
+    "1 Perch + 1 Berry · Needs Cooking 5",
+  ]);
+});
+
+test("the workbench lists Crafting's recipes and the cloak's augmentation under one section (#225)", () => {
+  open("workbench");
+  expect(byId.get("smithing-title")!.textContent).toBe("Workbench");
+  expect(headers()).toEqual([["Crafting", "", true]]);
+  expect(shownRows()).toHaveLength(4);
+  expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Rope"]);
+  expect(line(shownRows()[1])).toEqual([
+    "Torch",
+    "1 Birch log + 1 Rope · Needs Crafting 5",
+  ]);
+  expect(line(shownRows()[2])).toEqual([
+    "Vial",
+    "1 Cinderglass · Needs Crafting 10",
+  ]);
+  // The cloak's own tip says what it keeps, and its cape is any cape.
+  expect(line(shownRows()[3])).toEqual([
+    "Gossamer cloak",
+    "1 Spider silk + 1 Cape · Needs Crafting 15",
+  ]);
+});
+
+test("a crafting row is refused on Crafting, and the cloak also on its cape and silk", () => {
+  open("workbench");
+  patch(
+    me([["spiderSilk", 2]], {
+      smithingXp: xpForLevel(50),
+      craftingXp: xpForLevel(15),
+    }),
+  );
+  expect(line(shownRows()[0])).toEqual(["Rope", "2 Spider silk"]);
+  expect(line(shownRows()[3])).toEqual([
+    "Gossamer cloak",
+    "1 Spider silk + 1 Cape · Not enough materials",
+  ]);
+  patch(
+    me(
+      [
+        ["spiderSilk", 1],
+        ["bronzeMightCape", 1],
+      ],
+      { craftingXp: xpForLevel(15) },
+    ),
+  );
+  expect(line(shownRows()[3])).toEqual([
+    "Gossamer cloak",
+    "1 Spider silk + 1 Cape",
+  ]);
+  const make = buttons(shownRows()[3])[1]!;
+  make.onclick!(undefined as never);
+  expect(send).toHaveBeenCalledWith("make", {
+    item: "gossamerCloak",
+    all: true,
+  });
+});
+
+test("a cooking row is refused on Cooking, whatever the Smithing level", () => {
+  open("range");
+  patch(me([], { smithingXp: xpForLevel(50), cookingXp: xpForLevel(9) }));
+  expect(line(shownRows()[3])).toEqual([
+    "Cooked trout",
+    "1 Trout · Needs Cooking 10",
+  ]);
+  patch(me([["trout", 1]], { cookingXp: xpForLevel(10) }));
+  expect(line(shownRows()[3])).toEqual(["Cooked trout", "1 Trout"]);
 });
 
 test("the anvil at Smithing 1 opens Copper and folds the other tiers with their gates", () => {
@@ -430,4 +513,21 @@ test("leaving the room closes it and lets go of the page", () => {
   leave();
   expect(panel().hidden).toBe(true);
   expect(listeners.size).toBe(0);
+});
+
+test("a fire burning out closes its panel, and cancels a walk to it", () => {
+  fires.add("5,2");
+  open("fire", { x: 5, y: 2 });
+  patch(current);
+  expect(panel().hidden).toBe(false);
+  fires.delete("5,2");
+  patch(current);
+  expect(panel().hidden).toBe(true);
+
+  fires.add("9,1");
+  open("fire", { x: 9, y: 1 });
+  fires.delete("9,1");
+  patch(current);
+  patch(me([], { x: 8, y: 1 }));
+  expect(panel().hidden).toBe(true);
 });

@@ -1,22 +1,37 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  AUGMENTATIONS,
+  burnPercent,
+  capeIn,
+  capesIn,
+  cookedItem,
   countOf,
   levelRefusal,
   madeItem,
   makeRefusal,
+  materialLines,
   RECIPES,
   stationRefusal,
+  xpLines,
 } from "./making.ts";
 import { xpForLevel } from "./skills.ts";
 
-const holding = (held: [string, number][], smithingXp = 0, miningXp = 0) => ({
+const holding = (
+  held: [string, number][],
+  smithingXp = 0,
+  miningXp = 0,
+  cookingXp = 0,
+  craftingXp = 0,
+) => ({
   smithingXp,
   miningXp,
+  cookingXp,
+  craftingXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are the rebalance spec §3's Making table", () => {
+test("the recipes are the rebalance spec §3's Making table, and #221's range and #225's workbench after it", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -288,6 +303,114 @@ test("the recipes are the rebalance spec §3's Making table", () => {
       ticks: 12,
       xp: { smithingXp: 108 },
     },
+    cookedPerch: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 1,
+      costs: { perch: 1 },
+      ticks: 6,
+      xp: { cookingXp: 12 },
+    },
+    berryPerch: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 5,
+      costs: { perch: 1, berry: 1 },
+      ticks: 6,
+      xp: { cookingXp: 18 },
+    },
+    herbPerch: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 10,
+      costs: { perch: 1, herb: 1 },
+      ticks: 6,
+      xp: { cookingXp: 24 },
+    },
+    cookedTrout: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 10,
+      costs: { trout: 1 },
+      ticks: 6,
+      xp: { cookingXp: 30 },
+    },
+    berryTrout: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 15,
+      costs: { trout: 1, berry: 1 },
+      ticks: 6,
+      xp: { cookingXp: 45 },
+    },
+    herbTrout: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 20,
+      costs: { trout: 1, herb: 1 },
+      ticks: 6,
+      xp: { cookingXp: 60 },
+    },
+    cookedPike: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 20,
+      costs: { pike: 1 },
+      ticks: 6,
+      xp: { cookingXp: 50 },
+    },
+    berryPike: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 25,
+      costs: { pike: 1, berry: 1 },
+      ticks: 6,
+      xp: { cookingXp: 75 },
+    },
+    herbPike: {
+      station: "range",
+      skill: "Cooking",
+      xpField: "cookingXp",
+      level: 30,
+      costs: { pike: 1, herb: 1 },
+      ticks: 6,
+      xp: { cookingXp: 100 },
+    },
+    rope: {
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 1,
+      costs: { spiderSilk: 2 },
+      ticks: 6,
+      xp: { craftingXp: 8 },
+    },
+    torch: {
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 5,
+      costs: { birchLog: 1, rope: 1 },
+      ticks: 6,
+      xp: { craftingXp: 14 },
+    },
+    vial: {
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 10,
+      costs: { cinderglass: 1 },
+      ticks: 6,
+      xp: { craftingXp: 20 },
+    },
   });
 });
 
@@ -413,12 +536,195 @@ test("too few materials are refused", () => {
   expect(makeRefusal("copperSword", player)).toBe("Not enough materials");
 });
 
-test("the anvil needs a hammer and the furnace needs nothing", () => {
+test("the anvil needs a hammer and the furnace and range need nothing", () => {
   expect(stationRefusal("anvil", { tools: ["pickaxe"] })).toBe(
     "You need a hammer. The Blacksmith will give you one.",
   );
   expect(stationRefusal("anvil", { tools: ["hammer"] })).toBeUndefined();
   expect(stationRefusal("furnace", { tools: [] })).toBeUndefined();
+  expect(stationRefusal("range", { tools: [] })).toBeUndefined();
+});
+
+describe("cooking at the range (#221)", () => {
+  test("the base fish are gated on Cooking at 1, 10 and 20, the dishes 5 above them, the herb dishes 10", () => {
+    const player = holding([["perch", 1]]);
+    expect(makeRefusal("cookedPerch", player)).toBeUndefined();
+    expect(
+      makeRefusal("cookedTrout", holding([["trout", 1]], 0, 0, xpForLevel(9))),
+    ).toBe("Needs Cooking 10");
+    expect(
+      makeRefusal(
+        "herbPike",
+        holding(
+          [
+            ["pike", 1],
+            ["herb", 1],
+          ],
+          0,
+          0,
+          xpForLevel(29),
+        ),
+      ),
+    ).toBe("Needs Cooking 30");
+    expect(
+      makeRefusal("berryPike", holding([["pike", 1]], 0, 0, xpForLevel(25))),
+    ).toBe("Not enough materials");
+  });
+
+  test("food rolls Delicious by the improved-item formula, at the fish's gate and 0.2% a level to its 20% cap", () => {
+    expect(cookedItem("cookedPerch", 1, rolling(0.0399))).toBe(
+      "cookedPerch:delicious",
+    );
+    expect(cookedItem("cookedPerch", 1, rolling(0.04))).toBe("cookedPerch");
+    expect(cookedItem("cookedTrout", 20, rolling(0.0599))).toBe(
+      "cookedTrout:delicious",
+    );
+    // Cooked perch's gate is 1, so the cap arrives: 40 + 2 × 98 over it.
+    expect(cookedItem("cookedPerch", 99, rolling(0.1999))).toBe(
+      "cookedPerch:delicious",
+    );
+    expect(cookedItem("cookedPerch", 99, rolling(0.2))).toBe("cookedPerch");
+  });
+
+  test("a burn is 25% at the fish's gate, a percent less per level, floored at 0", () => {
+    expect(burnPercent("cookedPerch", 1)).toBe(25);
+    expect(burnPercent("cookedPerch", 30)).toBe(0);
+    expect(burnPercent("cookedTrout", 10)).toBe(25);
+    expect(burnPercent("cookedTrout", 11)).toBe(24);
+    expect(burnPercent("berryPike", 30)).toBe(20);
+  });
+});
+
+describe("crafting at the workbench (#225)", () => {
+  test("rope, torch and vial are gated on Crafting at 1, 5 and 10", () => {
+    expect(makeRefusal("rope", holding([["spiderSilk", 2]]))).toBeUndefined();
+    expect(makeRefusal("rope", holding([["spiderSilk", 1]]))).toBe(
+      "Not enough materials",
+    );
+    expect(
+      makeRefusal(
+        "torch",
+        holding(
+          [
+            ["birchLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          xpForLevel(4),
+        ),
+      ),
+    ).toBe("Needs Crafting 5");
+    expect(
+      makeRefusal(
+        "torch",
+        holding(
+          [
+            ["birchLog", 1],
+            ["rope", 1],
+          ],
+          0,
+          0,
+          0,
+          xpForLevel(5),
+        ),
+      ),
+    ).toBeUndefined();
+    expect(
+      makeRefusal(
+        "vial",
+        holding([["cinderglass", 1]], 0, 0, 0, xpForLevel(9)),
+      ),
+    ).toBe("Needs Crafting 10");
+    expect(
+      makeRefusal(
+        "vial",
+        holding([["cinderglass", 1]], 0, 0, 0, xpForLevel(10)),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("the workbench needs no tool, like the furnace and range", () => {
+    expect(stationRefusal("workbench", { tools: [] })).toBeUndefined();
+  });
+});
+
+describe("the gossamer cloak's augmentation (#217, #225)", () => {
+  test("it is gated on Crafting 15, and needs the silk and a cape of any tier", () => {
+    const crafting15 = xpForLevel(15);
+    expect(
+      makeRefusal("gossamerCloak", holding([["copperMightCape", 1]])),
+    ).toBe("Needs Crafting 15");
+    expect(makeRefusal("gossamerCloak", holding([], 0, 0, 0, crafting15))).toBe(
+      "Not enough materials",
+    );
+    expect(
+      makeRefusal(
+        "gossamerCloak",
+        holding([["spiderSilk", 1]], 0, 0, 0, crafting15),
+      ),
+    ).toBe("Not enough materials");
+    expect(
+      makeRefusal(
+        "gossamerCloak",
+        holding(
+          [
+            ["spiderSilk", 1],
+            ["emberiteAvoidanceCape", 1],
+          ],
+          0,
+          0,
+          0,
+          crafting15,
+        ),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("the first cape held is the one it works on, and an augmented one is no longer an input", () => {
+    const player = holding(
+      [
+        ["copperMightCape:uncommon:fortitude", 1],
+        ["bronzeFortitudeCape", 1],
+        ["copperMightCape:rare:avoidance:gossamer", 1],
+      ],
+      0,
+      0,
+      0,
+      xpForLevel(15),
+    );
+    expect(capeIn(player)).toBe("copperMightCape:uncommon:fortitude");
+    expect(capesIn(player)).toBe(2);
+    expect(
+      capeIn(holding([["copperMightCape:rare:avoidance:gossamer", 1]])),
+    ).toBeUndefined();
+    expect(capesIn(holding([["copperSword", 1]]))).toBe(0);
+  });
+
+  test("a cloak's materials read as the silk and one cape of any tier", () => {
+    expect(materialLines("gossamerCloak")).toEqual([
+      ["spiderSilk", 1],
+      ["cape", 1],
+    ]);
+    expect(xpLines("gossamerCloak")).toEqual([["craftingXp", 25]]);
+    expect(materialLines("torch")).toEqual([
+      ["birchLog", 1],
+      ["rope", 1],
+    ]);
+  });
+
+  test("the augmentation keeps #217's decided gate, wait and experience", () => {
+    expect(AUGMENTATIONS.gossamerCloak).toEqual({
+      station: "workbench",
+      skill: "Crafting",
+      xpField: "craftingXp",
+      level: 15,
+      reagent: "spiderSilk",
+      ticks: 6,
+      xp: 25,
+    });
+  });
 });
 
 /** A random source that returns `rolls` in order. */

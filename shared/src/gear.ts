@@ -1,4 +1,4 @@
-import { itemParts, type Virtue } from "./items.ts";
+import { itemParts, VIRTUES, type Virtue } from "./items.ts";
 import { TIERS } from "./region.ts";
 import { levelFor } from "./skills.ts";
 
@@ -25,6 +25,7 @@ const GATES = {
   head: DEFENSE,
   body: DEFENSE,
   legs: DEFENSE,
+  cape: DEFENSE,
 } as const;
 
 type Gear = {
@@ -65,6 +66,14 @@ const armour = (
   armourPercent,
 });
 
+/** A cape is small armour on the hands' line (#217), and the slot reagent augmentation works on. */
+const cape = (level: number, armourPercent: number): Gear => ({
+  slot: "cape",
+  level,
+  does: `Takes ${armourPercent}% off each hit you take`,
+  armourPercent,
+});
+
 /** Added to a shield's chance per Blocking level above 1 (spec §5). */
 export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
 
@@ -95,6 +104,22 @@ export const GEAR = new Map<string, Gear>([
   ["emberiteHelmet", armour("head", 20, 6)],
   ["emberiteChestplate", armour("body", 20, 12)],
   ["emberiteLeggings", armour("legs", 20, 6)],
+  // #217's capes, three Virtues to a tier: might, fortitude, avoidance, on the hands' armour line.
+  ["copperMightCape", cape(1, 1)],
+  ["copperFortitudeCape", cape(1, 1)],
+  ["copperAvoidanceCape", cape(1, 1)],
+  ["bronzeMightCape", cape(5, 2)],
+  ["bronzeFortitudeCape", cape(5, 2)],
+  ["bronzeAvoidanceCape", cape(5, 2)],
+  ["ironMightCape", cape(10, 3)],
+  ["ironFortitudeCape", cape(10, 3)],
+  ["ironAvoidanceCape", cape(10, 3)],
+  ["steelMightCape", cape(15, 4)],
+  ["steelFortitudeCape", cape(15, 4)],
+  ["steelAvoidanceCape", cape(15, 4)],
+  ["emberiteMightCape", cape(20, 5)],
+  ["emberiteFortitudeCape", cape(20, 5)],
+  ["emberiteAvoidanceCape", cape(20, 5)],
 ]);
 
 /** The gear an item id is, improved or not, or undefined if it isn't gear. An improved piece has its common form's stats and gate (spec §2). */
@@ -168,3 +193,32 @@ export function gearRefusal(
     ? `You need ${gate.skill} ${gate.level} to equip this.`
     : undefined;
 }
+
+/** The tenths of Avoidance a gossamer cloak adds to its cape (§217, tunable at build). */
+export const GOSSAMER_AVOIDANCE_TENTHS = 2;
+
+/** The tenths of Avoidance `item`'s reagent variant adds, 0 for a plain id (#217). */
+export const variantAvoidanceTenths = (item: string) =>
+  itemParts(item).variant === "gossamer" ? GOSSAMER_AVOIDANCE_TENTHS : 0;
+
+/** The total of every worn piece's reagent variant's Avoidance, in tenths of a point (#217). */
+export const variantAvoidanceOf = (player: Partial<Record<GearSlot, string>>) =>
+  GEAR_SLOTS.reduce(
+    (total, slot) => total + variantAvoidanceTenths(player[slot] ?? ""),
+    0,
+  );
+
+/** What the Gear tab says `item`'s reagent variant adds, or undefined for a plain one (#217). */
+export function variantDoes(item: string) {
+  const tenths = variantAvoidanceTenths(item);
+  return tenths ? VIRTUE_EFFECTS.avoidance.does(tenths) : undefined;
+}
+
+/** The id of `cape`'s gossamer cloak: the cape's full id with the `gossamer` variant on the end, which keeps its Quality and Virtue (#217, ADR 0004). */
+export const gossamerItem = (cape: string) => `${cape}:gossamer`;
+
+/** The cape `item`'s gossamer cloak was made from, without the variant, or undefined if it isn't one (ADR 0004). */
+export const capeOfGossamer = (item: string) =>
+  itemParts(item).variant === "gossamer"
+    ? item.split(":").slice(0, -1).join(":")
+    : undefined;

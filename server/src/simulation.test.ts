@@ -1,6 +1,7 @@
 import { parseRegion } from "@runic/shared";
 import { beforeEach, describe, expect, test } from "vitest";
 import { seededRandom } from "./gatheringHarness.ts";
+import { NO_EXPERIENCE } from "./playerSave.ts";
 import { Simulation } from "./simulation.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -320,16 +321,8 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
   expect(sim.saveOf("a")).toEqual({
     x: 1,
     y: 1,
-    combatXp: 0,
-    defenseXp: 0,
-    herblawXp: 0,
+    ...NO_EXPERIENCE,
     hitpointsXp: 4050,
-    miningXp: 0,
-    smithingXp: 0,
-    woodcuttingXp: 0,
-    fishingXp: 0,
-    blockingXp: 0,
-    masteryXp: 0,
     masteryHundredths: 0,
     pinnedSkills: [
       "Combat",
@@ -369,6 +362,9 @@ const SAVED = {
   smithingXp: 5,
   woodcuttingXp: 10,
   fishingXp: 11,
+  cookingXp: 12,
+  firemakingXp: 13,
+  craftingXp: 14,
   blockingXp: 6,
   masteryXp: 7,
   masteryHundredths: 8,
@@ -413,6 +409,11 @@ test("max health is 100 per Hitpoints level, whatever the health left", () => {
   expect(player.maxHealth).toBe(1300);
   expect(player.health).toBe(3);
   expect(sim.state.players.get("a")!.maxHealth).toBe(1000);
+});
+
+test("health saved above the maximum, as under a Fortitude potion, logs back in at the maximum", () => {
+  sim.addPlayer("b", { ...SAVED, hitpointsXp: 7200, health: 1500 });
+  expect(sim.state.players.get("b")!.health).toBe(1300);
 });
 
 test("a save has the tile the player walked to", () => {

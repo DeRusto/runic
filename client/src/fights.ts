@@ -177,7 +177,11 @@ export function showFights(room: WorldConnection) {
         const figure = playerFigures.get(event.player);
         if (!figure) continue;
         const hammer = event.station === "anvil";
-        figure.work = { tile: stationTile(event.station, figure.tile), hammer };
+        // Lighting a fire has no station to face yet, and none while it burns (#224).
+        figure.work =
+          event.station === "fire"
+            ? undefined
+            : { tile: stationTile(event.station, figure.tile), hammer };
         figure.onceWithin(
           hammer ? "Hammering" : "Working_A",
           event.ticks * TICK_MS,

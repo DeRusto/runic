@@ -1,25 +1,34 @@
-import { ArraySchema, schema, t } from "@colyseus/schema";
+import { schema, t } from "@colyseus/schema";
 import {
   addItems,
   addXp,
   armourPercentOf,
+  AUGMENTATIONS,
+  augmentationOf,
   attemptChance,
   avoidanceOf,
   blockOf,
   BLOCKING_XP_PER_BLOCK,
+  burnPercent,
+  capeIn,
   COMBAT_LOCK_TICKS,
   COINS,
+  cookedItem,
   costsOf,
   dealRefusal,
   dealTotals,
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_ENEMY_SWING,
+  DELICIOUS_BUFF_INTERVAL_TICKS,
+  DELICIOUS_BUFF_PERCENT,
+  DELICIOUS_BUFF_TICKS,
   DOUBLE_YIELD,
   EAT_INTERVAL_TICKS,
   EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
   enemyHitChance,
   FIGHT_BACK_DELAY_TICKS,
+  FIRES,
   FOOD_HEALS,
   gatheringSource,
   gatherRefusal,
@@ -28,20 +37,34 @@ import {
   gearOf,
   GEAR_SLOTS,
   gearRefusal,
+  gossamerItem,
   HEALING_POOL_INTERVAL_TICKS,
   HEALTH_PER_HITPOINTS_LEVEL,
   hitOf,
   INVENTORY_SLOTS,
   ITEMS,
   levelFor,
+  LIGHTING_TICKS,
+  lightRefusal,
   logoutRefusal,
   maxHealthOf,
   madeItem,
   makeRefusal,
+  makingOf,
+  type AugmentationKind,
+  type MakeItem,
   moveStack,
   MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
+  potionFromPlant,
+  potionOf,
+  POTIONS,
+  POTION_BUFF_TICKS,
+  AVOIDANCE_POTION_POINTS,
+  FORTITUDE_POTION_PERCENT,
+  MIGHT_POTION_HIT,
+  mixRefusal,
   removeItems,
   PLAYER_CRIT_CHANCE,
   PLAYER_CRIT_MULTIPLIER,
@@ -58,7 +81,6 @@ import {
   SKILLS,
   slotFor,
   takeRefusal,
-  STARTING_PINNED_SKILLS,
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
@@ -68,8 +90,6 @@ import {
   depositRefusal,
   itemParts,
   ENEMIES,
-  STARTING_HEALTH,
-  STARTING_HITPOINTS_XP,
   aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
@@ -87,11 +107,13 @@ import {
   type PlayerAction,
   type EnemyKind,
   type EnemyState,
+  type FireLog,
   type GearSlot,
   type ItemId,
   type RecipeItem,
   type SitePool,
   type StationKind,
+  type Virtue,
   XP_PER_DAMAGE_DEALT,
   type Tile,
   type TileKind,
@@ -99,6 +121,7 @@ import {
   type XpField,
 } from "@runic/shared";
 import { GroundItem, GroundItems } from "./groundItems.ts";
+import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import {
   findPath,
@@ -144,21 +167,18 @@ const isBankSlot = (slot: number) =>
   Number.isInteger(slot) && slot >= 0 && slot < BANK_SLOTS;
 const isAmount = (amount: number) => Number.isInteger(amount) && amount > 0;
 
+const xpField = () => t.uint32().default(0);
+/** One synced experience field per skill, so a new row in `SKILLS` needs no edit here. */
+const XP_FIELDS = Object.fromEntries(
+  SKILLS.map(([, field]) => [field, xpField()]),
+) as Record<(typeof SKILLS)[number][1], ReturnType<typeof xpField>>;
+
 export const Player = schema(
   {
     username: t.string(),
     x: t.uint8(),
     y: t.uint8(),
-    combatXp: t.uint32(),
-    defenseXp: t.uint32(),
-    herblawXp: t.uint32(),
-    hitpointsXp: t.uint32(),
-    miningXp: t.uint32().default(0),
-    smithingXp: t.uint32().default(0),
-    woodcuttingXp: t.uint32().default(0),
-    fishingXp: t.uint32().default(0),
-    blockingXp: t.uint32().default(0),
-    masteryXp: t.uint32().default(0),
+    ...XP_FIELDS,
     /** The fraction of a point of Mastery not yet earned, so small gains add up. */
     masteryHundredths: t.uint8().default(0),
     /** In any order; the sheet's order decides how they show. */
@@ -212,6 +232,12 @@ export const Tree = schema({ chopsLeft: t.uint8() }, "Tree");
 
 export const FishingSpot = schema({ catchesLeft: t.uint8() }, "FishingSpot");
 
+/** A fire a player has lit, keyed in state by its tile: the log it burns, which sets its tier, and the tick it despawns on (#224). */
+export const Fire = schema(
+  { log: t.string<FireLog>(), endTick: t.uint32() },
+  "Fire",
+);
+
 const SITE_SCHEMAS = {
   bushes: Bush,
   veins: Vein,
@@ -228,6 +254,8 @@ export const WorldState = schema(
     veins: t.map(Vein),
     trees: t.map(Tree),
     fishingSpots: t.map(FishingSpot),
+    /** Every burning fire, keyed by its tile, visible to everyone (#224). */
+    fires: t.map(Fire),
     /** Tagged for views: the room adds each one to the views of the players who can see it. */
     groundItems: t.map(GroundItem).view(),
     /** The general store's shelf, the same for every player: item ids, and parallel to them how many. */
@@ -256,8 +284,20 @@ type UnsyncedAction =
   | { kind: "visiting"; villager: VillagerId; then?: DialogueAction }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
-  /** `doneTick` stays unset until arrival starts the first wait. */
-  | { kind: "smithing"; item: RecipeItem; all: boolean; doneTick?: number };
+  /**
+   * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
+   * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
+   * first wait.
+   */
+  | {
+      kind: "smithing";
+      item: MakeItem;
+      all: boolean;
+      at?: Tile;
+      doneTick?: number;
+    }
+  /** The log is already burnt: a new click or a death during the lighting loses it (#224). */
+  | { kind: "lighting"; log: FireLog; doneTick: number };
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -269,7 +309,8 @@ export class Simulation {
     | { enemy: string }
     | { gather: GatheringSkill; site: string }
     | { villager: VillagerId; then?: DialogueAction }
-    | { make: RecipeItem; all: boolean }
+    | { make: MakeItem; all: boolean; at?: Tile }
+    | { light: number }
     | { take: string }
     | { follow: string }
   >();
@@ -286,6 +327,14 @@ export class Simulation {
       nextEatTick: number;
       /** What each healing tick still to come gives, in eating order. Not saved, so leaving loses it (spec §6). */
       healingPool: number[];
+      /** A Delicious fish's buff, or none: its fish's per-tick heal, when it next heals and the tick it runs out on. Not saved (spec §6, #221). */
+      delicious?: { perTick: number; nextHealTick: number; endTick: number };
+      /**
+       * A Virtue potion's buff, or none: its Virtue, the tick it runs out on and the health
+       * a Fortitude one added, which the hit and Avoidance read from too. Not saved
+       * (spec §6, #222).
+       */
+      potion?: { virtue: Virtue; endTick: number; bonus: number };
       /** The combat lock runs until this tick. */
       lockEndTick: number;
       respawnTick: number;
@@ -442,38 +491,14 @@ export class Simulation {
 
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
-    const {
-      inventory,
-      inventoryCounts = [],
-      pinnedSkills = STARTING_PINNED_SKILLS,
-      tools = [],
-      bank = [],
-      bankCounts = [],
-      ...fields
-    } = this.loginSave(saved);
+    const fields = syncedOf(this.loginSave(saved));
+    const maxHealth = maxHealthTotal(fields);
     const player = Object.assign(new Player(), fields, {
       username,
-      maxHealth: maxHealthTotal(fields),
+      maxHealth,
+      // Health saved under a Fortitude potion can be above the maximum it logs back in to.
+      health: Math.min(fields.health, maxHealth),
     });
-    player.pinnedSkills = new ArraySchema(...pinnedSkills);
-    player.tools = new ArraySchema(...tools);
-    player.inventory = new ArraySchema(...inventory);
-    // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
-    player.inventoryCounts = new ArraySchema(
-      ...inventory.map((item, slot) =>
-        item === EMPTY_SLOT ? 0 : inventoryCounts[slot] || 1,
-      ),
-    );
-    // A save from before the bank has none, so it starts empty (village spec §6).
-    player.bank = new ArraySchema(
-      ...Array.from(
-        { length: BANK_SLOTS },
-        (_, slot) => bank[slot] ?? EMPTY_SLOT,
-      ),
-    );
-    player.bankCounts = new ArraySchema(
-      ...Array.from({ length: BANK_SLOTS }, (_, slot) => bankCounts[slot] ?? 0),
-    );
     this.state.players.set(id, player);
     this.unsyncedPlayers.set(id, {
       path: [],
@@ -491,17 +516,7 @@ export class Simulation {
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
     const respawn = respawnTile(this.tiles);
-    if (!saved) {
-      return {
-        ...respawn,
-        combatXp: 0,
-        defenseXp: 0,
-        herblawXp: 0,
-        hitpointsXp: STARTING_HITPOINTS_XP,
-        health: STARTING_HEALTH,
-        inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
-      };
-    }
+    if (!saved) return newSave(respawn);
     const tile = this.tiles[saved.y]?.[saved.x];
     if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
@@ -536,63 +551,8 @@ export class Simulation {
   saveOf(id: string): PlayerSave | undefined {
     const player = this.state.players.get(id);
     if (!player) return undefined;
-    const {
-      x,
-      y,
-      combatXp,
-      defenseXp,
-      herblawXp,
-      hitpointsXp,
-      miningXp,
-      smithingXp,
-      woodcuttingXp,
-      fishingXp,
-      blockingXp,
-      masteryXp,
-      masteryHundredths,
-      health,
-      weapon,
-      shield,
-      head,
-      body,
-      legs,
-      hands,
-      feet,
-      cape,
-      neck,
-      ring,
-    } = player;
     return {
-      x,
-      y,
-      combatXp,
-      defenseXp,
-      herblawXp,
-      hitpointsXp,
-      miningXp,
-      smithingXp,
-      woodcuttingXp,
-      fishingXp,
-      blockingXp,
-      masteryXp,
-      masteryHundredths,
-      health,
-      weapon,
-      shield,
-      head,
-      body,
-      legs,
-      hands,
-      feet,
-      cape,
-      neck,
-      ring,
-      pinnedSkills: [...player.pinnedSkills],
-      inventory: [...player.inventory],
-      inventoryCounts: [...player.inventoryCounts],
-      tools: [...player.tools],
-      bank: [...player.bank],
-      bankCounts: [...player.bankCounts],
+      ...saveOf(player),
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.respawned(player)),
     };
@@ -721,19 +681,47 @@ export class Simulation {
   }
 
   /**
-   * Comes straight off the network, so anything but a recipe's item is ignored, as is choosing
-   * an anvil recipe with no hammer. Level and materials wait for arrival (spec §4).
+   * Comes straight off the network, so anything but a recipe's product or an augmentation is
+   * ignored, as is choosing an anvil recipe with no hammer. `at` names the fire to cook at
+   * instead of the range, and is refused unless one burns there. Level and materials wait for
+   * arrival (spec §4, #225).
    */
-  queueMake(id: string, intent: { item: string; all: boolean }) {
+  queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
     const player = this.state.players.get(id);
-    const { item, all } = intent ?? {};
+    const { item, all, at } = intent ?? {};
     // A string first: an array of one would pass hasOwn by turning into its element.
     if (!player || player.dead || typeof item !== "string") return;
-    if (!Object.hasOwn(RECIPES, item)) return;
-    const make = item as RecipeItem;
-    const { station } = RECIPES[make];
-    if (!this.stations[station] || stationRefusal(station, player)) return;
-    this.queuedActions.set(id, { make, all: all === true });
+    if (!Object.hasOwn(RECIPES, item) && !Object.hasOwn(AUGMENTATIONS, item))
+      return;
+    const make = item as MakeItem;
+    const { station } = makingOf(make);
+    // `at` names the fire to cook at, which stands in for the range (#224).
+    let fire: Tile | undefined;
+    if (at) {
+      const { x, y } = at as Partial<Tile>;
+      if (
+        station !== "range" ||
+        !Number.isInteger(x) ||
+        !Number.isInteger(y) ||
+        !this.state.fires.has(siteId({ x, y } as Tile))
+      )
+        return;
+      fire = { x: x!, y: y! };
+    } else if (!this.stations[station] || stationRefusal(station, player)) {
+      return;
+    }
+    this.queuedActions.set(id, { make, all: all === true, at: fire });
+  }
+
+  /**
+   * `slot` comes straight off the network, so anything but an inventory slot's index is
+   * ignored. The log, the tinderbox and the tile all wait for the tick, since the player is
+   * standing on the tile already (#224).
+   */
+  queueLight(id: string, slot: number) {
+    if (!this.alive(id)) return;
+    if (!isInventorySlot(slot)) return;
+    this.queuedActions.set(id, { light: slot });
   }
 
   /**
@@ -991,6 +979,29 @@ export class Simulation {
     if (eat === from || eat === to) this.queuedEats.delete(id);
   }
 
+  /**
+   * Mixing a potion: `slot` comes straight off the network, so anything but a slot holding a
+   * mixable plant is ignored. Like a move it skips the queue and touches no action, as
+   * nothing waits on it (#222).
+   */
+  mix(id: string, slot: number) {
+    if (!this.alive(id) || !isInventorySlot(slot)) return;
+    const player = this.state.players.get(id)!;
+    const potion = potionFromPlant(player.inventory[slot]!);
+    if (!potion) return;
+    const refusal = mixRefusal(potion, player);
+    if (refusal) {
+      this.events.push({ type: "told", player: id, line: refusal });
+      return;
+    }
+    // One vial and one plant become one potion, wherever each was (#222).
+    const { inventory, inventoryCounts } = player;
+    removeItems(inventory, inventoryCounts, "vial", 1);
+    removeItems(inventory, inventoryCounts, POTIONS[potion].plant, 1);
+    addItems(inventory, inventoryCounts, potion, 1);
+    this.earnXp(player, "herblawXp", POTIONS[potion].xp);
+  }
+
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
   pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
     const pins = this.state.players.get(id)?.pinnedSkills;
@@ -1022,12 +1033,15 @@ export class Simulation {
     // Whatever was worn lands where this came from, so swapping always works (spec §4).
     this.placeGear(id, slot, player[gear.slot]);
     player[gear.slot] = item;
-    this.fitHealth(player);
+    this.fitHealth(id);
   }
 
-  /** After gear changes: max health follows worn Fortitude, and health drops to it but never rises (spec §2). */
-  private fitHealth(player: InstanceType<typeof Player>) {
-    player.maxHealth = maxHealthTotal(player);
+  /** After gear changes or a Fortitude potion starts or ends: max health follows worn Fortitude and an active potion's, and health drops to it but never rises (spec §2, #222). */
+  private fitHealth(id: string) {
+    const player = this.state.players.get(id)!;
+    player.maxHealth =
+      maxHealthTotal(player) +
+      (this.unsyncedPlayers.get(id)!.potion?.bonus ?? 0);
     player.health = Math.min(player.health, player.maxHealth);
   }
 
@@ -1045,7 +1059,7 @@ export class Simulation {
     }
     this.placeGear(id, slot, worn);
     player[gearSlot] = "";
-    this.fitHealth(player);
+    this.fitHealth(id);
   }
 
   /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
@@ -1092,8 +1106,14 @@ export class Simulation {
   private eat(id: string, slot: number) {
     const player = this.state.players.get(id)!;
     const unsynced = this.unsyncedPlayers.get(id)!;
-    const food = FOOD_HEALS.get(player.inventory[slot]);
-    if (food === undefined || this.state.tick < unsynced.nextEatTick) return;
+    const parts = itemParts(player.inventory[slot]);
+    const food = FOOD_HEALS.get(parts.base);
+    const potion = potionOf(parts.base);
+    if (
+      (food === undefined && !potion) ||
+      this.state.tick < unsynced.nextEatTick
+    )
+      return;
     unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
     // From now if no swing is waiting, or a past timer would swallow the delay.
     unsynced.nextSwingTick =
@@ -1101,10 +1121,45 @@ export class Simulation {
     if (--player.inventoryCounts[slot]! === 0)
       player.inventory[slot] = EMPTY_SLOT;
     // Not at full health, or a swing later this tick could save it from being lost.
-    if (player.health < player.maxHealth) {
+    if (food && player.health < player.maxHealth) {
       unsynced.healingPool.push(
         ...Array<number>(food.ticks).fill(food.perTick),
       );
+    }
+    // A Delicious fish heals on its own afterwards, and another one only refreshes it (#221).
+    if (parts.quality === "delicious") {
+      unsynced.delicious = {
+        perTick: food!.perTick,
+        nextHealTick: this.state.tick + DELICIOUS_BUFF_INTERVAL_TICKS,
+        endTick: this.state.tick + DELICIOUS_BUFF_TICKS,
+      };
+      this.events.push({
+        type: "delicious",
+        player: id,
+        ticks: DELICIOUS_BUFF_TICKS,
+      });
+    }
+    // A potion's Virtue replaces the heal: two minutes of it, refreshed never stacked (#222).
+    if (potion) {
+      const { virtue } = POTIONS[potion];
+      unsynced.potion = {
+        virtue,
+        endTick: this.state.tick + POTION_BUFF_TICKS,
+        // A Fortitude potion's quarter is worked out once, on the normal max.
+        bonus:
+          virtue === "fortitude"
+            ? Math.round(
+                (maxHealthTotal(player) * FORTITUDE_POTION_PERCENT) / 100,
+              )
+            : 0,
+      };
+      this.fitHealth(id);
+      this.events.push({
+        type: "potion",
+        player: id,
+        virtue,
+        ticks: POTION_BUFF_TICKS,
+      });
     }
     this.events.push({ type: "eaten", player: id });
   }
@@ -1124,7 +1179,9 @@ export class Simulation {
     this.applyIntents();
     this.advancePlayers();
     for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
+    this.advanceFires();
     this.advanceMaking();
+    this.advanceLighting();
     this.advanceVisits();
     this.advanceTakes();
     this.advancePlayerSwings();
@@ -1149,11 +1206,41 @@ export class Simulation {
       if ("enemy" in intent) {
         unsynced.action = { kind: "fighting", enemy: intent.enemy };
       } else if ("make" in intent) {
-        goNextTo({
+        const action: UnsyncedAction = {
           kind: "smithing",
           item: intent.make,
           all: intent.all,
-        });
+          at: intent.at,
+        };
+        // A fire the player is standing on or beside needs no walk (#224).
+        if (intent.at && tilesApart(player, intent.at) <= 1) {
+          unsynced.action = action;
+          unsynced.path = [];
+        } else {
+          goNextTo(action);
+        }
+      } else if ("light" in intent) {
+        const log = player.inventory[intent.light]!;
+        const refusal = lightRefusal(log, this.lightTileAt(player), player);
+        if (refusal)
+          this.events.push({ type: "told", player: id, line: refusal });
+        else {
+          // The log is consumed at once, so a new click during the lighting loses it (#224).
+          removeItems(player.inventory, player.inventoryCounts, log, 1);
+          // Or a walk in progress would carry them off the tile the fire was checked for.
+          unsynced.path = [];
+          unsynced.action = {
+            kind: "lighting",
+            log: log as FireLog,
+            doneTick: this.state.tick + LIGHTING_TICKS,
+          };
+          this.events.push({
+            type: "make",
+            player: id,
+            station: "fire",
+            ticks: LIGHTING_TICKS,
+          });
+        }
       } else if ("villager" in intent) {
         goNextTo({
           kind: "visiting",
@@ -1203,7 +1290,7 @@ export class Simulation {
   /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
     if (action?.kind === "smithing")
-      return this.stations[RECIPES[action.item].station];
+      return action.at ?? this.stations[makingOf(action.item).station];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
@@ -1325,9 +1412,14 @@ export class Simulation {
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action: making } = unsynced;
       if (making?.kind !== "smithing" || unsynced.path.length) continue;
+      // A fire can burn out mid-job, ending the cooking on it (#224).
+      if (making.at && !this.state.fires.has(siteId(making.at))) {
+        unsynced.action = undefined;
+        continue;
+      }
       if (making.doneTick !== undefined) {
         if (this.state.tick < making.doneTick) continue;
-        if (!this.finishItem(id, making.item) || !making.all) {
+        if (!this.finishItem(id, making) || !making.all) {
           unsynced.action = undefined;
           continue;
         }
@@ -1339,14 +1431,14 @@ export class Simulation {
         this.events.push({ type: "told", player: id, line: refusal });
         continue;
       }
-      const { station, ticks } = RECIPES[making.item];
+      const { station, ticks } = makingOf(making.item);
       making.doneTick = this.state.tick + ticks;
       this.events.push({ type: "make", player: id, station, ticks });
     }
   }
 
   /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
-  private finishItem(id: string, item: RecipeItem) {
+  private finishItem(id: string, { item, at }: { item: MakeItem; at?: Tile }) {
     const player = this.state.players.get(id)!;
     const told = (line: string) => {
       this.events.push({ type: "told", player: id, line });
@@ -1355,6 +1447,87 @@ export class Simulation {
     // Dropping during the wait is allowed, so they may have gone.
     const refusal = makeRefusal(item, player);
     if (refusal) return told(refusal);
+    // An augmentation has no roll: its product is the cape's own gossamer variant (#217, #225).
+    if (Object.hasOwn(AUGMENTATIONS, item))
+      return this.finishAugment(id, player, item as AugmentationKind);
+    const recipe = item as RecipeItem;
+    // A burn consumes the fish: no experience, no item, and Make all goes on to the
+    // next one (#221). It never rolls Delicious.
+    if (RECIPES[recipe].station === "range") {
+      const level = levelFor(player.cookingXp);
+      // A fire burns more than the range, by the points of the log it burns (#224).
+      const fire = at ? this.state.fires.get(siteId(at)) : undefined;
+      const burn =
+        burnPercent(recipe, level) + (fire ? FIRES[fire.log].burnPercent : 0);
+      if (this.random() < burn / 100) {
+        for (const [cost, count] of costsOf(recipe))
+          removeItems(player.inventory, player.inventoryCounts, cost, count);
+        // "berryPerch" reads as "berry perch", like an item's name does.
+        const name = recipe.replace(
+          /[A-Z]/g,
+          (letter) => ` ${letter.toLowerCase()}`,
+        );
+        this.events.push({
+          type: "told",
+          player: id,
+          line: `You burn the ${name}.`,
+        });
+        return true;
+      }
+    }
+    // Rolled after the room check below, so a refused make rolls nothing.
+    const roll =
+      RECIPES[recipe].station === "range"
+        ? () => cookedItem(recipe, levelFor(player.cookingXp), this.random)
+        : () => madeItem(recipe, levelFor(player.smithingXp), this.random);
+    return this.craftItem(id, player, recipe, roll);
+  }
+
+  /**
+   * Swaps the reagent and the first cape held for its gossamer variant, which keeps the cape's
+   * Quality and Virtue, on a copy so a full inventory can refuse first (#217, #225).
+   */
+  private finishAugment(
+    id: string,
+    player: InstanceType<typeof Player>,
+    item: AugmentationKind,
+  ) {
+    const told = (line: string) => {
+      this.events.push({ type: "told", player: id, line });
+      return false;
+    };
+    const { reagent, xp, xpField } = AUGMENTATIONS[item];
+    // The refusal has already found a cape to work on.
+    const cape = capeIn(player)!;
+    const made = gossamerItem(cape);
+    const inventory = [...player.inventory];
+    const inventoryCounts = [...player.inventoryCounts];
+    removeItems(inventory, inventoryCounts, reagent, 1);
+    removeItems(inventory, inventoryCounts, cape, 1);
+    const slot = slotFor(made, { inventory, inventoryCounts });
+    if (slot < 0) return told("Your inventory is full.");
+    inventory[slot] = made;
+    inventoryCounts[slot]!++;
+    inventory.forEach((held, i) => {
+      player.inventory[i] = held;
+      player.inventoryCounts[i] = inventoryCounts[i]!;
+    });
+    this.earnXp(player, xpField, xp);
+    this.events.push({ type: "made", player: id, item: made });
+    return true;
+  }
+
+  /** Swaps the materials for what `roll` makes, on a copy so a full inventory can refuse first. */
+  private craftItem(
+    id: string,
+    player: InstanceType<typeof Player>,
+    item: RecipeItem,
+    roll: () => string,
+  ) {
+    const told = (line: string) => {
+      this.events.push({ type: "told", player: id, line });
+      return false;
+    };
     const inventory = [...player.inventory];
     const inventoryCounts = [...player.inventoryCounts];
     for (const [cost, count] of costsOf(item)) {
@@ -1371,9 +1544,13 @@ export class Simulation {
     // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
     const slot = slotFor(item, { inventory, inventoryCounts });
     if (slot < 0) return told("Your inventory is full.");
-    const made = madeItem(item, levelFor(player.smithingXp), this.random);
-    inventory[slot] = made;
-    inventoryCounts[slot]!++;
+    const made = roll();
+    // A Delicious fish can't join a stack of plain ones, so it needs room of its own.
+    const madeSlot =
+      made === item ? slot : slotFor(made, { inventory, inventoryCounts });
+    if (madeSlot < 0) return told("Your inventory is full.");
+    inventory[madeSlot] = made;
+    inventoryCounts[madeSlot]!++;
     inventory.forEach((held, i) => {
       player.inventory[i] = held;
       player.inventoryCounts[i] = inventoryCounts[i]!;
@@ -1382,6 +1559,63 @@ export class Simulation {
       this.earnXp(player, field, gained);
     this.events.push({ type: "made", player: id, item: made });
     return true;
+  }
+
+  /**
+   * What the player's tile is like for lighting a fire on it (#224). The tile kind gives the
+   * ground and any prop; a fire of their own and an enemy standing there come from state.
+   */
+  private lightTileAt({ x, y }: Tile) {
+    const kind = this.tiles[y]![x]!;
+    return {
+      fire: this.state.fires.has(siteId({ x, y })),
+      ground: kind.ground,
+      prop: kind.prop,
+      enemy: [...this.state.enemies.values()].some(
+        (enemy) => enemy.state !== "dead" && enemy.x === x && enemy.y === y,
+      ),
+    };
+  }
+
+  /** A fire of `log`'s tier on the player's own tile, and a station of kind "fire" while it burns (#224). */
+  private placeFire({ x, y }: Tile, log: FireLog) {
+    this.state.fires.set(
+      siteId({ x, y }),
+      Object.assign(new Fire(), {
+        log,
+        endTick: this.state.tick + FIRES[log].ticks,
+      }),
+    );
+    (this.stations.fire ??= []).push({ x, y });
+  }
+
+  /** Fires despawn silently when their time is up, and stop being stations (#224). */
+  private advanceFires() {
+    for (const [id, fire] of this.state.fires) {
+      if (this.state.tick < fire.endTick) continue;
+      this.state.fires.delete(id);
+      const [x, y] = id.split(",").map(Number) as [number, number];
+      const tiles = this.stations.fire!;
+      tiles.splice(
+        tiles.findIndex((tile) => tile.x === x && tile.y === y),
+        1,
+      );
+    }
+  }
+
+  /** When the lighting is over, the fire appears and pays its experience (#224). */
+  private advanceLighting() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const { action } = unsynced;
+      if (action?.kind !== "lighting" || this.state.tick < action.doneTick)
+        continue;
+      unsynced.action = undefined;
+      const player = this.state.players.get(id)!;
+      // A rival may have lit one here first; the log already burnt, so nothing is placed.
+      if (this.lightTileAt(player).fire) continue;
+      this.placeFire(player, action.log);
+      this.earnXp(player, "firemakingXp", FIRES[action.log].xp);
+    }
   }
 
   /** Mastery's share is of what lands, so experience lost to the cap earns none. */
@@ -1514,8 +1748,14 @@ export class Simulation {
     this.lock(id);
     const { chance, max, gear } = hitOf(player);
     const rolled = this.rollDamage(chance, max);
+    // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
+    const buffed =
+      gear +
+      (this.unsyncedPlayers.get(id)!.potion?.virtue === "might"
+        ? MIGHT_POTION_HIT
+        : 0);
     // Only on a hit, as 0 means a miss.
-    const hit = rolled && rolled + gear;
+    const hit = rolled && rolled + buffed;
     const critical = hit > 0 && this.random() < PLAYER_CRIT_CHANCE;
     const damage = Math.min(
       critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
@@ -1526,7 +1766,7 @@ export class Simulation {
     );
     this.earnXp(player, "combatXp", xp);
     this.earnXp(player, "hitpointsXp", xp);
-    player.maxHealth = maxHealthTotal(player);
+    this.fitHealth(id);
     this.events.push({
       type: "playerSwing",
       player: id,
@@ -1643,8 +1883,15 @@ export class Simulation {
     unsynced.nextSwingTick = this.state.tick + swingIntervalTicks;
     this.lock(enemy.target);
     const avoidance = avoidanceOf(player);
+    // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
+    const buffed =
+      avoidance.skill +
+      avoidance.gear +
+      (this.unsyncedPlayers.get(enemy.target)!.potion?.virtue === "avoidance"
+        ? AVOIDANCE_POTION_POINTS
+        : 0);
     const rolled = this.rollDamage(
-      enemyHitChance(enemy.kind, avoidance.skill + avoidance.gear),
+      enemyHitChance(enemy.kind, buffed),
       maxDamage,
     );
     const blocked = rolled > 0 && this.rollBlock(player);
@@ -1728,9 +1975,11 @@ export class Simulation {
       this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
       player[gearSlot] = "";
     }
-    this.fitHealth(player);
     const unsynced = this.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
+    unsynced.delicious = undefined;
+    unsynced.potion = undefined;
+    this.fitHealth(id);
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
@@ -1761,6 +2010,28 @@ export class Simulation {
         player.health += amount;
         if (amount > 0)
           this.events.push({ type: "healed", player: id, amount });
+      }
+      // A Delicious fish heals through a fight, where regeneration pauses (#221).
+      const { delicious, potion } = unsynced;
+      if (delicious) {
+        if (this.state.tick >= delicious.nextHealTick) {
+          delicious.nextHealTick += DELICIOUS_BUFF_INTERVAL_TICKS;
+          const amount = Math.min(
+            Math.round((delicious.perTick * DELICIOUS_BUFF_PERCENT) / 100),
+            player.maxHealth - player.health,
+          );
+          player.health += amount;
+          if (amount > 0)
+            this.events.push({ type: "healed", player: id, amount });
+        }
+        if (this.state.tick >= delicious.endTick)
+          unsynced.delicious = undefined;
+      }
+      // A potion's Virtue runs out like the Delicious buff's healing does (#222): the
+      // unspent Fortitude bonus is lost, and health settles on the normal max.
+      if (potion && this.state.tick >= potion.endTick) {
+        unsynced.potion = undefined;
+        this.fitHealth(id);
       }
       if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
     }

@@ -31,11 +31,11 @@ The body of water in the region, where players fish from the bank. Water can't b
 _Avoid_: Pond, mere
 
 **Smithy**:
-The part of the village where the furnace, anvil and Blacksmith stand.
+The part of the village where the furnace, anvil, range, workbench and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
-A site in a thicket that can be picked. Every bush belongs to a site pool: one that runs out disappears from its spot, and after a while a full bush comes back at another. Comes in two kinds: a **berry bush** anyone can pick, and a **herb bush** that needs a higher Herblaw level.
+A site in a thicket that can be picked. Every bush belongs to a site pool: one that runs out disappears from its spot, and after a while a full bush comes back at another. Comes in five kinds: a **berry bush** anyone can pick, and the **herb**, **dewpetal**, **nightbloom** and **emberbloom** bushes that need a higher Herblaw level.
 _Avoid_: Node, resource, plant
 
 **Vein**:
@@ -43,7 +43,7 @@ A site that can be mined for ore. Every vein belongs to a site pool: one that ru
 _Avoid_: Ore rock, node, resource
 
 **Site pool**:
-An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins, its berry and herb bushes, and the Lake's fishing spots each have one.
+An area where a kind of site appears at some of its spots at a time; when one runs out, it comes back at another. The region's Copper, Iron and Emberite veins, its five kinds of bush, and the Lake's fishing spots each have one.
 _Avoid_: Spawn area, zone
 
 **Spot**:
@@ -64,10 +64,22 @@ _Avoid_: Smelter, forge
 
 **Anvil**:
 A fixed tile where a player turns bars into gear.
-_Avoid_: Forge, workbench
+_Avoid_: Forge
+
+**Range**:
+A fixed tile in the smithy, beside the furnace, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
+_Avoid_: Stove, oven, cooker
+
+**Fire**:
+A cooking station a player lights with a tinderbox from one log, on the tile they stand on. It burns for a while that depends on the log — birch, oak or charwood — cooks like the range but burns a fish more, and is then simply gone, leaving nothing. It gives light, never blocks walking, and only one burns on a tile.
+_Avoid_: Campfire, bonfire
+
+**Workbench**:
+A fixed tile in the smithy, between the range and the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
+_Avoid_: Crafting table, work table
 
 **Station**:
-A furnace or an anvil: a fixed place where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
+A furnace, an anvil, a range or a workbench: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -83,7 +95,7 @@ A talk with a villager in the dialogue box above the bar: the villager's lines a
 _Avoid_: Chat (that is the chat box), dialog
 
 **Forester**:
-Bram, the villager at the edge of the thicket, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
+Bram, the villager at the edge of the thicket, near the village, who gives players an axe and a tinderbox if they don't have them, for free, when they ask in conversation.
 _Avoid_: Woodcutter (too close to Woodcutting, the skill), woodsman
 
 **Fisher**:
@@ -207,7 +219,7 @@ When a shield stops an enemy's hit that would have landed, so it does no damage.
 _Avoid_: Parry, dodge, miss
 
 **Herblaw**:
-The gathering skill trained by picking berries and herbs from bushes.
+The gathering skill trained by picking berries, herbs and potion plants from bushes, and by mixing potions.
 _Avoid_: Herbalism, herblore
 
 **Foraging**:
@@ -225,19 +237,39 @@ _Avoid_: Resource skill, harvesting
 The skill trained by turning bars into gear at an anvil. Smelting ore into bars is Mining.
 _Avoid_: Crafting, forging
 
+**Cooking**:
+The skill trained by turning a raw fish into food at the range or a fire. It gates each fish and dish, decides how often one burns and how often one comes out Delicious, and pays the food's experience.
+_Avoid_: Chef work, cookery
+
+**Firemaking**:
+The skill trained by lighting fires from logs. It gates each log's fire, and pays the fire's experience when it appears.
+_Avoid_: Burning
+
+**Crafting**:
+The skill trained by making the game's utilities and working reagents into capes at the workbench: rope from spider silk, torches from a log and a rope, vials from a gem, and the Gossamer cloak from a cape and silk (#225). It gates each product and pays its experience.
+_Avoid_: Handicraft, construction
+
 ### Players
 
 **Account**:
 A friend's login: a username and password. Each account has exactly one player, who goes by the account's username.
 _Avoid_: User, profile, character slot
 
+**Save**:
+What the server keeps of a player between logins: where they stand, their health, each skill's experience, their inventory, bank, worn gear, tools and pinned skills. A new account has none until its first save.
+_Avoid_: Profile, record, snapshot
+
 **Invite code**:
 The one shared secret a friend must give to create an account.
 _Avoid_: Referral, key
 
 **Action**:
-The one thing a player is currently doing (walking, picking, mining, chopping, fishing, smithing or fighting); a new click replaces it.
+The one thing a player is currently doing (walking, picking, mining, chopping, fishing, smithing, lighting or fighting); a new click replaces it.
 _Avoid_: Task, job, activity
+
+**Lighting**:
+Making a fire from a log with a tinderbox, on the player's own tile. It takes a few ticks, and the log is burnt at once: a new click during the lighting loses it. Firemaking pays its experience when the fire appears.
+_Avoid_: Ignite, burn (that's what a fish can do)
 
 **Inventory**:
 The fixed set of slots a player carries items in. A slot holds one piece of gear, or a stack.
@@ -300,12 +332,40 @@ All the ground items on one tile. A tile holds any number of them.
 _Avoid_: Heap, stack
 
 **Food**:
-An item that heals the player who eats it, over the next few ticks rather than all at once; berries and herbs are food.
+An item that heals the player who eats it, over the next few ticks rather than all at once: a berry and the range's cooked fish and dishes are food. A raw fish is a material until the range cooks it, and a herb is Cooking material, not food.
 _Avoid_: Consumable, potion
+
+**Delicious**:
+The food Quality a fish or dish can come out of the range at. It heals exactly like its common form, and eating it starts a short extra healing of its own that runs through combat and is refreshed, never stacked, by another Delicious fish. Its name shows in gold.
+_Avoid_: Perfect, tasty, golden
 
 **Healing pool**:
 The health a player's eaten food has yet to give back, as healing ticks waiting in eating order. Each food gives its own amount per healing tick, one food's ticks at a time, so more food heals for longer but not faster.
 _Avoid_: Heal over time, buff
+
+**Dewpetal**:
+A pale blue flower picked from its own bush in the deeper Thicket, at Herblaw 5. A potion plant: mixed with a vial into the Might potion. Not food.
+_Avoid_: Dew flower, petal
+
+**Nightbloom**:
+A violet flower picked from its own bush in the deeper Thicket, at Herblaw 15. A potion plant: mixed with a vial into the Fortitude potion. Not food.
+_Avoid_: Night flower
+
+**Emberbloom**:
+An ember-orange flower picked from its own bush in the deepest Thicket, at Herblaw 20. A potion plant: mixed with a vial into the Avoidance potion. Not food.
+_Avoid_: Ember flower
+
+**Vial**:
+A small empty bottle the general store sells from day one, and Crafting makes a second supply of from a cinderglass at the workbench (#225). One holds a potion while it is mixed, and is used up with the plant.
+_Avoid_: Flask, bottle
+
+**Potion**:
+A drink mixed from one vial and one potion plant, and drunk like food is eaten. Drinking one starts its Virtue on the drinker for two minutes: Might adds to the hit, Fortitude raises max health, Avoidance adds a point of Avoidance. Drinking again refreshes it, never stacks it, and it runs through combat. It is not food: it heals nothing, the Virtue is the whole of it, and what a Fortitude bonus hasn't spent is lost when it runs out.
+_Avoid_: Elixir, draught, consumable
+
+**Mixing**:
+Making a potion, anywhere in the inventory and with no station: using a vial on a potion plant. The plant's pick gate is the Herblaw level it needs, it pays 1.5 of the plant's pick experience, and the making engine's level and materials refusals apply. The base herb mixes nothing: it is Cooking material.
+_Avoid_: Brewing, crafting
 
 **Material**:
 An item that goes into making something: ore, finds, bars, logs, fish and Emberbones. Gems, logs and fish count as materials before anything uses them.
@@ -320,7 +380,7 @@ The wood a player takes from a tree: birch, oak or charwood logs. A successful c
 _Avoid_: Wood, lumber, timber
 
 **Fish**:
-What a player catches at a fishing spot with a rod: **Perch** (Fishing 1), **Trout** (10) or **Pike** (20). Every fishing spot can give any of them. A catch is a perch unless the player's level lets a better fish come up instead. Fish are caught raw, so they are a material, not food, and can't be eaten. A successful catch gives 1, and fish stack like ore.
+What a player catches at a fishing spot with a rod: **Perch** (Fishing 1), **Trout** (10) or **Pike** (20). Every fishing spot can give any of them. A catch is a perch unless the player's level lets a better fish come up instead. Fish are caught raw, so they are a material, not food, and can't be eaten until the range cooks them. A successful catch gives 1, and fish stack like ore.
 _Avoid_: Raw fish
 
 **Find**:
@@ -339,6 +399,18 @@ _Avoid_: Ingot
 Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.
 _Avoid_: Trophy, token
 
+**Spider silk**:
+A thread a Spider sometimes leaves behind, needed to make rope and to augment capes. Phase 8 owns drop tables, so nothing gives it yet.
+_Avoid_: Web, thread
+
+**Rope**:
+A length spun from two spider silk at the workbench. Nothing uses it yet: it waits for Agility's shortcuts, and sells at the general store until then.
+_Avoid_: Cord, line
+
+**Torch**:
+A stick made at the workbench from a birch log and a rope. Nothing uses it yet: it waits for a dark place to light, gives no light of its own, and sells at the general store until then.
+_Avoid_: Lamp, candle
+
 **Gear**:
 What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
@@ -348,7 +420,7 @@ Gear of uncommon or rare Quality, which carries a Virtue. Today only making give
 _Avoid_: Magic item, enchanted item, rare item (rare is one Quality)
 
 **Quality**:
-A step on the ladder an item is made at: common, uncommon or rare. A common item has no Virtue, an uncommon one has a Virtue, and a rare one has a Virtue at double the size. Quality never changes an item's base stats, gate or look. Its colour shows in the item's name.
+A step on the ladder an item is made at: common, uncommon or rare. A common item has no Virtue, an uncommon one has a Virtue, and a rare one has a Virtue at double the size. Food can also come out Delicious. Quality never changes an item's base stats, gate or look. Its colour shows in the item's name.
 _Avoid_: Rarity, grade, tier (that's the metal)
 
 **Virtue**:
@@ -358,6 +430,18 @@ _Avoid_: Bonus (a sword's hit bonus and Mastery's share use that word), affix, e
 **Armour**:
 Gear worn on the body that reduces the damage of hits that land, by a percentage. It doesn't make a hit less likely to land: that's Defense.
 _Avoid_: Protection, plate
+
+**Cape**:
+Gear worn on the back: small armour, on the hands' line, and the slot an augmentation works on. Leatherworking will make one of three Virtues for each tier (#217); today only the rules about them exist, with nothing that drops or makes one.
+_Avoid_: Cloak (that's the Gossamer cloak), mantle
+
+**Gossamer cloak**:
+A cape that has taken its reagent's gift: the first augmentation turns a cape and one spider silk into it at the workbench. It keeps the cape's Quality and Virtue and adds a little Avoidance, and reads as the cape in every way but its name and that bonus (#217, #225).
+_Avoid_: Cape (that's what it was)
+
+**Augmentation**:
+A reagent worked into a piece of gear at the workbench, owned by Crafting: the gear and its reagent become the gear's variant, which keeps the gear's Quality and Virtue and adds the reagent's gift. The Gossamer cloak is the first; more reagents later mean more of them (#217, #225).
+_Avoid_: Enchanting, upgrade
 
 **Gear slot**:
 Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
@@ -380,7 +464,7 @@ A skill a player has chosen to show on the bottom bar, up to six. Every skill al
 _Avoid_: Favourite skill, tracked skill
 
 **Smithing panel**:
-The panel a player opens by clicking a furnace or anvil, to choose what to make there.
+The panel a player opens by clicking a station, to choose what to make there.
 _Avoid_: Crafting menu, recipe list
 
 **Social panel**:
@@ -391,8 +475,12 @@ _Avoid_: Friends panel, friends window
 One of the five metals, from lowest to highest: Copper (1), Bronze (5), Iron (10), Steel (15) and Emberite (20). A tier's bars and gear, and its ore where it has veins, all share its level gate. Only Copper, Iron and Emberite have veins; Bronze and Steel bars are smelted from another tier's ore and a find.
 _Avoid_: Grade, rank
 
+**Tinderbox**:
+A tool the Forester gives players alongside the axe, free on ask in conversation. Lighting a fire takes one, along with a log.
+_Avoid_: Fire striker, lighter
+
 **Tool**:
-What a player must own to do some work: a pickaxe for Mining, an axe for Woodcutting, a fishing rod for Fishing, a hammer at an anvil. Owning one is enough: a tool has no tiers and never changes how fast work goes. A tool is never lost and takes no inventory slot.
+What a player must own to do some work: a pickaxe for Mining, an axe for Woodcutting, a fishing rod for Fishing, a hammer at an anvil, a tinderbox for Firemaking. Owning one is enough: a tool has no tiers and never changes how fast work goes. A tool is never lost and takes no inventory slot.
 _Avoid_: Gear, equipment
 
 **Toolbelt**:

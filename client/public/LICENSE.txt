@@ -14,6 +14,12 @@ models/
     Bush_*, Grass_*, Rock_*, forest_texture.png
         KayKit Forest Nature, by Kay Lousberg (www.kaylousberg.com), recorded as
         CC0 in docs/adr/0003-three-js-isometric-client.md.
+    kitchenStove.glb
+        Kenney Furniture Kit 2.1 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Furniture-Kit.txt.
+    workbench.glb
+        Kenney Survival Kit 2.0 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Survival-Kit.txt.
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.

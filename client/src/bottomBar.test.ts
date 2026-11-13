@@ -4,10 +4,13 @@ import {
   EAT_INTENT,
   EMPTY_SLOT,
   EQUIP_INTENT,
+  LIGHT_INTENT,
+  MIX_INTENT,
   INVENTORY_SLOTS,
   MAX_XP,
   MOVE_INTENT,
   PRIVATE_LINE,
+  type TileKind,
 } from "@runic/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { WorldConnection } from "./players.ts";
@@ -147,6 +150,11 @@ const fakeRoom = () => ({
   send: vi.fn(),
   onReconnect: signal<[]>(),
   onStateChange: signal<[ReturnType<typeof stateWith>]>(),
+  /** The world's fires and enemies, for a light's tile checks (#224). */
+  state: {
+    fires: new Map<string, unknown>(),
+    enemies: new Map<string, { state: string; x: number; y: number }>(),
+  },
 });
 const slot = (i = 0) => slotsBox.children[i]!;
 const shownFood = () => slot().dataset.item;
@@ -171,10 +179,16 @@ const pointAt = (i = 0) => {
         .join("");
 };
 
+/** A couple of plain grass rows, the player standing at (2,1) in the light tests (#224). */
+let tiles: TileKind[][];
+
 beforeEach(() => {
   frames = [];
   room = fakeRoom();
-  showBottomBar(room as unknown as WorldConnection, () => {});
+  tiles = Array.from({ length: 2 }, () =>
+    Array.from({ length: 4 }, () => ({ ground: "grass", blocks: false })),
+  ) as unknown as TileKind[][];
+  showBottomBar(room as unknown as WorldConnection, () => {}, tiles);
   room.onStateChange.invoke(stateWith());
   nextFrame();
 });
@@ -439,7 +453,7 @@ test("improved gear equips from the bar like its common form, and names its Virt
 describe("the right-click menu", () => {
   beforeEach(() => {
     room.onStateChange.invoke(
-      stateHolding(["berry", 5], ["copperOre", 3], ["herb", 1]),
+      stateHolding(["berry", 5], ["copperOre", 3], ["cookedPerch", 1]),
     );
     nextFrame();
   });
@@ -480,6 +494,42 @@ describe("the right-click menu", () => {
     menu.children[0]!.onclick!();
     expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 2);
     expect(menu.hidden).toBe(true);
+  });
+
+  test("a Delicious fish eats like its common form (#221)", () => {
+    room.onStateChange.invoke(stateHolding(["cookedTrout:delicious", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Eat", "Drop"]);
+  });
+
+  test("a potion drinks on a click and from the menu, by the eat flow (#222)", () => {
+    room.onStateChange.invoke(stateHolding(["mightPotion", 1]));
+    nextFrame();
+    slot(0).onclick!();
+    expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 0);
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Drink", "Drop"]);
+    menu.children[0]!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(EAT_INTENT, 0);
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("a potion plant offers Mix potion, which sends the plant's slot (#222)", () => {
+    room.onStateChange.invoke(stateHolding(["dewpetal", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Mix potion", "Drop"]);
+    menu.children[0]!.onclick!();
+    expect(room.send).toHaveBeenCalledWith(MIX_INTENT, { slot: 0 });
+    expect(menu.hidden).toBe(true);
+  });
+
+  test("the base herb, which the range cooks, offers no mixing (#222)", () => {
+    room.onStateChange.invoke(stateHolding(["herb", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toEqual(["Drop"]);
   });
 
   test.each([
@@ -563,7 +613,7 @@ describe("dragging", () => {
 
 test("a private line from the server prints as it came, with nothing overhead", () => {
   const said = vi.fn();
-  showBottomBar(room as unknown as WorldConnection, said);
+  showBottomBar(room as unknown as WorldConnection, said, tiles);
   chatLines.children = [];
   room.messages.get(PRIVATE_LINE)!("From Ada: hi");
   expect(chatLines.children.map((line) => line.children.join(""))).toEqual([
@@ -574,7 +624,7 @@ test("a private line from the server prints as it came, with nothing overhead", 
 
 test("public chat prints with a colon and says the text overhead", () => {
   const said = vi.fn();
-  showBottomBar(room as unknown as WorldConnection, said);
+  showBottomBar(room as unknown as WorldConnection, said, tiles);
   chatLines.children = [];
   room.messages.get(CHAT)!({
     id: "ada",
@@ -590,7 +640,7 @@ test("public chat prints with a colon and says the text overhead", () => {
 
 test("an emote prints bold as the name then the text, and says the text alone overhead", () => {
   const said = vi.fn();
-  showBottomBar(room as unknown as WorldConnection, said);
+  showBottomBar(room as unknown as WorldConnection, said, tiles);
   chatLines.children = [];
   room.messages.get(CHAT)!({
     id: "ada",
@@ -602,4 +652,110 @@ test("an emote prints bold as the name then the text, and says the text alone ov
   expect(bold.tagName).toBe("b");
   expect(bold.textContent).toBe("DeRusto dances");
   expect(said).toHaveBeenCalledWith("ada", "dances");
+});
+
+describe("lighting a fire from a log's slot (#224)", () => {
+  /** The player on a tile of `tiles` at (2,1), holding one stack, with `tools` and `firemakingXp`. */
+  const lighter = (
+    held: [string, number],
+    {
+      tools = ["tinderbox"],
+      firemakingXp = 0,
+      fires = [],
+      enemies = [],
+      tile = { ground: "grass", blocks: false },
+    }: {
+      tools?: string[];
+      firemakingXp?: number;
+      fires?: string[];
+      enemies?: { state: string; x: number; y: number }[];
+      tile?: TileKind;
+    } = {},
+  ) => {
+    // The tile the player stands on, as the server would know it.
+    tiles[1]![2] = tile;
+    const me = {
+      ...stateHolding(held).players.get("me"),
+      x: 2,
+      y: 1,
+      woodcuttingXp: 0,
+      fishingXp: 0,
+      cookingXp: 0,
+      firemakingXp,
+      tools,
+    };
+    room.state.fires = new Map(fires.map((id) => [id, { log: "birchLog" }]));
+    room.state.enemies = new Map(enemies.map((enemy) => [enemy.state, enemy]));
+    return { players: new Map([["me", me]]) } as unknown as ReturnType<
+      typeof stateWith
+    >;
+  };
+  const chooseLight = () =>
+    menu.children
+      .find((choice: any) => choice.textContent === "Light fire")
+      ?.onclick();
+
+  test("a log's slot offers it, and sends the slot to light from", () => {
+    room.onStateChange.invoke(lighter(["birchLog", 3]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).toContain("Light fire");
+    chooseLight();
+    expect(room.send).toHaveBeenCalledWith(LIGHT_INTENT, 0);
+  });
+
+  test("a slot without a log never offers it", () => {
+    room.onStateChange.invoke(lighter(["berry", 1]));
+    nextFrame();
+    rightClick(0);
+    expect(menuChoices()).not.toContain("Light fire");
+  });
+
+  test.each([
+    [
+      "no tinderbox",
+      { tools: [] },
+      "You need a tinderbox. The Forester will give you one.",
+    ],
+    ["a log too high a tier", { held: ["oakLog", 1] }, "Needs Firemaking 10"],
+    [
+      "a fire already burning here",
+      { fires: ["2,1"] },
+      "There is already a fire here.",
+    ],
+    [
+      "water underfoot",
+      { tile: { ground: "water", blocks: false } },
+      "You can't light a fire here.",
+    ],
+    [
+      "a prop on the tile",
+      { tile: { ground: "grass", prop: "tuft", blocks: false } },
+      "You can't light a fire here.",
+    ],
+    [
+      "an enemy standing here",
+      { enemies: [{ state: "idle", x: 2, y: 1 }] },
+      "You can't light a fire here.",
+    ],
+  ] as const)(
+    "lighting with %s prints the reason and sends nothing",
+    (_, setup, line) => {
+      const { held, tile, ...rest } = setup as {
+        held?: [string, number];
+        tile?: TileKind;
+        tools?: string[];
+        fires?: string[];
+        enemies?: { state: string; x: number; y: number }[];
+      };
+      room.onStateChange.invoke(
+        lighter(held ?? ["birchLog", 1], { ...rest, tile }),
+      );
+      nextFrame();
+      rightClick(0);
+      chooseLight();
+      expect(room.send).not.toHaveBeenCalled();
+      expect(chatLines.children.at(-1)?.children.join("")).toBe(line);
+    },
+  );
 });

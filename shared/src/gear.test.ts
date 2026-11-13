@@ -1,9 +1,12 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
   armourPercentOf,
+  capeOfGossamer,
   GEAR,
   gearOf,
   gearRefusal,
+  variantAvoidanceOf,
+  variantDoes,
   virtueDoes,
   virtueOf,
 } from "./gear.ts";
@@ -185,4 +188,44 @@ test("the Gear tab line gives the Virtue at its size, and nothing for a common p
   );
   expect(virtueDoes("ironHelmet")).toBeUndefined();
   expect(virtueDoes("")).toBeUndefined();
+});
+
+describe("capes (#217)", () => {
+  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+
+  test("a cape is small armour on the hands' line, in the cape slot, gated at its Defense level", () => {
+    expect(GEAR.get("copperMightCape")).toMatchObject({
+      slot: "cape",
+      level: 1,
+      does: "Takes 1% off each hit you take",
+    });
+    expect(GEAR.get("emberiteFortitudeCape")).toMatchObject({
+      slot: "cape",
+      level: 20,
+      does: "Takes 5% off each hit you take",
+    });
+    expect(gearRefusal("bronzeAvoidanceCape", defense(xpForLevel(4)))).toBe(
+      "You need Defense 5 to equip this.",
+    );
+    expect(
+      gearRefusal("bronzeAvoidanceCape", defense(xpForLevel(5))),
+    ).toBeUndefined();
+  });
+
+  test("a gossamer cloak is its cape's gear", () => {
+    expect(gearOf("copperMightCape:uncommon:fortitude:gossamer")).toBe(
+      GEAR.get("copperMightCape"),
+    );
+    expect(capeOfGossamer("copperMightCape:gossamer")).toBe("copperMightCape");
+    expect(capeOfGossamer("copperMightCape")).toBeUndefined();
+    expect(variantAvoidanceOf({ cape: "steelFortitudeCape:gossamer" })).toBe(2);
+    expect(variantAvoidanceOf({ cape: "steelFortitudeCape" })).toBe(0);
+  });
+
+  test("the cloak's bonus reads as the Avoidance Virtue's wording, and a plain cape says nothing", () => {
+    expect(variantDoes("copperMightCape:uncommon:fortitude:gossamer")).toBe(
+      "Takes 0.2 points off an enemy's chance to hit you.",
+    );
+    expect(variantDoes("copperMightCape")).toBeUndefined();
+  });
 });
