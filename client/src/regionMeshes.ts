@@ -7,7 +7,8 @@ import {
   type GatheringSkill,
   type GroundKind,
   type PropKind,
-  type StationKind,
+  STATIONS,
+  type FixedStation,
   type TreeKind,
   type VeinTier,
   type TileKind,
@@ -18,9 +19,9 @@ import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { HOUSE_MODELS, houseParts } from "./houseParts.ts";
+import { STATION_LOOKS } from "./stationLooks.ts";
 
-/** The stations the map is built with; a fire is placed by a player and has its own look (#224). */
-type FixedStation = Exclude<StationKind, "fire">;
+const STATION_KINDS = Object.keys(STATIONS) as FixedStation[];
 
 const SLAB_HEIGHT = 0.2;
 const GROUND: Record<GroundKind, { color: number; top: number }> = {
@@ -45,18 +46,6 @@ const VEIN_TINT: Record<VeinTier, THREE.Color> = {
   emberite: new THREE.Color(0xd42a1a),
 };
 export const ORE_SCALE = 0.45;
-const STATIONS: Record<FixedStation, { file: string; width: number }> = {
-  // Kenney's building-smelter didn't read as a furnace at a tile's scale, so this is spec §15's first fallback.
-  // House scale, on its 2×2 footprint.
-  furnace: { file: "building_blacksmith_red.gltf", width: 2 },
-  anvil: { file: "anvil.gltf", width: 0.8 },
-  // Kenney's kitchen stove, on its one tile (#221).
-  range: { file: "kitchenStove.glb", width: 0.9 },
-  // Kenney's survival workbench, on its one tile (#225).
-  workbench: { file: "workbench.glb", width: 0.9 },
-  // Kenney's graveyard altar, the rune altar's stone slab (#232).
-  altar: { file: "altarStone.glb", width: 0.9 },
-};
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
 /** A spot with no site on it is drawn at nothing, so it looks like its plain ground. */
 const GONE_SCALE = new THREE.Vector3(0, 0, 0);
@@ -166,7 +155,7 @@ async function loadVillageModels(names: string[]) {
 }
 
 /** A station's model, scaled to its width. */
-async function loadStation({ file, width }: (typeof STATIONS)[FixedStation]) {
+async function loadStation({ file, width }: { file: string; width: number }) {
   const { scene } = await new GLTFLoader().loadAsync(`/models/${file}`);
   scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
   const { max, min } = new THREE.Box3().setFromObject(scene);
@@ -194,11 +183,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       ...propMeshes
     ],
     treeMeshes,
-    furnace,
-    anvil,
-    range,
-    workbench,
-    altar,
+    stationModels,
     oreModel,
     stumpModel,
     village,
@@ -212,11 +197,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     Promise.all(
       Object.values(TREE_MODELS).map(({ model }) => loadModel(model)),
     ),
-    loadStation(STATIONS.furnace),
-    loadStation(STATIONS.anvil),
-    loadStation(STATIONS.range),
-    loadStation(STATIONS.workbench),
-    loadStation(STATIONS.altar),
+    Promise.all(STATION_KINDS.map((kind) => loadStation(STATION_LOOKS[kind]))),
     new GLTFLoader().loadAsync("/models/ore.glb"),
     new GLTFLoader().loadAsync("/models/stump_round.glb"),
     loadVillageModels([
@@ -224,14 +205,12 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
     ]),
   ]);
-  const stations = { furnace, anvil, range, workbench, altar };
-  const footprints: Record<FixedStation, THREE.Vector3[]> = {
-    furnace: [],
-    anvil: [],
-    range: [],
-    workbench: [],
-    altar: [],
-  };
+  const stations = Object.fromEntries(
+    STATION_KINDS.map((kind, i) => [kind, stationModels[i]!]),
+  ) as Record<FixedStation, THREE.Group>;
+  const footprints = Object.fromEntries(
+    STATION_KINDS.map((kind) => [kind, [] as THREE.Vector3[]]),
+  ) as Record<FixedStation, THREE.Vector3[]>;
   const ore = oreParts(oreModel.scene);
   const trees = Object.fromEntries(
     Object.keys(TREE_MODELS).map((kind, i) => [kind, treeMeshes[i]!.geometry]),
@@ -390,8 +369,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
 
       const { prop, station, house } = tile;
       const site = SITE_FIELDS.find((field) => tile[field]);
-      if (station)
-        footprints[station as FixedStation].push(new THREE.Vector3(x, top, y));
+      if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
         for (const { part, angle, height } of houseParts(tiles, x, y)) {
           place(

@@ -1,5 +1,4 @@
 import { EMPTY_SLOT } from "./index.ts";
-import { toolRefusal } from "./tools.ts";
 import { GEAR, gearOf, gossamerItem } from "./gear.ts";
 import {
   addItems,
@@ -11,8 +10,7 @@ import {
   removeItems,
   slotFor,
 } from "./items.ts";
-import { questDoneOf } from "./quests.ts";
-import type { StationKind } from "./region.ts";
+import type { StationKind } from "./stations.ts";
 import { levelFor, type XpField } from "./skills.ts";
 
 type MakingSkillRow = {
@@ -1111,25 +1109,4 @@ export function make(
     xp: [[xpField, RECIPES[recipe].xp * times]],
     made,
   };
-}
-
-/** Why a click on this station is refused, or undefined if it isn't. The client shows it, and the server ignores the pick. The smithy's furnace and anvil open only for Odo's quest done (#231). */
-export function stationRefusal(
-  station: StationKind,
-  player: {
-    tools: Iterable<string>;
-    quests?: Iterable<unknown>;
-    questStages?: Iterable<unknown>;
-  },
-) {
-  if (station === "anvil") {
-    const noHammer = toolRefusal("hammer", player);
-    if (noHammer) return noHammer;
-  }
-  if (
-    (station === "furnace" || station === "anvil") &&
-    !questDoneOf(player, "odoCopper")
-  )
-    return "You need to help Odo first.";
-  return undefined;
 }

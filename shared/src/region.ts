@@ -1,6 +1,7 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { EnemyKind } from "./enemies.ts";
 import type { FishingSpotKind } from "./fishing.ts";
+import type { FixedStation } from "./stations.ts";
 import type { BushKind } from "./herblaw.ts";
 import type { TreeKind } from "./woodcutting.ts";
 
@@ -14,9 +15,6 @@ export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
 /** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
 export type VeinTier = Exclude<Tier, "bronze" | "steel">;
-/** A furnace smelts ore, an anvil makes gear, a range or a fire cooks food (#221, #224), a workbench crafts utilities (#225) and an altar makes runes (#232). Only a fire is player-placed and burns out, and no tile is one. */
-export type StationKind =
-  "furnace" | "anvil" | "range" | "fire" | "workbench" | "altar";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
@@ -24,7 +22,8 @@ export type TileKind = {
   vein?: VeinTier;
   tree?: TreeKind;
   fishingSpot?: FishingSpotKind;
-  station?: StationKind;
+  /** A fire is never a tile's station: no map places one (#224). */
+  station?: FixedStation;
   villager?: VillagerId;
   house?: "wall" | "door";
   enemy?: EnemyKind;

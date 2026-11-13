@@ -9,6 +9,7 @@ import {
 } from "./gathering.ts";
 import { VEINS } from "./mining.ts";
 import { groundBlocks, type Tile, type TileKind } from "./region.ts";
+import { STATIONS } from "./stations.ts";
 import { TREES } from "./woodcutting.ts";
 
 type TiledProperty = { name: string; value: unknown };
@@ -58,17 +59,7 @@ const FEATURE_VALUES = {
   vein: VEINS,
   tree: TREES,
   fishingSpot: FISHING_SPOTS,
-  station: {
-    furnace: 1,
-    anvil: 1,
-    range: 1,
-    workbench: 1,
-    altar: 1,
-  } satisfies Record<
-    // A fire is never a tile's station: no map places one (#224).
-    Exclude<NonNullable<TileKind["station"]>, "fire">,
-    1
-  >,
+  station: STATIONS,
   house: { wall: 1, door: 1 } satisfies Record<
     NonNullable<TileKind["house"]>,
     1

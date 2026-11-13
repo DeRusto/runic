@@ -1,7 +1,7 @@
 import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
 import type { VillagerId } from "./dialogue.ts";
 import type { ItemId, Virtue } from "./items.ts";
-import type { StationKind } from "./region.ts";
+import type { StationKind } from "./stations.ts";
 
 export const SERVER_PORT = 2567;
 export const WORLD_ROOM = "world";
@@ -243,5 +243,6 @@ export * from "./playerMenu.ts";
 export * from "./quests.ts";
 export * from "./runecrafting.ts";
 export * from "./social.ts";
+export * from "./stations.ts";
 export * from "./woodcutting.ts";
 export * from "./fishing.ts";

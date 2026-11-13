@@ -16,10 +16,10 @@ import {
   materialLines,
   RECIPES,
   stationOf,
-  stationRefusal,
   xpLines,
 } from "./making.ts";
 import { RUNES } from "./runecrafting.ts";
+import { stationRefusal } from "./stations.ts";
 import { VIRTUES } from "./items.ts";
 import { SKILLS, xpForLevel } from "./skills.ts";
 
