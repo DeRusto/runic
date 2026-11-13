@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vitest";
 import { EMPTY_SLOT, INVENTORY_SLOTS, RUNES } from "./index.ts";
-import { itemParts, ITEMS, slotFor, takeRefusal } from "./items.ts";
+import {
+  itemName,
+  itemParts,
+  itemTag,
+  ITEMS,
+  slotFor,
+  takeRefusal,
+} from "./items.ts";
 
 /** A whole inventory from the first slots given, as [item, count] pairs. */
 function holding(...stacks: [string, number][]) {
@@ -176,4 +183,33 @@ describe("an item id's parts (ADR 0004)", () => {
     const item = "copperSword:uncommon:fortitude";
     expect(slotFor(item, holding([item, 1]))).toBe(1);
   });
+});
+
+describe("an item's name", () => {
+  test.each([
+    ["berry", "Berry"],
+    ["emberbone", "Emberbone"],
+    ["copperOre", "Copper ore"],
+    ["emberiteShield", "Emberite shield"],
+    ["arrowShaft", "Arrow shaft"],
+    ["copperThrowingKnife", "Copper throwing knife"],
+    ["copperChestplate:uncommon:fortitude", "Copper chestplate of Fortitude"],
+    ["ironSword:rare:might", "Iron sword of Might"],
+  ])("%s reads as %s", (id, name) => {
+    expect(itemName(id)).toBe(name);
+  });
+
+  test("a gossamer cloak leads with its variant, and keeps its cape's (#217, #225)", () => {
+    expect(itemName("copperMightCape:gossamer")).toBe(
+      "Gossamer copper might cape",
+    );
+    expect(itemName("copperMightCape:uncommon:might:gossamer")).toBe(
+      "Gossamer copper might cape of Might",
+    );
+  });
+});
+
+test("the chat names an item by its name in square brackets", () => {
+  expect(itemTag("copperOre")).toBe("[Copper ore]");
+  expect(itemTag("ironSword:rare:might")).toBe("[Iron sword of Might]");
 });

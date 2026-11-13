@@ -7,6 +7,7 @@ import {
   type HasInventory,
   type ItemId,
   itemParts,
+  itemTag,
   removeItems,
   slotFor,
 } from "./items.ts";
@@ -1013,8 +1014,8 @@ export type MakeOutcome =
       xp: [XpField, number][];
       /** The id made; none when a burn consumed the materials (#221). */
       made?: string;
-      /** A line for the player, such as a burn's. */
-      told?: string;
+      /** A line for the player, such as a burn's, and the items it names. */
+      told?: { line: string; items: string[] };
     };
 
 const FULL = { refused: "Your inventory is full." } as const;
@@ -1064,16 +1065,11 @@ export function make(
   ) {
     for (const [cost, count] of costsOf(recipe))
       removeItems(inventory, inventoryCounts, cost, count);
-    // "berryPerch" reads as "berry perch", like an item's name does.
-    const name = recipe.replace(
-      /[A-Z]/g,
-      (letter) => ` ${letter.toLowerCase()}`,
-    );
     return {
       inventory,
       inventoryCounts,
       xp: [],
-      told: `You burn the ${name}.`,
+      told: { line: `You burn the ${itemTag(recipe)}.`, items: [recipe] },
     };
   }
   for (const [cost, count] of costsOf(recipe)) {

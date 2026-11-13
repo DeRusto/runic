@@ -8,10 +8,12 @@ import {
   pickIntervalTicks,
   TICK_MS,
   type WorldEvent,
+  itemName,
+  itemTag,
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_CLIPS, swingFor } from "./characters.ts";
-import { colouredNames, itemName } from "./itemIcons.ts";
+import { chatItems } from "./itemIcons.ts";
 import {
   playerFigures,
   playerOverheads,
@@ -195,8 +197,8 @@ export function showFights(room: WorldConnection) {
         const name = itemName(event.item);
         // shortcut: a vowel letter stands for a vowel sound, which holds for every tier name today; upgrade if one starts otherwise.
         printChatLine(
-          ...colouredNames(
-            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} [${name}]!`,
+          ...chatItems(
+            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} ${itemTag(event.item)}!`,
             [event.item],
           ),
         );
@@ -206,7 +208,8 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "healed") {
         playerOverheads.get(event.player)?.pop(`+${event.amount}`, "heal");
       } else if (event.type === "told") {
-        if (event.player === room.sessionId) printChatLine(event.line);
+        if (event.player === room.sessionId)
+          printChatLine(...chatItems(event.line, event.items ?? []));
       }
     }
   });

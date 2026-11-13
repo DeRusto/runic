@@ -14,6 +14,7 @@ import {
   levelProgress,
   LIGHT_INTENT,
   lightRefusal,
+  lightTileAt,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MAX_LEVEL,
@@ -22,12 +23,11 @@ import {
   potionOf,
   potionFromPlant,
   PRIVATE_LINE,
-  siteId,
   SKILLS,
   xpForLevel,
   type ChatLine,
-  type LightTile,
   type TileKind,
+  itemName,
 } from "@runic/shared";
 import {
   showCharacterSheet,
@@ -35,7 +35,7 @@ import {
   type SyncedPlayer,
   xpTip,
 } from "./characterSheet.ts";
-import { iconUrl, itemName } from "./itemIcons.ts";
+import { iconUrl } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { amountChoices, dragToReorder } from "./movingItems.ts";
 import type { WorldConnection } from "./players.ts";
@@ -119,18 +119,12 @@ export function showBottomBar(
   /** The player the slots last showed, whose levels decide what they refuse. */
   let shown: SyncedPlayer | undefined;
   /** What the player's own tile is like for lighting a fire on it, from the map and the state (#224). */
-  const lightTileOf = (me: SyncedPlayer): LightTile => {
-    const kind = tiles[me.y]![me.x]!;
-    return {
-      fire: room.state.fires.has(siteId(me)),
-      ground: kind.ground,
-      prop: kind.prop,
-      enemy: [...room.state.enemies.values()].some(
-        (enemy) =>
-          enemy.state !== "dead" && enemy.x === me.x && enemy.y === me.y,
-      ),
-    };
-  };
+  const lightTileOf = (me: SyncedPlayer) =>
+    lightTileAt(me, {
+      tiles,
+      fires: room.state.fires,
+      enemies: room.state.enemies.values(),
+    });
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";

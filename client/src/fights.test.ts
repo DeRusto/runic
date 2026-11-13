@@ -98,6 +98,33 @@ test("a told line prints only for the player it's for", () => {
   expect(printChatLine.mock.calls).toEqual([["For you."]]);
 });
 
+test("a told line's items show as bold tags, so a found hide reads as one", () => {
+  vi.stubGlobal("document", {
+    createElement: () => ({ className: "", textContent: "" }),
+  });
+  const onMessage = vi.fn();
+  showFights({
+    onReconnect: vi.fn(),
+    onMessage,
+    sessionId: "a",
+  } as unknown as WorldConnection);
+  onMessage.mock.calls[0]![1]([
+    {
+      type: "told",
+      player: "a",
+      line: "You find a [Tarn hide]. It is on the ground.",
+      items: ["tarnHide"],
+    },
+  ] satisfies WorldEvent[]);
+  expect(printChatLine.mock.calls).toEqual([
+    [
+      "You find a ",
+      { className: "item-tag", textContent: "[Tarn hide]" },
+      ". It is on the ground.",
+    ],
+  ]);
+});
+
 test("making an improved item prints a line for its maker, with the name in its Quality's colour, and a common one stays silent (spec §5)", () => {
   vi.stubGlobal("document", {
     createElement: () => ({ className: "", textContent: "" }),
@@ -118,19 +145,25 @@ test("making an improved item prints a line for its maker, with the name in its 
   onMessage.mock.calls[0]![1](made);
   expect(printChatLine.mock.calls).toEqual([
     [
-      "You make a [",
-      { className: "uncommon", textContent: "Copper chestplate of Fortitude" },
-      "]!",
+      "You make a ",
+      {
+        className: "item-tag uncommon",
+        textContent: "[Copper chestplate of Fortitude]",
+      },
+      "!",
     ],
     [
-      "You make an [",
-      { className: "rare", textContent: "Iron sword of Might" },
-      "]!",
+      "You make an ",
+      { className: "item-tag rare", textContent: "[Iron sword of Might]" },
+      "!",
     ],
     [
-      "You make an [",
-      { className: "uncommon", textContent: "Emberite helmet of Avoidance" },
-      "]!",
+      "You make an ",
+      {
+        className: "item-tag uncommon",
+        textContent: "[Emberite helmet of Avoidance]",
+      },
+      "!",
     ],
   ]);
   vi.unstubAllGlobals();

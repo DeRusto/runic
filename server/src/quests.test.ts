@@ -126,7 +126,10 @@ describe("Odo's quest, accepted and turned in", () => {
     events = [];
     talkToOdo();
     expect(choose(TURN_IN)).toEqual([
-      told("You have no copper ore to hand over."),
+      {
+        ...told("You have no [Copper ore] to hand over."),
+        items: ["copperOre"],
+      },
       talk("quest"),
     ]);
     expect([...me().questStages]).toEqual(["fetch"]);
@@ -242,7 +245,10 @@ describe("Odo's second quest, the strange material (#232)", () => {
     talkToOdo();
     events = [];
     expect(choose(TURN_IN)).toEqual([
-      told("You have no strange material to hand over."),
+      {
+        ...told("You have no [Strange material] to hand over."),
+        items: ["strangeMaterial"],
+      },
       talk("essenceQuest"),
     ]);
     expect([...me().questStages]).toEqual([QUEST_DONE, "essence"]);
