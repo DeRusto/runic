@@ -1,12 +1,16 @@
 import {
-  costsOf,
+  AUGMENTATIONS,
   levelRefusal,
   MAKE_INTENT,
   makeRefusal,
+  makingOf,
+  materialLines,
   RECIPES,
   TIERS,
   tilesApart,
   WALK_INTENT,
+  type AugmentationKind,
+  type MakeItem,
   type RecipeItem,
   type StationKind,
   type Tile,
@@ -49,10 +53,11 @@ export function showSmithingPanel(room: WorldConnection) {
   const placed = addPanel(panel, close);
 
   const items = Object.keys(RECIPES) as RecipeItem[];
-  /** One folding section: a tier of the furnace or anvil, or the range's whole Cooking list (#221). */
+  const augmentations = Object.keys(AUGMENTATIONS) as AugmentationKind[];
+  /** One folding section: a tier of the furnace or anvil, the range's Cooking or the workbench's Crafting list (#221, #225). */
   const section = (
     station: StationKind,
-    recipes: RecipeItem[],
+    makes: MakeItem[],
     name: string,
     tier?: string,
   ) => {
@@ -61,7 +66,7 @@ export function showSmithingPanel(room: WorldConnection) {
     const [heading, gate] = [part(), part()];
     heading.textContent = name;
     header.append(heading, gate);
-    const rows = recipes.map((item) => {
+    const rows = makes.map((item) => {
       const row = document.createElement("div");
       const icon = document.createElement("img");
       icon.src = iconUrl(item);
@@ -85,7 +90,7 @@ export function showSmithingPanel(room: WorldConnection) {
       const buttons = [button("Make 1", false), button("Make all", true)];
       row.append(icon, name, cost, ...buttons);
       // Bars are always the tier's own, so the line can say just "bars".
-      const short = costsOf(item)
+      const short = materialLines(item)
         .map(([material, count]) =>
           tier && material === `${tier}Bar`
             ? `${count} bars`
@@ -109,7 +114,7 @@ export function showSmithingPanel(room: WorldConnection) {
       station,
       element,
       gate,
-      first: recipes[0]!,
+      first: makes[0]!,
       rows,
     };
   };
@@ -132,6 +137,14 @@ export function showSmithingPanel(room: WorldConnection) {
       items.filter((item) => RECIPES[item].station === "range"),
       "Cooking",
     ),
+    section(
+      "workbench",
+      [
+        ...items.filter((item) => RECIPES[item].station === "workbench"),
+        ...augmentations,
+      ],
+      "Crafting",
+    ),
   ];
   const rows = sections.flatMap((s) => s.rows);
   document
@@ -147,10 +160,10 @@ export function showSmithingPanel(room: WorldConnection) {
       entry.tip = recipeTip(item, me);
       for (const make of buttons) make.ariaDisabled = String(!!refusal);
     }
-    for (const { gate, first } of sections)
-      gate.textContent = levelRefusal(first, me)
-        ? `${RECIPES[first].skill} ${RECIPES[first].level}`
-        : "";
+    for (const { gate, first } of sections) {
+      const { skill, level } = makingOf(first);
+      gate.textContent = levelRefusal(first, me) ? `${skill} ${level}` : "";
+    }
   };
 
   const show = (

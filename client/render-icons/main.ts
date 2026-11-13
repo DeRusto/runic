@@ -2,6 +2,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { GLOW_INTENSITY, TIER_LOOKS } from "../src/tierLooks.ts";
+import { VIRTUES } from "@runic/shared";
 
 const SIZE = 144;
 const RESOURCE = "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf";
@@ -247,6 +248,24 @@ const ICONS: Icon[] = [
     turn: FLAT,
     look: { tint: 0x5599ff },
   },
+  // Crafting's utilities (#225): the folded rope, the unlit torch, and the silk as pale cloth.
+  {
+    id: "rope",
+    url: "/fantasy-props-megakit/Exports/glTF/Rope_1.gltf",
+    turn: FLAT,
+  },
+  {
+    id: "torch",
+    url: "/fantasy-props-megakit/Exports/glTF/Torch_Metal.gltf",
+    turn: LEAN,
+    look: { tint: 0xb08a5a },
+  },
+  {
+    id: "spiderSilk",
+    url: "/resource-bits/KayKit_ResourceBits_1.0_FREE/Assets/gltf/Textiles_A.gltf",
+    turn: FLAT,
+    look: { tint: 0xe8e4da },
+  },
   {
     id: "coal",
     url: "/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_E_Color1.gltf",
@@ -266,6 +285,30 @@ const ARMOUR = {
   Chestplate: ["Knight_Body"],
   Leggings: ["Knight_LegLeft", "Knight_LegRight"],
 };
+
+/** A cape: a draped half-cylinder and its shoulder yoke, as no pack has a cape (spec §7, #217). */
+function capeMesh() {
+  const cape = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+  const cloth = new THREE.Mesh(
+    new THREE.CylinderGeometry(
+      0.55,
+      1,
+      1.8,
+      20,
+      1,
+      true,
+      -Math.PI / 2,
+      Math.PI,
+    ),
+    material,
+  );
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(0.62, 20, 8), material);
+  yoke.scale.set(1.15, 0.35, 0.85);
+  yoke.position.y = 0.95;
+  cape.add(cloth, yoke);
+  return cape;
+}
 
 const renderer = new THREE.WebGLRenderer({
   alpha: true,
@@ -300,12 +343,16 @@ function greyVersion(map: THREE.Texture) {
 function applyLook(model: THREE.Object3D, { tint, glow }: Look) {
   model.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
-    const material = object.material as THREE.MeshStandardMaterial;
-    if (material.map) material.map = greyVersion(material.map);
-    if (tint !== undefined) material.color.setHex(tint);
-    if (glow !== undefined) {
-      material.emissive.setHex(glow);
-      material.emissiveIntensity = GLOW_INTENSITY;
+    // Some models give a mesh an array of materials, so a look covers each.
+    // Some models give a mesh an array of materials, so a look covers each.
+    const materials = [object.material].flat() as THREE.MeshStandardMaterial[];
+    for (const material of materials) {
+      if (material.map) material.map = greyVersion(material.map);
+      if (tint !== undefined) material.color.setHex(tint);
+      if (glow !== undefined) {
+        material.emissive.setHex(glow);
+        material.emissiveIntensity = GLOW_INTENSITY;
+      }
     }
   });
 }
@@ -392,6 +439,23 @@ for (const [piece, meshes] of Object.entries(ARMOUR)) {
     pngs.set(`${tier}${piece}`, await toPng(renderer.domElement));
   }
 }
+// The 15 capes (#217), the same cape tinted by its tier: its Virtue shows in the name only.
+for (const [tier, look] of Object.entries(TIER_LOOKS)) {
+  for (const virtue of VIRTUES) {
+    const cape = capeMesh();
+    applyLook(cape, look);
+    draw(cape, WORN);
+    pngs.set(
+      `${tier}${virtue[0]!.toUpperCase()}${virtue.slice(1)}Cape`,
+      await toPng(renderer.domElement),
+    );
+  }
+}
+// The workbench row's cloak, in the silk's pale grey: the cape it comes from varies (#225).
+const cloak = capeMesh();
+applyLook(cloak, { tint: 0xd8dcd4 });
+draw(cloak, WORN);
+pngs.set("gossamerCloak", await toPng(renderer.domElement));
 /** A pile of small lumps: no pack has a tin nugget on its own. */
 function nuggets() {
   const group = new THREE.Group();

@@ -6,13 +6,16 @@ export const iconUrl = (id: string) => `/icons/${itemParts(id).base}.png`;
 const capitalised = (words: string) =>
   words.charAt(0).toUpperCase() + words.slice(1);
 
-/** The name a player reads for an item id: `copperOre` is "Copper ore", and `copperChestplate:uncommon:fortitude` is "Copper chestplate of Fortitude" (spec §5). */
+/** The name a player reads for an item id: `copperOre` is "Copper ore", `copperChestplate:uncommon:fortitude` is "Copper chestplate of Fortitude", and a cloak leads with its variant, as in "Gossamer copper might cape" (#217, #225). */
 export function itemName(id: string) {
-  const { base, virtue } = itemParts(id);
+  const { base, virtue, variant } = itemParts(id);
   const name = capitalised(
     base.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`),
   );
-  return virtue ? `${name} of ${capitalised(virtue)}` : name;
+  const named = variant
+    ? `${capitalised(variant)} ${name.charAt(0).toLowerCase()}${name.slice(1)}`
+    : name;
+  return virtue ? `${named} of ${capitalised(virtue)}` : named;
 }
 
 /**

@@ -2,12 +2,17 @@ import { xpForLevel } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 import { itemTip, recipeTip } from "./itemTip.ts";
 
-const player = (defenseLevel: number, smithingLevel = 1) => ({
+const player = (
+  defenseLevel: number,
+  smithingLevel = 1,
+  craftingLevel = 1,
+) => ({
   combatXp: 0,
   defenseXp: xpForLevel(defenseLevel),
   miningXp: 0,
   smithingXp: xpForLevel(smithingLevel),
   cookingXp: 0,
+  craftingXp: xpForLevel(craftingLevel),
   inventory: ["copperBar", ""],
   inventoryCounts: [5, 0],
 });
@@ -114,5 +119,28 @@ describe("a smithing recipe's tip (spec §5)", () => {
 
   test("ends with the refusal when the player can't make it", () => {
     expect(recipeTip("ironSword", player(1)).refusal).toBe("Needs Smithing 10");
+  });
+});
+
+describe("the gossamer cloak's augmentation tip (#225)", () => {
+  test("a crafting row for the cloak reads as a cape, with the silk and one cape for materials", () => {
+    expect(recipeTip("gossamerCloak", player(1, 1, 15))).toEqual({
+      name: "Gossamer cloak",
+      quality: "common",
+      kind: "Cape",
+      stats: [
+        "Keeps the cape's Quality and Virtue, and adds 0.2 points of Avoidance.",
+        "1 Spider silk (have 0), 1 Cape (have 0)",
+        "25 Crafting experience",
+      ],
+      virtue: undefined,
+      refusal: "Not enough materials",
+    });
+  });
+
+  test("it ends with the refusal while the player is a level short", () => {
+    expect(recipeTip("gossamerCloak", player(1, 1, 14)).refusal).toBe(
+      "Needs Crafting 15",
+    );
   });
 });

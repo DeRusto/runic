@@ -60,6 +60,7 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     smithingXp: 0,
     miningXp: 0,
     cookingXp: 0,
+    craftingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,
@@ -138,6 +139,61 @@ test("the range lists every cooking recipe under one Cooking section (#221)", ()
     "Berry perch",
     "1 Perch + 1 Berry · Needs Cooking 5",
   ]);
+});
+
+test("the workbench lists Crafting's recipes and the cloak's augmentation under one section (#225)", () => {
+  open("workbench");
+  expect(byId.get("smithing-title")!.textContent).toBe("Workbench");
+  expect(headers()).toEqual([["Crafting", "", true]]);
+  expect(shownRows()).toHaveLength(4);
+  expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Rope"]);
+  expect(line(shownRows()[1])).toEqual([
+    "Torch",
+    "1 Birch log + 1 Rope · Needs Crafting 5",
+  ]);
+  expect(line(shownRows()[2])).toEqual([
+    "Vial",
+    "1 Cinderglass · Needs Crafting 10",
+  ]);
+  // The cloak's own tip says what it keeps, and its cape is any cape.
+  expect(line(shownRows()[3])).toEqual([
+    "Gossamer cloak",
+    "1 Spider silk + 1 Cape · Needs Crafting 15",
+  ]);
+});
+
+test("a crafting row is refused on Crafting, and the cloak also on its cape and silk", () => {
+  open("workbench");
+  patch(
+    me([["spiderSilk", 2]], {
+      smithingXp: xpForLevel(50),
+      craftingXp: xpForLevel(15),
+    }),
+  );
+  expect(line(shownRows()[0])).toEqual(["Rope", "2 Spider silk"]);
+  expect(line(shownRows()[3])).toEqual([
+    "Gossamer cloak",
+    "1 Spider silk + 1 Cape · Not enough materials",
+  ]);
+  patch(
+    me(
+      [
+        ["spiderSilk", 1],
+        ["bronzeMightCape", 1],
+      ],
+      { craftingXp: xpForLevel(15) },
+    ),
+  );
+  expect(line(shownRows()[3])).toEqual([
+    "Gossamer cloak",
+    "1 Spider silk + 1 Cape",
+  ]);
+  const make = buttons(shownRows()[3])[1]!;
+  make.onclick!(undefined as never);
+  expect(send).toHaveBeenCalledWith("make", {
+    item: "gossamerCloak",
+    all: true,
+  });
 });
 
 test("a cooking row is refused on Cooking, whatever the Smithing level", () => {

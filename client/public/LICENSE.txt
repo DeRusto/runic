@@ -17,6 +17,9 @@ models/
     kitchenStove.glb
         Kenney Furniture Kit 2.1 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Furniture-Kit.txt.
+    workbench.glb
+        Kenney Survival Kit 2.0 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Survival-Kit.txt.
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.
