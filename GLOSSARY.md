@@ -70,8 +70,12 @@ _Avoid_: Forge, workbench
 A fixed tile in the smithy, beside the furnace, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
 _Avoid_: Stove, oven, cooker
 
+**Fire**:
+A cooking station a player lights with a tinderbox from one log, on the tile they stand on. It burns for a while that depends on the log — birch, oak or charwood — cooks like the range but burns a fish more, and is then simply gone, leaving nothing. It gives light, never blocks walking, and only one burns on a tile.
+_Avoid_: Campfire, bonfire
+
 **Station**:
-A furnace, an anvil or a range: a fixed place where a player makes something. It never runs out, and any number of players can share one. The Blacksmith is not a station.
+A furnace, an anvil or a range: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -87,7 +91,7 @@ A talk with a villager in the dialogue box above the bar: the villager's lines a
 _Avoid_: Chat (that is the chat box), dialog
 
 **Forester**:
-Bram, the villager at the edge of the thicket, near the village, who gives players an axe if they don't have one, for free, when they ask in conversation.
+Bram, the villager at the edge of the thicket, near the village, who gives players an axe and a tinderbox if they don't have them, for free, when they ask in conversation.
 _Avoid_: Woodcutter (too close to Woodcutting, the skill), woodsman
 
 **Fisher**:
@@ -230,8 +234,12 @@ The skill trained by turning bars into gear at an anvil. Smelting ore into bars 
 _Avoid_: Crafting, forging
 
 **Cooking**:
-The skill trained by turning a raw fish into food at the range. It gates each fish and dish, decides how often one burns and how often one comes out Delicious, and pays the food's experience.
+The skill trained by turning a raw fish into food at the range or a fire. It gates each fish and dish, decides how often one burns and how often one comes out Delicious, and pays the food's experience.
 _Avoid_: Chef work, cookery
+
+**Firemaking**:
+The skill trained by lighting fires from logs. It gates each log's fire, and pays the fire's experience when it appears.
+_Avoid_: Burning
 
 ### Players
 
@@ -244,8 +252,12 @@ The one shared secret a friend must give to create an account.
 _Avoid_: Referral, key
 
 **Action**:
-The one thing a player is currently doing (walking, picking, mining, chopping, fishing, smithing or fighting); a new click replaces it.
+The one thing a player is currently doing (walking, picking, mining, chopping, fishing, smithing, lighting or fighting); a new click replaces it.
 _Avoid_: Task, job, activity
+
+**Lighting**:
+Making a fire from a log with a tinderbox, on the player's own tile. It takes a few ticks, and the log is burnt at once: a new click during the lighting loses it. Firemaking pays its experience when the fire appears.
+_Avoid_: Ignite, burn (that's what a fish can do)
 
 **Inventory**:
 The fixed set of slots a player carries items in. A slot holds one piece of gear, or a stack.
@@ -427,8 +439,12 @@ _Avoid_: Friends panel, friends window
 One of the five metals, from lowest to highest: Copper (1), Bronze (5), Iron (10), Steel (15) and Emberite (20). A tier's bars and gear, and its ore where it has veins, all share its level gate. Only Copper, Iron and Emberite have veins; Bronze and Steel bars are smelted from another tier's ore and a find.
 _Avoid_: Grade, rank
 
+**Tinderbox**:
+A tool the Forester gives players alongside the axe, free on ask in conversation. Lighting a fire takes one, along with a log.
+_Avoid_: Fire striker, lighter
+
 **Tool**:
-What a player must own to do some work: a pickaxe for Mining, an axe for Woodcutting, a fishing rod for Fishing, a hammer at an anvil. Owning one is enough: a tool has no tiers and never changes how fast work goes. A tool is never lost and takes no inventory slot.
+What a player must own to do some work: a pickaxe for Mining, an axe for Woodcutting, a fishing rod for Fishing, a hammer at an anvil, a tinderbox for Firemaking. Owning one is enough: a tool has no tiers and never changes how fast work goes. A tool is never lost and takes no inventory slot.
 _Avoid_: Gear, equipment
 
 **Toolbelt**:
