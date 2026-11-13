@@ -608,8 +608,8 @@ export const RECIPES = {
     skill: "Runecrafting",
     xpField: "runecraftingXp",
     level: 1,
-    // Air's twice its gate of 1 would come at once, so it waits for 20 like the earth rune's.
-    doublesAt: 20,
+    // Twice the gate, as every rune's doubling level is (#232).
+    doublesAt: 2,
     costs: { runeEssence: 1 },
     ticks: 6,
     xp: { runecraftingXp: 5 },

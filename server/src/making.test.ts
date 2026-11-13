@@ -1271,22 +1271,20 @@ describe("runecrafting at the altar (#232)", () => {
   });
 
   test("at a rune's doubling level one essence makes two runes and pays for both", () => {
-    // Air doubles at 20; at 19 the same essence gives one rune and 5 experience.
-    craft([["runeEssence", 1]], { runecraftingXp: xpForLevel(19) });
+    // Air doubles at twice its gate of 1, so 2; at 1 the same essence gives one rune and 5 experience.
+    craft([["runeEssence", 1]], { runecraftingXp: xpForLevel(1) });
     sim.queueMake("a", { item: "airRune", all: false });
     run(7);
     expect(items()).toEqual([["airRune", 1]]);
-    expect(sim.state.players.get("a")!.runecraftingXp).toBe(xpForLevel(19) + 5);
+    expect(sim.state.players.get("a")!.runecraftingXp).toBe(xpForLevel(1) + 5);
     craft([["runeEssence", 1]], {
       id: "b",
-      runecraftingXp: xpForLevel(20),
+      runecraftingXp: xpForLevel(2),
     });
     sim.queueMake("b", { item: "airRune", all: false });
     run(7);
     expect(items("b")).toEqual([["airRune", 2]]);
-    expect(sim.state.players.get("b")!.runecraftingXp).toBe(
-      xpForLevel(20) + 10,
-    );
+    expect(sim.state.players.get("b")!.runecraftingXp).toBe(xpForLevel(2) + 10);
   });
 
   test("Make all keeps the doubling rune by rune, until the essence runs out", () => {

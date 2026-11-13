@@ -605,7 +605,7 @@ test("the recipes are the rebalance spec §3's Making table, #221's range, #225'
       skill: "Runecrafting",
       xpField: "runecraftingXp",
       level: 1,
-      doublesAt: 20,
+      doublesAt: 2,
       costs: { runeEssence: 1 },
       ticks: 6,
       xp: { runecraftingXp: 5 },
@@ -643,10 +643,10 @@ test("the recipes are the rebalance spec §3's Making table, #221's range, #225'
   });
 });
 
-test("only the runes double, one essence making two once the making skill reaches their level", () => {
-  // Each rune's hand-set doubling level (#232): air at 20, water at 10, earth at 20, fire at 40.
-  expect(doublesAt("airRune", 19)).toBe(false);
-  expect(doublesAt("airRune", 20)).toBe(true);
+test("only the runes double, one essence making two once the making skill reaches twice the rune's gate", () => {
+  // Each rune's doubling level is twice its gate (#232): air at 2, water at 10, earth at 20, fire at 40.
+  expect(doublesAt("airRune", 1)).toBe(false);
+  expect(doublesAt("airRune", 2)).toBe(true);
   expect(doublesAt("waterRune", 9)).toBe(false);
   expect(doublesAt("waterRune", 10)).toBe(true);
   expect(doublesAt("earthRune", 19)).toBe(false);
