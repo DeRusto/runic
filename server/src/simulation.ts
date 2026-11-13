@@ -1977,9 +1977,13 @@ export class Simulation {
     });
 
     const unsyncedEnemy = this.unsyncedEnemies.get(enemyId)!;
-    const { noticeTiles } = ENEMIES[enemy.kind];
+    const { noticeTiles, docile } = ENEMIES[enemy.kind];
+    // A docile creature never fights back or targets anyone: it stands while it is hit (#238).
     // One that attacks first ignores players on its way home, though they can attack it (spec §4).
-    if (enemy.state !== "going home" || noticeTiles === undefined) {
+    if (
+      !docile &&
+      (enemy.state !== "going home" || noticeTiles === undefined)
+    ) {
       if (enemy.state !== "fighting") this.startFight(enemy, unsyncedEnemy);
       enemy.target = id;
     }
@@ -1992,7 +1996,7 @@ export class Simulation {
     unsyncedEnemy.returnTick =
       this.state.tick + ENEMIES[enemy.kind].returnTicks;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    this.rollEmberbones(enemy, unsyncedEnemy.damagers);
+    this.rollLoot(enemy, unsyncedEnemy.damagers);
     for (const unsynced of this.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
@@ -2001,18 +2005,39 @@ export class Simulation {
     }
   }
 
-  /** Each damager's own chance, and then it starts over, as it can't be damaged until it returns. */
-  private rollEmberbones(
-    enemy: InstanceType<typeof Enemy>,
-    damagers: Set<string>,
-  ) {
-    const { emberboneChance = 0 } = ENEMIES[enemy.kind];
-    for (const id of emberboneChance ? damagers : []) {
-      if (this.random() >= emberboneChance) continue;
+  /**
+   * Each damager's own loot, and then it starts over, as it can't be damaged until it
+   * returns: a Skeleton's Emberbone by its chance (spec §4), and #238's docile creature's
+   * hide for every damager, at 100%.
+   */
+  private rollLoot(enemy: InstanceType<typeof Enemy>, damagers: Set<string>) {
+    const { emberboneChance = 0, hide } = ENEMIES[enemy.kind];
+    for (const id of emberboneChance || hide ? damagers : []) {
       const { username } = this.state.players.get(id)!;
-      this.groundItems.spawn(enemy, "emberbone", 1, username, this.state.tick);
-      const line = "You find an [Emberbone]. It is on the ground.";
-      this.events.push({ type: "told", player: id, line });
+      if (emberboneChance && this.random() < emberboneChance) {
+        this.groundItems.spawn(
+          enemy,
+          "emberbone",
+          1,
+          username,
+          this.state.tick,
+        );
+        const line = "You find an [Emberbone]. It is on the ground.";
+        this.events.push({ type: "told", player: id, line });
+      }
+      if (hide) {
+        this.groundItems.spawn(enemy, hide, 1, username, this.state.tick);
+        // "tarnHide" reads as "tarn hide", like an item's name does.
+        const name = hide.replace(
+          /[A-Z]/g,
+          (letter) => ` ${letter.toLowerCase()}`,
+        );
+        this.events.push({
+          type: "told",
+          player: id,
+          line: `You find a [${name.charAt(0).toUpperCase() + name.slice(1)}]. It is on the ground.`,
+        });
+      }
     }
     damagers.clear();
   }
@@ -2256,6 +2281,8 @@ export class Simulation {
   private advanceEnemies() {
     for (const [id, unsynced] of this.unsyncedEnemies) {
       const enemy = this.state.enemies.get(id)!;
+      // A docile creature stands: no noticing, wandering or fighting, dead or alive (#238).
+      if (ENEMIES[enemy.kind].docile) continue;
       const { noticeTiles } = ENEMIES[enemy.kind];
       if (enemy.state === "idle" && noticeTiles !== undefined) {
         const noticed = this.noticedBy(enemy, noticeTiles);

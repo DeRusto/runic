@@ -80,7 +80,10 @@ test("a tick's events arrive once, right after its patch", async () => {
   const room = await fighter.join(WORLD_ROOM);
   const [{ roomId }] = await matchMaker.query({ name: WORLD_ROOM });
   const { sim } = matchMaker.getLocalRoomById(roomId!) as WorldRoom;
-  const spider = sim.state.enemies.get("0")!;
+  // A fighter that fights back, so the second swing is its reply.
+  const spider = [...sim.state.enemies.values()].find(
+    ({ kind }) => kind === "spider",
+  )!;
   // Standing on the Spider counts as next to it, and it's quickest for a real server.
   Object.assign(sim.state.players.get(room.sessionId)!, {
     x: spider.x,
@@ -93,7 +96,10 @@ test("a tick's events arrive once, right after its patch", async () => {
   room.onMessage(EVENTS, (events: WorldEvent[]) =>
     received.push({ tick: patchTick, events }),
   );
-  room.send(TARGET_INTENT, "0");
+  const enemyId = [...sim.state.enemies.entries()].find(
+    ([, { kind }]) => kind === "spider",
+  )![0];
+  room.send(TARGET_INTENT, enemyId);
 
   await vi.waitFor(() => expect(received.length).toBeGreaterThanOrEqual(2), {
     timeout: TICK_MS * 12,
@@ -107,7 +113,7 @@ test("a tick's events arrive once, right after its patch", async () => {
   expect(swings[0]!.events[0]).toMatchObject({
     type: "playerSwing",
     player: room.sessionId,
-    enemy: "0",
+    enemy: enemyId,
   });
   // A swing's tick is the one the patch before it brought, 4 ticks between the two swings.
   expect(swings[1]!.tick - swings[0]!.tick).toBe(4);
