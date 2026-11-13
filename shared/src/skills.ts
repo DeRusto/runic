@@ -15,6 +15,8 @@ export const SKILLS = [
   ["Crafting", "craftingXp"],
   ["Fletching", "fletchingXp"],
   ["Runecrafting", "runecraftingXp"],
+  ["Leatherworking", "leatherworkingXp"],
+  ["Jewelsmithing", "jewelsmithingXp"],
   ["Blocking", "blockingXp"],
   ["Mastery", "masteryXp"],
 ] as const;
@@ -33,8 +35,6 @@ const UPCOMING_SKILLS = [
   ["Magic", "magicXp"],
   ["Agility", "agilityXp"],
   ["Thieving", "thievingXp"],
-  ["Jewelsmithing", "jewelsmithingXp"],
-  ["Leatherworking", "leatherworkingXp"],
 ] as const;
 
 /** The 23 skills total level counts. Combat isn't among them: its split replaces it. */

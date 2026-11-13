@@ -46,6 +46,16 @@ describe("Avoidance", () => {
       avoidanceOf({ defenseXp: 0, cape: "copperAvoidanceCape" }).gear,
     ).toBe(0);
   });
+
+  test("a worn amulet's Avoidance is its own stat, in tenths (#238)", () => {
+    expect(avoidanceOf({ defenseXp: 0, neck: "copperAmulet" }).gear).toBe(0.5);
+    expect(
+      avoidanceOf({
+        defenseXp: xpForLevel(12),
+        neck: "emberiteAmulet",
+      }),
+    ).toEqual({ skill: 2.75, gear: 1.6 });
+  });
 });
 
 describe("an enemy's chance to hit", () => {
@@ -79,6 +89,15 @@ describe("a player's hit", () => {
         body: "copperChestplate:rare:might",
       }),
     ).toMatchObject({ max: 300, gear: 106 });
+  });
+
+  test("a worn ring's Accuracy adds a percentage point a point (#238)", () => {
+    expect(hitOf({ combatXp: xpForLevel(11), ring: "copperRing" }).chance).toBe(
+      0.5,
+    );
+    expect(
+      hitOf({ combatXp: xpForLevel(11), ring: "emberiteRing" }).chance,
+    ).toBe(0.61);
   });
 });
 

@@ -42,12 +42,23 @@ describe("ITEMS", () => {
     expect(ITEMS.avoidancePotion.stack).toBe(20);
   });
 
-  test("every tier has its bar, sword, shield, helmet, chestplate, leggings and cape, and its ore if it has veins", () => {
+  test("every tier has its bar, sword, shield, helmet, chestplate, leggings, cape, gloves, boots, amulet and ring, and its ore if it has veins", () => {
     // Food 10, Emberbone 1, finds 5, #232's essence two and the four runes, seven per tier
     // (the capes three), three ores, three logs, three raw fish, the three plants, the vial,
-    // the three potions, the silk, the rope and torch, and coins (#217, #222, #225), plus
-    // Fletching's twenty: a shaft, a feather, five arrowheads, five arrows, five knives, three bows (#228).
-    expect(Object.keys(ITEMS)).toHaveLength(108);
+    // the three potions, the silk, the rope and torch, the three hides (#238), and coins
+    // (#217, #222, #225), plus Fletching's twenty: a shaft, a feather, five arrowheads, five
+    // arrows, five knives, three bows (#228).
+    expect(Object.keys(ITEMS)).toHaveLength(131);
+  });
+
+  test("the hides stack to 20, and a hands, feet, neck or ring piece takes a whole slot (#238)", () => {
+    expect(ITEMS.tarnHide.stack).toBe(20);
+    expect(ITEMS.bristleHide.stack).toBe(20);
+    expect(ITEMS.cinderHide.stack).toBe(20);
+    expect(ITEMS.copperGloves.stack).toBe(1);
+    expect(ITEMS.emberiteBoots.stack).toBe(1);
+    expect(ITEMS.steelAmulet.stack).toBe(1);
+    expect(ITEMS.bronzeRing.stack).toBe(1);
   });
 
   test("the essence find and the runes stack to 20 (#232)", () => {

@@ -73,6 +73,10 @@ export const ITEMS = {
   avoidancePotion: STACKS,
   /** Spiders leave it behind at about a kill in three (#217); Phase 8 owns drop tables. */
   spiderSilk: STACKS,
+  /** #238's three docile creatures' hides, one per winner every kill: Tarn Ox's, Bristleback's and Cinderhorn's. */
+  tarnHide: STACKS,
+  bristleHide: STACKS,
+  cinderHide: STACKS,
   /** Crafting's utilities (#225), dormant until Agility's shortcuts and dark places want them. */
   rope: STACKS,
   torch: STACKS,
@@ -115,6 +119,30 @@ export const ITEMS = {
   birchBow: SINGLE,
   oakBow: SINGLE,
   charwoodBow: SINGLE,
+  /** #238's Leatherworking pieces: the hands of every tier, on their own armour line. */
+  copperGloves: SINGLE,
+  bronzeGloves: SINGLE,
+  ironGloves: SINGLE,
+  steelGloves: SINGLE,
+  emberiteGloves: SINGLE,
+  /** #238's Leatherworking pieces: the feet of every tier, on the helmet's armour line. */
+  copperBoots: SINGLE,
+  bronzeBoots: SINGLE,
+  ironBoots: SINGLE,
+  steelBoots: SINGLE,
+  emberiteBoots: SINGLE,
+  /** #238's Jewelsmithing pieces: the necks of every tier, an amulet of Avoidance. */
+  copperAmulet: SINGLE,
+  bronzeAmulet: SINGLE,
+  ironAmulet: SINGLE,
+  steelAmulet: SINGLE,
+  emberiteAmulet: SINGLE,
+  /** #238's Jewelsmithing pieces: the rings of every tier, Accuracy added to the wearer's chance to hit. */
+  copperRing: SINGLE,
+  bronzeRing: SINGLE,
+  ironRing: SINGLE,
+  steelRing: SINGLE,
+  emberiteRing: SINGLE,
   /** From fishing spots (#210), caught raw: a material until the range cooks it into food (#221). */
   perch: STACKS,
   trout: STACKS,

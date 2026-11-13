@@ -41,6 +41,10 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   birchLog: 3,
   oakLog: 6,
   charwoodLog: 12,
+  // #238's hides, priced so a piece costs what its hides do: two of them, and a rope for a cape.
+  tarnHide: 4,
+  bristleHide: 12,
+  cinderHide: 30,
   // Raw fish, priced like logs (#210).
   perch: 3,
   trout: 6,

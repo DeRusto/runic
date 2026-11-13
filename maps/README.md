@@ -27,7 +27,7 @@ An object's class is one of these:
 | Class       | Needs                                                                                                                                                            |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `respawn`   | Nothing. There's exactly one                                                                                                                                     |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`                                                                                                                 |
+| `enemyHome` | An `enemy` string property: `spider`, `skeleton`, or a docile creature: `tarnOx`, `bristleback`, `cinderhorn` (#238)                                             |
 | `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`, `tamsin`                                                                                              |
 | `sitePool`  | A rectangle with `site` (`vein`, `bush`, `fishingSpot`), `kind` and `active` (an int)                                                                            |
 | `siteSpot`  | A point inside a `sitePool`, on a tile that doesn't block, or on water for a fishing spot. Where pools overlap, its name is the `kind` of the pool it belongs to |

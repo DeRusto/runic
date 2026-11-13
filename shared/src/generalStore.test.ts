@@ -54,6 +54,22 @@ describe("value", () => {
     expect(valueOf("emberiteThrowingKnife")).toBe(60);
   });
 
+  test("#238's hides are hand-set, and the pieces they make are worth their hides", () => {
+    expect(valueOf("tarnHide")).toBe(4);
+    expect(valueOf("bristleHide")).toBe(12);
+    expect(valueOf("cinderHide")).toBe(30);
+    expect(valueOf("copperGloves")).toBe(8);
+    expect(valueOf("bronzeGloves")).toBe(12);
+    expect(valueOf("ironBoots")).toBe(24);
+    expect(valueOf("emberiteGloves")).toBe(70); // Two cinderHide and the Emberbone.
+    // A bar, and a tier-matched gem from Iron up.
+    expect(valueOf("copperAmulet")).toBe(3);
+    expect(valueOf("bronzeRing")).toBe(6);
+    expect(valueOf("ironAmulet")).toBe(33);
+    expect(valueOf("steelRing")).toBe(62);
+    expect(valueOf("emberiteAmulet")).toBe(120);
+  });
+
   test("a cape has a hand-set value by tier, and a gossamer cloak is its cape plus the silk (#217)", () => {
     expect(valueOf("copperMightCape")).toBe(20);
     expect(valueOf("emberiteFortitudeCape")).toBe(90);

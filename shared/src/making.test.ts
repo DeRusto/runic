@@ -27,6 +27,8 @@ const holding = (
   craftingXp = 0,
   fletchingXp = 0,
   runecraftingXp = 0,
+  leatherworkingXp = 0,
+  jewelsmithingXp = 0,
 ) => ({
   smithingXp,
   miningXp,
@@ -34,11 +36,13 @@ const holding = (
   craftingXp,
   fletchingXp,
   runecraftingXp,
+  leatherworkingXp,
+  jewelsmithingXp,
   inventory: held.map(([item]) => item),
   inventoryCounts: held.map(([, count]) => count),
 });
 
-test("the recipes are the rebalance spec §3's Making table, #221's range, #225's Crafting and #228's Fletching at the workbench, and #232's four elemental runes at the altar, after it", () => {
+test("the recipes are the rebalance spec §3's Making table, #221's range, #225's Crafting and #228's Fletching at the workbench, #232's four elemental runes at the altar, and #238's Leatherworking and Jewelsmithing after it", () => {
   expect(RECIPES).toEqual({
     copperBar: {
       station: "furnace",
@@ -640,6 +644,321 @@ test("the recipes are the rebalance spec §3's Making table, #221's range, #225'
       ticks: 6,
       xp: { runecraftingXp: 20 },
     },
+    copperGloves: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 1,
+      costs: { tarnHide: 2 },
+      ticks: 8,
+      xp: { leatherworkingXp: 10 },
+    },
+    copperBoots: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 1,
+      costs: { tarnHide: 2 },
+      ticks: 8,
+      xp: { leatherworkingXp: 10 },
+    },
+    bronzeGloves: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 5,
+      costs: { tarnHide: 3 },
+      ticks: 8,
+      xp: { leatherworkingXp: 20 },
+    },
+    bronzeBoots: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 5,
+      costs: { tarnHide: 3 },
+      ticks: 8,
+      xp: { leatherworkingXp: 20 },
+    },
+    ironGloves: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 10,
+      costs: { bristleHide: 2 },
+      ticks: 8,
+      xp: { leatherworkingXp: 30 },
+    },
+    ironBoots: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 10,
+      costs: { bristleHide: 2 },
+      ticks: 8,
+      xp: { leatherworkingXp: 30 },
+    },
+    steelGloves: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 15,
+      costs: { bristleHide: 3 },
+      ticks: 8,
+      xp: { leatherworkingXp: 40 },
+    },
+    steelBoots: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 15,
+      costs: { bristleHide: 3 },
+      ticks: 8,
+      xp: { leatherworkingXp: 40 },
+    },
+    emberiteGloves: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 20,
+      costs: { cinderHide: 2, emberbone: 1 },
+      ticks: 8,
+      xp: { leatherworkingXp: 50 },
+    },
+    emberiteBoots: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 20,
+      costs: { cinderHide: 2, emberbone: 1 },
+      ticks: 8,
+      xp: { leatherworkingXp: 50 },
+    },
+    copperMightCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 1,
+      costs: { tarnHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 15 },
+    },
+    copperFortitudeCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 1,
+      costs: { tarnHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 15 },
+    },
+    copperAvoidanceCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 1,
+      costs: { tarnHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 15 },
+    },
+    bronzeMightCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 5,
+      costs: { tarnHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 30 },
+    },
+    bronzeFortitudeCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 5,
+      costs: { tarnHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 30 },
+    },
+    bronzeAvoidanceCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 5,
+      costs: { tarnHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 30 },
+    },
+    ironMightCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 10,
+      costs: { bristleHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 45 },
+    },
+    ironFortitudeCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 10,
+      costs: { bristleHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 45 },
+    },
+    ironAvoidanceCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 10,
+      costs: { bristleHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 45 },
+    },
+    steelMightCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 15,
+      costs: { bristleHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 60 },
+    },
+    steelFortitudeCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 15,
+      costs: { bristleHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 60 },
+    },
+    steelAvoidanceCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 15,
+      costs: { bristleHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 60 },
+    },
+    emberiteMightCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 20,
+      costs: { cinderHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 75 },
+    },
+    emberiteFortitudeCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 20,
+      costs: { cinderHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 75 },
+    },
+    emberiteAvoidanceCape: {
+      station: "workbench",
+      skill: "Leatherworking",
+      xpField: "leatherworkingXp",
+      level: 20,
+      costs: { cinderHide: 2, rope: 1 },
+      ticks: 12,
+      xp: { leatherworkingXp: 75 },
+    },
+    copperAmulet: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 1,
+      costs: { copperBar: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 15 },
+    },
+    copperRing: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 1,
+      costs: { copperBar: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 15 },
+    },
+    bronzeAmulet: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 5,
+      costs: { bronzeBar: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 30 },
+    },
+    bronzeRing: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 5,
+      costs: { bronzeBar: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 30 },
+    },
+    ironAmulet: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 10,
+      costs: { ironBar: 1, ashstone: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 45 },
+    },
+    ironRing: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 10,
+      costs: { ironBar: 1, ashstone: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 45 },
+    },
+    steelAmulet: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 15,
+      costs: { steelBar: 1, cinderglass: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 60 },
+    },
+    steelRing: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 15,
+      costs: { steelBar: 1, cinderglass: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 60 },
+    },
+    emberiteAmulet: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 20,
+      costs: { emberiteBar: 1, heartflame: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 75 },
+    },
+    emberiteRing: {
+      station: "anvil",
+      skill: "Jewelsmithing",
+      xpField: "jewelsmithingXp",
+      level: 20,
+      costs: { emberiteBar: 1, heartflame: 1 },
+      ticks: 6,
+      xp: { jewelsmithingXp: 75 },
+    },
   });
 });
 
@@ -1218,5 +1537,137 @@ describe("making improved gear (spec §2, §3)", () => {
     const random = vi.fn(() => 0);
     expect(madeItem("copperBar", 1, random)).toBe("copperBar");
     expect(random).not.toHaveBeenCalled();
+  });
+});
+
+describe("#238's Leatherworking and Jewelsmithing", () => {
+  /** A player with the two skills' experience fields, holding `held`. */
+  const learner = (held: [string, number][], leather = 0, jewels = 0) =>
+    holding(held, 0, 0, 0, 0, 0, 0, leather, jewels);
+
+  test("the hands and feet take their band's hides, the extra one at Bronze and Steel and an Emberbone at Emberite", () => {
+    expect(materialLines("copperGloves")).toEqual([["tarnHide", 2]]);
+    expect(materialLines("bronzeBoots")).toEqual([["tarnHide", 3]]);
+    expect(materialLines("ironGloves")).toEqual([["bristleHide", 2]]);
+    expect(materialLines("steelBoots")).toEqual([["bristleHide", 3]]);
+    expect(materialLines("emberiteGloves")).toEqual([
+      ["cinderHide", 2],
+      ["emberbone", 1],
+    ]);
+    expect(
+      makeRefusal(
+        "emberiteBoots",
+        learner([["cinderHide", 2]], xpForLevel(20)),
+      ),
+    ).toBe("Not enough materials");
+    expect(
+      makeRefusal(
+        "emberiteBoots",
+        learner(
+          [
+            ["cinderHide", 2],
+            ["emberbone", 1],
+          ],
+          xpForLevel(19),
+        ),
+      ),
+    ).toBe("Needs Leatherworking 20");
+    expect(
+      makeRefusal(
+        "emberiteBoots",
+        learner(
+          [
+            ["cinderHide", 2],
+            ["emberbone", 1],
+          ],
+          xpForLevel(20),
+        ),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("the capes take two of the band's hides and a rope, at the piece's tier, for 15–75", () => {
+    expect(materialLines("copperMightCape")).toEqual([
+      ["tarnHide", 2],
+      ["rope", 1],
+    ]);
+    expect(materialLines("emberiteAvoidanceCape")).toEqual([
+      ["cinderHide", 2],
+      ["rope", 1],
+    ]);
+    expect(xpLines("copperMightCape")).toEqual([["leatherworkingXp", 15]]);
+    expect(xpLines("emberiteAvoidanceCape")).toEqual([
+      ["leatherworkingXp", 75],
+    ]);
+    expect(
+      makeRefusal("bronzeMightCape", learner([["tarnHide", 3]], xpForLevel(5))),
+    ).toBe("Not enough materials");
+    expect(
+      makeRefusal(
+        "bronzeMightCape",
+        learner(
+          [
+            ["tarnHide", 2],
+            ["rope", 1],
+          ],
+          xpForLevel(4),
+        ),
+      ),
+    ).toBe("Needs Leatherworking 5");
+    expect(
+      makeRefusal(
+        "bronzeMightCape",
+        learner(
+          [
+            ["tarnHide", 2],
+            ["rope", 1],
+          ],
+          xpForLevel(5),
+        ),
+      ),
+    ).toBeUndefined();
+  });
+
+  test("the necks and rings take a bar, and a tier-matched gem from Iron up", () => {
+    expect(materialLines("copperAmulet")).toEqual([["copperBar", 1]]);
+    expect(materialLines("bronzeRing")).toEqual([["bronzeBar", 1]]);
+    expect(materialLines("ironAmulet")).toEqual([
+      ["ironBar", 1],
+      ["ashstone", 1],
+    ]);
+    expect(materialLines("steelRing")).toEqual([
+      ["steelBar", 1],
+      ["cinderglass", 1],
+    ]);
+    expect(materialLines("emberiteAmulet")).toEqual([
+      ["emberiteBar", 1],
+      ["heartflame", 1],
+    ]);
+    expect(
+      makeRefusal(
+        "steelRing",
+        learner(
+          [
+            ["steelBar", 1],
+            ["cinderglass", 1],
+          ],
+          0,
+          xpForLevel(14),
+        ),
+      ),
+    ).toBe("Needs Jewelsmithing 15");
+    expect(
+      makeRefusal(
+        "steelRing",
+        learner(
+          [
+            ["steelBar", 1],
+            ["cinderglass", 1],
+          ],
+          0,
+          xpForLevel(15),
+        ),
+      ),
+    ).toBeUndefined();
   });
 });

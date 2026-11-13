@@ -16,6 +16,23 @@ test("a Spider's numbers are the first slice's", () => {
   });
 });
 
+test("#238's three docile creatures stand, never swing, and pay their hide", () => {
+  for (const [kind, health, hide] of [
+    ["tarnOx", 200, "tarnHide"],
+    ["bristleback", 500, "bristleHide"],
+    ["cinderhorn", 1000, "cinderHide"],
+  ] as const) {
+    expect(ENEMIES[kind]).toMatchObject({
+      health,
+      hitChance: 0,
+      maxDamage: 0,
+      wanderChance: 0,
+      docile: true,
+      hide,
+    });
+  }
+});
+
 test("a Skeleton's numbers are spec §5's, and otherwise a Spider's", () => {
   expect(ENEMIES.skeleton).toEqual({
     health: 2400,

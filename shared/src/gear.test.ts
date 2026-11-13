@@ -258,4 +258,117 @@ describe("capes (#217)", () => {
     );
     expect(variantDoes("copperMightCape")).toBeUndefined();
   });
+
+  test("a common cape carries its Virtue on #217's ½-uncommon ladder, uncommon at full and rare at double", () => {
+    const worn = (tier: string, quality: string) => ({
+      cape: `${tier}MightCape:${quality}:might`,
+    });
+    // Might: half of 3×tier, rounded down, and always strictly below uncommon.
+    expect(virtueOf(worn("copper", "common"), "might")).toBe(1);
+    expect(virtueOf(worn("bronze", "common"), "might")).toBe(3);
+    expect(virtueOf(worn("iron", "common"), "might")).toBe(4);
+    expect(virtueOf(worn("steel", "common"), "might")).toBe(6);
+    expect(virtueOf(worn("emberite", "common"), "might")).toBe(7);
+    expect(virtueOf(worn("copper", "uncommon"), "might")).toBe(3);
+    expect(virtueOf(worn("emberite", "rare"), "might")).toBe(30);
+    // Fortitude: exactly half of 20×tier.
+    expect(
+      virtueOf({ cape: "ironFortitudeCape:common:fortitude" }, "fortitude"),
+    ).toBe(30);
+    // Avoidance: half of tier tenths, rounded up, so a cape never carries less than 1 tenth.
+    expect(
+      virtueOf({ cape: "copperAvoidanceCape:common:avoidance" }, "avoidance"),
+    ).toBe(1);
+    expect(
+      virtueOf({ cape: "steelAvoidanceCape:common:avoidance" }, "avoidance"),
+    ).toBe(2);
+    expect(
+      virtueOf({ cape: "emberiteAvoidanceCape:rare:avoidance" }, "avoidance"),
+    ).toBe(10);
+  });
+});
+
+describe("hands and feet (#238)", () => {
+  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+
+  test("the hands take 1–5% and the feet 2–6% off by tier, on the helmet's line (#217)", () => {
+    for (const [tier, hands, feet] of [
+      ["copper", 1, 2],
+      ["bronze", 2, 3],
+      ["iron", 3, 4],
+      ["steel", 4, 5],
+      ["emberite", 5, 6],
+    ] as const) {
+      expect(GEAR.get(`${tier}Gloves`)).toMatchObject({
+        slot: "hands",
+        does: `Takes ${hands}% off each hit you take`,
+      });
+      expect(GEAR.get(`${tier}Boots`)).toMatchObject({
+        slot: "feet",
+        does: `Takes ${feet}% off each hit you take`,
+      });
+    }
+    expect(
+      armourPercentOf({ hands: "emberiteGloves", feet: "emberiteBoots" }),
+    ).toBe(11);
+  });
+
+  test("each tier's hands and feet are gated at its Defense level", () => {
+    expect(gearRefusal("copperGloves", defense(0))).toBeUndefined();
+    expect(gearRefusal("bronzeBoots", defense(xpForLevel(4)))).toBe(
+      "You need Defense 5 to equip this.",
+    );
+    expect(gearRefusal("steelGloves", defense(xpForLevel(15)))).toBeUndefined();
+    expect(gearRefusal("emberiteBoots", defense(18049))).toBe(
+      "You need Defense 20 to equip this.",
+    );
+  });
+});
+
+describe("necks and rings (#238)", () => {
+  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+
+  test("the amulets carry 5/8/10/13/16 tenths of Avoidance by tier", () => {
+    for (const [tier, tenths] of [
+      ["copper", 5],
+      ["bronze", 8],
+      ["iron", 10],
+      ["steel", 13],
+      ["emberite", 16],
+    ] as const) {
+      expect(GEAR.get(`${tier}Amulet`)).toMatchObject({
+        slot: "neck",
+        avoidanceTenths: tenths,
+        does: `Takes ${tenths / 10} points off an enemy's chance to hit you.`,
+      });
+    }
+  });
+
+  test("the rings carry 5/8/10/13/16 points of Accuracy by tier, which add to the wearer's chance to hit", () => {
+    for (const [tier, accuracy] of [
+      ["copper", 5],
+      ["bronze", 8],
+      ["iron", 10],
+      ["steel", 13],
+      ["emberite", 16],
+    ] as const) {
+      expect(GEAR.get(`${tier}Ring`)).toMatchObject({
+        slot: "ring",
+        accuracy,
+        does: `Adds ${accuracy} points to your chance to hit`,
+      });
+    }
+    expect(GEAR.get("copperRing")?.hitBonus).toBeUndefined();
+  });
+
+  test("each tier's amulet and ring are gated at its Defense level", () => {
+    expect(gearRefusal("copperAmulet", defense(0))).toBeUndefined();
+    expect(gearRefusal("bronzeRing", defense(xpForLevel(4)))).toBe(
+      "You need Defense 5 to equip this.",
+    );
+    expect(gearRefusal("steelAmulet", defense(xpForLevel(15)))).toBeUndefined();
+    expect(gearRefusal("emberiteRing", defense(18049))).toBe(
+      "You need Defense 20 to equip this.",
+    );
+  });
 });

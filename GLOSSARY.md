@@ -166,6 +166,26 @@ _Avoid_: Thornback (its old name)
 The harder enemy: an armed skeleton that attacks players who come near, unlike a Spider. It is the only source of Emberbones.
 _Avoid_: Undead, boss
 
+**Docile creature**:
+An enemy that never fights back, never chases and never wanders: it stands where it starts while it is hit. The three hide bands' creatures are — the Tarn Ox, the Bristleback and the Cinderhorn — and each leaves its hide with every player who damaged it.
+_Avoid_: Passive mob, harmless enemy
+
+**Tarn Ox**:
+The docile creature that grazes by the Lake's shore, the hide band 1's: its tarn hide works into the Copper and Bronze leather pieces.
+_Avoid_: Cow, ox (alone)
+
+**Bristleback**:
+The docile creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces.
+_Avoid_: Boar, pig
+
+**Cinderhorn**:
+The docile creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces.
+_Avoid_: Ox of ash, fire beast
+
+**Hide**:
+The skin a docile creature leaves with each of its killers, one to a player, every kill. It stacks like ore, and Leatherworking works two of a band's hides into its pieces.
+_Avoid_: Pelt, leather (that's what the pieces are made of)
+
 **Leash**:
 How far an enemy follows a player who walks away from a fight, before it gives up, walks home and recovers.
 _Avoid_: Aggro range, chase radius
@@ -233,7 +253,7 @@ How many percentage points come off an enemy's chance to hit a player, from Defe
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an enemy adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now.
+Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring adds its Accuracy to the player's side (#238).
 _Avoid_: Precision, attack bonus
 
 **Blocking**:
@@ -282,6 +302,14 @@ _Avoid_: Woodwork, carpentry
 **Runecrafting**:
 The skill trained by making runes from rune essence at the altar. It gates each rune and pays its experience, and a make never fails (#232). Once it is at a rune's doubling level, one essence makes two of that rune. Higher runes come with Phase 9's spells.
 _Avoid_: Magic, spellcraft
+
+**Leatherworking**:
+The skill trained by making the hands, feet and capes from hides at the workbench, two of the band's hides a piece and a rope for a cape. It gates each piece at its tier and pays its experience.
+_Avoid_: Tanning, tailoring
+
+**Jewelsmithing**:
+The skill trained by making the necks and rings from bars and gems at the anvil, a bar alone at Copper and Bronze and with the tier-matched gem from Iron up. It gates each piece at its tier and pays its experience.
+_Avoid_: Jewelcrafting, goldsmithing
 
 **Identification**:
 The one-off act of learning what the strange material really is, taught by Odo's second quest (#232). Finishing it sets the player's flag at once: every strange material they hold, bank included, turns to rune essence, and the veins' essence find gives essence from then on.
@@ -514,8 +542,24 @@ Gear worn on the body that reduces the damage of hits that land, by a percentage
 _Avoid_: Protection, plate
 
 **Cape**:
-Gear worn on the back: small armour, on the hands' line, and the slot an augmentation works on. Leatherworking will make one of three Virtues for each tier (#217); today only the rules about them exist, with nothing that drops or makes one.
+Gear worn on the back: small armour, on the hands' line, and the slot an augmentation works on. Leatherworking makes one of three Virtues for each tier (#217), and a common cape carries its Virtue at half its uncommon size, an uncommon one at full and a rare one at double (#238). Its warmth stat stays dormant until a place needs it.
 _Avoid_: Cloak (that's the Gossamer cloak), mantle
+
+**Gloves**:
+The hands' gear, made from hides at the workbench: small armour on its own line, 1–5% by tier (#217, #238).
+_Avoid_: Gauntlets, mitts
+
+**Boots**:
+The feet's gear, made from hides at the workbench: small armour on the helmet's line, 2–6% by tier (#217, #238).
+_Avoid_: Shoes, foot armour
+
+**Amulet**:
+The neck's gear, made from bars and gems at the anvil: Avoidance in tenths of a point, 5–16 by tier (#217, #238).
+_Avoid_: Necklace, pendant, talisman (there are none)
+
+**Ring**:
+The hand's gear, made from bars and gems at the anvil: Accuracy in points added to the wearer's chance to hit, 5–16 by tier (#238).
+_Avoid_: Band, signet
 
 **Gossamer cloak**:
 A cape that has taken its reagent's gift: the first augmentation turns a cape and one spider silk into it at the workbench. It keeps the cape's Quality and Virtue and adds a little Avoidance, and reads as the cape in every way but its name and that bonus (#217, #225).

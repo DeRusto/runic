@@ -7,14 +7,20 @@ import { levelFor, type XpField } from "./skills.ts";
 
 type Recipe = {
   station: StationKind;
-  /** The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing, the range's Cooking, the workbench's Crafting and Fletching (#225, #228), and the altar's Runecrafting (#232). */
+  /**
+   * The skill that gates this recipe: the furnace's is Mining, the anvil's Smithing and
+   * Jewelsmithing (#238), the range's Cooking, the workbench's Crafting, Fletching (#225,
+   * #228) and Leatherworking (#238), and the altar's Runecrafting (#232).
+   */
   skill:
     | "Mining"
     | "Smithing"
     | "Cooking"
     | "Crafting"
     | "Fletching"
-    | "Runecrafting";
+    | "Runecrafting"
+    | "Leatherworking"
+    | "Jewelsmithing";
   /** That skill's synced experience field. */
   xpField:
     | "miningXp"
@@ -22,7 +28,9 @@ type Recipe = {
     | "cookingXp"
     | "craftingXp"
     | "fletchingXp"
-    | "runecraftingXp";
+    | "runecraftingXp"
+    | "leatherworkingXp"
+    | "jewelsmithingXp";
   /** That skill's level needed. */
   level: number;
   /** The skill level where one make gives a second rune for the same essence, hand-set per rune (#232). */
@@ -643,6 +651,336 @@ export const RECIPES = {
     costs: { runeEssence: 1 },
     ticks: 6,
     xp: { runecraftingXp: 20 },
+  },
+  /**
+   * #238's Leatherworking, at the workbench: hands and feet of a tier from the band's hides
+   * — Tarn Ox's for Copper and Bronze, Bristleback's for Iron and Steel, Cinderhorn's at
+   * Emberite, with the metal gear's Emberbone. Bronze and Steel take the extra hide, and
+   * the experience is 10–50 by tier (#237).
+   */
+  copperGloves: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 1,
+    costs: { tarnHide: 2 },
+    ticks: 8,
+    xp: { leatherworkingXp: 10 },
+  },
+  copperBoots: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 1,
+    costs: { tarnHide: 2 },
+    ticks: 8,
+    xp: { leatherworkingXp: 10 },
+  },
+  bronzeGloves: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 5,
+    costs: { tarnHide: 3 },
+    ticks: 8,
+    xp: { leatherworkingXp: 20 },
+  },
+  bronzeBoots: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 5,
+    costs: { tarnHide: 3 },
+    ticks: 8,
+    xp: { leatherworkingXp: 20 },
+  },
+  ironGloves: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 10,
+    costs: { bristleHide: 2 },
+    ticks: 8,
+    xp: { leatherworkingXp: 30 },
+  },
+  ironBoots: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 10,
+    costs: { bristleHide: 2 },
+    ticks: 8,
+    xp: { leatherworkingXp: 30 },
+  },
+  steelGloves: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 15,
+    costs: { bristleHide: 3 },
+    ticks: 8,
+    xp: { leatherworkingXp: 40 },
+  },
+  steelBoots: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 15,
+    costs: { bristleHide: 3 },
+    ticks: 8,
+    xp: { leatherworkingXp: 40 },
+  },
+  emberiteGloves: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 20,
+    costs: { cinderHide: 2, emberbone: 1 },
+    ticks: 8,
+    xp: { leatherworkingXp: 50 },
+  },
+  emberiteBoots: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 20,
+    costs: { cinderHide: 2, emberbone: 1 },
+    ticks: 8,
+    xp: { leatherworkingXp: 50 },
+  },
+  /**
+   * #238's 15 capes, the Crafting build's pieces: two of the band's hides and the rope for
+   * the cord (#237). Experience is 15–75 by tier.
+   */
+  copperMightCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 1,
+    costs: { tarnHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 15 },
+  },
+  copperFortitudeCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 1,
+    costs: { tarnHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 15 },
+  },
+  copperAvoidanceCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 1,
+    costs: { tarnHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 15 },
+  },
+  bronzeMightCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 5,
+    costs: { tarnHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 30 },
+  },
+  bronzeFortitudeCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 5,
+    costs: { tarnHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 30 },
+  },
+  bronzeAvoidanceCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 5,
+    costs: { tarnHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 30 },
+  },
+  ironMightCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 10,
+    costs: { bristleHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 45 },
+  },
+  ironFortitudeCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 10,
+    costs: { bristleHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 45 },
+  },
+  ironAvoidanceCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 10,
+    costs: { bristleHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 45 },
+  },
+  steelMightCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 15,
+    costs: { bristleHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 60 },
+  },
+  steelFortitudeCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 15,
+    costs: { bristleHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 60 },
+  },
+  steelAvoidanceCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 15,
+    costs: { bristleHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 60 },
+  },
+  emberiteMightCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 20,
+    costs: { cinderHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 75 },
+  },
+  emberiteFortitudeCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 20,
+    costs: { cinderHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 75 },
+  },
+  emberiteAvoidanceCape: {
+    station: "workbench",
+    skill: "Leatherworking",
+    xpField: "leatherworkingXp",
+    level: 20,
+    costs: { cinderHide: 2, rope: 1 },
+    ticks: 12,
+    xp: { leatherworkingXp: 75 },
+  },
+  /**
+   * #238's Jewelsmithing, at the anvil: a neck and a ring of every tier, from a bar alone
+   * at Copper and Bronze and with the tier-matched gem from Iron up (#237). Experience is
+   * 15–75 by tier, and they roll improved versions like every gear piece.
+   */
+  copperAmulet: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 1,
+    costs: { copperBar: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 15 },
+  },
+  copperRing: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 1,
+    costs: { copperBar: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 15 },
+  },
+  bronzeAmulet: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 5,
+    costs: { bronzeBar: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 30 },
+  },
+  bronzeRing: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 5,
+    costs: { bronzeBar: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 30 },
+  },
+  ironAmulet: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 10,
+    costs: { ironBar: 1, ashstone: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 45 },
+  },
+  ironRing: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 10,
+    costs: { ironBar: 1, ashstone: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 45 },
+  },
+  steelAmulet: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 15,
+    costs: { steelBar: 1, cinderglass: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 60 },
+  },
+  steelRing: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 15,
+    costs: { steelBar: 1, cinderglass: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 60 },
+  },
+  emberiteAmulet: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 20,
+    costs: { emberiteBar: 1, heartflame: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 75 },
+  },
+  emberiteRing: {
+    station: "anvil",
+    skill: "Jewelsmithing",
+    xpField: "jewelsmithingXp",
+    level: 20,
+    costs: { emberiteBar: 1, heartflame: 1 },
+    ticks: 6,
+    xp: { jewelsmithingXp: 75 },
   },
 } as const satisfies Partial<Record<ItemId, Recipe>>;
 export type RecipeItem = keyof typeof RECIPES;
