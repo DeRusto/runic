@@ -35,3 +35,14 @@ export function addStations(tiles: TileKind[][]) {
     return hit && hitBoxes.get(hit.object);
   };
 }
+
+/** Registers a fire's tile as a station, so the panel can find and reach it while it burns (#224). */
+export const addFireTile = ({ x, y }: Tile) =>
+  tilesOf.set("fire", [...(tilesOf.get("fire") ?? []), { x, y }]);
+
+/** Takes a burnt-out fire's tile back off the stations (#224). */
+export const removeFireTile = ({ x, y }: Tile) =>
+  tilesOf.set(
+    "fire",
+    (tilesOf.get("fire") ?? []).filter((tile) => tile.x !== x || tile.y !== y),
+  );

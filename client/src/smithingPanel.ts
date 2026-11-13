@@ -9,6 +9,7 @@ import {
   WALK_INTENT,
   type RecipeItem,
   type StationKind,
+  type Tile,
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import { iconUrl, itemName } from "./itemIcons.ts";
@@ -20,20 +21,28 @@ import { addTip } from "./tooltip.ts";
 
 const part = () => document.createElement("span");
 
+/** Which panel section a station opens: a fire cooks like the range (#224). */
+const sectionOf = (station: StationKind) =>
+  station === "fire" ? "range" : station;
+
 /**
  * The panel a click on a station opens, once the player is next to it. Returns how to ask
- * for it. Rows are only ever changed in place, or a patch landing between a press and its
- * release would lose the click.
+ * for it; a fire is asked for with its own tile (#224). Rows are only ever changed in place,
+ * or a patch landing between a press and its release would lose the click.
  */
 export function showSmithingPanel(room: WorldConnection) {
   const panel = document.getElementById("smithing")!;
   const title = document.getElementById("smithing-title")!;
   /** The station being walked to, whose panel opens on arrival. */
   let walkingTo: StationKind | undefined;
-  /** The station whose panel is open. */
+  /** The fire being walked to, by its tile: the station kinds are all fixed places (#224). */
+  let walkingToFire: Tile | undefined;
+  /** The station whose panel is open, and the fire's tile if it is one. */
   let at: StationKind | undefined;
+  let atFire: Tile | undefined;
   const close = () => {
     walkingTo = at = undefined;
+    walkingToFire = atFire = undefined;
     panel.hidden = true;
     placed.closed();
   };
@@ -69,7 +78,7 @@ export function showSmithingPanel(room: WorldConnection) {
         // Off by aria-disabled, not disabled, so the pointer over it still shows the row's tooltip.
         make.onclick = () => {
           if (make.ariaDisabled !== "true")
-            room.send(MAKE_INTENT, { item, all });
+            room.send(MAKE_INTENT, { item, all, at: atFire });
         };
         return make;
       };
@@ -144,13 +153,18 @@ export function showSmithingPanel(room: WorldConnection) {
         : "";
   };
 
-  const show = (station: StationKind, me: SyncedPlayer) => {
-    walkingTo = undefined;
+  const show = (
+    station: StationKind,
+    fire: Tile | undefined,
+    me: SyncedPlayer,
+  ) => {
+    walkingTo = walkingToFire = undefined;
     at = station;
+    atFire = fire;
     title.textContent = itemName(station);
     // Folding starts over at each opening: the tiers the player has reached open, the rest fold.
     for (const s of sections) {
-      s.element.hidden = s.station !== station;
+      s.element.hidden = s.station !== sectionOf(station);
       s.element.open = !levelRefusal(s.first, me);
     }
     draw(me);
@@ -163,30 +177,34 @@ export function showSmithingPanel(room: WorldConnection) {
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
+    /** Where to measure reach from: a fire's own tile, or the station's nearest. */
+    const reached = (tile: Tile | undefined, kind: StationKind) =>
+      tilesApart(me, tile ?? stationTile(kind, me)) <= 1;
     if (me.dead) close();
-    else if (walkingTo && tilesApart(me, stationTile(walkingTo, me)) <= 1)
-      show(walkingTo, me);
+    else if (walkingTo && reached(walkingToFire, walkingTo))
+      show(walkingTo, walkingToFire, me);
     // Panels stay open through presses elsewhere; walking away is what closes this one (spec §6).
-    else if (at && tilesApart(me, stationTile(at, me)) > 1) close();
+    else if (at && !reached(atFire, at)) close();
     else if (at) draw(me);
   });
 
   // A press on the way changes the player's mind, so the panel doesn't open on arrival.
   // Any press counts, even on another panel: this panel is shut on the way, so none lands on it.
-  const onPress = () => (walkingTo = undefined);
+  const onPress = () => (walkingTo = walkingToFire = undefined);
   document.addEventListener("pointerdown", onPress);
   room.onLeave(() => {
     close();
     document.removeEventListener("pointerdown", onPress);
   });
 
-  return (station: StationKind) => {
+  return (station: StationKind, fire?: Tile) => {
     const me = room.state.players.get(room.sessionId);
     if (!me || me.dead) return;
-    const tile = stationTile(station, me);
-    if (tilesApart(me, tile) <= 1) return show(station, me);
+    const tile = fire ?? stationTile(station, me);
+    if (tilesApart(me, tile) <= 1) return show(station, fire, me);
     close();
     walkingTo = station;
+    walkingToFire = fire;
     // A plain walk, which stops next to a tile that blocks and leaves the player idle.
     room.send(WALK_INTENT, tile);
   };

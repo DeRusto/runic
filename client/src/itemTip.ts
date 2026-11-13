@@ -2,6 +2,7 @@ import {
   AVOIDANCE_POTION_POINTS,
   costsOf,
   countOf,
+  fireOf,
   FORTITUDE_POTION_PERCENT,
   FOOD_HEALS,
   gateOf,
@@ -61,7 +62,9 @@ function kindOf(item: string) {
   if (food)
     return `Food, heals ${food.perTick * food.ticks} over ${food.ticks} ticks`;
   if ((TOOLS as readonly string[]).includes(item)) return "Tool";
-  return GEMS.includes(item) ? "Gem" : "Material";
+  if (GEMS.includes(item)) return "Gem";
+  const fire = fireOf(item);
+  return fire ? `Log, lights a fire at Firemaking ${fire.level}` : "Material";
 }
 
 /** `item`'s tip, with the refusal to equip it when `player` is given. */

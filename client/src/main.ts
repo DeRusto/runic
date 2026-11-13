@@ -18,6 +18,7 @@ import { walkOnClick } from "./clicks.ts";
 import { showBuffs } from "./delicious.ts";
 import { showDialogueBox } from "./dialogueBox.ts";
 import { showEnemies } from "./enemies.ts";
+import { showFires } from "./fires.ts";
 import { showFights } from "./fights.ts";
 import { showGatheringSites } from "./gatheringSites.ts";
 import { showGroundItems } from "./groundItemSacks.ts";
@@ -86,13 +87,14 @@ addBarButtons();
 function enterWorld(room: WorldConnection) {
   status.textContent = "";
   const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure);
-  const openMenu = showBottomBar(room, sayOverhead);
+  const openMenu = showBottomBar(room, sayOverhead, tiles);
   walkOnClick(
     room,
     tiles,
     showEnemies(room, { spider: newSpider, skeleton: newSkeleton }),
     showGatheringSites(room, tiles, spots, setSiteLook),
     stationUnder,
+    showFires(room),
     showSmithingPanel(room),
     villagerUnder,
     showGroundItems(room),

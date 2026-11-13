@@ -415,6 +415,32 @@ function nuggets() {
   return group;
 }
 
+/** A steel case with its lid open and a striker across it: no pack has a tinderbox (#224). */
+function tinderbox() {
+  const group = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({
+    color: 0xaab2ba,
+    roughness: 0.45,
+    metalness: 0.25,
+  });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 1.1), steel);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 1.1), steel);
+  lid.position.set(0, 0.35, -0.55);
+  lid.rotation.x = -0.9;
+  const striker = new THREE.Mesh(
+    new THREE.TorusGeometry(0.28, 0.07, 8, 16, Math.PI),
+    new THREE.MeshStandardMaterial({
+      color: 0x6a7077,
+      roughness: 0.35,
+      metalness: 0.3,
+    }),
+  );
+  striker.rotation.x = Math.PI / 2;
+  striker.position.set(0, 0.28, 0.15);
+  group.add(base, lid, striker);
+  return group;
+}
+
 /** A tapered pole with a cork grip and a reel: no pack has a fishing rod. */
 function rod() {
   const group = new THREE.Group();
@@ -465,6 +491,8 @@ pngs.set("heartflame", await toPng(renderer.domElement));
 pngs.set("emberiteSword", await craftpixSword());
 draw(rod(), LEAN);
 pngs.set("rod", await toPng(renderer.domElement));
+draw(tinderbox(), LEAN);
+pngs.set("tinderbox", await toPng(renderer.domElement));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {

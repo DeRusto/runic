@@ -21,6 +21,7 @@ import { playerMenuChoices } from "./playerMenu.ts";
 import type { showPlayers, WorldConnection } from "./players.ts";
 import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
+import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
 import type { addVillagers } from "./villagers.ts";
@@ -34,6 +35,7 @@ export function walkOnClick(
   enemyUnder: ReturnType<typeof showEnemies>,
   siteUnder: ReturnType<typeof showGatheringSites>,
   stationUnder: ReturnType<typeof addStations>,
+  fireUnder: ReturnType<typeof showFires>,
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   villagerUnder: Awaited<ReturnType<typeof addVillagers>>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
@@ -129,6 +131,12 @@ export function walkOnClick(
         showMarker(x, y);
         openSmithingPanel(station);
       }
+      return;
+    }
+    const fire = fireUnder(raycaster);
+    if (fire && me) {
+      showMarker(fire.x, fire.y);
+      openSmithingPanel("fire", { x: fire.x, y: fire.y });
       return;
     }
     const villager = villagerUnder(raycaster);
