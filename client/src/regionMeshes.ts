@@ -107,10 +107,10 @@ const VILLAGE_PROPS = {
 };
 // Kenney's Nature Kit, flat-coloured like the stump, so their colours bake the same way. The gate keeps
 // its turn, across the south road, where every other prop takes a random one; it spans its tile and
-// is stretched up to a character's height, two of them making the road's double gate.
+// is stretched up well past a character's height, two of them making the road's double gate.
 const NATURE_PROPS = {
   gate: {
-    scale: [1, 2.6, 1] as [number, number, number],
+    scale: [1, 4.5, 1] as [number, number, number],
     models: ["fenceGate"],
     fixed: true,
   },
