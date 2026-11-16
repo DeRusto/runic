@@ -501,6 +501,10 @@ _Avoid_: Mystery item, unknown material
 The essence unmasked, once Odo's second quest teaches identification (#232): the stuff runes are made from. One essence makes one rune at the altar, or two once the player's Runecrafting is at that rune's doubling level.
 _Avoid_: Essence (alone), pure essence
 
+**Quest essence**:
+An essence a vein gives only while a quest asks for it, and only until the player holds one. Odo's proof asks for one each of **copper essence**, **iron essence** and **emberite essence**, each from its own tier's veins at a 1 in 5 chance a successful mine. It is worth a coin at the store and is no use to anyone but the villager who asked.
+_Avoid_: Proof piece, quest ore
+
 **Rune**:
 A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Today only the four elementals exist — the **air rune** (1), the **water rune** (5), the **earth rune** (10) and the **fire rune** (20); higher runes come with Phase 9's spells.
 _Avoid_: Talisman (there are none), magic stone

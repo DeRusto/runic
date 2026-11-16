@@ -84,6 +84,9 @@ import {
   currentQuestOf,
   openingNodeOf,
   stageOf,
+  turnInsOf,
+  QUESTS,
+  type QuestId,
   type Deal,
   type DealLine,
   offers,
@@ -966,8 +969,7 @@ export class Simulation {
       return true;
     }
     const stage = stageOf(quest, progress.stage)!;
-    if (stage.turnIn && !this.takeTurnIn(id, player, stage.turnIn))
-      return false;
+    if (!this.takeTurnIn(id, player, ...turnInsOf(stage))) return false;
     const next = quest.stages[quest.stages.indexOf(stage) + 1];
     if (next) progress.stage = next.id;
     else {
@@ -989,23 +991,44 @@ export class Simulation {
     return true;
   }
 
-  /** Takes a turn-in out of the inventory, or says what's missing. */
+  /** Takes every turn-in out of the inventory together, or none and says the first that's missing. */
   private takeTurnIn(
     id: string,
     player: InstanceType<typeof Player>,
-    { item, count }: QuestTurnIn,
+    ...turnIns: QuestTurnIn[]
   ) {
-    if (countOf(item, player) < count) {
+    const missing = turnIns.find(
+      ({ item, count }) => countOf(item, player) < count,
+    );
+    if (missing) {
       this.events.push({
         type: "told",
         player: id,
-        line: `You have no ${itemTag(item)} to hand over.`,
-        items: [item],
+        line: `You have no ${itemTag(missing.item)} to hand over.`,
+        items: [missing.item],
       });
       return false;
     }
-    removeItems(player.inventory, player.inventoryCounts, item, count);
+    for (const { item, count } of turnIns)
+      removeItems(player.inventory, player.inventoryCounts, item, count);
     return true;
+  }
+
+  /** The quest items a successful mine on a vein of `vein` gives this player, from the stages they're on (Runestone Hollow spec §4). */
+  private questVeinFinds(id: string, vein: string) {
+    const player = this.state.players.get(id)!;
+    const found: ItemId[] = [];
+    for (const [questId, { stage }] of this.unsyncedPlayers.get(id)!.quests) {
+      const current = stageOf(QUESTS[questId as QuestId], stage);
+      for (const roll of current?.veinFinds ?? [])
+        if (
+          roll.vein === vein &&
+          countOf(roll.item, player) === 0 &&
+          this.random() < roll.chance
+        )
+          found.push(roll.item);
+    }
+    return found;
   }
 
   closeStore(id: string) {
@@ -1483,9 +1506,12 @@ export class Simulation {
           ? DOUBLE_YIELD
           : 1;
       const finds = success
-        ? rollFinds(source, this.random).map((found) =>
-            findItemOf(found, player.identifiesEssence),
-          )
+        ? [
+            ...rollFinds(source, this.random).map((found) =>
+              findItemOf(found, player.identifiesEssence),
+            ),
+            ...(skill === "mining" ? this.questVeinFinds(id, site.kind) : []),
+          ]
         : [];
       this.events.push(
         success

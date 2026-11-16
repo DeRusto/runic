@@ -254,17 +254,28 @@ describe("Odo's second quest, the strange material (#232)", () => {
     expect([...me().questStages]).toEqual([QUEST_DONE, "essence"]);
   });
 
-  test("the proof's three finish the quest: they teach identification, and what's held turns", () => {
+  /** Puts one of each proof essence in slots 1 to 3, leaving out any named. */
+  const holdsProof = (...without: string[]) =>
+    ["copperEssence", "ironEssence", "emberiteEssence"].forEach((item, i) => {
+      const held = !without.includes(item);
+      me().inventory[i + 1] = held ? item : "";
+      me().inventoryCounts[i + 1] = held ? 1 : 0;
+    });
+  /** Starts the quest and hands over the first piece, so the proof is asked for. */
+  const atTheProof = () => {
     spendsTheForge();
     talkToOdo();
     choose(0);
     holdsEssence(1);
     talkToOdo();
     choose(TURN_IN);
-    holdsEssence(3);
-    // Two more besides the proof's three, and five in the bank.
-    me().inventory[1] = "strangeMaterial";
-    me().inventoryCounts[1] = 2;
+  };
+
+  test("the proof's three tier essences finish the quest: they teach identification, and what's held turns", () => {
+    atTheProof();
+    holdsProof();
+    // Two strange material besides, and five in the bank.
+    holdsEssence(2);
     me().bank[0] = "strangeMaterial";
     me().bankCounts[0] = 5;
     talkToOdo();
@@ -274,24 +285,43 @@ describe("Odo's second quest, the strange material (#232)", () => {
       talk("taught"),
     ]);
     expect(me().questPoints).toBe(2);
-    // The teaching sets the flag at once, and every strange material held —
-    // inventory and bank alike — turns to rune essence. The turn-in took the
-    // proof's three from the last slot first, so one stack of two is left.
+    // The proof takes all three essences, and the teaching sets the flag at once:
+    // every strange material held, inventory and bank alike, turns to rune essence.
     expect(me().identifiesEssence).toBe(true);
-    expect([...me().inventory].slice(0, 2)).toEqual(["runeEssence", ""]);
+    expect([...me().inventory].slice(0, 4)).toEqual([
+      "runeEssence",
+      "",
+      "",
+      "",
+    ]);
     expect(me().inventoryCounts[0]).toBe(2);
     expect(me().bank[0]).toBe("runeEssence");
     expect(me().bankCounts[0]).toBe(5);
   });
 
+  test("a proof short of one tier takes none of it, and says what's missing", () => {
+    atTheProof();
+    holdsProof("ironEssence");
+    talkToOdo();
+    events = [];
+    expect(choose(TURN_IN)).toEqual([
+      {
+        ...told("You have no [Iron essence] to hand over."),
+        items: ["ironEssence"],
+      },
+      talk("proofQuest"),
+    ]);
+    expect([...me().inventory].slice(1, 4)).toEqual([
+      "copperEssence",
+      "",
+      "emberiteEssence",
+    ]);
+    expect([...me().questStages]).toEqual([QUEST_DONE, "proof"]);
+  });
+
   test("done, the conversation opens with the runes' node", () => {
-    spendsTheForge();
-    talkToOdo();
-    choose(0);
-    holdsEssence(1);
-    talkToOdo();
-    choose(TURN_IN);
-    holdsEssence(3);
+    atTheProof();
+    holdsProof();
     talkToOdo();
     choose(TURN_IN);
     events = [];

@@ -1,10 +1,14 @@
 import { VILLAGERS, type VillagerId } from "./dialogue.ts";
 import type { ItemId } from "./items.ts";
+import type { VeinKind } from "./region.ts";
 import type { XpField } from "./skills.ts";
 import type { Tool } from "./tools.ts";
 
 /** What a stage's turn-in asks the player to hand over: the item and how many of it. */
 export type QuestTurnIn = { item: ItemId; count: number };
+
+/** A quest item mining gives while its stage is current: each successful mine on a vein of `vein` has `chance` to give `item`, while the player holds none. */
+export type QuestVeinFind = { vein: VeinKind; item: ItemId; chance: number };
 
 /** One step of a quest: the node its villager's conversation opens with, what the journal shows while it is current, and the turn-in that finishes it. */
 export type QuestStage = {
@@ -13,9 +17,18 @@ export type QuestStage = {
   node: string;
   /** What the journal shows while the player is on this stage. */
   journal: string;
-  /** What the player hands over to finish the stage; a stage without one finishes when its choice is picked. */
-  turnIn?: QuestTurnIn;
+  /** What the player hands over to finish the stage, one item or several, all at once; a stage without one finishes when its choice is picked. */
+  turnIn?: QuestTurnIn | readonly QuestTurnIn[];
+  /** The quest items mining gives while this stage is current. */
+  veinFinds?: readonly QuestVeinFind[];
 };
+
+/** A stage's turn-in as a list, empty when it has none. */
+export const turnInsOf = ({ turnIn }: QuestStage): readonly QuestTurnIn[] =>
+  turnIn === undefined ? [] : "item" in turnIn ? [turnIn] : turnIn;
+
+/** The chance a successful mine gives one of Odo's proof pieces while he asks for it. */
+export const PROOF_ESSENCE_CHANCE = 0.2;
 
 /** The turn-ins a villager still takes after their quest is done, each paying experience (#75's repeatable reward). */
 export type QuestRepeat = {
@@ -79,8 +92,9 @@ export const QUESTS = {
     doneNode: "forge",
   },
   // The identification chain's second quest (#232): a strange material for Odo to name, then
-  // proof it comes from every vein. Finishing it teaches identification, which turns what the
-  // player holds into rune essence and unmasks the veins' drops from then on.
+  // proof it comes from every vein, as one essence from each tier that mining gives only while he
+  // asks for it (Runestone Hollow spec §4). Finishing it teaches identification, which turns what
+  // the player holds into rune essence and unmasks the veins' drops from then on.
   odoEssence: {
     id: "odoEssence",
     title: "The strange material",
@@ -98,8 +112,25 @@ export const QUESTS = {
         id: "proof",
         node: "proofQuest",
         journal:
-          "Odo wants proof: a strange material from every vein, three in all.",
-        turnIn: { item: "strangeMaterial", count: 3 },
+          "Odo wants proof: a copper essence, an iron essence and an emberite essence, mined from their veins.",
+        turnIn: [
+          { item: "copperEssence", count: 1 },
+          { item: "ironEssence", count: 1 },
+          { item: "emberiteEssence", count: 1 },
+        ],
+        veinFinds: [
+          {
+            vein: "copper",
+            item: "copperEssence",
+            chance: PROOF_ESSENCE_CHANCE,
+          },
+          { vein: "iron", item: "ironEssence", chance: PROOF_ESSENCE_CHANCE },
+          {
+            vein: "emberite",
+            item: "emberiteEssence",
+            chance: PROOF_ESSENCE_CHANCE,
+          },
+        ],
       },
     ],
     doneNode: "runes",

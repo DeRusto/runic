@@ -319,6 +319,42 @@ test("an essence rock gives essence as its own item: strange material until the 
   ]);
 });
 
+test("while Odo asks for proof, a vein can give its tier's essence, until the player holds one", () => {
+  sim.addPlayer(
+    "p",
+    {
+      x: 4,
+      y: 1,
+      combatXp: 0,
+      defenseXp: 0,
+      herblawXp: 0,
+      miningXp: 0,
+      hitpointsXp: 4050,
+      health: 10,
+      tools: ["pickaxe"],
+      inventory: Array<string>(INVENTORY_SLOTS).fill(""),
+      quests: { odoEssence: { stage: "proof", turns: 0 } },
+    },
+    "p",
+  );
+  roll = DOUBLE;
+  expect(mine(COPPER, "p")).toEqual([
+    {
+      type: "mine",
+      player: "p",
+      success: true,
+      count: 2,
+      finds: ["tin", "strangeMaterial", "copperEssence"],
+    },
+  ]);
+  expect(mine(COPPER, "p")[0]).toMatchObject({
+    finds: ["tin", "strangeMaterial"],
+  });
+  expect(
+    player("p").inventory.filter((item) => item === "copperEssence"),
+  ).toHaveLength(1);
+});
+
 test("a save from before finds loads unchanged", () => {
   addAt("b", 0);
   player("b").inventory[0] = "copperOre";

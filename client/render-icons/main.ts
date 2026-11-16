@@ -769,6 +769,17 @@ draw(strange, FLAT);
 pngs.set("strangeMaterial", await toPng(renderer.domElement));
 draw(essence(), FLAT);
 pngs.set("runeEssence", await toPng(renderer.domElement));
+// Odo's proof pieces: the essence's crystals, each tinted and lit by its vein's metal.
+for (const [id, tint, glow] of [
+  ["copperEssence", 0xe8955a, 0x7a3a10],
+  ["ironEssence", 0x8fb4e0, 0x23436e],
+  ["emberiteEssence", 0xff6a40, 0x8a1a00],
+] as const) {
+  const proof = essence();
+  applyLook(proof, { tint, glow });
+  draw(proof, FLAT);
+  pngs.set(id, await toPng(renderer.domElement));
+}
 // The owner's four rune medallions, rendered from their own models as the runes (#238),
 // shown for the owner's review in place of the Kenney slabs.
 const RUNES = [

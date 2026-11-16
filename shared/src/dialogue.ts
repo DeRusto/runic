@@ -185,14 +185,14 @@ export const VILLAGERS = {
             "There it is. Essence, of a kind — the stuff runes are made from.",
           ),
           villager(
-            "But I'll want proof you can find it in every vein. Three more pieces, and I'll teach you to know it on sight.",
+            "But I'll want proof it runs through every vein. Keep mining and bring me an essence from each: copper, iron and emberite. Then I'll teach you to know it on sight.",
           ),
         ],
       },
       proofQuest: {
         lines: [
           villager(
-            "Proof, remember? A piece from every vein — copper, iron and emberite. Three pieces.",
+            "Proof, remember? An essence from every vein: copper, iron and emberite. Keep mining and they'll turn up.",
           ),
         ],
         choices: [

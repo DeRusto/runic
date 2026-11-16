@@ -10,7 +10,9 @@ import {
   questsOfVillager,
   stageOf,
   stationRefusal,
+  turnInsOf,
   type Quest,
+  type QuestStage,
 } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 
@@ -24,7 +26,10 @@ describe("the quest engine", () => {
       for (const stage of quest.stages) {
         expect(stageOf(quest, stage.id)).toBe(stage);
         expect(nodes[stage.node]).toBeDefined();
-        if (stage.turnIn) expect(ITEMS[stage.turnIn.item]).toBeDefined();
+        for (const { item } of turnInsOf(stage))
+          expect(ITEMS[item as keyof typeof ITEMS]).toBeDefined();
+        for (const { item } of (stage as QuestStage).veinFinds ?? [])
+          expect(ITEMS[item as keyof typeof ITEMS]).toBeDefined();
       }
       if ("repeat" in quest)
         expect(ITEMS[quest.repeat.turnIn.item]).toBeDefined();
