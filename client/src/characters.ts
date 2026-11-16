@@ -690,10 +690,11 @@ const VILLAGER_MODELS: Record<
   // retargeted in Blender: Meshy's own idle bent him out of shape.
   odo: { file: "Odo", idle: "Idle_Loop", move: "Walk_Loop" },
   marta: { file: "Marta", idle: "Idle_02" },
-  aldous: "Mage",
+  // The owner's Meshy banker, holding his ledger, on the same retargeted library clips as Odo.
+  aldous: { file: "Aldous", idle: "Idle_Loop", move: "Walk_Loop" },
   bram: "Rogue_Hooded",
   tamsin: { file: "Tamsin", idle: "Idle_02" },
-  // A robed hermit, and Runestone Hollow is as far from Aldous as the map allows.
+  // A robed hermit, in the KayKit Mage's robes.
   hollis: "Mage",
 };
 

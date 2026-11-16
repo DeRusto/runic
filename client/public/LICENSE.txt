@@ -57,12 +57,13 @@ models/
     TarnOx.glb
         Converted from Quaternius's Farm Animals Animated pack (quaternius.com).
         CC0: see models/LICENSE-Quaternius-Farm-Animals.txt.
-    Odo.glb, Marta.glb, Tamsin.glb
-        Made for Runic by DeRusto with Meshy: the blacksmith, shopowner and
-        fisherman villagers, converted to GLB with their own clips. The owner's
-        own creations, not from a pack. No licence is granted for them here.
-        Odo's clips are retargeted from Quaternius's Universal Animation Library
-        and the hammer he carries is KayKit RPG Tools Bits' hammer, both CC0: see
+    Odo.glb, Marta.glb, Tamsin.glb, Aldous.glb
+        Made for Runic by DeRusto with Meshy: the blacksmith, shopowner,
+        fisherman and banker villagers, converted to GLB with their own clips.
+        The owner's own creations, not from a pack. No licence is granted for
+        them here. Odo's and Aldous's clips are retargeted from Quaternius's
+        Universal Animation Library, and the hammer Odo carries is KayKit RPG
+        Tools Bits' hammer, both CC0: see
         models/LICENSE-Quaternius-Universal-Animation-Library.txt and
         models/LICENSE-KayKit-RPG-Tools-Bits.txt.
     Bristleback.glb, Cinderhorn.glb
