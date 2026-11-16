@@ -63,7 +63,9 @@ models/
         own creations, not from a pack. No licence is granted for them here.
     Bristleback.glb, Cinderhorn.glb
         Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
-        not from a pack. No licence is granted for them here.
+        not from a pack. No licence is granted for them here. Their skeleton and
+        clips come from the Bull in Quaternius's Ultimate Animated Animals, which
+        is CC0: see models/LICENSE-Quaternius-Ultimate-Animated-Animals.txt.
     ore.glb
         Made for Runic by DeRusto. No licence is granted for it here.
 

@@ -513,17 +513,17 @@ describe("loadEnemies", () => {
     }
   });
 
-  it("gives each kind its clips: its own, the players' packs, or stand-ins made per Figure", async () => {
+  it("gives each kind its clips: its own, or the players' packs", async () => {
     const newEnemy = await loadEnemies(fakeModel);
     const clipsOf = (figure: Figure) => [...figure["clips"].keys()];
     expect(clipsOf(newEnemy.spider(tile))).toContain("Spider.glb clip");
     expect(clipsOf(newEnemy.tarnOx(tile))).toContain("TarnOx.glb clip");
+    expect(clipsOf(newEnemy.bristleback(tile))).toContain(
+      "Bristleback.glb clip",
+    );
     expect(clipsOf(newEnemy.skeleton(tile))).toContain(
       "Rig_Medium_General.glb clip",
     );
-    const [one, two] = [newEnemy.bristleback(tile), newEnemy.bristleback(tile)];
-    expect(clipsOf(one)).toEqual(["Idle", "Death"]);
-    expect(one["clips"]).not.toBe(two["clips"]);
   });
 
   it("puts the Skeleton's blade in its hand and keeps it armed, and no one else's", async () => {
@@ -547,6 +547,21 @@ describe("the owner's Meshy villagers", () => {
     ) as { animations: { name: string }[] };
     expect(animations.map((clip) => clip.name)).toContain(idle);
   });
+});
+
+describe("the Meshy creatures, rigged on the Bull's skeleton", () => {
+  it.each(["Bristleback", "Cinderhorn"])(
+    "%s.glb carries the clips its look plays",
+    (file) => {
+      const glb = readFileSync(`client/public/models/${file}.glb`);
+      const { animations } = JSON.parse(
+        glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
+      ) as { animations: { name: string }[] };
+      expect(animations.map((clip) => clip.name)).toEqual(
+        expect.arrayContaining(["Idle", "Walk", "Death", "Idle_HitReact1"]),
+      );
+    },
+  );
 });
 
 describe("Imp.glb", () => {

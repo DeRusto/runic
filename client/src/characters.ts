@@ -146,14 +146,14 @@ type EnemyFit = { height: number } | { width: number };
 
 /**
  * How each enemy looks and moves on the client. `file` is its model, sized by `fit`. Its clips
- * are its own model's, the players' shared packs, or (for a model with none) two empty stand-ins.
+ * are its own model's or the players' shared packs.
  * `held` is a weapon model put in a hand slot, and `armed` keeps it out in every stance. The
  * clips it plays that aren't in its gait follow, and `hit` is played when a blow lands, if any.
  */
 type EnemyLook = {
   file: string;
   fit: EnemyFit;
-  clips: "own" | "players" | "still";
+  clips: "own" | "players";
   gait?: typeof PLAYER_GAIT;
   held?: { file: string; slot: string };
   armed?: true;
@@ -165,7 +165,7 @@ type EnemyLook = {
 
 /** #238's docile creatures never swing, and a dying one falls into the ground like a Spider does, then grows back. */
 const DOCILE = {
-  clips: "still",
+  clips: "own",
   gait: CREATURE_GAIT,
   swing: () => ({ clip: "Idle", contactMs: 0 }),
   death: "Death",
@@ -218,9 +218,21 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     returns: "respawn",
   },
   // The Farm Animals Tarn Ox carries its own clips; the two Meshy models have none.
-  tarnOx: { ...DOCILE, file: "TarnOx.glb", fit: { width: 1.5 }, clips: "own" },
-  bristleback: { ...DOCILE, file: "Bristleback.glb", fit: { width: 1.1 } },
-  cinderhorn: { ...DOCILE, file: "Cinderhorn.glb", fit: { width: 1.4 } },
+  tarnOx: { ...DOCILE, file: "TarnOx.glb", fit: { width: 1.5 } },
+  // The owner's Meshy creatures, rigged in Blender on the Ultimate Animated Animals Bull's
+  // skeleton, which brings that pack's clips with it, a flinch among them.
+  bristleback: {
+    ...DOCILE,
+    file: "Bristleback.glb",
+    fit: { width: 1.1 },
+    hit: "Idle_HitReact1",
+  },
+  cinderhorn: {
+    ...DOCILE,
+    file: "Cinderhorn.glb",
+    fit: { width: 1.4 },
+    hit: "Idle_HitReact1",
+  },
 };
 
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
@@ -719,21 +731,8 @@ function withOwnMaterials(model: THREE.Object3D) {
 }
 
 /**
- * The two clips a docile creature with no animations of its own still needs: an empty
- * idle stands in the bind pose, and an empty death gives the Figure something to hold
- * while it sinks (#238).
- */
-function stillClips() {
-  return new Map(
-    ["Idle", "Death"].map(
-      (name) => [name, new THREE.AnimationClip(name, 0.4, [])] as const,
-    ),
-  );
-}
-
-/**
  * Loads every enemy's model once, each sized by its row, and returns what makes a Figure of each
- * kind. Every Figure of a kind shares its clips, except stand-ins, which are made per Figure.
+ * kind. Every Figure of a kind shares its clips.
  */
 export async function loadEnemies(loadModel: LoadModel = fetchModel) {
   const kinds = Object.keys(ENEMY_LOOKS) as EnemyKind[];
@@ -756,15 +755,14 @@ export async function loadEnemies(loadModel: LoadModel = fetchModel) {
         scene.getObjectByName(look.held!.slot)!.add(held.scene);
       }
       const own = new Map(animations.map((c) => [c.name, c]));
-      const clipsFor = () =>
-        look.clips === "still" ? stillClips() : (shared ?? own);
+      const clips = shared ?? own;
       return [
         kind,
         (tile: Tile) => {
           const figure = new Figure(
             tile,
             withOwnMaterials(cloneSkinned(scene)),
-            clipsFor(),
+            clips,
             look.gait,
           );
           if (look.armed) figure.alwaysArmed = true;
