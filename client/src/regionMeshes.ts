@@ -19,7 +19,8 @@ import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { HOUSE_MODELS, houseParts } from "./houseParts.ts";
-import { STATION_LOOKS } from "./stationLooks.ts";
+import { flameLook } from "./flame.ts";
+import { STATION_LOOKS, type StationPart } from "./stationLooks.ts";
 
 const STATION_KINDS = Object.keys(STATIONS) as FixedStation[];
 
@@ -154,13 +155,39 @@ async function loadVillageModels(names: string[]) {
   );
 }
 
-/** A station's model, scaled to its width. */
-async function loadStation({ file, width }: { file: string; width: number }) {
+/** A model scaled to its width, laid on its side first if asked, with its base on the ground. */
+export async function loadPart({ file, width, lay }: StationPart) {
   const { scene } = await new GLTFLoader().loadAsync(`/models/${file}`);
   scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  if (lay) scene.rotation.z = Math.PI / 2;
   const { max, min } = new THREE.Box3().setFromObject(scene);
   scene.scale.setScalar(width / Math.max(max.x - min.x, max.z - min.z));
+  if (lay) scene.position.y = -new THREE.Box3().setFromObject(scene).min.y;
   return scene;
+}
+
+/** A station's look: its parts and flame in one group, centred on the middle of its tiles. */
+async function loadStation({
+  parts,
+  flame,
+}: (typeof STATION_LOOKS)[FixedStation]) {
+  const group = new THREE.Group();
+  let top = 0;
+  for (const [i, model] of (await Promise.all(parts.map(loadPart))).entries()) {
+    const { at = [0, 0], y = 0, yaw = 0, onTop } = parts[i]!;
+    const holder = new THREE.Group().add(model);
+    holder.position.set(at[0], y + (onTop ? top : 0), at[1]);
+    holder.rotation.y = yaw;
+    group.add(holder);
+    if (!onTop) top = new THREE.Box3().setFromObject(holder).max.y;
+  }
+  if (flame) {
+    const fire = flameLook(flame.at[0], flame.at[1]);
+    fire.position.set(flame.at[0], flame.y, flame.at[1]);
+    fire.scale.setScalar(flame.size);
+    group.add(fire);
+  }
+  return group;
 }
 
 /** The ore model's two meshes, apart so that only the vein takes a tier's tint. */

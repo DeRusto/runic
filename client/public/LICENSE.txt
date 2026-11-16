@@ -14,15 +14,27 @@ models/
     Bush_*, Grass_*, Rock_*, forest_texture.png
         KayKit Forest Nature, by Kay Lousberg (www.kaylousberg.com), recorded as
         CC0 in docs/adr/0003-three-js-isometric-client.md.
-    kitchenStove.glb
-        Kenney Furniture Kit 2.1 (www.kenney.nl). CC0: see
-        models/LICENSE-Kenney-Furniture-Kit.txt.
-    workbench.glb
+    workbench.glb, workbenchGrind.glb, campfirePit.glb
         Kenney Survival Kit 2.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Survival-Kit.txt.
     altarStone.glb
         Kenney Graveyard Kit 5.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Graveyard-Kit.txt.
+    statueRing.glb, statueObelisk.glb
+        Kenney Nature Kit (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Nature-Kit.txt.
+    cuttingBoard.glb, cleaver.glb, carrot.glb, onion.glb, leek.glb,
+    loafRound.glb, mortarPestle.glb
+        Kenney Food Kit 2.0 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Food-Kit.txt.
+    tableMedium.glb
+        KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com). CC0: see
+        models/LICENSE-KayKit-Dungeon-Pack.txt.
+    cauldron.glb, mug.glb, bucketWooden.glb
+        Quaternius's Fantasy Props MegaKit, free version (quaternius.com). CC0:
+        see models/LICENSE-Quaternius-Fantasy-Props-MegaKit.txt.
+    Each of the models above was packed into one GLB with only its colour
+    texture, downscaled to 512px.
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.

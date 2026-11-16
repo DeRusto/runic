@@ -153,9 +153,9 @@ describe("the region", () => {
     ["cinderhorn", 3],
     ["furnace", 4],
     ["anvil", 1],
-    ["range", 1],
-    ["workbench", 1],
-    ["altar", 1],
+    ["range", 2],
+    ["workbench", 2],
+    ["altar", 4],
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
@@ -205,12 +205,18 @@ describe("the region", () => {
   it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...STATIONS_AND_BLACKSMITH, "altar", "villager", ...TREES),
+        ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager", ...TREES),
         ...spotsOf(...VEINS, ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
+    // A walk to a station ends next to any of its tiles, so the altar's walled-in obelisk tile is fine.
+    expect(
+      tilesOf("altar").some((tile) =>
+        tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
+      ),
+    ).toBe(true);
   });
 
   describe("houses", () => {
@@ -416,14 +422,20 @@ describe("the region", () => {
     ]);
   });
 
-  it("stands the range beside the furnace's north-east corner (#221)", () => {
+  it("stands the range beside the furnace's north-east corner, two tiles wide for its cauldron and table (#221)", () => {
     const [[x, y]] = tilesOf("furnace") as [[number, number]];
-    expect(tilesOf("range")).toEqual([[x + 3, y]]);
+    expect(tilesOf("range")).toEqual([
+      [x + 3, y],
+      [x + 4, y],
+    ]);
   });
 
-  it("stands the workbench between the range and the anvil (#226)", () => {
+  it("stands the workbench between the range and the anvil, two tiles wide for its grindstone (#226)", () => {
     const [[x, y]] = tilesOf("furnace") as [[number, number]];
-    expect(tilesOf("workbench")).toEqual([[x + 3, y + 1]]);
+    expect(tilesOf("workbench")).toEqual([
+      [x + 3, y + 1],
+      [x + 4, y + 1],
+    ]);
   });
 
   it("hides none of the smithy from the default camera, which looks north-west", () => {
@@ -450,14 +462,21 @@ describe("the region", () => {
     }
   });
 
-  it("stands the rune altar on the Boneyard's far side, ringed by rock props with one way in (#232)", () => {
-    const [{ x, y }] = tilesOf("altar").map(([tx, ty]) => ({ x: tx, y: ty }));
+  it("stands the rune altar on the Boneyard's far side, its slab ringed by its stones and rock props with one way in (#232)", () => {
+    // The slab, with the ring stone's tile north of it and an obelisk's tile either side.
+    const [x, y] = tilesOf("altar")[2]!;
+    expect(tilesOf("altar")).toEqual([
+      [x, y - 1],
+      [x - 1, y],
+      [x, y],
+      [x + 1, y],
+    ]);
     expect(region[y]![x]!.ground).toBe("ashen");
     const ring = neighbours({ x, y });
     const props = ring.filter(
       ({ x: nx, y: ny }) => region[ny]![nx]!.prop === "rock",
     );
-    expect(props).toHaveLength(7);
+    expect(props).toHaveLength(4);
     // One unblocked neighbour keeps the altar walkable-to.
     expect(ring.some(({ x: nx, y: ny }) => !region[ny]![nx]!.blocks)).toBe(
       true,

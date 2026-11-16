@@ -1,46 +1,24 @@
 import { Callbacks } from "@colyseus/sdk";
 import type { Tile } from "@runic/shared";
 import * as THREE from "three";
+import { flameLook } from "./flame.ts";
 import { tileHitBoxes } from "./hitBoxes.ts";
 import type { WorldConnection } from "./players.ts";
+import { loadPart } from "./regionMeshes.ts";
 import { scene } from "./scene.ts";
 import { addFireTile, removeFireTile } from "./stations.ts";
 
-// Shared by every fire, so one burning out frees nothing on the GPU and leaks nothing.
-const WOOD = new THREE.MeshLambertMaterial({ color: 0x4a3220 });
-const LOG = new THREE.BoxGeometry(0.7, 0.12, 0.16);
-const FLAME = new THREE.ConeGeometry(0.16, 0.5, 8);
-const FLAME_COLOUR = new THREE.MeshBasicMaterial({ color: 0xff9a30 });
-const HEART = new THREE.ConeGeometry(0.09, 0.3, 8);
-const HEART_COLOUR = new THREE.MeshBasicMaterial({ color: 0xffd866 });
+// Loaded once, on the first fire, and shared by every fire after it.
+let pit: Promise<THREE.Object3D> | undefined;
 
-/** A fire's look: two crossed logs, a flame over them and a warm glow (#224). Procedural, as no pack has one. */
+/** A fire's look: Kenney's campfire pit with a flame over it (#224). */
 function flame({ x, y }: Tile) {
   const group = new THREE.Group();
-  for (const yaw of [Math.PI / 2, 0]) {
-    const log = new THREE.Mesh(LOG, WOOD);
-    log.rotation.y = yaw;
-    log.position.y = 0.06;
-    log.castShadow = true;
-    group.add(log);
-  }
-  const flame = new THREE.Mesh(FLAME, FLAME_COLOUR);
-  flame.position.y = 0.36;
-  const heart = new THREE.Mesh(HEART, HEART_COLOUR);
-  heart.position.y = 0.27;
-  const glow = new THREE.PointLight(0xff8a30, 5, 5);
-  glow.position.y = 0.5;
-  // The flame and its glow flicker, a little differently on every tile.
-  flame.onBeforeRender = () => {
-    const now = performance.now();
-    flame.scale.set(
-      1 + 0.1 * Math.sin(now / 90 + x * 7),
-      1 + 0.18 * Math.sin(now / 70 + y * 13),
-      1,
-    );
-    glow.intensity = 5 + 0.8 * Math.sin(now / 110 + x * 3 + y);
-  };
-  group.add(flame, heart, glow);
+  pit ??= loadPart({ file: "campfirePit.glb", width: 0.8 });
+  void pit.then((model) => group.add(model.clone()));
+  const fire = flameLook(x, y);
+  fire.position.y = 0.12;
+  group.add(fire);
   return group;
 }
 
