@@ -85,6 +85,7 @@ import {
   openingNodeOf,
   stageOf,
   turnInsOf,
+  ENEMIES,
   QUESTS,
   type QuestId,
   type Deal,
@@ -938,12 +939,21 @@ export class Simulation {
       : this.startQuest(id, player, quest);
   }
 
-  /** Sets the first stage, and hands over the work's tools. Starting a quest never fails. */
+  /** Sets the first stage, and hands over the work's tools. It fails only while a quest it needs isn't done. */
   private startQuest(
     id: string,
     player: InstanceType<typeof Player>,
     quest: Quest,
   ) {
+    const { needs } = quest;
+    if (
+      needs &&
+      this.unsyncedPlayers.get(id)!.quests.get(needs.quest)?.stage !==
+        QUEST_DONE
+    ) {
+      this.events.push({ type: "told", player: id, line: needs.line });
+      return false;
+    }
     this.unsyncedPlayers
       .get(id)!
       .quests.set(quest.id, { stage: quest.stages[0]!.id, turns: 0 });
@@ -1014,21 +1024,35 @@ export class Simulation {
     return true;
   }
 
-  /** The quest items a successful mine on a vein of `vein` gives this player, from the stages they're on (Runestone Hollow spec §4). */
+  /** The quest stages this player is on now. */
+  private currentStages(id: string) {
+    return [...this.unsyncedPlayers.get(id)!.quests].flatMap(
+      ([questId, { stage }]) =>
+        stageOf(QUESTS[questId as QuestId], stage) ?? [],
+    );
+  }
+
+  /** Whether a stage this player is on still asks for more of `item` than they hold: its turn-in's count, or 1 for an item it only finds. */
+  private questWants(id: string, item: ItemId) {
+    const held = countOf(item, this.state.players.get(id)!);
+    return this.currentStages(id).some((stage) => {
+      const asked = turnInsOf(stage).find((turnIn) => turnIn.item === item);
+      const finds = stage.veinFinds?.some((roll) => roll.item === item);
+      return (asked || finds) && held < (asked?.count ?? 1);
+    });
+  }
+
+  /** The quest items a successful mine on a vein of `vein` gives this player, from the stages they're on, while each still wants more (Runestone Hollow spec §4). */
   private questVeinFinds(id: string, vein: string) {
-    const player = this.state.players.get(id)!;
-    const found: ItemId[] = [];
-    for (const [questId, { stage }] of this.unsyncedPlayers.get(id)!.quests) {
-      const current = stageOf(QUESTS[questId as QuestId], stage);
-      for (const roll of current?.veinFinds ?? [])
-        if (
-          roll.vein === vein &&
-          countOf(roll.item, player) === 0 &&
-          this.random() < roll.chance
-        )
-          found.push(roll.item);
-    }
-    return found;
+    return this.currentStages(id).flatMap((stage) =>
+      (stage.veinFinds ?? []).flatMap((roll) =>
+        roll.vein === vein &&
+        this.questWants(id, roll.item) &&
+        this.random() < roll.chance
+          ? [roll.item]
+          : [],
+      ),
+    );
   }
 
   closeStore(id: string) {
@@ -1816,7 +1840,15 @@ export class Simulation {
     const loot = this.enemies.takeHit(this.state.tick, enemyId, id, damage);
     if (!loot) return;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    for (const won of loot) this.placeLoot(enemy, won);
+    // A quest-category drop lands only for a winner whose quest stage still asks for it.
+    const questLoot = new Set(
+      ENEMIES[enemy.kind].loot
+        .filter(({ category }) => category === "quest")
+        .flatMap(({ items }) => items.map(({ item }) => item)),
+    );
+    for (const won of loot)
+      if (!questLoot.has(won.item) || this.questWants(won.player, won.item))
+        this.placeLoot(enemy, won);
     for (const unsynced of this.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;

@@ -37,6 +37,8 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   copperEssence: 1,
   ironEssence: 1,
   emberiteEssence: 1,
+  hollowEssence: 1,
+  boneSigil: 1,
   airRune: 8,
   waterRune: 12,
   earthRune: 18,

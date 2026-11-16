@@ -30,6 +30,10 @@ _Avoid_: Graveyard, dungeon
 The ruined valley east of the Boneyard, floored with moss and set with broken columns and standing stones, where the altar stands. Its only way in is a gap in the trees behind the Emberite veins, so the walk there crosses the Boneyard. It is not part of the Boneyard.
 _Avoid_: Stone circle, shrine
 
+**Hollis**:
+The runekeeper: an old hermit who tends the stones of Runestone Hollow, standing just inside its gap. Their quest, after Odo's essence quest, asks for five Hollow essence and a Skeleton Mage's **bone sigil**, and opens the altar.
+_Avoid_: Keeper (alone), hermit
+
 **Inn**:
 The village's south-west building, with the range outside its door.
 _Avoid_: Tavern, pub
@@ -87,7 +91,7 @@ A fixed place in the smithy, beside the furnace and north of the anvil, where a 
 _Avoid_: Crafting table, work table
 
 **Altar**:
-A stone slab in Runestone Hollow, with a ring stone behind it and an obelisk on either side, where a player turns rune essence into runes (#232). It asks no level of its own, gives no tools, and never runs out; the walk there is the gate. Its old place on the Boneyard's far side is a ring of rocks around bare ground.
+A stone slab in Runestone Hollow, with a ring stone behind it and an obelisk on either side, where a player turns rune essence into runes (#232). It opens once Hollis's quest is done, asks no level of its own, gives no tools, and never runs out; the walk there is part of the gate. Its old place on the Boneyard's far side is a ring of rocks around bare ground.
 _Avoid_: Stone circle, rune stone
 
 **Station**:
@@ -502,7 +506,7 @@ The essence unmasked, once Odo's second quest teaches identification (#232): the
 _Avoid_: Essence (alone), pure essence
 
 **Quest essence**:
-An essence a vein gives only while a quest asks for it, and only until the player holds one. Odo's proof asks for one each of **copper essence**, **iron essence** and **emberite essence**, each from its own tier's veins at a 1 in 5 chance a successful mine. It is worth a coin at the store and is no use to anyone but the villager who asked.
+An essence a vein gives only while a quest asks for it, and only until the player holds one. Odo's proof asks for one each of **copper essence**, **iron essence** and **emberite essence**, each from its own tier's veins at a 1 in 5 chance a successful mine. Hollis asks for five **Hollow essence**, from the essence rocks at 1 in 4. It is worth a coin at the store and is no use to anyone but the villager who asked.
 _Avoid_: Proof piece, quest ore
 
 **Rune**:

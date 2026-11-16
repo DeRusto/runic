@@ -2903,6 +2903,19 @@
                  "width":0,
                  "x":1792,
                  "y":912
+                }, 
+                {
+                 "height":0,
+                 "id":181,
+                 "name":"hollis",
+                 "opacity":1,
+                 "point":true,
+                 "rotation":0,
+                 "type":"npc",
+                 "visible":true,
+                 "width":0,
+                 "x":1552,
+                 "y":672
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -2911,7 +2924,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":181,
+ "nextobjectid":182,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

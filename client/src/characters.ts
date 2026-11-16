@@ -668,6 +668,8 @@ const VILLAGER_MODELS = {
   bram: "Rogue_Hooded",
   // Every KayKit adventurer is taken, and Tamsin stands far from Marta.
   tamsin: "Rogue",
+  // A robed hermit, and Runestone Hollow is as far from Aldous as the map allows.
+  hollis: "Mage",
 } satisfies Record<VillagerId, string>;
 
 /** What a villager holds, by their model's node name for it. */

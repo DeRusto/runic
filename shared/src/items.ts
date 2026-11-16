@@ -23,6 +23,9 @@ export const ITEMS = {
   copperEssence: STACKS,
   ironEssence: STACKS,
   emberiteEssence: STACKS,
+  /** Hollis's offering (Runestone Hollow spec §4): essence rocks give Hollow essence only while the quest asks for it, and a Skeleton Mage drops its bone sigil only to a player it's asked of. */
+  hollowEssence: STACKS,
+  boneSigil: STACKS,
   /** #232's four elemental runes, made from one rune essence each at the altar. */
   airRune: STACKS,
   waterRune: STACKS,

@@ -73,6 +73,8 @@ export const TILE_KINDS = {
   i: { ground: "grass", vein: "iron", blocks: true },
   e: { ground: "ashen", vein: "emberite", blocks: true },
   E: { ground: "moss", vein: "essence", blocks: true },
+  L: { ground: "moss", villager: "hollis", blocks: true },
+  Z: { ground: "moss", enemy: "skeletonMage", blocks: false },
   g: { ground: "thicket", tree: "birch", blocks: true },
   k: { ground: "grass", tree: "oak", blocks: true },
   C: { ground: "ashen", tree: "charwood", blocks: true },

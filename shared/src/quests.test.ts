@@ -171,8 +171,21 @@ describe("the smithy's stations are Odo's to open", () => {
     );
   });
 
-  test("the range, fire, workbench and altar need neither", () => {
-    for (const station of ["range", "fire", "workbench", "altar"] as const)
+  test("the range, fire and workbench need neither", () => {
+    for (const station of ["range", "fire", "workbench"] as const)
       expect(stationRefusal(station, unhelped)).toBeUndefined();
+  });
+
+  test("the altar waits on Hollis's offering, Odo's help or not (Runestone Hollow spec §4)", () => {
+    expect(stationRefusal("altar", unhelped)).toBe(
+      "You need to help Hollis first.",
+    );
+    expect(
+      stationRefusal("altar", {
+        tools: [],
+        quests: ["hollisRunes"],
+        questStages: [QUEST_DONE],
+      }),
+    ).toBeUndefined();
   });
 });

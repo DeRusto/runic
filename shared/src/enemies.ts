@@ -88,7 +88,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
   },
   // Runestone Hollow's (spec §5), first values to tune: a Skeleton Mage is a Skeleton that hits
   // harder and lasts longer, still in melee until Phase 8's Ranged work, and an Imp is a quick,
-  // weaker pest that notices from further off. Their loot waits for the runekeeper's quest.
+  // weaker pest that notices from further off. A Mage drops Hollis's bone sigil, one kill in three,
+  // and only to a player Hollis asks it of; Imps drop nothing yet.
   skeletonMage: {
     health: 3200,
     hitChance: 0.6,
@@ -101,7 +102,9 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 3,
     noticeTiles: 3,
     leashTiles: 4,
-    loot: [],
+    loot: [
+      { category: "quest", chance: 1 / 3, items: [{ item: "boneSigil" }] },
+    ],
   },
   imp: {
     health: 1200,

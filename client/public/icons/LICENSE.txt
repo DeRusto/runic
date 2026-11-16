@@ -1,6 +1,6 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-116 are rendered by client/render-icons, 81 from the CC0 models below and 34 from
+118 are rendered by client/render-icons, 81 from the CC0 models below and 36 from
 our own geometry. The other one is a Craftpix file.
 
 ------------------------------------------------------------------------
@@ -73,7 +73,8 @@ coins
 emberbone.png, tin.png, ashstone.png, cinderglass.png, heartflame.png, rod.png,
 arrowShaft.png, feather.png, the five arrowhead icons, gossamerCloak.png,
 tinderbox.png, the fifteen cape icons, and copperEssence.png, ironEssence.png and
-emberiteEssence.png (rune essence's crystals, tinted by tier) are from no pack: they are Runic's own,
+emberiteEssence.png (rune essence's crystals, tinted by tier), hollowEssence.png
+and boneSigil.png are from no pack: they are Runic's own,
 drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted by
 its tier, and its Virtue shows in the name only (#217); an arrowhead by its tier
 (#228).

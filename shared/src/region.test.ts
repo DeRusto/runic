@@ -70,6 +70,7 @@ const IS = {
   charwood: (tile) => tile.tree === "charwood",
   forester: (tile) => tile.villager === "bram",
   fisher: (tile) => tile.villager === "tamsin",
+  runekeeper: (tile) => tile.villager === "hollis",
   water: (tile) => tile.ground === "water",
   path: (tile) => tile.ground === "path",
   moss: (tile) => tile.ground === "moss",
@@ -165,7 +166,7 @@ describe("the region", () => {
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
-    ["villager", 5],
+    ["villager", 6],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -523,6 +524,22 @@ describe("the region", () => {
         ),
       ),
     ).toEqual([]);
+  });
+
+  it("stands Hollis just inside Runestone Hollow, out of every Mage's and Imp's reach", () => {
+    const [hollis] = tilesOf("runekeeper");
+    expect(hollis).toEqual([97, 42]);
+    expect(IS.moss(region[42]![97]!)).toBe(true);
+    for (const home of tilesOf("skeletonMage", "imp")) {
+      const {
+        wanderTiles,
+        noticeTiles = 0,
+        leashTiles,
+      } = ENEMIES[region[home[1]]![home[0]]!.enemy!];
+      expect(tilesApart(asTile(home), asTile(hollis!))).toBeGreaterThan(
+        wanderTiles + noticeTiles + leashTiles,
+      );
+    }
   });
 
   it("puts every essence rock spot on Runestone Hollow's moss", () => {

@@ -737,6 +737,30 @@ function essence() {
   return group;
 }
 
+/** A Skeleton Mage's bone sigil for Hollis: a bone disc with a violet crystal set in its face. */
+function boneSigil() {
+  const group = new THREE.Group();
+  const bone = new THREE.MeshStandardMaterial({
+    color: 0xe8dcc0,
+    roughness: 0.8,
+    flatShading: true,
+  });
+  group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.2, 8), bone));
+  const crystal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.35),
+    new THREE.MeshStandardMaterial({
+      color: 0xc89cff,
+      flatShading: true,
+      emissive: 0x4a2370,
+      emissiveIntensity: GLOW_INTENSITY,
+    }),
+  );
+  crystal.position.y = 0.2;
+  crystal.scale.y = 0.6;
+  group.add(crystal);
+  return group;
+}
+
 /** Kenney's rune slabs are gone: #238 re-renders the runes from the owner's four medallions (shown for review). */
 
 const bone = emberbone();
@@ -774,12 +798,16 @@ for (const [id, tint, glow] of [
   ["copperEssence", 0xe8955a, 0x7a3a10],
   ["ironEssence", 0x8fb4e0, 0x23436e],
   ["emberiteEssence", 0xff6a40, 0x8a1a00],
+  // Hollis's Hollow essence, in the essence rocks' violet.
+  ["hollowEssence", 0xc89cff, 0x4a2370],
 ] as const) {
   const proof = essence();
   applyLook(proof, { tint, glow });
   draw(proof, FLAT);
   pngs.set(id, await toPng(renderer.domElement));
 }
+draw(boneSigil(), FLAT);
+pngs.set("boneSigil", await toPng(renderer.domElement));
 // The owner's four rune medallions, rendered from their own models as the runes (#238),
 // shown for the owner's review in place of the Kenney slabs.
 const RUNES = [

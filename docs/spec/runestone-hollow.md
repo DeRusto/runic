@@ -1,6 +1,6 @@
 # Runic: Runestone Hollow
 
-**Status: draft.** Terms are defined in `GLOSSARY.md`. The owner settled the decisions here in conversation on 2026-11-16. One open question is left at the end.
+**Status: built.** Terms are defined in `GLOSSARY.md`. The owner settled the decisions here in conversation on 2026-11-16.
 
 This spec adds to the [second slice spec](second-slice.md) and the [village spec](village.md). Everything there still holds unless a section here changes it. Where a number is given, it is a first value to tune in play.
 
@@ -29,7 +29,7 @@ The range now stands outside the inn, the town's south-west building, which a se
 - **The altar.** The station moves here unchanged in what it does: it turns rune essence into runes, asks no level and never runs out. Its look (the stone slab with a ring stone behind it and an obelisk on each side) moves with it.
 - **Ruins.** Standing stones, broken columns and graves, as scenery props that block walking. Candidate models are Kenney's Graveyard and Nature kits, and the low-poly ruin set in the asset folder; the build picks from them and records each pack's licence.
 - **Essence rocks.** A new site kind, mined with a pickaxe like a vein. Five are active at once in a site pool inside the Hollow, the same count as the Emberite pool next door, and they need Mining 25, a step past Emberite's 20. They run out and regrow like veins, and pay 20 Mining experience a success. Each success gives essence as the rock's own item: the strange material to a player who hasn't learnt identification from Odo, rune essence to one who has. While the runekeeper's quest runs, a success can also give that quest's essence (section 4). The rock is a vein kind (`essence`) drawn as the ore model with a pale violet vein.
-- **The runekeeper.** An old hermit who has tended the stones for years. They stand near the altar, explain runes in a quiet, cryptic voice and give the Runecrafting quest (section 4).
+- **The runekeeper.** Hollis, an old hermit who has tended the stones for years. They stand just inside the gap at (97,42), out of every Mage's and Imp's reach, so talking to them is safe, explain runes in a quiet, cryptic voice and give the Runecrafting quest (section 4).
 - **Enemies.** Skeleton Mages and a few Imps (section 5).
 
 ### The old stone circle
@@ -52,9 +52,10 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 
 ### The runekeeper's quest
 
-- The runekeeper offers it once Odo's essence quest is done. It asks for Hollow essence, mined from the essence rocks, and an item that Skeleton Mages drop.
-- While it runs, each successful mine on an essence rock can also give Hollow essence, the same way the veins give Odo's quest essence. The count asked for and the chance are set when it is built.
-- Finishing it gives a quest point, shows in the journal like Odo's quests and opens the altar. Until then the altar refuses a click with "You need to help \<runekeeper\> first.", using the station's existing `quest` field, as the furnace and anvil do with Odo's quest.
+- Hollis offers "The stones remember" once Odo's essence quest is done; before that they say "Hollis looks through you. Learn to know essence first: the Blacksmith can teach it." and nothing starts. A quest's `needs` field carries this, and works across villagers.
+- It asks for five Hollow essence and one bone sigil, handed over together.
+- While it runs, each successful mine on an essence rock has a 1 in 4 chance to also give Hollow essence, until the player holds five. A Skeleton Mage drops a bone sigil one kill in three, and only to a player whose stage still asks for one: the sigil is a "quest" loot row, which lands only for a winner who needs it.
+- Finishing it gives a quest point, shows in the journal like Odo's quests and opens the altar. Until then the altar refuses a click with "You need to help Hollis first.", using the station's existing `quest` field, as the furnace and anvil do with Odo's quest. A player who made runes before this ships needs the quest too.
 
 ## 5. Enemies
 
@@ -62,7 +63,7 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 - **Imp.** From the Bestiary kit, weaker than a Skeleton Mage. The Bestiary kit is not CC0: its licence allows committing it as part of Runic but not redistributing it alone, so its files go under `client/public/` and get an entry in `client/public/LICENSE.txt`, as that notice requires.
 - The Hollow holds four Skeleton Mages and three Imps, fewer than the Boneyard's six Skeletons since each Mage is tougher. They respawn the way Skeletons do.
 - Their homes are inside the Hollow, and their reach (home, wander, notice range and leash) must keep them out of the Emberite pocket and off the gap, so a player mining Emberite is never pulled into a fight with them.
-- First values, to tune in play, against the Skeleton's 2400 health, 0.55 hit chance and 500 most damage: a Skeleton Mage has 3200 health, a 0.6 hit chance with 10 accuracy and 650 most damage, and wanders, notices and leashes like a Skeleton (3, 3 and 4 tiles). An Imp has 1200 health, a 0.5 hit chance and 300 most damage, but swings every 6 ticks and wanders, notices and leashes further (5, 4 and 5 tiles). Neither drops anything until the runekeeper's quest gives the Mage its item.
+- First values, to tune in play, against the Skeleton's 2400 health, 0.55 hit chance and 500 most damage: a Skeleton Mage has 3200 health, a 0.6 hit chance with 10 accuracy and 650 most damage, and wanders, notices and leashes like a Skeleton (3, 3 and 4 tiles). An Imp has 1200 health, a 0.5 hit chance and 300 most damage, but swings every 6 ticks and wanders, notices and leashes further (5, 4 and 5 tiles). A Mage drops Hollis's bone sigil (section 4); an Imp drops nothing yet.
 - The Imp's model has no animations of its own. Its rig matches Quaternius's Universal Animation Library (CC0), so its idle, jog, punch, hit and death clips are baked into its model from there, rotations only, since the library's hip movement is sized for a person.
 
 ## 6. The south road and its gate
@@ -77,9 +78,9 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 - **Altar**: its entry moves the altar to Runestone Hollow and says the runekeeper's quest opens it; the walk is still part of the gate.
 - **Boneyard**: unchanged ("The field where Skeletons roam."), and the Hollow is not part of it.
 - **Strange material**: unchanged; finding a piece still starts Odo's essence quest.
-- **Quest essence**: new entry. An essence that mining gives only while its quest runs: Copper, Iron and Emberite essence for Odo, and Hollow essence for the runekeeper.
+- **Quest essence**: new entry. An essence that mining gives only while its quest runs: Copper, Iron and Emberite essence for Odo, and Hollow essence for Hollis.
 - **Essence rock**, **Skeleton Mage**, **Imp** and the runekeeper: new entries when they are built.
 
-## 8. Open question
+## 8. Open questions
 
-1. What is the runekeeper's name? The rest of the character is settled: an old hermit who tends the stones.
+None. The owner left the runekeeper's name to Claude, who chose Hollis, after the Hollow.

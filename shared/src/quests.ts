@@ -56,6 +56,8 @@ export type Quest = {
   gives?: readonly Tool[];
   /** What finishing the quest teaches at once, whose rule it turns on (#232): essence identification so far. */
   teaches?: "essence";
+  /** Another quest, maybe another villager's, that must be done before this one starts, and what the villager says until it is. */
+  needs?: { quest: string; line: string };
   stages: QuestStage[];
   repeat?: QuestRepeat;
   /** The node the conversation opens with once the quest and its turn-ins are all done. */
@@ -134,6 +136,33 @@ export const QUESTS = {
       },
     ],
     doneNode: "runes",
+  },
+  // Runestone Hollow's quest (spec §4): Hollis opens the altar to a player who already knows
+  // essence from Odo, once they bring Hollow essence from the essence rocks and a Skeleton
+  // Mage's bone sigil. Hollow essence comes only while this stage runs, until five are held.
+  hollisRunes: {
+    id: "hollisRunes",
+    title: "The stones remember",
+    villager: "hollis",
+    points: 1,
+    needs: {
+      quest: "odoEssence",
+      line: "Hollis looks through you. Learn to know essence first: the Blacksmith can teach it.",
+    },
+    stages: [
+      {
+        id: "offering",
+        node: "offeringQuest",
+        journal:
+          "Hollis wants five Hollow essence from the essence rocks and a bone sigil from a Skeleton Mage.",
+        turnIn: [
+          { item: "hollowEssence", count: 5 },
+          { item: "boneSigil", count: 1 },
+        ],
+        veinFinds: [{ vein: "essence", item: "hollowEssence", chance: 0.25 }],
+      },
+    ],
+    doneNode: "keeper",
   },
 } as const satisfies Record<string, Quest>;
 export type QuestId = keyof typeof QUESTS;
