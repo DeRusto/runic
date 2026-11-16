@@ -5,11 +5,23 @@ import type { FixedStation } from "./stations.ts";
 import type { BushKind } from "./herblaw.ts";
 import type { TreeKind } from "./woodcutting.ts";
 
-export type GroundKind = "grass" | "thicket" | "path" | "ashen" | "water";
+/** `moss` is Runestone Hollow's mossy stone floor. */
+export type GroundKind =
+  "grass" | "thicket" | "path" | "ashen" | "water" | "moss";
 /** Water can never be walked on, with or without a site on it. */
 export const groundBlocks = (ground: GroundKind) => ground === "water";
+/** `gate` is the locked gate on the south road; `column` and `standingStone` are Runestone Hollow's ruins. */
 export type PropKind =
-  "tree" | "rock" | "tuft" | "well" | "lamp" | "barrel" | "crate";
+  | "tree"
+  | "rock"
+  | "tuft"
+  | "well"
+  | "lamp"
+  | "barrel"
+  | "crate"
+  | "gate"
+  | "column"
+  | "standingStone";
 /** The five metals, lowest first. Each tier's item ids start with it (`bronzeSword`). */
 export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];

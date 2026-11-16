@@ -68,6 +68,7 @@ const IS = {
   fisher: (tile) => tile.villager === "tamsin",
   water: (tile) => tile.ground === "water",
   path: (tile) => tile.ground === "path",
+  moss: (tile) => tile.ground === "moss",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
   range: (tile) => tile.station === "range",
@@ -139,8 +140,8 @@ describe("the region", () => {
     (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
   );
 
-  it("is exactly 96×64", () => {
-    expect(region.map((row) => row.length)).toEqual(Array(64).fill(96));
+  it("is exactly 128×96, grown east and south so every older tile kept its place", () => {
+    expect(region.map((row) => row.length)).toEqual(Array(96).fill(128));
   });
 
   it.each([
@@ -185,11 +186,11 @@ describe("the region", () => {
   );
 
   it("has an outer ring of blocks", () => {
-    for (let x = 0; x < 96; x++) {
-      expect([blocks(x, 0), blocks(x, 63)]).toEqual([true, true]);
+    for (let x = 0; x < 128; x++) {
+      expect([blocks(x, 0), blocks(x, 95)]).toEqual([true, true]);
     }
-    for (let y = 0; y < 64; y++) {
-      expect([blocks(0, y), blocks(95, y)]).toEqual([true, true]);
+    for (let y = 0; y < 96; y++) {
+      expect([blocks(0, y), blocks(127, y)]).toEqual([true, true]);
     }
   });
 
@@ -461,8 +462,7 @@ describe("the region", () => {
     }
   });
 
-  it("stands the rune altar on the Boneyard's far side, its slab ringed by its stones and rock props with one way in (#232)", () => {
-    // The slab, with the ring stone's tile north of it and an obelisk's tile either side.
+  it("stands the rune altar in Runestone Hollow, its slab with the ring stone's tile north and an obelisk's either side", () => {
     const [x, y] = tilesOf("altar")[2]!;
     expect(tilesOf("altar")).toEqual([
       [x, y - 1],
@@ -470,18 +470,9 @@ describe("the region", () => {
       [x, y],
       [x + 1, y],
     ]);
-    expect(region[y]![x]!.ground).toBe("ashen");
+    expect(region[y]![x]!.ground).toBe("moss");
+    // The walk is the gate: no way to the slab keeps off the Boneyard's ashen ground, and it's a long one.
     const ring = neighbours({ x, y });
-    const props = ring.filter(
-      ({ x: nx, y: ny }) => region[ny]![nx]!.prop === "rock",
-    );
-    expect(props).toHaveLength(4);
-    // One unblocked neighbour keeps the altar walkable-to.
-    expect(ring.some(({ x: nx, y: ny }) => !region[ny]![nx]!.blocks)).toBe(
-      true,
-    );
-    // The walk is the gate: it stands on the far side of the Boneyard, so no way
-    // there keeps off the ashen ground, and the nearest way in is over 55 steps.
     expect(ring.some(({ x: nx, y: ny }) => withoutAshen.has(key(nx, ny)))).toBe(
       false,
     );
@@ -489,6 +480,44 @@ describe("the region", () => {
       ...ring.map(({ x: nx, y: ny }) => reachable.get(key(nx, ny)) ?? Infinity),
     );
     expect(nearest).toBeGreaterThan(55);
+  });
+
+  it("lets a player into Runestone Hollow only through the Boneyard, by the gap behind the Emberite pocket", () => {
+    const moss = tilesOf("moss");
+    expect(moss.length).toBeGreaterThan(0);
+    expect(moss.filter(([x, y]) => withoutAshen.has(key(x, y)))).toEqual([]);
+    // Every walkable way out of the Hollow is the one gap tile in the old east border.
+    const ways = moss.filter(
+      ([x, y]) =>
+        !blocks(x, y) &&
+        tilesNextTo([x, y]).some(([nx, ny]) => !IS.moss(region[ny]![nx]!)),
+    );
+    expect(ways).toEqual([[95, 42]]);
+  });
+
+  it("leaves the old stone circle on the Boneyard's far side as bare ground ringed by its rocks", () => {
+    const ring = neighbours({ x: 86, y: 44 });
+    expect(region[44]![86]).toEqual({ ground: "ashen", blocks: false });
+    expect(
+      ring.filter(({ x, y }) => region[y]![x]!.prop === "rock"),
+    ).toHaveLength(7);
+  });
+
+  it("runs the town's south road to a locked double gate, and nothing past it can be reached", () => {
+    expect([region[63]![18]!.prop, region[63]![19]!.prop]).toEqual([
+      "gate",
+      "gate",
+    ]);
+    expect([blocks(18, 63), blocks(19, 63)]).toEqual([true, true]);
+    for (let y = 57; y <= 62; y++)
+      expect([IS.path(region[y]![18]!), IS.path(region[y]![19]!)]).toEqual([
+        true,
+        true,
+      ]);
+    expect(reachable.has(key(18, 62))).toBe(true);
+    expect([...reachable.keys()].filter((k) => +k.split(",")[1]! > 63)).toEqual(
+      [],
+    );
   });
 });
 

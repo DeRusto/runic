@@ -34,7 +34,7 @@ The range now stands outside the inn, the town's south-west building, which a se
 
 ### The old stone circle
 
-The altar and its stones leave the Boneyard. The rock ring around their old tiles (85–87, 43–45) stays as a ruin, and the altar tiles go back to ashen ground. Marta's lines that send players to "the old stone circle out on the Boneyard's far side" change to send them to Runestone Hollow.
+The altar and its stones leave the Boneyard. The rock ring around their old tiles (85–87, 43–45) stays as a ruin, and the altar tiles go back to ashen ground. Odo's lines that send players to "the old stone circle out on the Boneyard's far side" change to send them to Runestone Hollow.
 
 ## 4. The essence quests
 
@@ -66,7 +66,7 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 
 ## 6. The south road and its gate
 
-- The town's south road, which stops near y 57 today, runs on into the new south band and ends at a gate.
+- The town's south road, which stopped at y 56, runs on to a double gate across both its tiles (18–19, 63) in the old south border, and a short way past it into the new south band.
 - The gate is a new kind of feature that blocks walking until it opens. For now nothing opens it, and clicking it says "The gate is locked." and nothing more. What unlocks it is designed together with the areas behind it.
 - The land past the gate is plain and empty until those areas are designed.
 

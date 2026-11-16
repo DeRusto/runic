@@ -31,6 +31,7 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   path: { color: 0xa77b4f, top: -0.05 },
   ashen: { color: 0x6e6862, top: -0.01 },
   water: { color: 0x3b78b0, top: -0.12 },
+  moss: { color: 0x4f5e4a, top: -0.01 },
 };
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT: Record<BushKind, number> = {
@@ -104,9 +105,29 @@ const VILLAGE_PROPS = {
   barrel: { scale: 1, models: ["Prop_Barrel_1"] },
   crate: { scale: 0.6, models: ["Prop_Crate_1"] },
 };
-const PROP_MODELS: Record<PropKind, { scale: number; models: string[] }> = {
+// Kenney's Nature Kit, flat-coloured like the stump, so their colours bake the same way. The gate keeps
+// its turn, across the south road, where every other prop takes a random one; it spans its tile and
+// is stretched up to a character's height, two of them making the road's double gate.
+const NATURE_PROPS = {
+  gate: {
+    scale: [1, 2.6, 1] as [number, number, number],
+    models: ["fenceGate"],
+    fixed: true,
+  },
+  column: { scale: 1.6, models: ["statueColumn", "statueColumnDamaged"] },
+  standingStone: { scale: 1.3, models: ["stoneTallB", "stoneTallE"] },
+};
+const PROP_MODELS: Record<
+  PropKind,
+  {
+    scale: number | [number, number, number];
+    models: string[];
+    fixed?: boolean;
+  }
+> = {
   ...KAYKIT_PROPS,
   ...VILLAGE_PROPS,
+  ...NATURE_PROPS,
 };
 
 async function loadModel(name: string) {
@@ -213,6 +234,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     stationModels,
     oreModel,
     stumpModel,
+    natureModels,
     village,
   ] = await Promise.all([
     Promise.all(
@@ -227,6 +249,11 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     Promise.all(STATION_KINDS.map((kind) => loadStation(STATION_LOOKS[kind]))),
     new GLTFLoader().loadAsync("/models/ore.glb"),
     new GLTFLoader().loadAsync("/models/stump_round.glb"),
+    Promise.all(
+      Object.values(NATURE_PROPS)
+        .flatMap(({ models }) => models)
+        .map((name) => new GLTFLoader().loadAsync(`/models/${name}.glb`)),
+    ),
     loadVillageModels([
       ...Object.values(HOUSE_MODELS),
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
@@ -262,6 +289,24 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   for (const [kind, { models }] of Object.entries(VILLAGE_PROPS)) {
     propVariants[kind as PropKind] = models.map((name) => village.get(name)!);
   }
+  // Every mesh in the model, each moved by its own node's transform, as one group for bakeColours.
+  const natureGeometries = natureModels.map(({ scene }) => {
+    scene.updateMatrixWorld();
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((o) => {
+      if (o instanceof THREE.Mesh)
+        meshes.push(
+          new THREE.Mesh(
+            o.geometry.clone().applyMatrix4(o.matrixWorld),
+            o.material,
+          ),
+        );
+    });
+    return bakeColours(new THREE.Group().add(...meshes));
+  });
+  for (const [kind, { models }] of Object.entries(NATURE_PROPS)) {
+    propVariants[kind as PropKind] = natureGeometries.splice(0, models.length);
+  }
   // The whole pack paints from one texture, so one material covers every model.
   const material = new THREE.MeshLambertMaterial({
     map: (berryBush!.material as THREE.MeshStandardMaterial).map,
@@ -289,6 +334,9 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ownMaterials.set(geometry, villageMaterial);
   }
   ownMaterials.set(stump, villageMaterial);
+  for (const kind of Object.keys(NATURE_PROPS))
+    for (const geometry of propVariants[kind as PropKind])
+      ownMaterials.set(geometry, villageMaterial);
   const ripple = rippleGeometry();
   const rippleMaterial = new THREE.MeshBasicMaterial({
     transparent: true,
@@ -438,8 +486,17 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       } else {
         const options = propVariants[prop!];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const scale = new THREE.Vector3().setScalar(PROP_MODELS[prop!].scale);
-        place(geometry, new THREE.Matrix4().compose(at, rotation, scale));
+        const { scale, fixed } = PROP_MODELS[prop!];
+        place(
+          geometry,
+          new THREE.Matrix4().compose(
+            at,
+            fixed ? new THREE.Quaternion() : rotation,
+            typeof scale === "number"
+              ? new THREE.Vector3().setScalar(scale)
+              : new THREE.Vector3(...scale),
+          ),
+        );
       }
     }),
   );

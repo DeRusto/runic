@@ -26,12 +26,20 @@ _Avoid_: Wilderness, combat zone
 The field where Skeletons roam.
 _Avoid_: Graveyard, dungeon
 
+**Runestone Hollow**:
+The ruined valley east of the Boneyard, floored with moss and set with broken columns and standing stones, where the altar stands. Its only way in is a gap in the trees behind the Emberite veins, so the walk there crosses the Boneyard. It is not part of the Boneyard.
+_Avoid_: Stone circle, shrine
+
+**Inn**:
+The village's south-west building, with the range outside its door.
+_Avoid_: Tavern, pub
+
 **Lake**:
 The body of water in the region, where players fish from the bank. Water can't be walked on. It is one kind of water among those a region may hold, alongside a river or the sea.
 _Avoid_: Pond, mere
 
 **Smithy**:
-The part of the village where the furnace, anvil, range, workbench and Blacksmith stand.
+The part of the village where the furnace, anvil, workbench and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
@@ -67,7 +75,7 @@ A fixed tile where a player turns bars into gear.
 _Avoid_: Forge
 
 **Range**:
-A fixed tile in the smithy, beside the furnace, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
+A cauldron over a fire, with a table beside it, outside the inn's door, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
 _Avoid_: Stove, oven, cooker
 
 **Fire**:
@@ -75,12 +83,12 @@ A cooking station a player lights with a tinderbox from one log, on the tile the
 _Avoid_: Campfire, bonfire
 
 **Workbench**:
-A fixed tile in the smithy, between the range and the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
+A fixed place in the smithy, beside the furnace and north of the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
 _Avoid_: Crafting table, work table
 
 **Altar**:
-A fixed tile out in the Boneyard's far side, an old stone circle ringed by rocks, where a player turns rune essence into runes (#232). It asks no level of its own, gives no tools, and never runs out; the walk there is the gate.
-_Avoid_: Stone circle (that's its look), rune stone
+A stone slab in Runestone Hollow, with a ring stone behind it and an obelisk on either side, where a player turns rune essence into runes (#232). It asks no level of its own, gives no tools, and never runs out; the walk there is the gate. Its old place on the Boneyard's far side is a ring of rocks around bare ground.
+_Avoid_: Stone circle, rune stone
 
 **Station**:
 A furnace, an anvil, a range, a workbench or an altar: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.

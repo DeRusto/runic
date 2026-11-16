@@ -54,6 +54,9 @@ const FEATURE_VALUES = {
     lamp: 1,
     barrel: 1,
     crate: 1,
+    gate: 1,
+    column: 1,
+    standingStone: 1,
   } satisfies Record<NonNullable<TileKind["prop"]>, 1>,
   bush: BUSHES,
   vein: VEINS,
@@ -71,6 +74,7 @@ const GROUND_VALUES = {
   path: 1,
   ashen: 1,
   water: 1,
+  moss: 1,
 } satisfies Record<TileKind["ground"], 1>;
 
 const fail = (message: string): never => {

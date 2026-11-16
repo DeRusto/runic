@@ -1,11 +1,11 @@
-{ "columns":30,
+{ "columns":34,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":480,
+ "imagewidth":544,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":30,
+ "tilecount":34,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -397,6 +397,57 @@
                  "name":"station",
                  "type":"string",
                  "value":"altar"
+                }]
+        }, 
+        {
+         "id":30,
+         "properties":[
+                {
+                 "name":"ground",
+                 "type":"string",
+                 "value":"moss"
+                }]
+        }, 
+        {
+         "id":31,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"gate"
+                }]
+        }, 
+        {
+         "id":32,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"column"
+                }]
+        }, 
+        {
+         "id":33,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"standingStone"
                 }]
         }],
  "tilewidth":16,

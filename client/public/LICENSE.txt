@@ -20,7 +20,8 @@ models/
     altarStone.glb
         Kenney Graveyard Kit 5.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Graveyard-Kit.txt.
-    statueRing.glb, statueObelisk.glb
+    statueRing.glb, statueObelisk.glb, statueColumn.glb,
+    statueColumnDamaged.glb, stoneTallB.glb, stoneTallE.glb, fenceGate.glb
         Kenney Nature Kit (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Nature-Kit.txt.
     cuttingBoard.glb, cleaver.glb, carrot.glb, onion.glb, leek.glb,

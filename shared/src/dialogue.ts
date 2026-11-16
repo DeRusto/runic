@@ -210,14 +210,14 @@ export const VILLAGERS = {
             "There. From today you'll know it for rune essence, and the veins will give it up as essence too.",
           ),
           villager(
-            "The old stone circle out on the Boneyard's far side is where you'll make runes of it. Mind the bones.",
+            "You'll make runes of it at the altar in Runestone Hollow, through the Boneyard and past the Emberite. Mind the bones.",
           ),
         ],
       },
       runes: {
         lines: [
           villager(
-            "Essence to runes at the old stone circle, out past the Emberite. Mind the bones.",
+            "Essence to runes at the altar in Runestone Hollow, out past the Emberite. Mind the bones.",
           ),
         ],
         choices: [{ text: "Bye.", to: "bye" }],
