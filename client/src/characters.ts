@@ -163,7 +163,10 @@ type EnemyLook = {
   returns: "reappear" | "respawn";
 };
 
-/** #238's docile creatures never swing, and a dying one falls into the ground like a Spider does, then grows back. */
+/** The Bull's headbutt, as Bristleback and Cinderhorn bite back: its one second lands near the middle. */
+const HEADBUTT = () => ({ clip: "Attack_Headbutt", contactMs: 450 });
+
+/** #238's hide creatures: they stand, and a dying one falls into the ground like a Spider does, then grows back. Only Bristleback and Cinderhorn swing, set on their rows. */
 const DOCILE = {
   clips: "own",
   gait: CREATURE_GAIT,
@@ -220,17 +223,19 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
   // The Farm Animals Tarn Ox carries its own clips; the two Meshy models have none.
   tarnOx: { ...DOCILE, file: "TarnOx.glb", fit: { width: 1.5 } },
   // The owner's Meshy creatures, rigged in Blender on the Ultimate Animated Animals Bull's
-  // skeleton, which brings that pack's clips with it, a flinch among them.
+  // skeleton, which brings that pack's clips with it: a flinch, and a headbutt for biting back.
   bristleback: {
     ...DOCILE,
     file: "Bristleback.glb",
     fit: { width: 1.1 },
+    swing: HEADBUTT,
     hit: "Idle_HitReact1",
   },
   cinderhorn: {
     ...DOCILE,
     file: "Cinderhorn.glb",
     fit: { width: 1.4 },
+    swing: HEADBUTT,
     hit: "Idle_HitReact1",
   },
 };

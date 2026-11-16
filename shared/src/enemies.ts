@@ -120,9 +120,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     leashTiles: 5,
     loot: [],
   },
-  // #238's three docile creatures, on the hide bands 1/10/20. Their combat tuning is
-  // Phase 8's: they never fight back, never leash and never wander — they stand, and each
-  // swing against them is free. The ticket's 10/25/50 Hitpoints levels of health would pay
+  // #238's three hide creatures, on the hide bands 1/10/20. The Tarn Ox is docile: it never
+  // fights back, leashes or wanders, so each swing against it is free. The ticket's 10/25/50 Hitpoints levels of health would pay
   // 60/150/300 by spec §5's 6-experience-per-100 rule, above a Spider and Skeleton, so the
   // healths here are the 2/5/10 levels whose kills pay the ticket's own 12/30/60, a few
   // hits each.
@@ -141,18 +140,20 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     // Every player who damaged it finds its hide (#238).
     loot: [{ category: "material", chance: 1, items: [{ item: "tarnHide" }] }],
   },
+  // Bristleback and Cinderhorn fight back once hit, like a Spider, but never start a fight,
+  // never wander, and chase only a couple of tiles. Every hit lands at least 100, so they hit
+  // seldom and as little as the game allows: the owner wants them to bite back, barely.
   bristleback: {
     health: 500,
-    hitChance: 0,
+    hitChance: 0.2,
     accuracy: 0,
-    maxDamage: 0,
+    maxDamage: 100,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
     wanderChance: 0,
     wanderTiles: 0,
-    leashTiles: 0,
-    docile: true,
+    leashTiles: 2,
     // Every player who damaged it finds its hide (#238).
     loot: [
       { category: "material", chance: 1, items: [{ item: "bristleHide" }] },
@@ -160,16 +161,15 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
   },
   cinderhorn: {
     health: 1000,
-    hitChance: 0,
+    hitChance: 0.25,
     accuracy: 0,
-    maxDamage: 0,
+    maxDamage: 150,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 200,
     wanderChance: 0,
     wanderTiles: 0,
-    leashTiles: 0,
-    docile: true,
+    leashTiles: 2,
     // Every player who damaged it finds its hide (#238).
     loot: [
       { category: "material", chance: 1, items: [{ item: "cinderHide" }] },

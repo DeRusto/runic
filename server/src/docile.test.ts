@@ -76,6 +76,31 @@ test("the region's shore, field and Boneyard's edge start a Tarn Ox, Bristleback
   expect(kinds("cinderhorn").every(({ health }) => health === 1000)).toBe(true);
 });
 
+describe("a Bristleback", () => {
+  test("never starts a fight with a player standing beside it", () => {
+    const s = world(CORRIDOR);
+    placed(s, "a", 4);
+    const seen = run(s, 30);
+    expect(s.state.enemies.get("1")).toMatchObject({ state: "idle", x: 5 });
+    expect(events(seen, "enemySwing")).toEqual([]);
+  });
+
+  test("hit, it fights back for 100 at most", () => {
+    // Every roll lands, and an enemy's damage roll of 0 is its least: 100.
+    const s = new Simulation(parseRegion(CORRIDOR.join("\n")), () => 0);
+    placed(s, "a", 4);
+    s.queueTarget("a", "1");
+    const seen = run(s, 8);
+    expect(s.state.enemies.get("1")).toMatchObject({
+      state: "fighting",
+      target: "a",
+    });
+    const swings = events(seen, "enemySwing");
+    expect(swings.length).toBeGreaterThan(0);
+    expect(s.state.players.get("a")!.health).toBe(900);
+  });
+});
+
 describe("a docile creature", () => {
   test("never targets a player, however close they stand, and never wanders", () => {
     const s = world(CORRIDOR);
