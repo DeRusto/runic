@@ -1,16 +1,28 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-118 are rendered by client/render-icons, 81 from the CC0 models below and 36 from
-our own geometry. The other one is a Craftpix file.
+Seventeen are Craftpix files. The rest are rendered by client/render-icons, from
+the CC0 models below or from our own geometry.
 
 ------------------------------------------------------------------------
-1. emberiteSword.png: CRAFTPIX, NOT CC0
+1. The Craftpix seventeen: CRAFTPIX, NOT CC0
 ------------------------------------------------------------------------
 
-Source:  Craftpix, "Sword RPG Game Icon Set"
-File:    sword-rpg-game-icon-set/PNG/without background/21.png, scaled to 144x144
-Terms:   https://craftpix.net/file-licenses/ (the licence link the pack ships in
-         its license.txt)
+Each is a PNG from the pack's "without background" folder, scaled to 144x144 by
+client/render-icons (its PACK_ICONS table names every file).
+
+"Sword RPG Game Icon Set"
+    emberiteSword.png (21)
+"50 RPG Mining Icons"
+    copperOre.png (37), ironOre.png (26), emberiteOre.png (38), tin.png (31),
+    cinderglass.png (35), heartflame.png (39), runeEssence.png (49),
+    hollowEssence.png (43), pickaxe.png (2)
+"RPG Monster Loot Icons"
+    emberbone.png (24), feather.png (33), berry.png (7), herb.png (8)
+"RPG Spider Loot Icons"
+    spiderSilk.png (5), mightPotion.png (33), avoidancePotion.png (41)
+
+Terms:   https://craftpix.net/file-licenses/ (the licence link the packs ship in
+         their license.txt)
 
 The owner of this project bought this art, so section 1 of Craftpix's terms
 ("Premium and paid products") applies. In summary, it allows using, copying and
@@ -22,20 +34,20 @@ The licence is non-exclusive, non-transferable and can't be sublicensed. This is
 summary: Craftpix's page is what counts.
 
 The terms don't mention public repositories. The owner of this project has ruled
-that committing this one file here is fine, for use in Runic. That ruling is not
-a licence to anyone else: this file is not CC0, and if you want it for your own
-project, get it from Craftpix under their terms.
+that committing these files here is fine, for use in Runic. That ruling is not
+a licence to anyone else: these files are not CC0, and if you want them for your
+own project, get them from Craftpix under their terms.
 
 ------------------------------------------------------------------------
-2. The rendered 64
+2. The rendered icons
 ------------------------------------------------------------------------
 
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
 http://creativecommons.org/publicdomain/zero/1.0/
 
-copperOre, ironOre, emberiteOre, copperBar, ironBar, emberiteBar, and bronzeBar
-and steelBar tinted from the copper and iron bars; birchLog, oakLog and charwoodLog
-from the model Wood_Log_A, two of them tinted
+copperBar, ironBar, emberiteBar, and bronzeBar and steelBar tinted from the
+copper and iron bars; birchLog, oakLog and charwoodLog from the model Wood_Log_A,
+two of them tinted
     KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 copperSword, ironSword, copperShield, ironShield, emberiteShield, and the bronze
 and steel sword and shield tinted from the copper and iron ones; birchBow, oakBow
@@ -47,34 +59,27 @@ copperHelmet, copperChestplate, copperLeggings, and the same in bronze, iron,
 steel and emberite
     KayKit Adventurers 2.0, by Kay Lousberg (www.kaylousberg.com), the Knight
     character's helmet, body and leg meshes
-pickaxe, hammer, axe
+hammer, axe
     KayKit RPG Tools Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 perch and trout from the model fish.glb, and pike from fish-large.glb, all tinted;
 the cooked, berry and herb perch, trout and pike from the same models, tinted
     Kenney Survival Kit (www.kenney.nl)
-berry
-    Kenney Food Kit 2.0 (www.kenney.nl), the model grapes.glb
-herb
-    Stylized Nature MegaKit, free version, by Quaternius (quaternius.com), the model Plant_1
 dewpetal, nightbloom and emberbloom, tinted from the model Plant_1
     Stylized Nature MegaKit, free version, by Quaternius (quaternius.com)
-vial from the model bottle_B_brown, mightPotion from bottle_A_green tinted red, and
-fortitudePotion from bottle_C_brown tinted green
+vial from the model bottle_B_brown, and fortitudePotion from bottle_C_brown
+tinted green
     KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com)
-avoidancePotion, and rope and torch from the models Rope_1 and Torch_Metal
+rope and torch from the models Rope_1 and Torch_Metal
     Fantasy Props MegaKit, free version, by Quaternius (quaternius.com)
-spiderSilk, tinted pale, from the model Textiles_A
-    KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 coal
     KayKit Forest Nature Pack 1.0, by Kay Lousberg (www.kaylousberg.com), the model Rock_1_E_Color1
 coins
     KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com), the model coin_stack_small
 
-emberbone.png, tin.png, ashstone.png, cinderglass.png, heartflame.png, rod.png,
-arrowShaft.png, feather.png, the five arrowhead icons, gossamerCloak.png,
-tinderbox.png, the fifteen cape icons, and copperEssence.png, ironEssence.png and
-emberiteEssence.png (rune essence's crystals, tinted by tier), hollowEssence.png
-and boneSigil.png are from no pack: they are Runic's own,
-drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted by
-its tier, and its Virtue shows in the name only (#217); an arrowhead by its tier
-(#228).
+ashstone.png, rod.png, arrowShaft.png, the five arrowhead icons,
+gossamerCloak.png, tinderbox.png, the fifteen cape icons, strangeMaterial.png,
+copperEssence.png, ironEssence.png and emberiteEssence.png (rune essence's
+crystals, tinted by tier), and boneSigil.png are from no pack: they are Runic's
+own, drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted
+by its tier, and its Virtue shows in the name only (#217); an arrowhead by its
+tier (#228).

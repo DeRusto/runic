@@ -10,7 +10,29 @@ const WEAPONS = "/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf";
 const TOOLS = "/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf";
 const SURVIVAL = "/kenney-game-assets/3D assets/Survival Kit/Models/GLB format";
 const KNIGHT = "/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb";
-const CRAFTPIX_SWORD = "/sword-rpg-game-icon-set/PNG/without background/21.png";
+const MINING_ICONS = "/50-rpg-mining-icons/PNG/Without background";
+const SPIDER_ICONS = "/rpg-spider-loot-icons/PNG/without background";
+const MONSTER_ICONS = "/rpg-monster-loot-icons/PNG/without background";
+/** The icons taken from the owner's Craftpix packs rather than rendered, scaled to match (spec §7). */
+const PACK_ICONS: Record<string, string> = {
+  emberiteSword: "/sword-rpg-game-icon-set/PNG/without background/21.png",
+  copperOre: `${MINING_ICONS}/37.png`,
+  ironOre: `${MINING_ICONS}/26.png`,
+  emberiteOre: `${MINING_ICONS}/38.png`,
+  tin: `${MINING_ICONS}/31.png`,
+  cinderglass: `${MINING_ICONS}/35.png`,
+  heartflame: `${MINING_ICONS}/39.png`,
+  runeEssence: `${MINING_ICONS}/49.png`,
+  hollowEssence: `${MINING_ICONS}/43.png`,
+  pickaxe: `${MINING_ICONS}/2.png`,
+  emberbone: `${MONSTER_ICONS}/24.png`,
+  feather: `${MONSTER_ICONS}/33.png`,
+  berry: `${MONSTER_ICONS}/7.png`,
+  herb: `${MONSTER_ICONS}/8.png`,
+  spiderSilk: `${SPIDER_ICONS}/5.png`,
+  mightPotion: `${SPIDER_ICONS}/33.png`,
+  avoidancePotion: `${SPIDER_ICONS}/41.png`,
+};
 
 // Tier looks, as worn (spec §7).
 const {
@@ -422,10 +444,10 @@ function draw(model: THREE.Object3D, turn: Turn) {
 const toPng = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!)));
 
-/** The one icon not rendered: a Craftpix PNG, scaled to match (spec §7). */
-async function craftpixSword() {
+/** A pack PNG, scaled to match the rendered icons (spec §7). */
+async function packIcon(url: string) {
   const image = new Image();
-  image.src = CRAFTPIX_SWORD;
+  image.src = url;
   await image.decode();
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = SIZE;
@@ -775,7 +797,6 @@ draw(gem(0xd86a1e, 0x7a2a00), FLAT);
 pngs.set("cinderglass", await toPng(renderer.domElement));
 draw(gem(0xe83a10, 0xff4a10), FLAT);
 pngs.set("heartflame", await toPng(renderer.domElement));
-pngs.set("emberiteSword", await craftpixSword());
 draw(rod(), LEAN);
 pngs.set("rod", await toPng(renderer.domElement));
 draw(tinderbox(), LEAN);
@@ -821,6 +842,10 @@ for (const [id, file] of RUNES) {
   draw(medallion, FLAT);
   pngs.set(id, await toPng(renderer.domElement));
 }
+
+// shortcut: the icons above still render first and are replaced here; drop their renders if render time starts to matter.
+for (const [id, url] of Object.entries(PACK_ICONS))
+  pngs.set(id, await packIcon(url));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {

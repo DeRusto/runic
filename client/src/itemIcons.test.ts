@@ -131,9 +131,28 @@ describe("the committed icons", () => {
     expect(bytes / pngs.length).toBeLessThan(17_000);
   });
 
-  test("the licence copy says which file is Craftpix's", () => {
+  test("the licence copy names each Craftpix file, with its number in the pack", () => {
     const licence = readFileSync(`${ICONS_DIR}/LICENSE.txt`, "utf8");
-    expect(licence).toContain("emberiteSword.png");
+    for (const id of [
+      "emberiteSword",
+      "copperOre",
+      "ironOre",
+      "emberiteOre",
+      "tin",
+      "cinderglass",
+      "heartflame",
+      "runeEssence",
+      "hollowEssence",
+      "pickaxe",
+      "emberbone",
+      "feather",
+      "berry",
+      "herb",
+      "spiderSilk",
+      "mightPotion",
+      "avoidancePotion",
+    ])
+      expect(licence).toContain(`${id}.png (`);
     expect(licence).toContain("https://craftpix.net/file-licenses/");
   });
 });
