@@ -50,7 +50,7 @@ const IMP_GAIT = {
   fight: "Idle_Loop",
 };
 
-/** The docile creatures' clips, as the Farm Animals pack names them (#238). They never walk: they stand. */
+/** The hide creatures' clips, as Quaternius's Ultimate Animated Animals names them (#238). They stand rather than walk. */
 const CREATURE_GAIT = {
   idle: "Idle",
   move: "Walk",
@@ -220,8 +220,13 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     hit: "Hit_Chest",
     returns: "respawn",
   },
-  // The Farm Animals Tarn Ox carries its own clips; the two Meshy models have none.
-  tarnOx: { ...DOCILE, file: "TarnOx.glb", fit: { width: 1.5 } },
+  // The Ultimate Animated Animals Bull, as a black ox, with that pack's flinch.
+  tarnOx: {
+    ...DOCILE,
+    file: "TarnOx.glb",
+    fit: { width: 1.5 },
+    hit: "Idle_HitReact1",
+  },
   // The owner's Meshy creatures, rigged in Blender on the Ultimate Animated Animals Bull's
   // skeleton, which brings that pack's clips with it: a flinch, and a headbutt for biting back.
   bristleback: {
