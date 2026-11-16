@@ -17,12 +17,12 @@ import {
 } from "@runic/shared";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
 // per-process so parallel worktrees don't collide
-const PORT = 25000 + (process.pid % 5000);
+const PORT = await freePort();
 const client = new Client(`http://localhost:${PORT}`);
 let server: Awaited<ReturnType<typeof startServer>>;
 

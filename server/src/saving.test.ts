@@ -22,11 +22,11 @@ import {
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { readSave } from "./saves.ts";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
-const PORT = 30000 + (process.pid % 5000);
+const PORT = await freePort();
 const respawn = respawnTile(loadWorldRegion().tiles);
 const folder = mkdtempSync(join(tmpdir(), "runic-saving-"));
 let server: Awaited<ReturnType<typeof startServer>>;

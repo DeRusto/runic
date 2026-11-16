@@ -5,9 +5,9 @@ import { Client } from "@colyseus/sdk";
 import { WORLD_ROOM } from "@runic/shared";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 
-const PORT = 35000 + (process.pid % 5000);
+const PORT = await freePort();
 const ORIGIN = `http://localhost:${PORT}`;
 const built = mkdtempSync(join(tmpdir(), "runic-built-"));
 let server: Awaited<ReturnType<typeof startServer>>;

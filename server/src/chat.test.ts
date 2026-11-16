@@ -8,10 +8,10 @@ import {
 } from "@runic/shared";
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from "vitest";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
-const PORT = 35000 + (process.pid % 5000);
+const PORT = await freePort();
 let server: Awaited<ReturnType<typeof startServer>>;
 let speaker: Room;
 let listener: Room;
