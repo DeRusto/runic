@@ -679,14 +679,16 @@ export async function loadCharacters() {
 
 /**
  * Models no player has, so villagers read apart (spec D18): a KayKit adventurer on the players'
- * shared clips, or one of the owner's Meshy villagers with its own clips, idling on `idle`.
+ * shared clips, or one of the owner's Meshy villagers with its own clips, idling on `idle` and
+ * walking on `move` ("Walking" unless named).
  */
 const VILLAGER_MODELS: Record<
   VillagerId,
-  string | { file: string; idle: string }
+  string | { file: string; idle: string; move?: string }
 > = {
-  // The owner's Meshy blacksmith has no idle, so he works his hammer at the forge.
-  odo: { file: "Odo", idle: "Heavy_Hammer_Swing" },
+  // The owner's Meshy blacksmith, carrying a KayKit hammer, on Universal Animation Library clips
+  // retargeted in Blender: Meshy's own idle bent him out of shape.
+  odo: { file: "Odo", idle: "Idle_Loop", move: "Walk_Loop" },
   marta: { file: "Marta", idle: "Idle_02" },
   aldous: "Mage",
   bram: "Rogue_Hooded",
@@ -709,7 +711,7 @@ export async function loadVillager(tile: Tile, villager: VillagerId) {
     const clips = new Map(animations.map((clip) => [clip.name, clip]));
     const gait = {
       idle: look.idle,
-      move: "Walking",
+      move: look.move ?? "Walking",
       moveSpeed: 1,
       fight: look.idle,
     };

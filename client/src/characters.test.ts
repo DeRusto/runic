@@ -537,7 +537,7 @@ describe("loadEnemies", () => {
 
 describe("the owner's Meshy villagers", () => {
   it.each([
-    ["Odo", "Heavy_Hammer_Swing"],
+    ["Odo", "Idle_Loop"],
     ["Marta", "Idle_02"],
     ["Tamsin", "Idle_02"],
   ])("%s.glb carries the clip it idles on", (file, idle) => {

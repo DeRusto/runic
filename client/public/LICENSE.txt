@@ -61,6 +61,10 @@ models/
         Made for Runic by DeRusto with Meshy: the blacksmith, shopowner and
         fisherman villagers, converted to GLB with their own clips. The owner's
         own creations, not from a pack. No licence is granted for them here.
+        Odo's clips are retargeted from Quaternius's Universal Animation Library
+        and the hammer he carries is KayKit RPG Tools Bits' hammer, both CC0: see
+        models/LICENSE-Quaternius-Universal-Animation-Library.txt and
+        models/LICENSE-KayKit-RPG-Tools-Bits.txt.
     Bristleback.glb, Cinderhorn.glb
         Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
         not from a pack. No licence is granted for them here. Their skeleton and
