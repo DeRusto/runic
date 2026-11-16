@@ -660,30 +660,45 @@ export async function loadCharacters() {
     new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
 }
 
-/** Models no player has, so villagers read apart (spec D18). */
-const VILLAGER_MODELS = {
-  odo: "Ranger",
-  marta: "Rogue",
+/**
+ * Models no player has, so villagers read apart (spec D18): a KayKit adventurer on the players'
+ * shared clips, or one of the owner's Meshy villagers with its own clips, idling on `idle`.
+ */
+const VILLAGER_MODELS: Record<
+  VillagerId,
+  string | { file: string; idle: string }
+> = {
+  // The owner's Meshy blacksmith has no idle, so he works his hammer at the forge.
+  odo: { file: "Odo", idle: "Heavy_Hammer_Swing" },
+  marta: { file: "Marta", idle: "Idle_02" },
   aldous: "Mage",
   bram: "Rogue_Hooded",
-  // Every KayKit adventurer is taken, and Tamsin stands far from Marta.
-  tamsin: "Rogue",
+  tamsin: { file: "Tamsin", idle: "Idle_02" },
   // A robed hermit, and Runestone Hollow is as far from Aldous as the map allows.
   hollis: "Mage",
-} satisfies Record<VillagerId, string>;
+};
 
-/** What a villager holds, by their model's node name for it. */
+/** What a KayKit villager holds, by their model's node name for it. */
 const VILLAGER_TOOLS: Partial<Record<VillagerId, string>> = {
-  odo: "hammer",
   bram: "axe",
 };
 
 /** A villager on their tile, holding their tool if they have one. */
 export async function loadVillager(tile: Tile, villager: VillagerId) {
-  const [{ scene }, clips] = await Promise.all([
-    load(VILLAGER_MODELS[villager]),
-    loadClips(),
-  ]);
+  const look = VILLAGER_MODELS[villager];
+  if (typeof look !== "string") {
+    const { scene, animations } = await load(look.file);
+    fit(scene, (size) => HEIGHT / size.y);
+    const clips = new Map(animations.map((clip) => [clip.name, clip]));
+    const gait = {
+      idle: look.idle,
+      move: "Walking",
+      moveSpeed: 1,
+      fight: look.idle,
+    };
+    return new Figure(tile, scene, clips, gait);
+  }
+  const [{ scene }, clips] = await Promise.all([load(look), loadClips()]);
   fit(scene, (size) => HEIGHT / size.y);
   const held = VILLAGER_TOOLS[villager];
   if (held) {

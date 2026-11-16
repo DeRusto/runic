@@ -535,6 +535,20 @@ describe("loadEnemies", () => {
   });
 });
 
+describe("the owner's Meshy villagers", () => {
+  it.each([
+    ["Odo", "Heavy_Hammer_Swing"],
+    ["Marta", "Idle_02"],
+    ["Tamsin", "Idle_02"],
+  ])("%s.glb carries the clip it idles on", (file, idle) => {
+    const glb = readFileSync(`client/public/models/${file}.glb`);
+    const { animations } = JSON.parse(
+      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
+    ) as { animations: { name: string }[] };
+    expect(animations.map((clip) => clip.name)).toContain(idle);
+  });
+});
+
 describe("Imp.glb", () => {
   it("carries the Universal Animation Library clips its look plays", async () => {
     // The GLB's JSON chunk alone: its embedded texture won't decode outside a browser.

@@ -55,6 +55,10 @@ models/
     TarnOx.glb
         Converted from Quaternius's Farm Animals Animated pack (quaternius.com).
         CC0: see models/LICENSE-Quaternius-Farm-Animals.txt.
+    Odo.glb, Marta.glb, Tamsin.glb
+        Made for Runic by DeRusto with Meshy: the blacksmith, shopowner and
+        fisherman villagers, converted to GLB with their own clips. The owner's
+        own creations, not from a pack. No licence is granted for them here.
     Bristleback.glb, Cinderhorn.glb
         Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
         not from a pack. No licence is granted for them here.
