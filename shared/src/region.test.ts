@@ -125,7 +125,6 @@ const BUSHES = [
 const STATIONS_AND_BLACKSMITH = [
   "furnace",
   "anvil",
-  "range",
   "workbench",
   "blacksmith",
 ] as const;
@@ -205,7 +204,7 @@ describe("the region", () => {
   it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...STATIONS_AND_BLACKSMITH, "villager", ...TREES),
+        ...tilesOf(...STATIONS_AND_BLACKSMITH, "range", "villager", ...TREES),
         ...spotsOf(...VEINS, ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
@@ -422,11 +421,11 @@ describe("the region", () => {
     ]);
   });
 
-  it("stands the range beside the furnace's north-east corner, two tiles wide for its cauldron and table (#221)", () => {
-    const [[x, y]] = tilesOf("furnace") as [[number, number]];
+  it("stands the range outside the inn, the town's south-west building, east of its door (#221)", () => {
+    expect(region[45]![10]!.house).toBe("door");
     expect(tilesOf("range")).toEqual([
-      [x + 3, y],
-      [x + 4, y],
+      [12, 45],
+      [13, 45],
     ]);
   });
 
