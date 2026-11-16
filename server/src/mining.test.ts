@@ -299,7 +299,7 @@ test("an essence rock gives essence as its own item: strange material until the 
     parseRegion(["TTTTT", "TR..T", "T...T", "T.E.T", "TTTTT"].join("\n")),
     () => SUCCEED,
   );
-  addGatherer(rock, "mining", "m", xpForLevel(20), { x: 2, y: 2 }, ["pickaxe"]);
+  addGatherer(rock, "mining", "m", xpForLevel(25), { x: 2, y: 2 }, ["pickaxe"]);
   const miner = rock.state.players.get("m")!;
   const mineRock = () => {
     rock.queueGather("m", "mining", "2,3");
@@ -310,7 +310,7 @@ test("an essence rock gives essence as its own item: strange material until the 
     "strangeMaterial",
     1,
   ]);
-  expect(miner.miningXp).toBe(xpForLevel(20) + 20);
+  expect(miner.miningXp).toBe(xpForLevel(25) + 20);
   miner.identifiesEssence = true;
   mineRock();
   expect([miner.inventory[1], miner.inventoryCounts[1]]).toEqual([

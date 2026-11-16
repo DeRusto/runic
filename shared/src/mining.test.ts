@@ -57,7 +57,7 @@ describe("VEINS", () => {
         ],
       },
       essence: {
-        level: 20,
+        level: 25,
         holds: 3,
         regrowTicks: 600,
         xp: 20,
@@ -72,7 +72,7 @@ describe("gatherRefusal on an essence rock", () => {
   it("counts room for rune essence once the player identifies it", () => {
     const full = {
       ...MINER,
-      miningXp: xpForLevel(20),
+      miningXp: xpForLevel(25),
       inventory: ["runeEssence"],
       inventoryCounts: [3],
     };

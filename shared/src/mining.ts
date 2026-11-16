@@ -47,9 +47,9 @@ export const VEINS = {
       { chance: ESSENCE_FIND_CHANCE, item: STRANGE_MATERIAL },
     ],
   },
-  // Runestone Hollow's essence rock, at Emberite's gate: its own item is essence, strange material until the player identifies it.
+  // Runestone Hollow's essence rock, a step past Emberite's gate: its own item is essence, strange material until the player identifies it.
   essence: {
-    level: 20,
+    level: 25,
     holds: 3,
     regrowTicks: 600,
     xp: 20,
