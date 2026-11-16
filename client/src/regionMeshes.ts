@@ -10,7 +10,7 @@ import {
   STATIONS,
   type FixedStation,
   type TreeKind,
-  type VeinTier,
+  type VeinKind,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -42,10 +42,12 @@ const BUSH_TINT: Record<BushKind, number> = {
   emberbloomBush: 0xffa64d,
 };
 // Not gear's tints, which leave veins looking like plain or dark rock. They multiply the ore's near-white vein.
-const VEIN_TINT: Record<VeinTier, THREE.Color> = {
+// The essence rock's vein is a pale violet, apart from every metal's.
+const VEIN_TINT: Record<VeinKind, THREE.Color> = {
   copper: new THREE.Color(0xff8a3c),
   iron: new THREE.Color(0x4f8fd8),
   emberite: new THREE.Color(0xd42a1a),
+  essence: new THREE.Color(0xc89cff),
 };
 export const ORE_SCALE = 0.45;
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);

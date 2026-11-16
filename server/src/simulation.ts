@@ -1493,7 +1493,10 @@ export class Simulation {
           : { type: verb, player: id, success },
       );
       if (!success) continue;
-      const { item, xp } = rollCatch(source, level, this.random);
+      // An essence rock's own item is essence, unmasked like a find for a player who identifies it.
+      const caught = rollCatch(source, level, this.random);
+      const item = findItemOf(caught.item, player.identifiesEssence);
+      const { xp } = caught;
       this.earnXp(player, xpField, xp);
       // Room is counted before either lands, so the second ore goes on the
       // ground, owned by the miner, when the first took the last of it.

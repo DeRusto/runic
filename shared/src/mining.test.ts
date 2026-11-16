@@ -56,7 +56,35 @@ describe("VEINS", () => {
           essence,
         ],
       },
+      essence: {
+        level: 20,
+        holds: 3,
+        regrowTicks: 600,
+        xp: 20,
+        doubleChance: 0.2,
+        item: "strangeMaterial",
+      },
     });
+  });
+});
+
+describe("gatherRefusal on an essence rock", () => {
+  it("counts room for rune essence once the player identifies it", () => {
+    const full = {
+      ...MINER,
+      miningXp: xpForLevel(20),
+      inventory: ["runeEssence"],
+      inventoryCounts: [3],
+    };
+    expect(gatherRefusal("mining", "essence", 3, full)).toBe(
+      "Your inventory is full.",
+    );
+    expect(
+      gatherRefusal("mining", "essence", 3, {
+        ...full,
+        identifiesEssence: true,
+      }),
+    ).toBeUndefined();
   });
 });
 

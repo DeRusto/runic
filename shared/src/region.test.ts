@@ -61,6 +61,7 @@ const IS = {
   copper: (tile) => tile.vein === "copper",
   iron: (tile) => tile.vein === "iron",
   emberite: (tile) => tile.vein === "emberite",
+  essence: (tile) => tile.vein === "essence",
   birch: (tile) => tile.tree === "birch",
   oak: (tile) => tile.tree === "oak",
   charwood: (tile) => tile.tree === "charwood",
@@ -168,6 +169,7 @@ describe("the region", () => {
     ["copper", "mining", 9, 18],
     ["iron", "mining", 6, 12],
     ["emberite", "mining", 5, 9],
+    ["essence", "mining", 5, 9],
     ["berryBush", "herblaw", 12, 24],
     ["dewpetalBush", "herblaw", 5, 8],
     ["herbBush", "herblaw", 6, 12],
@@ -206,7 +208,7 @@ describe("the region", () => {
     expect(
       [
         ...tilesOf(...STATIONS_AND_BLACKSMITH, "range", "villager", ...TREES),
-        ...spotsOf(...VEINS, ...BUSHES, "shore"),
+        ...spotsOf(...VEINS, "essence", ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
@@ -493,6 +495,12 @@ describe("the region", () => {
         tilesNextTo([x, y]).some(([nx, ny]) => !IS.moss(region[ny]![nx]!)),
     );
     expect(ways).toEqual([[95, 42]]);
+  });
+
+  it("puts every essence rock spot on Runestone Hollow's moss", () => {
+    expect(
+      spotsOf("essence").filter(([x, y]) => !IS.moss(region[y]![x]!)),
+    ).toEqual([]);
   });
 
   it("leaves the old stone circle on the Boneyard's far side as bare ground ringed by its rocks", () => {

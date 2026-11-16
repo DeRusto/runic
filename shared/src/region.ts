@@ -27,11 +27,13 @@ export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
 /** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
 export type VeinTier = Exclude<Tier, "bronze" | "steel">;
+/** Every kind of vein: a tier's ore, or Runestone Hollow's essence rock. */
+export type VeinKind = VeinTier | "essence";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
   bush?: BushKind;
-  vein?: VeinTier;
+  vein?: VeinKind;
   tree?: TreeKind;
   fishingSpot?: FishingSpotKind;
   /** A fire is never a tile's station: no map places one (#224). */
@@ -70,6 +72,7 @@ export const TILE_KINDS = {
   c: { ground: "grass", vein: "copper", blocks: true },
   i: { ground: "grass", vein: "iron", blocks: true },
   e: { ground: "ashen", vein: "emberite", blocks: true },
+  E: { ground: "moss", vein: "essence", blocks: true },
   g: { ground: "thicket", tree: "birch", blocks: true },
   k: { ground: "grass", tree: "oak", blocks: true },
   C: { ground: "ashen", tree: "charwood", blocks: true },

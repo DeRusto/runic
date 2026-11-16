@@ -294,6 +294,31 @@ test("once the player identifies essence, the find comes as rune essence (#232)"
   expect(player("b").inventoryCounts[3]).toBe(1);
 });
 
+test("an essence rock gives essence as its own item: strange material until the player identifies it, then rune essence", () => {
+  const rock = new Simulation(
+    parseRegion(["TTTTT", "TR..T", "T...T", "T.E.T", "TTTTT"].join("\n")),
+    () => SUCCEED,
+  );
+  addGatherer(rock, "mining", "m", xpForLevel(20), { x: 2, y: 2 }, ["pickaxe"]);
+  const miner = rock.state.players.get("m")!;
+  const mineRock = () => {
+    rock.queueGather("m", "mining", "2,3");
+    for (let i = 0; i < 8; i++) rock.tick();
+  };
+  mineRock();
+  expect([miner.inventory[0], miner.inventoryCounts[0]]).toEqual([
+    "strangeMaterial",
+    1,
+  ]);
+  expect(miner.miningXp).toBe(xpForLevel(20) + 20);
+  miner.identifiesEssence = true;
+  mineRock();
+  expect([miner.inventory[1], miner.inventoryCounts[1]]).toEqual([
+    "runeEssence",
+    1,
+  ]);
+});
+
 test("a save from before finds loads unchanged", () => {
   addAt("b", 0);
   player("b").inventory[0] = "copperOre";
