@@ -42,6 +42,14 @@ export const SPIDER_GAIT = {
   fight: "Spider_Idle",
 };
 
+/** The Imp's clips, as the Universal Animation Library names them. */
+const IMP_GAIT = {
+  idle: "Idle_Loop",
+  move: "Jog_Fwd_Loop",
+  moveSpeed: 1.5,
+  fight: "Idle_Loop",
+};
+
 /** The docile creatures' clips, as the Farm Animals pack names them (#238). They never walk: they stand. */
 const CREATURE_GAIT = {
   idle: "Idle",
@@ -184,6 +192,29 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     swing: armedSwing,
     death: "Death_A",
     hit: "Hit_A",
+    returns: "respawn",
+  },
+  // Runestone Hollow's: the Mage on the Skeleton's rig with its staff always out, and the Imp
+  // with the Universal Animation Library's clips baked into its model.
+  skeletonMage: {
+    file: "Skeleton_Mage.glb",
+    fit: { height: HEIGHT },
+    clips: "players",
+    held: { file: "Skeleton_Staff.gltf", slot: "handslotr" },
+    armed: true,
+    swing: armedSwing,
+    death: "Death_A",
+    hit: "Hit_A",
+    returns: "respawn",
+  },
+  imp: {
+    file: "Imp.glb",
+    fit: { height: HEIGHT * 0.7 },
+    clips: "own",
+    gait: IMP_GAIT,
+    swing: () => ({ clip: "Punch_Jab", contactMs: 350 }),
+    death: "Death01",
+    hit: "Hit_Chest",
     returns: "respawn",
   },
   // The Farm Animals Tarn Ox carries its own clips; the two Meshy models have none.

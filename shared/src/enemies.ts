@@ -1,7 +1,13 @@
 import type { ItemId } from "./items.ts";
 
 export type EnemyKind =
-  "spider" | "skeleton" | "tarnOx" | "bristleback" | "cinderhorn";
+  | "spider"
+  | "skeleton"
+  | "tarnOx"
+  | "bristleback"
+  | "cinderhorn"
+  | "skeletonMage"
+  | "imp";
 export type EnemyState = "idle" | "fighting" | "going home" | "dead";
 
 /** What a loot category is for. A label only for now: a quest category may later give only to players on its quest. */
@@ -79,6 +85,37 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     loot: [
       { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
     ],
+  },
+  // Runestone Hollow's (spec §5), first values to tune: a Skeleton Mage is a Skeleton that hits
+  // harder and lasts longer, still in melee until Phase 8's Ranged work, and an Imp is a quick,
+  // weaker pest that notices from further off. Their loot waits for the runekeeper's quest.
+  skeletonMage: {
+    health: 3200,
+    hitChance: 0.6,
+    accuracy: 10,
+    maxDamage: 650,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 200,
+    wanderChance: 0.1,
+    wanderTiles: 3,
+    noticeTiles: 3,
+    leashTiles: 4,
+    loot: [],
+  },
+  imp: {
+    health: 1200,
+    hitChance: 0.5,
+    accuracy: 0,
+    maxDamage: 300,
+    swingIntervalTicks: 6,
+    firstSwingDelayTicks: 3,
+    returnTicks: 150,
+    wanderChance: 0.15,
+    wanderTiles: 5,
+    noticeTiles: 4,
+    leashTiles: 5,
+    loot: [],
   },
   // #238's three docile creatures, on the hide bands 1/10/20. Their combat tuning is
   // Phase 8's: they never fight back, never leash and never wander — they stand, and each

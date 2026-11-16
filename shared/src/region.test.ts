@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  ENEMIES,
   loadRegion,
   TREES as TREES_TABLE,
   neighbours,
@@ -55,6 +56,8 @@ const IS = {
   emberbloomBush: (tile) => tile.bush === "emberbloomBush",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
+  skeletonMage: (tile) => tile.enemy === "skeletonMage",
+  imp: (tile) => tile.enemy === "imp",
   tarnOx: (tile) => tile.enemy === "tarnOx",
   bristleback: (tile) => tile.enemy === "bristleback",
   cinderhorn: (tile) => tile.enemy === "cinderhorn",
@@ -149,6 +152,8 @@ describe("the region", () => {
     ["respawn", 1],
     ["spider", 8],
     ["skeleton", 6],
+    ["skeletonMage", 4],
+    ["imp", 3],
     ["tarnOx", 4],
     ["bristleback", 4],
     ["cinderhorn", 3],
@@ -495,6 +500,29 @@ describe("the region", () => {
         tilesNextTo([x, y]).some(([nx, ny]) => !IS.moss(region[ny]![nx]!)),
     );
     expect(ways).toEqual([[95, 42]]);
+  });
+
+  it("homes Runestone Hollow's Skeleton Mages and Imps on its moss, their reach off the Emberite pocket and the gap", () => {
+    const hollow = tilesOf("skeletonMage", "imp");
+    expect(hollow.filter(([x, y]) => !IS.moss(region[y]![x]!))).toEqual([]);
+    expect(hollow.filter(([x, y]) => !reachable.has(key(x, y)))).toEqual([]);
+    // Spec §5's reach: home + wander + notice + leash.
+    const reachOf = ([x, y]: readonly [number, number]) => {
+      const {
+        wanderTiles,
+        noticeTiles = 0,
+        leashTiles,
+      } = ENEMIES[region[y]![x]!.enemy!];
+      return wanderTiles + noticeTiles + leashTiles;
+    };
+    const safe = [...spotsOf("emberite"), [95, 42] as const];
+    expect(
+      hollow.flatMap((home) =>
+        safe.filter(
+          (tile) => tilesApart(asTile(home), asTile(tile)) <= reachOf(home),
+        ),
+      ),
+    ).toEqual([]);
   });
 
   it("puts every essence rock spot on Runestone Hollow's moss", () => {

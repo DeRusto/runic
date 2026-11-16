@@ -11,6 +11,19 @@ icons/
 
 models/
     The LICENSE-*.txt files beside the models, one per pack.
+    Imp.glb
+        NOT CC0. Quaternius's Bestiary - Dungeon Monsters Kit, free version
+        (quaternius.com), under the Quaternius Asset License v1.0: see
+        models/LICENSE-Quaternius-Bestiary.txt. It allows using the model in
+        Runic but not redistributing it as an asset on its own, so it is here
+        only as part of Runic. Its textures are slimmed to the colour and glow
+        maps at 512px, and its clips (Idle_Loop, Jog_Fwd_Loop, Punch_Jab,
+        Hit_Chest, Death01, rotations only) are baked in from Quaternius's
+        Universal Animation Library, which is CC0: see
+        models/LICENSE-Quaternius-Universal-Animation-Library.txt.
+    Skeleton_Mage.glb, Skeleton_Staff.gltf
+        KayKit Skeletons, by Kay Lousberg (www.kaylousberg.com). CC0: see
+        models/LICENSE-KayKit-Skeletons.txt.
     Bush_*, Grass_*, Rock_*, forest_texture.png
         KayKit Forest Nature, by Kay Lousberg (www.kaylousberg.com), recorded as
         CC0 in docs/adr/0003-three-js-isometric-client.md.

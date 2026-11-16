@@ -479,9 +479,13 @@ async function fakeModel(path: string) {
   scene.name = path;
   return {
     scene,
-    animations: [`${path} clip`, "Idle", "Spider_Idle", "Idle_A"].map(
-      (name) => new THREE.AnimationClip(name, 1, []),
-    ),
+    animations: [
+      `${path} clip`,
+      "Idle",
+      "Spider_Idle",
+      "Idle_A",
+      "Idle_Loop",
+    ].map((name) => new THREE.AnimationClip(name, 1, [])),
   } as unknown as GLTF;
 }
 
@@ -528,6 +532,23 @@ describe("loadEnemies", () => {
     expect(skeleton.model.getObjectByName("Skeleton_Blade.gltf")).toBeDefined();
     expect(skeleton.alwaysArmed).toBe(true);
     expect(newEnemy.spider(tile).alwaysArmed).toBeFalsy();
+  });
+});
+
+describe("Imp.glb", () => {
+  it("carries the Universal Animation Library clips its look plays", async () => {
+    // The GLB's JSON chunk alone: its embedded texture won't decode outside a browser.
+    const glb = readFileSync("client/public/models/Imp.glb");
+    const { animations } = JSON.parse(
+      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
+    ) as { animations: { name: string }[] };
+    expect(animations.map((clip) => clip.name).sort()).toEqual([
+      "Death01",
+      "Hit_Chest",
+      "Idle_Loop",
+      "Jog_Fwd_Loop",
+      "Punch_Jab",
+    ]);
   });
 });
 

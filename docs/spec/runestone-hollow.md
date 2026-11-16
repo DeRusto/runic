@@ -62,7 +62,8 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 - **Imp.** From the Bestiary kit, weaker than a Skeleton Mage. The Bestiary kit is not CC0: its licence allows committing it as part of Runic but not redistributing it alone, so its files go under `client/public/` and get an entry in `client/public/LICENSE.txt`, as that notice requires.
 - The Hollow holds four Skeleton Mages and three Imps, fewer than the Boneyard's six Skeletons since each Mage is tougher. They respawn the way Skeletons do.
 - Their homes are inside the Hollow, and their reach (home, wander, notice range and leash) must keep them out of the Emberite pocket and off the gap, so a player mining Emberite is never pulled into a fight with them.
-- Their other stats and drops are set when they are built, against the Skeleton's.
+- First values, to tune in play, against the Skeleton's 2400 health, 0.55 hit chance and 500 most damage: a Skeleton Mage has 3200 health, a 0.6 hit chance with 10 accuracy and 650 most damage, and wanders, notices and leashes like a Skeleton (3, 3 and 4 tiles). An Imp has 1200 health, a 0.5 hit chance and 300 most damage, but swings every 6 ticks and wanders, notices and leashes further (5, 4 and 5 tiles). Neither drops anything until the runekeeper's quest gives the Mage its item.
+- The Imp's model has no animations of its own. Its rig matches Quaternius's Universal Animation Library (CC0), so its idle, jog, punch, hit and death clips are baked into its model from there, rotations only, since the library's hip movement is sized for a person.
 
 ## 6. The south road and its gate
 
