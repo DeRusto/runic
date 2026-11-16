@@ -38,17 +38,16 @@ The altar and its stones leave the Boneyard. The rock ring around their old tile
 
 ## 4. The essence quests
 
-Runecrafting opens through two quests in a row: Odo's, which teaches what essence is, and the runekeeper's, which opens the altar. Both work the same way: while the quest runs, mining gives a quest essence that exists only for that quest.
+Runecrafting opens through two quests in a row: Odo's, which teaches what essence is, and the runekeeper's, which opens the altar. In both, mining gives a quest essence that exists only for that quest while it runs.
 
 ### Odo's essence quest, reworked
 
 Today Odo asks for one piece of the strange material that any vein drops by chance, then for three more, which his lines say should come from copper, iron and emberite, though nothing checks the tier. The rework makes the tiers real:
 
-- Odo still offers the quest once the forge quest and its repeats are done. Taking it asks for one quest essence from each vein tier: Copper essence, Iron essence and Emberite essence.
-- While the quest runs, each successful mine on a tier whose essence the player still needs has a 1 in 5 chance to give it. The chance stops once the player holds that tier's essence.
-- Handing all three to Odo finishes the quest. It still gives its quest point and still teaches identification.
-- Before the quest is done, veins give no essence of any kind outside it. After it, veins roll rune essence as a rare find, as they do today once identification is taught.
-- The strange material item and the masked find are no longer needed, since nothing drops essence before identification. Players who hold strange material when this ships keep it, and it still identifies into rune essence.
+- The quest still starts with the strange material. Every vein keeps rolling it as a rare find, as it does today, and a player has to find a piece and bring it to Odo before he will say what it is. Odo still offers the quest only once the forge quest and its repeats are done.
+- Handing over that piece moves the quest to its proof stage, which now asks for one quest essence from each vein tier: Copper essence, Iron essence and Emberite essence.
+- While the proof stage runs, each successful mine on a tier whose essence the player still needs has a 1 in 5 chance to give it. The chance stops once the player holds that tier's essence.
+- Handing all three to Odo finishes the quest. It still gives its quest point and still teaches identification, so veins give rune essence instead of strange material from then on, as they do today.
 - The journal shows which tiers' essence the player still needs.
 
 ### The runekeeper's quest
@@ -76,7 +75,7 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 - **Runestone Hollow**: new entry. The ruined valley east of the Boneyard where the altar stands.
 - **Altar**: its entry moves the altar to Runestone Hollow and says the runekeeper's quest opens it; the walk is still part of the gate.
 - **Boneyard**: unchanged ("The field where Skeletons roam."), and the Hollow is not part of it.
-- **Strange material**: retired with the masked find (section 4).
+- **Strange material**: unchanged; finding a piece still starts Odo's essence quest.
 - **Quest essence**: new entry. An essence that mining gives only while its quest runs: Copper, Iron and Emberite essence for Odo, and Hollow essence for the runekeeper.
 - **Essence rock**, **Skeleton Mage**, **Imp** and the runekeeper: new entries when they are built.
 
