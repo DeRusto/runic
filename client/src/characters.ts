@@ -689,11 +689,17 @@ export async function loadCharacters() {
  */
 const VILLAGER_MODELS: Record<
   VillagerId,
-  string | { file: string; idle: string; move?: string }
+  string | { file: string; idle: string; move?: string; height?: number }
 > = {
   // The owner's Meshy blacksmith, carrying a KayKit hammer, on Universal Animation Library clips
   // retargeted in Blender: Meshy's own idle bent him out of shape.
-  odo: { file: "Odo", idle: "Idle_Loop", move: "Walk_Loop" },
+  // A big man: fitted 15% taller than the other villagers, and so as much broader too.
+  odo: {
+    file: "Odo",
+    idle: "Idle_Loop",
+    move: "Walk_Loop",
+    height: HEIGHT * 1.15,
+  },
   marta: { file: "Marta", idle: "Idle_02" },
   // The owner's Meshy banker, holding his ledger, on the same retargeted library clips as Odo.
   aldous: { file: "Aldous", idle: "Idle_Loop", move: "Walk_Loop" },
@@ -713,7 +719,7 @@ export async function loadVillager(tile: Tile, villager: VillagerId) {
   const look = VILLAGER_MODELS[villager];
   if (typeof look !== "string") {
     const { scene, animations } = await load(look.file);
-    fit(scene, (size) => HEIGHT / size.y);
+    fit(scene, (size) => (look.height ?? HEIGHT) / size.y);
     const clips = new Map(animations.map((clip) => [clip.name, clip]));
     const gait = {
       idle: look.idle,
