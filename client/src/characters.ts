@@ -637,18 +637,43 @@ export function paintGear(
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
   const gearLooks = Object.entries(GEAR_LOOKS);
-  const [knight, barbarian, hammer, clips, gear, heldTools] = await Promise.all(
-    [
+  const [adventurer, knight, barbarian, hammer, clips, gear, heldTools] =
+    await Promise.all([
+      // The owner's Meshy adventurer, on the Universal Animation Library's clips under the players' names.
+      load("Adventurer"),
       load("Knight"),
       load("Barbarian"),
       loadGltf("hammer"),
       loadClips(),
       Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
       Promise.all(HELD_TOOLS.map(([, tool]) => loadGltf(tool))),
-    ],
+    ]);
+  const models = {
+    Knight: knight.scene,
+    Barbarian: barbarian.scene,
+    Adventurer: adventurer.scene,
+  };
+  const adventurerClips = new Map(
+    adventurer.animations.map((clip) => [clip.name, clip]),
   );
-  const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
+  // Tools and gear are sized for KayKit's hand slot; a model built at another scale holds them at
+  // KayKit's size by their slots' world scales.
+  const slotScale = (m: THREE.Object3D) => {
+    m.updateMatrixWorld(true);
+    return m.getObjectByName("handslotr")!.getWorldScale(new THREE.Vector3()).x;
+  };
+  const inHandScale = new Map<THREE.Object3D, number>(
+    Object.values(models).map((m) => [
+      m,
+      slotScale(models.Knight) / slotScale(m),
+    ]),
+  );
+  const holdIn = (m: THREE.Object3D, slot: string, item: THREE.Object3D) => {
+    const copy = item.clone();
+    copy.scale.multiplyScalar(inHandScale.get(m)!);
+    m.getObjectByName(slot)!.add(copy);
+  };
   // Every Figure's clone carries its own, and shows it only during the action.
   for (const [tool, name] of [
     ...HELD_TOOLS.map(([, name], i) => [heldTools[i]!, name] as const),
@@ -658,9 +683,7 @@ export async function loadCharacters() {
     tool.scene.rotation.y = TOOL_TURN[name] ?? 0;
     tool.scene.visible = false;
     castShadows(tool.scene);
-    Object.values(models).forEach((m) =>
-      m.getObjectByName("handslotr")!.add(tool.scene.clone()),
-    );
+    Object.values(models).forEach((m) => holdIn(m, "handslotr", tool.scene));
   }
   // The same: each clone carries every tier, sharing its materials, and shows what's worn only in a fight.
   let grey: THREE.Texture | undefined;
@@ -674,12 +697,12 @@ export async function loadCharacters() {
       if (o instanceof THREE.Mesh) grey ??= greyVersion(o.material.map);
     });
     paintGear(held, look, grey!);
-    Object.values(models).forEach((m) =>
-      m.getObjectByName(look.hand)!.add(held.clone()),
-    );
+    Object.values(models).forEach((m) => holdIn(m, look.hand, held));
   });
-  return (tile: Tile, name: string) =>
-    new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
+  // shortcut: every player wears the adventurer, to see it in game; was
+  // models[characterFor(name)] on the shared clips, the Knight or the Barbarian by name.
+  return (tile: Tile, _name: string) =>
+    new Figure(tile, cloneSkinned(models.Adventurer), adventurerClips);
 }
 
 /**
