@@ -67,6 +67,10 @@ models/
         Tools Bits' hammer, both CC0: see
         models/LICENSE-Quaternius-Universal-Animation-Library.txt and
         models/LICENSE-KayKit-RPG-Tools-Bits.txt.
+    LootBag.glb
+        Made for Runic by DeRusto with Meshy: the bag that marks a pile of ground
+        items, with its texture scaled down. The owner's own creation, not from a
+        pack. No licence is granted for it here.
     Bristleback.glb, Cinderhorn.glb
         Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
         not from a pack. No licence is granted for them here. Their skeleton and

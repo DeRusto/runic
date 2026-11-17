@@ -1,5 +1,6 @@
 import { Callbacks } from "@colyseus/sdk";
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { groundItemsLabel, type SeenGroundItem } from "./groundItems.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { colouredNames, iconUrl } from "./itemIcons.ts";
@@ -8,25 +9,24 @@ import { camera, renderer, scene } from "./scene.ts";
 import { hideTip, showTip } from "./tooltip.ts";
 
 const HOVER_SCALE = 1.15;
-const SACK_HIT_HEIGHT = 0.4;
+const SACK_HIT_HEIGHT = 0.6;
 
-// shortcut: a sphere with a cone neck stands in for a sack, until a proper sack model is found.
-const sackMaterial = new THREE.MeshStandardMaterial({
-  color: 0x8a6a3e,
-  roughness: 1,
-});
-const neckMaterial = new THREE.MeshStandardMaterial({
-  color: 0x4a3420,
-  roughness: 1,
-});
-// Built once and shared by every sack, so redrawing a tile allocates no new geometry.
-const sackShape = (size: number) => ({
-  size,
-  body: new THREE.SphereGeometry(size, 16, 12),
-  neck: new THREE.ConeGeometry(size * 0.45, size * 0.7, 10),
-});
-const loneShape = sackShape(0.22);
-const pileShape = sackShape(0.3);
+const BAG_HEIGHT = 0.6;
+const ICON_SIZE = 0.45;
+
+/** The owner's loot bag, loaded at the first pile and fitted to stand BAG_HEIGHT tall on the ground. */
+let bag: Promise<THREE.Object3D> | undefined;
+const loadBag = () =>
+  (bag ??= new GLTFLoader()
+    .loadAsync("/models/LootBag.glb")
+    .then(({ scene }) => {
+      const box = new THREE.Box3().setFromObject(scene);
+      const scale = BAG_HEIGHT / box.getSize(new THREE.Vector3()).y;
+      scene.scale.setScalar(scale);
+      scene.position.y = -box.min.y * scale;
+      scene.traverse((part) => (part.castShadow = true));
+      return scene;
+    }));
 const ringShape = new THREE.RingGeometry(0.36, 0.44, 32).rotateX(-Math.PI / 2);
 const ringMaterial = new THREE.MeshBasicMaterial({
   color: 0xffd34d,
@@ -45,24 +45,15 @@ const iconOf = (item: string) => {
   return icons.get(item)!;
 };
 
-/** One sack for a tile's ground items: bigger for a pile, with the item's icon above it for one. A gold ring marks `mine`. */
+/** What marks a tile's ground items: the item's own icon for one, the loot bag for a pile. A gold ring marks `mine`. */
 function sackFor(items: SeenGroundItem[], mine: boolean) {
   const group = new THREE.Group();
-  const shape = items.length > 1 ? pileShape : loneShape;
-  const { size } = shape;
-  const body = new THREE.Mesh(shape.body, sackMaterial);
-  body.scale.y = 0.8;
-  body.position.y = size * 0.75;
-  body.castShadow = true;
-  const neck = new THREE.Mesh(shape.neck, neckMaterial);
-  neck.position.y = size * 1.55;
-  group.add(body, neck);
   if (items.length === 1) {
     const icon = new THREE.Sprite(iconOf(items[0]!.item));
-    icon.scale.setScalar(0.32);
-    icon.position.y = size * 2.4;
+    icon.scale.setScalar(ICON_SIZE);
+    icon.position.y = ICON_SIZE / 2;
     group.add(icon);
-  }
+  } else void loadBag().then((model) => group.add(model.clone()));
   if (mine) {
     const ring = new THREE.Mesh(ringShape, ringMaterial);
     ring.position.y = 0.015;
@@ -72,7 +63,7 @@ function sackFor(items: SeenGroundItem[], mine: boolean) {
 }
 
 /**
- * Draws one sack on each tile with ground items this player can see (the server sends no
+ * Draws an icon or a loot bag on each tile with ground items this player can see (the server sends no
  * others), and labels the tile under the pointer. Returns what finds the tile of ground items
  * under a click's ray, with their ids.
  */
