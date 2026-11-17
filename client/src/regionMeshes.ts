@@ -32,11 +32,24 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   ashen: { color: 0x6e6862, top: -0.01 },
   water: { color: 0x3b78b0, top: -0.12 },
   moss: { color: 0x4f5e4a, top: -0.01 },
-  // The village kit's dirt, between the stones of its cobble floor.
-  cobble: { color: 0xc4af8f, top: -0.04 },
+  // Under the cobbles, the road's dirt, which their own dirt is painted in too.
+  cobble: { color: 0xa77b4f, top: -0.05 },
 };
 /** The village kit's cobble floor: 2×2 tiles, its middle half a tile off its origin each way, so halved and recentred. */
 const COBBLES = "Cobblestone_Floor_1";
+/** The kit's cobbles thinning out to dirt, four ways: dense on their -x half, sparse on their +x half. */
+const COBBLE_EDGES = [1, 2, 3, 4].map(
+  (n) => `Cobblestone_Dirt_Transition_${n}`,
+);
+// Just above the slab's top, which the floor's base would otherwise share and flicker against.
+const COBBLE_LIFT = 0.004;
+// Turns a +x-facing piece to face each way, as a house's parts are turned.
+const FACING = [
+  { dx: 1, dy: 0, angle: 0 },
+  { dx: 0, dy: -1, angle: Math.PI / 2 },
+  { dx: -1, dy: 0, angle: Math.PI },
+  { dx: 0, dy: 1, angle: -Math.PI / 2 },
+];
 const cobbleFit = new THREE.Matrix4()
   .makeScale(0.5, 1, 0.5)
   .multiply(new THREE.Matrix4().makeTranslation(0.5, 0, -0.5));
@@ -204,6 +217,7 @@ const RED_TILES = 0.42 / 0.58;
 function bakeColours(
   model: THREE.Group,
   look?: (typeof BUILDING_LOOKS)[keyof typeof BUILDING_LOOKS],
+  dirt?: number,
 ) {
   const parts = (model.children as THREE.Mesh[]).map((mesh) => {
     const materials = [mesh.material].flat() as THREE.MeshPhongMaterial[];
@@ -219,13 +233,16 @@ function bakeColours(
         ["Red_Roof", 1],
         ["Dark_Red_Roof", RED_TILES],
       ]).get(material.name);
-      const { r, g, b } = !look
-        ? material.color
-        : shade
-          ? new THREE.Color(look.roof).multiplyScalar(shade)
-          : material.name === "Stucco"
-            ? material.color.clone().multiply(new THREE.Color(look.plaster))
-            : material.color;
+      const { r, g, b } =
+        dirt !== undefined && material.name === "Dirt"
+          ? new THREE.Color(dirt)
+          : !look
+            ? material.color
+            : shade
+              ? new THREE.Color(look.roof).multiplyScalar(shade)
+              : material.name === "Stucco"
+                ? material.color.clone().multiply(new THREE.Color(look.plaster))
+                : material.color;
       for (let i = start; i < start + count; i++) colours.setXYZ(i, r, g, b);
     }
     return geometry.setAttribute("color", colours);
@@ -249,6 +266,10 @@ async function loadVillageModels(names: string[]) {
             bakeColours(
               await loader.loadAsync(`/models/${name.split(":")[0]}.obj`),
               BUILDING_LOOKS[name.split(":")[1] as keyof typeof BUILDING_LOOKS],
+              // The cobbles' dirt in the road's, so they thin out into the road without a seam.
+              [COBBLES, ...COBBLE_EDGES].includes(name)
+                ? GROUND.path.color
+                : undefined,
             ),
           ] as const,
       ),
@@ -337,6 +358,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     loadVillageModels([
       ...Object.values(HOUSE_MODELS),
       COBBLES,
+      ...COBBLE_EDGES,
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
     ]),
   ]);
@@ -525,14 +547,18 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       );
 
       if (tile.ground === "cobble") {
-        // A quarter turn by the tile's hash, so the stones don't repeat tile to tile.
+        // Where a dirt road leaves the cobbles, an edge piece thins them out towards it;
+        // elsewhere a quarter turn by the tile's hash, so the stones don't repeat tile to tile.
+        const road = FACING.find(
+          ({ dx, dy }) => tiles[y + dy]?.[x + dx]?.ground === "path",
+        );
         const turn = new THREE.Matrix4().makeRotationY(
-          ((hash >>> 4) & 3) * (Math.PI / 2),
+          road ? road.angle : ((hash >>> 4) & 3) * (Math.PI / 2),
         );
         place(
-          village.get(COBBLES)!,
+          village.get(road ? COBBLE_EDGES[(hash >>> 6) & 3]! : COBBLES)!,
           new THREE.Matrix4()
-            .makeTranslation(x, top, y)
+            .makeTranslation(x, top + COBBLE_LIFT, y)
             .multiply(turn)
             .multiply(cobbleFit),
         );
@@ -633,6 +659,9 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   }
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
+  const cobbleGeometries = new Set(
+    [COBBLES, ...COBBLE_EDGES].map((name) => village.get(name)!),
+  );
   for (const [geometry, list] of placements) {
     const mesh = new THREE.InstancedMesh(
       geometry,
@@ -644,6 +673,8 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       mesh.setColorAt(i, item.color);
     });
     mesh.castShadow = geometry !== ripple;
+    // The cobbles cover their slabs, so they take the shadows the slabs would.
+    mesh.receiveShadow = cobbleGeometries.has(geometry);
     scene.add(mesh);
     meshes.set(geometry, mesh);
   }
