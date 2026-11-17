@@ -1,11 +1,11 @@
-{ "columns":37,
+{ "columns":38,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":592,
+ "imagewidth":608,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":37,
+ "tilecount":38,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -490,6 +490,20 @@
                  "name":"prop",
                  "type":"string",
                  "value":"fruitBasket"
+                }]
+        }, 
+        {
+         "id":37,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"marketStall"
                 }]
         }],
  "tilewidth":16,

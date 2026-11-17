@@ -60,6 +60,7 @@ const FEATURE_VALUES = {
     appleBarrel: 1,
     carrotCrate: 1,
     fruitBasket: 1,
+    marketStall: 1,
   } satisfies Record<NonNullable<TileKind["prop"]>, 1>,
   bush: BUSHES,
   vein: VEINS,

@@ -123,11 +123,47 @@ const NATURE_PROPS = {
  * The goods outside the general store: textured models drawn whole, as a station's parts are,
  * rather than baked to vertex colours like the props above. Each faces the road, to the south.
  */
+// Kenney's green stall's counter, in tiles up from the ground.
+const COUNTER = 0.366;
 const GOODS = {
-  appleBarrel: { file: "Barrel_Apples.glb", width: 0.55 },
-  carrotCrate: { file: "FarmCrate_Carrot.glb", width: 0.75 },
-  fruitBasket: { file: "display-fruit.glb", width: 0.6 },
-} satisfies Partial<Record<PropKind, StationPart>>;
+  appleBarrel: { parts: [{ file: "Barrel_Apples.glb", width: 0.55 }] },
+  carrotCrate: { parts: [{ file: "FarmCrate_Carrot.glb", width: 0.75 }] },
+  fruitBasket: { parts: [{ file: "display-fruit.glb", width: 0.6 }] },
+  // Turned off the grid, so it reads as set down rather than built in; Food Kit wares on its counter.
+  marketStall: {
+    yaw: 0.45,
+    parts: [
+      { file: "stall-green.glb", width: 1 },
+      { file: "cheese.glb", width: 0.2, at: [-0.24, 0.12], y: COUNTER },
+      {
+        file: "bread.glb",
+        width: 0.22,
+        at: [0.02, 0.18],
+        y: COUNTER,
+        yaw: 0.6,
+      },
+      { file: "pumpkin.glb", width: 0.22, at: [0.25, 0.1], y: COUNTER },
+      { file: "apple.glb", width: 0.08, at: [-0.05, -0.05], y: COUNTER },
+      { file: "apple.glb", width: 0.08, at: [0.04, -0.08], y: COUNTER },
+      { file: "pear.glb", width: 0.08, at: [-0.12, -0.12], y: COUNTER },
+      {
+        file: "grapes.glb",
+        width: 0.14,
+        at: [0.2, -0.15],
+        y: COUNTER,
+        yaw: -0.4,
+      },
+      {
+        file: "carrot.glb",
+        width: 0.2,
+        at: [-0.27, -0.15],
+        y: COUNTER,
+        yaw: 0.3,
+        lay: true,
+      },
+    ],
+  },
+} satisfies Partial<Record<PropKind, { parts: StationPart[]; yaw?: number }>>;
 type Goods = keyof typeof GOODS;
 const isGoods = (prop: PropKind): prop is Goods => Object.hasOwn(GOODS, prop);
 
@@ -555,9 +591,11 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   scene.add(slabs);
   const goodsModels = new Map(
     await Promise.all(
-      Object.entries(GOODS).map(
-        async ([kind, part]) => [kind, await loadPart(part)] as const,
-      ),
+      Object.entries(GOODS).map(async ([kind, look]) => {
+        const model = await loadStation(look);
+        model.rotation.y = "yaw" in look ? look.yaw : 0;
+        return [kind, model] as const;
+      }),
     ),
   );
   for (const { prop, at } of goods) {

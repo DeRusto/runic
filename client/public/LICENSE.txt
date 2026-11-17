@@ -39,7 +39,8 @@ models/
         Kenney Nature Kit (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Nature-Kit.txt.
     cuttingBoard.glb, cleaver.glb, carrot.glb, onion.glb, leek.glb,
-    loafRound.glb, mortarPestle.glb
+    loafRound.glb, mortarPestle.glb, cheese.glb, bread.glb, pumpkin.glb,
+    apple.glb, pear.glb, grapes.glb
         Kenney Food Kit 2.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Food-Kit.txt.
     tableMedium.glb
@@ -52,6 +53,9 @@ models/
     display-fruit.glb
         Kenney Mini Shop 2.1 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Mini-Shop.txt.
+    stall-green.glb
+        Kenney Fantasy Town Kit 2.0 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Fantasy-Town-Kit.txt.
     Each of the models above was packed into one GLB with only its colour
     texture, downscaled to 512px (256px for the store's goods).
     Spider.glb

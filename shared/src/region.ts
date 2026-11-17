@@ -12,7 +12,8 @@ export type GroundKind =
 export const groundBlocks = (ground: GroundKind) => ground === "water";
 /**
  * `gate` is the locked gate on the south road; `column` and `standingStone` are Runestone Hollow's
- * ruins; `appleBarrel`, `carrotCrate` and `fruitBasket` are the goods outside the general store.
+ * ruins; `appleBarrel`, `carrotCrate`, `fruitBasket` and `marketStall` are the goods outside the
+ * general store.
  */
 export type PropKind =
   | "tree"
@@ -27,7 +28,8 @@ export type PropKind =
   | "standingStone"
   | "appleBarrel"
   | "carrotCrate"
-  | "fruitBasket";
+  | "fruitBasket"
+  | "marketStall";
 /** The five metals, lowest first. Each tier's item ids start with it (`bronzeSword`). */
 export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
