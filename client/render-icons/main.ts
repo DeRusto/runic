@@ -34,6 +34,90 @@ const PACK_ICONS: Record<string, string> = {
   avoidancePotion: `${SPIDER_ICONS}/41.png`,
 };
 
+const icon = (pack: string, n: number) =>
+  `/${pack}/PNG/without background/${n}.png`;
+const DWARF = "rpg-dwarf-loot-icons";
+const KOBOLD = "rpg-kobold-loot-icons";
+const FOOD = "50-rpg-food-icons";
+const FLOWER = "rpg-flower-game-icons";
+/** More Craftpix icons, from the packs bought on 2026-11-16 (the owner's picks). */
+Object.assign(PACK_ICONS, {
+  axe: icon(DWARF, 12),
+  hammer: icon(DWARF, 21),
+  torch: icon(KOBOLD, 23),
+  rope: icon("rpg-pirate-loot-icons", 13),
+  vial: icon("rpg-pirate-loot-icons", 17),
+  coins: icon("treasure-and-chest-rpg-icons", 45),
+  ashstone: icon(KOBOLD, 3),
+  strangeMaterial: icon(KOBOLD, 50),
+  arrowShaft: icon("rpg-cooking-ingredient-icon-pack", 38),
+  boneSigil: icon("magical-artifact-rpg-game-icons", 39),
+  bristleHide: icon(DWARF, 50),
+  cinderHide: icon("50-rpg-loot-game-icons", 7),
+  tarnHide: icon(DWARF, 37),
+  dewpetal: icon(FLOWER, 1),
+  nightbloom: icon(FLOWER, 25),
+  emberbloom: icon(FLOWER, 13),
+  fortitudePotion: icon("rpg-elixir-icons", 23),
+  perch: icon("rpg-sea-loot-icons", 34),
+  pike: icon("rpg-sea-loot-icons", 35),
+  trout: icon("rpg-pirate-loot-icons", 35),
+  cookedPerch: icon(FOOD, 1),
+  cookedPike: icon(FOOD, 47),
+  cookedTrout: icon(FOOD, 27),
+  birchBow: icon("bow-and-crossbow-rpg-icons", 1),
+  oakBow: icon("bow-and-crossbow-rpg-icons", 12),
+  charwoodBow: icon("bow-and-crossbow-rpg-icons", 17),
+  oakLog: icon(DWARF, 35),
+  gossamerCloak: icon("50-rpg-armor-icons", 38),
+});
+
+/** Pack icons recoloured: `mix` of the way from the painting to its shading in `look`'s colours. */
+const RECOLOURED: { id: string; url: string; look: Look; mix?: number }[] = [
+  // The pack's grey stones, blackened: as painted they read as silver ore.
+  {
+    id: "coal",
+    url: icon(KOBOLD, 40),
+    look: { tint: 0x1a1817, glow: 0x5c5853 },
+  },
+  // The logs as the bows: one log, pale and charred.
+  { id: "birchLog", url: icon(DWARF, 35), look: { tint: 0xf0e6cc } },
+  { id: "charwoodLog", url: icon(DWARF, 35), look: { tint: 0x6a3a30 } },
+  // The berry and herb dishes: the cooked fish, mostly rosy or herbal (#221); at half they barely differ.
+  ...(
+    [
+      ["Perch", 1, 0xb05429, 0x6e6320],
+      ["Pike", 47, 0x8a492c, 0x565723],
+      ["Trout", 27, 0xc05837, 0x77692b],
+    ] as const
+  ).flatMap(([fish, n, berry, herb]) => [
+    { id: `berry${fish}`, url: icon(FOOD, n), look: { tint: berry }, mix: 0.8 },
+    { id: `herb${fish}`, url: icon(FOOD, n), look: { tint: herb }, mix: 0.8 },
+  ]),
+];
+/** Tiered gear: one painting a slot, in each tier's colours as in hand (spec §7). */
+const TIERED_ICONS: Record<string, string> = {
+  Bar: icon(DWARF, 28),
+  Helmet: icon("rpg-helmet-icons", 26),
+  Chestplate: icon("50-rpg-armor-icons", 23),
+  Leggings: icon("rpg-greaves-icons", 16),
+  Boots: icon("rpg-pirate-loot-icons", 26),
+  Gloves: icon("50-rpg-glove-icons", 46),
+  Ring: icon("50-rpg-jewelry-icons", 10),
+  Amulet: icon("50-rpg-jewelry-icons", 24),
+  Arrow: icon("rpg-undead-loot-icons", 47),
+  ThrowingKnife: icon("50-rpg-dagger-icons", 31),
+  // Odo's proof essences: only copper, iron and emberite exist, so the others are skipped below.
+  Essence: icon("magical-artifact-rpg-game-icons", 4),
+  // All three Virtues' capes share their tier's icon (#217).
+  ...Object.fromEntries(
+    VIRTUES.map((v) => [
+      `${v[0]!.toUpperCase()}${v.slice(1)}Cape`,
+      icon("50-rpg-armor-icons", 7),
+    ]),
+  ),
+};
+
 // Tier looks, as worn (spec §7).
 const {
   copper: COPPER,
@@ -444,8 +528,8 @@ function draw(model: THREE.Object3D, turn: Turn) {
 const toPng = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!)));
 
-/** A pack PNG, scaled to match the rendered icons (spec §7). */
-async function packIcon(url: string) {
+/** A pack PNG, scaled to match the rendered icons (spec §7), and recoloured if given a look. */
+async function packIcon(url: string, look?: Look, mix = 1) {
   const image = new Image();
   image.src = url;
   await image.decode();
@@ -454,7 +538,44 @@ async function packIcon(url: string) {
   const context = canvas.getContext("2d")!;
   context.imageSmoothingQuality = "high";
   context.drawImage(image, 0, 0, SIZE, SIZE);
+  if (look?.tint !== undefined)
+    recolour(context, look.tint, look.glow ?? 0xffffff, mix);
   return toPng(canvas);
+}
+
+/**
+ * Repaints the canvas by its shading: black through `tint` (at a brightness of 110 of 255) to `light`,
+ * after stretching the brightness to the full range, then mixes that `mix` of the way in.
+ */
+function recolour(
+  context: CanvasRenderingContext2D,
+  tint: number,
+  light: number,
+  mix: number,
+) {
+  const data = context.getImageData(0, 0, SIZE, SIZE);
+  const px = data.data;
+  const lum = (i: number) =>
+    0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!;
+  const seen: number[] = [];
+  for (let i = 0; i < px.length; i += 4) if (px[i + 3]! > 0) seen.push(lum(i));
+  seen.sort((a, b) => a - b);
+  // The 1st and 99th centiles, so a few specks don't set the range.
+  const lo = seen[Math.floor(seen.length * 0.01)] ?? 0;
+  const hi = Math.max(seen[Math.floor(seen.length * 0.99)] ?? 255, lo + 1);
+  const channels = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+  const [mid, top] = [channels(tint), channels(light)];
+  for (let i = 0; i < px.length; i += 4) {
+    const t = Math.min(Math.max(((lum(i) - lo) / (hi - lo)) * 255, 0), 255);
+    for (let k = 0; k < 3; k++) {
+      const shade =
+        t < 110
+          ? (mid[k]! * t) / 110
+          : mid[k]! + ((top[k]! - mid[k]!) * (t - 110)) / 145;
+      px[i + k] = px[i + k]! + (shade - px[i + k]!) * mix;
+    }
+  }
+  context.putImageData(data, 0, 0);
 }
 
 const loader = new GLTFLoader();
@@ -846,6 +967,12 @@ for (const [id, file] of RUNES) {
 // shortcut: the icons above still render first and are replaced here; drop their renders if render time starts to matter.
 for (const [id, url] of Object.entries(PACK_ICONS))
   pngs.set(id, await packIcon(url));
+for (const { id, url, look, mix } of RECOLOURED)
+  pngs.set(id, await packIcon(url, look, mix));
+for (const [piece, url] of Object.entries(TIERED_ICONS))
+  for (const [tier, look] of Object.entries(TIER_LOOKS))
+    if (pngs.has(`${tier}${piece}`))
+      pngs.set(`${tier}${piece}`, await packIcon(url, look));
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {
@@ -862,6 +989,10 @@ const status = document.getElementById("status")!;
 const total = [...pngs.values()].reduce((sum, png) => sum + png.size, 0);
 status.textContent = `${pngs.size} icons, ${Math.round(total / 1024)} KB`;
 
+// shortcut: the canvas saves full-colour PNGs, and the painted icons then average 29 KB, past
+// itemIcons.test.ts's budget. They were cut to 256 colours by hand with Pillow
+// (Image.quantize(256, FASTOCTREE, FLOYDSTEINBERG), about 7 KB each); repeat that after a re-save,
+// or quantise here once a PNG encoder such as upng-js is a dev dependency.
 const save = document.getElementById("save") as HTMLButtonElement;
 save.disabled = false;
 save.onclick = async () => {

@@ -1,14 +1,15 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
-Seventeen are Craftpix files. The rest are rendered by client/render-icons, from
-the CC0 models below or from our own geometry.
+Most are Craftpix files. The rest are rendered by client/render-icons, from the
+CC0 models below or from our own geometry.
 
 ------------------------------------------------------------------------
-1. The Craftpix seventeen: CRAFTPIX, NOT CC0
+1. The Craftpix icons: CRAFTPIX, NOT CC0
 ------------------------------------------------------------------------
 
 Each is a PNG from the pack's "without background" folder, scaled to 144x144 by
-client/render-icons (its PACK_ICONS table names every file).
+client/render-icons (its PACK_ICONS, RECOLOURED and TIERED_ICONS tables name
+every file). The file's number in its pack is in brackets.
 
 "Sword RPG Game Icon Set"
     emberiteSword.png (21)
@@ -20,6 +21,51 @@ client/render-icons (its PACK_ICONS table names every file).
     emberbone.png (24), feather.png (33), berry.png (7), herb.png (8)
 "RPG Spider Loot Icons"
     spiderSilk.png (5), mightPotion.png (33), avoidancePotion.png (41)
+"RPG Dwarf Loot Icons"
+    axe.png (12), hammer.png (21), bristleHide.png (50), tarnHide.png (37);
+    oakLog.png (35), and birchLog and charwoodLog recoloured from it; the five
+    bars (28), recoloured by tier
+"RPG Kobold Loot Icons"
+    torch.png (23), ashstone.png (3), strangeMaterial.png (50), and coal.png
+    (40) recoloured black
+"RPG Pirate Loot Icons"
+    rope.png (13), vial.png (17), trout.png (35); the five boots (26),
+    recoloured by tier
+"Treasure and Chest RPG Icons"
+    coins.png (45)
+"RPG Cooking Ingredient Icon Pack"
+    arrowShaft.png (38)
+"Magical Artifact RPG Game Icons"
+    boneSigil.png (39); copperEssence, ironEssence and emberiteEssence (4),
+    recoloured by tier
+"50 RPG Loot Game Icons"
+    cinderHide.png (7)
+"RPG Flower Game Icons"
+    dewpetal.png (1), nightbloom.png (25), emberbloom.png (13)
+"RPG Elixir Icons"
+    fortitudePotion.png (23)
+"RPG Sea Loot Icons"
+    perch.png (34), pike.png (35)
+"50 RPG Food Icons"
+    cookedPerch.png (1), cookedPike.png (47), cookedTrout.png (27), and the
+    berry and herb perch, pike and trout recoloured from them
+"Bow and Crossbow RPG Icons"
+    birchBow.png (1), oakBow.png (12), charwoodBow.png (17)
+"50 RPG Armor Icons"
+    gossamerCloak.png (38); the five chestplates (23) and the fifteen capes (7),
+    recoloured by tier
+"RPG Helmet Icons"
+    the five helmets (26), recoloured by tier
+"RPG Greaves Icons"
+    the five leggings (16), recoloured by tier
+"50 RPG Glove Icons"
+    the five gloves (46), recoloured by tier
+"50 RPG Jewelry Icons"
+    the five rings (10) and the five amulets (24), recoloured by tier
+"RPG Undead Loot Icons"
+    the five arrows (47), recoloured by tier
+"50 RPG Dagger Icons"
+    the five throwing knives (31), recoloured by tier
 
 Terms:   https://craftpix.net/file-licenses/ (the licence link the packs ship in
          their license.txt)
@@ -45,41 +91,10 @@ own project, get them from Craftpix under their terms.
 Each pack's own licence file states Creative Commons Zero, CC0 1.0 Universal:
 http://creativecommons.org/publicdomain/zero/1.0/
 
-copperBar, ironBar, emberiteBar, and bronzeBar and steelBar tinted from the
-copper and iron bars; birchLog, oakLog and charwoodLog from the model Wood_Log_A,
-two of them tinted
-    KayKit Resource Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 copperSword, ironSword, copperShield, ironShield, emberiteShield, and the bronze
-and steel sword and shield tinted from the copper and iron ones; birchBow, oakBow
-and charwoodBow from the model bow_A_withString, two of them tinted like the
-logs; the arrows from the model arrow_A, the throwing knives from dagger_A, and
-the bronze, steel and emberite ones tinted from the copper and iron ones
+and steel sword and shield tinted from the copper and iron ones
     KayKit Fantasy Weapons Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
-copperHelmet, copperChestplate, copperLeggings, and the same in bronze, iron,
-steel and emberite
-    KayKit Adventurers 2.0, by Kay Lousberg (www.kaylousberg.com), the Knight
-    character's helmet, body and leg meshes
-hammer, axe
-    KayKit RPG Tools Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
-perch and trout from the model fish.glb, and pike from fish-large.glb, all tinted;
-the cooked, berry and herb perch, trout and pike from the same models, tinted
-    Kenney Survival Kit (www.kenney.nl)
-dewpetal, nightbloom and emberbloom, tinted from the model Plant_1
-    Stylized Nature MegaKit, free version, by Quaternius (quaternius.com)
-vial from the model bottle_B_brown, and fortitudePotion from bottle_C_brown
-tinted green
-    KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com)
-rope and torch from the models Rope_1 and Torch_Metal
-    Fantasy Props MegaKit, free version, by Quaternius (quaternius.com)
-coal
-    KayKit Forest Nature Pack 1.0, by Kay Lousberg (www.kaylousberg.com), the model Rock_1_E_Color1
-coins
-    KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com), the model coin_stack_small
 
-ashstone.png, rod.png, arrowShaft.png, the five arrowhead icons,
-gossamerCloak.png, tinderbox.png, the fifteen cape icons, strangeMaterial.png,
-copperEssence.png, ironEssence.png and emberiteEssence.png (rune essence's
-crystals, tinted by tier), and boneSigil.png are from no pack: they are Runic's
-own, drawn by three.js geometry in client/render-icons/main.ts. A cape is tinted
-by its tier, and its Virtue shows in the name only (#217); an arrowhead by its
-tier (#228).
+rod.png, tinderbox.png and the five arrowhead icons are from no pack: they are
+Runic's own, drawn by three.js geometry in client/render-icons/main.ts. An
+arrowhead is tinted by its tier (#228).
