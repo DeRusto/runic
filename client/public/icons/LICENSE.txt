@@ -66,6 +66,8 @@ every file). The file's number in its pack is in brackets.
     the five arrows (47), recoloured by tier
 "50 RPG Dagger Icons"
     the five throwing knives (31), recoloured by tier
+"50 RPG Lance Icons"
+    the five arrowheads, the head cut from lance (2), recoloured by tier
 
 Terms:   https://craftpix.net/file-licenses/ (the licence link the packs ship in
          their license.txt)
@@ -95,6 +97,5 @@ copperSword, ironSword, copperShield, ironShield, emberiteShield, and the bronze
 and steel sword and shield tinted from the copper and iron ones
     KayKit Fantasy Weapons Bits 1.0, by Kay Lousberg (www.kaylousberg.com)
 
-rod.png, tinderbox.png and the five arrowhead icons are from no pack: they are
-Runic's own, drawn by three.js geometry in client/render-icons/main.ts. An
-arrowhead is tinted by its tier (#228).
+rod.png and tinderbox.png are from no pack: they are Runic's own, drawn by
+three.js geometry in client/render-icons/main.ts.

@@ -529,7 +529,7 @@ const toPng = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!)));
 
 /** A pack PNG, scaled to match the rendered icons (spec §7), and recoloured if given a look. */
-async function packIcon(url: string, look?: Look, mix = 1) {
+async function packIcon(url: string, look?: Look, mix = 1, quarter = false) {
   const image = new Image();
   image.src = url;
   await image.decode();
@@ -537,7 +537,11 @@ async function packIcon(url: string, look?: Look, mix = 1) {
   canvas.width = canvas.height = SIZE;
   const context = canvas.getContext("2d")!;
   context.imageSmoothingQuality = "high";
-  context.drawImage(image, 0, 0, SIZE, SIZE);
+  const { width: w, height: h } = image;
+  // `quarter`: only the top-right quarter, where a diagonal weapon's head is.
+  if (quarter)
+    context.drawImage(image, w / 2, 0, w / 2, h / 2, 0, 0, SIZE, SIZE);
+  else context.drawImage(image, 0, 0, SIZE, SIZE);
   if (look?.tint !== undefined)
     recolour(context, look.tint, look.glow ?? 0xffffff, mix);
   return toPng(canvas);
@@ -973,6 +977,17 @@ for (const [piece, url] of Object.entries(TIERED_ICONS))
   for (const [tier, look] of Object.entries(TIER_LOOKS))
     if (pngs.has(`${tier}${piece}`))
       pngs.set(`${tier}${piece}`, await packIcon(url, look));
+// No pack has an arrowhead: a lance's head, cut from its icon. It is painted so bright that the
+// tier colour washes out, so its highlights stop halfway to white.
+for (const [tier, { tint, glow }] of Object.entries(TIER_LOOKS)) {
+  const light =
+    glow ?? new THREE.Color(tint).lerp(new THREE.Color(0xffffff), 0.5).getHex();
+  const head = icon("50-rpg-lance-icons", 2);
+  pngs.set(
+    `${tier}Arrowhead`,
+    await packIcon(head, { tint, glow: light }, 1, true),
+  );
+}
 
 const shown = document.getElementById("icons")!;
 for (const [id, png] of pngs) {
