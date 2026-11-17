@@ -82,8 +82,9 @@ models/
         Made for Runic by DeRusto with Meshy, and rigged by DeRusto: the player
         character. The owner's own creation, not from a pack. No licence is
         granted for it here. Its clips are retargeted from Quaternius's
-        Universal Animation Library, which is CC0: see
-        models/LICENSE-Quaternius-Universal-Animation-Library.txt.
+        Universal Animation Library and Universal Animation Library 2, both
+        CC0: see models/LICENSE-Quaternius-Universal-Animation-Library.txt and
+        models/LICENSE-Quaternius-Universal-Animation-Library-2.txt.
     Bristleback.glb, Cinderhorn.glb
         Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
         not from a pack. No licence is granted for them here. Their skeleton and
