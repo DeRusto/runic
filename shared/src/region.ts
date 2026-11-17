@@ -5,9 +5,9 @@ import type { FixedStation } from "./stations.ts";
 import type { BushKind } from "./herblaw.ts";
 import type { TreeKind } from "./woodcutting.ts";
 
-/** `moss` is Runestone Hollow's mossy stone floor. */
+/** `moss` is Runestone Hollow's mossy stone floor; `cobble` is the village's streets. */
 export type GroundKind =
-  "grass" | "thicket" | "path" | "ashen" | "water" | "moss";
+  "grass" | "thicket" | "path" | "ashen" | "water" | "moss" | "cobble";
 /** Water can never be walked on, with or without a site on it. */
 export const groundBlocks = (ground: GroundKind) => ground === "water";
 /**

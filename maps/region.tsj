@@ -1,11 +1,11 @@
-{ "columns":38,
+{ "columns":39,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":608,
+ "imagewidth":624,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":38,
+ "tilecount":39,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -504,6 +504,15 @@
                  "name":"prop",
                  "type":"string",
                  "value":"marketStall"
+                }]
+        }, 
+        {
+         "id":38,
+         "properties":[
+                {
+                 "name":"ground",
+                 "type":"string",
+                 "value":"cobble"
                 }]
         }],
  "tilewidth":16,

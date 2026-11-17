@@ -8,7 +8,7 @@ Open `region.tmj` in Tiled to paint it, or edit it through the `tiled` MCP serve
 
 | Layer        | Type    | Holds                                                | Rule                        |
 | ------------ | ------- | ---------------------------------------------------- | --------------------------- |
-| `ground`     | Tiles   | grass, thicket, path, ashen, water                   | Every cell is filled        |
+| `ground`     | Tiles   | grass, thicket, path, cobble, ashen, water, moss     | Every cell is filled        |
 | `features`   | Tiles   | props, trees, stations, house walls and doors        | At most one per tile        |
 | `placements` | Objects | the respawn, enemy homes, NPCs, site pools and spots | One per tile, snapped to it |
 

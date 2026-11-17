@@ -79,6 +79,7 @@ const GROUND_VALUES = {
   ashen: 1,
   water: 1,
   moss: 1,
+  cobble: 1,
 } satisfies Record<TileKind["ground"], 1>;
 
 const fail = (message: string): never => {

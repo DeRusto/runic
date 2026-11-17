@@ -32,7 +32,14 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   ashen: { color: 0x6e6862, top: -0.01 },
   water: { color: 0x3b78b0, top: -0.12 },
   moss: { color: 0x4f5e4a, top: -0.01 },
+  // The village kit's dirt, between the stones of its cobble floor.
+  cobble: { color: 0xc4af8f, top: -0.04 },
 };
+/** The village kit's cobble floor: 2×2 tiles, its middle half a tile off its origin each way, so halved and recentred. */
+const COBBLES = "Cobblestone_Floor_1";
+const cobbleFit = new THREE.Matrix4()
+  .makeScale(0.5, 1, 0.5)
+  .multiply(new THREE.Matrix4().makeTranslation(0.5, 0, -0.5));
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT: Record<BushKind, number> = {
   berryBush: 0xffb0b0,
@@ -329,6 +336,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ),
     loadVillageModels([
       ...Object.values(HOUSE_MODELS),
+      COBBLES,
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
     ]),
   ]);
@@ -516,6 +524,19 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
+      if (tile.ground === "cobble") {
+        // A quarter turn by the tile's hash, so the stones don't repeat tile to tile.
+        const turn = new THREE.Matrix4().makeRotationY(
+          ((hash >>> 4) & 3) * (Math.PI / 2),
+        );
+        place(
+          village.get(COBBLES)!,
+          new THREE.Matrix4()
+            .makeTranslation(x, top, y)
+            .multiply(turn)
+            .multiply(cobbleFit),
+        );
+      }
       const { prop, station, house } = tile;
       const site = SITE_FIELDS.find((field) => tile[field]);
       if (station) footprints[station].push(new THREE.Vector3(x, top, y));
