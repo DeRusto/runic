@@ -19,7 +19,7 @@ export const HOUSE_MODELS = {
   doubleWindow: "Stucco_Window_Double_Narrow_Tall",
   lamp: "Wall_Prop_Lamp",
   sign: "Wall_Prop_Sign_1",
-  awning: "Canopy_Ramp_Mid",
+  awning: "Canopy_Ramp_Mid:store",
   barrel: "Prop_Barrel_2",
   openBarrel: "Prop_Barrel_1_Open",
   crate: "Prop_Crate_1_Open",
@@ -42,15 +42,16 @@ export type HousePart = {
 
 /**
  * Each building's colours: its plaster, which the kit's cream is multiplied by on its walls and
- * its roof's gables, and its roof tiles in place of the kit's red. A plain house keeps the kit's.
+ * its roof's gables, its roof tiles in place of the kit's red, and, if it has any, its awnings'
+ * cloth in place of the kit's canvas. A plain house keeps the kit's.
  */
 export const BUILDING_LOOKS: Record<
   Exclude<Building, "house">,
-  { plaster: number; roof: number }
+  { plaster: number; roof: number; cloth?: number }
 > = {
   bank: { plaster: 0xc4c8d0, roof: 0x5b6573 },
   inn: { plaster: 0xffd9a0, roof: 0x6e4b33 },
-  store: { plaster: 0xd2e6c8, roof: 0x587a40 },
+  store: { plaster: 0xd2e6c8, roof: 0x587a40, cloth: 0x4a8c4f },
 };
 const PLASTERED = new Set<HousePart["part"]>([
   "wall",

@@ -240,9 +240,13 @@ function bakeColours(
             ? material.color
             : shade
               ? new THREE.Color(look.roof).multiplyScalar(shade)
-              : material.name === "Stucco"
-                ? material.color.clone().multiply(new THREE.Color(look.plaster))
-                : material.color;
+              : material.name === "Canvas" && look.cloth !== undefined
+                ? new THREE.Color(look.cloth)
+                : material.name === "Stucco"
+                  ? material.color
+                      .clone()
+                      .multiply(new THREE.Color(look.plaster))
+                  : material.color;
       for (let i = start; i < start + count; i++) colours.setXYZ(i, r, g, b);
     }
     return geometry.setAttribute("color", colours);
