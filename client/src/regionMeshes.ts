@@ -119,8 +119,20 @@ const NATURE_PROPS = {
   column: { scale: 1.6, models: ["statueColumn", "statueColumnDamaged"] },
   standingStone: { scale: 1.3, models: ["stoneTallB", "stoneTallE"] },
 };
+/**
+ * The goods outside the general store: textured models drawn whole, as a station's parts are,
+ * rather than baked to vertex colours like the props above. Each faces the road, to the south.
+ */
+const GOODS = {
+  appleBarrel: { file: "Barrel_Apples.glb", width: 0.55 },
+  carrotCrate: { file: "FarmCrate_Carrot.glb", width: 0.75 },
+  fruitBasket: { file: "display-fruit.glb", width: 0.6 },
+} satisfies Partial<Record<PropKind, StationPart>>;
+type Goods = keyof typeof GOODS;
+const isGoods = (prop: PropKind): prop is Goods => Object.hasOwn(GOODS, prop);
+
 const PROP_MODELS: Record<
-  PropKind,
+  Exclude<PropKind, Goods>,
   {
     scale: number | [number, number, number];
     models: string[];
@@ -454,6 +466,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const color = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
 
+  const goods: { prop: Goods; at: THREE.Vector3 }[] = [];
   tiles.forEach((row, y) =>
     row.forEach((tile, x) => {
       const hash = tileHash(x, y);
@@ -520,10 +533,12 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
             }),
           ),
         );
+      } else if (isGoods(prop!)) {
+        goods.push({ prop: prop as Goods, at });
       } else {
         const options = propVariants[prop!];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const { scale, fixed } = PROP_MODELS[prop!];
+        const { scale, fixed } = PROP_MODELS[prop as Exclude<PropKind, Goods>];
         place(
           geometry,
           new THREE.Matrix4().compose(
@@ -538,6 +553,18 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     }),
   );
   scene.add(slabs);
+  const goodsModels = new Map(
+    await Promise.all(
+      Object.entries(GOODS).map(
+        async ([kind, part]) => [kind, await loadPart(part)] as const,
+      ),
+    ),
+  );
+  for (const { prop, at } of goods) {
+    const model = goodsModels.get(prop)!.clone();
+    model.position.add(at);
+    scene.add(model);
+  }
   // One model per station, at the middle of the tiles it covers.
   for (const [kind, tilesUnder] of Object.entries(footprints)) {
     if (!tilesUnder.length) continue;

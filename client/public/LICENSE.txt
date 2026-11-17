@@ -7,9 +7,8 @@ its terms first, and don't assume that anything here is yours to redistribute.
 Where the terms are recorded:
 
 icons/
-    icons/LICENSE.txt. Seventeen icons, emberiteSword.png and the ores, gems,
-    essences, pickaxe, bone, feather, berry, herb, silk and two potions it names,
-    are Craftpix files and are NOT CC0.
+    icons/LICENSE.txt. Most of the icons are Craftpix files and are NOT CC0:
+    that file names each one, and the few rendered from CC0 models.
 
 models/
     The LICENSE-*.txt files beside the models, one per pack.
@@ -46,11 +45,15 @@ models/
     tableMedium.glb
         KayKit Dungeon Pack 1.1, by Kay Lousberg (www.kaylousberg.com). CC0: see
         models/LICENSE-KayKit-Dungeon-Pack.txt.
-    cauldron.glb, mug.glb, bucketWooden.glb
+    cauldron.glb, mug.glb, bucketWooden.glb, Barrel_Apples.glb,
+    FarmCrate_Carrot.glb
         Quaternius's Fantasy Props MegaKit, free version (quaternius.com). CC0:
         see models/LICENSE-Quaternius-Fantasy-Props-MegaKit.txt.
+    display-fruit.glb
+        Kenney Mini Shop 2.1 (www.kenney.nl). CC0: see
+        models/LICENSE-Kenney-Mini-Shop.txt.
     Each of the models above was packed into one GLB with only its colour
-    texture, downscaled to 512px.
+    texture, downscaled to 512px (256px for the store's goods).
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.
