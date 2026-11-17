@@ -18,7 +18,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { HOUSE_MODELS, houseParts } from "./houseParts.ts";
+import { BUILDING_LOOKS, HOUSE_MODELS, houseParts } from "./houseParts.ts";
 import { flameLook } from "./flame.ts";
 import { STATION_LOOKS, type StationPart } from "./stationLooks.ts";
 
@@ -139,8 +139,17 @@ async function loadModel(name: string) {
   return scene.children[0] as THREE.Mesh;
 }
 
-/** A loaded OBJ as one geometry with its materials' colours baked into its vertices, so the model takes one draw call. */
-function bakeColours(model: THREE.Group) {
+// The kit's dark roof tiles against its light ones, kept in a building's own roof colour.
+const RED_TILES = 0.42 / 0.58;
+
+/**
+ * A loaded OBJ as one geometry with its materials' colours baked into its vertices, so the model
+ * takes one draw call. `look` gives the red tiles its roof colour and the cream its plaster.
+ */
+function bakeColours(
+  model: THREE.Group,
+  look?: (typeof BUILDING_LOOKS)[keyof typeof BUILDING_LOOKS],
+) {
   const parts = (model.children as THREE.Mesh[]).map((mesh) => {
     const materials = [mesh.material].flat() as THREE.MeshPhongMaterial[];
     const geometry = mesh.geometry.deleteAttribute("uv");
@@ -150,7 +159,18 @@ function bakeColours(model: THREE.Group) {
       ? geometry.groups
       : [{ start: 0, count, materialIndex: 0 }];
     for (const { start, count, materialIndex } of groups) {
-      const { r, g, b } = materials[materialIndex!]!.color;
+      const material = materials[materialIndex!]!;
+      const shade = new Map([
+        ["Red_Roof", 1],
+        ["Dark_Red_Roof", RED_TILES],
+      ]).get(material.name);
+      const { r, g, b } = !look
+        ? material.color
+        : shade
+          ? new THREE.Color(look.roof).multiplyScalar(shade)
+          : material.name === "Stucco"
+            ? material.color.clone().multiply(new THREE.Color(look.plaster))
+            : material.color;
       for (let i = start; i < start + count; i++) colours.setXYZ(i, r, g, b);
     }
     return geometry.setAttribute("color", colours);
@@ -171,7 +191,10 @@ async function loadVillageModels(names: string[]) {
         async (name) =>
           [
             name,
-            bakeColours(await loader.loadAsync(`/models/${name}.obj`)),
+            bakeColours(
+              await loader.loadAsync(`/models/${name.split(":")[0]}.obj`),
+              BUILDING_LOOKS[name.split(":")[1] as keyof typeof BUILDING_LOOKS],
+            ),
           ] as const,
       ),
     ),
@@ -448,14 +471,26 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       const site = SITE_FIELDS.find((field) => tile[field]);
       if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
-        for (const { part, angle, height } of houseParts(tiles, x, y)) {
+        for (const {
+          part,
+          angle,
+          height,
+          out = 0,
+          along = 0,
+          scale = 1,
+          tint,
+        } of houseParts(tiles, x, y)) {
+          const turn = new THREE.Quaternion().setFromAxisAngle(up, angle);
           place(
             village.get(HOUSE_MODELS[part])!,
             new THREE.Matrix4().compose(
-              new THREE.Vector3(x, top + height, y),
-              new THREE.Quaternion().setFromAxisAngle(up, angle),
-              new THREE.Vector3(1, 1, 1),
+              new THREE.Vector3(out, 0, along)
+                .applyQuaternion(turn)
+                .add(new THREE.Vector3(x, top + height, y)),
+              turn,
+              new THREE.Vector3(scale, scale, scale),
             ),
+            tint === undefined ? undefined : new THREE.Color(tint),
           );
         }
       }
