@@ -85,3 +85,12 @@ export function focusOn(x: number, z: number) {
 }
 
 renderer.setAnimationLoop(() => renderer.render(scene, camera));
+
+/** Where a tile's centre is on screen, in CSS pixels. */
+export function screenOf(x: number, z: number) {
+  const at = new THREE.Vector3(x, 0, z).project(camera);
+  return {
+    x: ((at.x + 1) / 2) * innerWidth,
+    y: ((1 - at.y) / 2) * innerHeight,
+  };
+}

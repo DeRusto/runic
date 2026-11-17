@@ -30,7 +30,7 @@ import { showPileWindow } from "./pileWindow.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
-import { focusOn, scene } from "./scene.ts";
+import { focusOn, scene, screenOf } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 import { showSocialPanel } from "./socialPanel.ts";
 import { showStoreWindow } from "./storeWindow.ts";
@@ -97,7 +97,7 @@ function enterWorld(room: WorldConnection) {
     showSmithingPanel(room),
     villagerUnder,
     showGroundItems(room),
-    showPileWindow(room),
+    showPileWindow(room, ({ x, y }) => screenOf(x, y)),
     otherPlayerUnder,
     openMenu,
   );
