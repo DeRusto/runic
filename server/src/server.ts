@@ -25,7 +25,12 @@ export async function startServer(port: number, builtClient = BUILT_CLIENT) {
   server.router = accountRoutes;
   server.onShutdown(() => database.shutdown());
   server.define(WORLD_ROOM, WorldRoom);
-  await server.listen(port);
+  try {
+    await server.listen(port);
+  } catch (error) {
+    await database.shutdown();
+    throw error;
+  }
   await matchMaker.createRoom(WORLD_ROOM, {});
   return server;
 }

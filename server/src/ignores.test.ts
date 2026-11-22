@@ -17,7 +17,7 @@ import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
 let port = await freePort();
-let server: Awaited<ReturnType<typeof startServer>>;
+let serverStarted: ReturnType<typeof startServer> | undefined;
 
 /** A logged-in player, every chat-box line they have received, and the last lists sent to them. */
 type Player = {
@@ -59,7 +59,8 @@ let bystander: Player;
 beforeAll(async () => {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      server = await startServer(port);
+      serverStarted = startServer(port);
+      await serverStarted;
       break;
     } catch (error) {
       if (attempt === 2 || (error as NodeJS.ErrnoException).code !== "EACCES")
@@ -74,7 +75,10 @@ beforeAll(async () => {
   pest = await joinAs("IgPest");
   bystander = await joinAs("IgBystander");
 }, 30_000);
-afterAll(() => server?.gracefullyShutdown(false));
+afterAll(async () => {
+  const server = await serverStarted?.catch(() => undefined);
+  await server?.gracefullyShutdown(false);
+}, 30_000);
 beforeEach(() => {
   for (const { lines } of [me, pest, bystander]) lines.length = 0;
 });
