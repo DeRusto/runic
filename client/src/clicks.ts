@@ -79,35 +79,50 @@ export function walkOnClick(
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
   };
 
-  /** Pickpockets a mark or villager, unless the rules refuse, which the chat says why (#250, #251). */
-  const pickpocket = (target: PickpocketTarget, x: number, y: number) => {
+  /**
+   * One Thieving attempt on a target at (x, y): `refusal` says why the rules refuse it, which the
+   * chat shows instead of sending the intent.
+   */
+  const thieve = (
+    refusal: (thievingXp: number) => string | undefined,
+    send: () => void,
+    x: number,
+    y: number,
+  ) => {
     const me = room.state.players.get(room.sessionId);
     if (!me) return;
-    const refusal = pickpocketRefusal(PICKPOCKETS[target], me.thievingXp);
-    if (refusal) return printChatLine(refusal);
+    const refused = refusal(me.thievingXp);
+    if (refused) return printChatLine(refused);
     showMarker(x, y);
-    room.send(PICKPOCKET_INTENT, target);
+    send();
   };
 
-  /** Steals from one of Marta's stalls, unless the rules refuse, which the chat says why (#252). */
-  const steal = (stall: StallKind, x: number, y: number) => {
-    const me = room.state.players.get(room.sessionId);
-    if (!me) return;
-    const refusal = stallRefusal(stall, me.thievingXp);
-    if (refusal) return printChatLine(refusal);
-    showMarker(x, y);
-    room.send(STEAL_INTENT, stall);
-  };
+  /** Pickpockets a mark or villager (#250, #251). */
+  const pickpocket = (target: PickpocketTarget, x: number, y: number) =>
+    thieve(
+      (xp) => pickpocketRefusal(PICKPOCKETS[target], xp),
+      () => room.send(PICKPOCKET_INTENT, target),
+      x,
+      y,
+    );
 
-  /** Opens a strongbox, unless the rules refuse, which the chat says why (#253). */
-  const openStrongbox = (strongbox: StrongboxKind, x: number, y: number) => {
-    const me = room.state.players.get(room.sessionId);
-    if (!me) return;
-    const refusal = strongboxRefusal(strongbox, me.thievingXp);
-    if (refusal) return printChatLine(refusal);
-    showMarker(x, y);
-    room.send(OPEN_INTENT, strongbox);
-  };
+  /** Steals from one of Marta's stalls (#252). */
+  const steal = (stall: StallKind, x: number, y: number) =>
+    thieve(
+      (xp) => stallRefusal(stall, xp),
+      () => room.send(STEAL_INTENT, stall),
+      x,
+      y,
+    );
+
+  /** Opens a strongbox (#253). */
+  const openStrongbox = (strongbox: StrongboxKind, x: number, y: number) =>
+    thieve(
+      (xp) => strongboxRefusal(strongbox, xp),
+      () => room.send(OPEN_INTENT, strongbox),
+      x,
+      y,
+    );
 
   const aim = (event: MouseEvent) => {
     pointer.set(
