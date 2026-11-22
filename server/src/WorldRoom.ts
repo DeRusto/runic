@@ -225,6 +225,8 @@ export class WorldRoom extends Room {
       readSave(client.auth.id),
       client.auth.username,
     );
+    const emptied = this.sim.emptiedStallsFor(client.sessionId);
+    if (emptied.length) client.send(EVENTS, emptied);
     // A take-over is the same player logging in again, so their friends hear nothing.
     if (!loggedInElsewhere) tellFriendedBy(this, client, "logged in");
   }

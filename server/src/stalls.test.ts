@@ -152,7 +152,18 @@ describe("Marta's stalls", () => {
     steal(sim, "fish");
     sim.removePlayer("a");
     addThief(sim, "a2", "ada", xpForLevel(25));
+    expect(sim.emptiedStallsFor("a2")).toEqual([
+      {
+        type: "stallEmptied",
+        player: "a2",
+        stall: "fish",
+        ticks: STALLS.fish.emptyTicks,
+      },
+    ]);
     runTicks(sim, PICKPOCKET_INTERVAL_TICKS);
+    expect(sim.emptiedStallsFor("a2")[0]?.ticks).toBe(
+      STALLS.fish.emptyTicks - PICKPOCKET_INTERVAL_TICKS,
+    );
     const events = steal(sim, "fish", "a2");
     expect(itemsHeld(sim, "a2")).toBe(0);
     expect(lines(events, "a2")).toEqual([

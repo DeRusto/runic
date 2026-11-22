@@ -18,7 +18,13 @@ export class PlayerTimers {
 
   /** Whether `player`'s timer on `thing` is still running on `tick`. */
   running(player: string, thing: string, tick: number) {
-    return tick < (this.endTicks.get(PlayerTimers.key(player, thing)) ?? 0);
+    return this.remaining(player, thing, tick) > 0;
+  }
+
+  /** Ticks left on `player`'s timer for `thing`. */
+  remaining(player: string, thing: string, tick: number) {
+    const end = this.endTicks.get(PlayerTimers.key(player, thing));
+    return Math.max(0, (end ?? tick) - tick);
   }
 
   /** Forgets every timer that has ended by `tick`, so the map holds only running ones. */

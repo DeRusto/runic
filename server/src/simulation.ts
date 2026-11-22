@@ -1421,6 +1421,22 @@ export class Simulation {
     );
   }
 
+  /** Restores the counters this player emptied before leaving. */
+  emptiedStallsFor(id: string) {
+    const player = this.state.players.get(id);
+    if (!player) return [];
+    return [...this.stalls.keys()].flatMap((stall) => {
+      const ticks = this.stallsEmptied.remaining(
+        player.username,
+        stall,
+        this.state.tick,
+      );
+      return ticks
+        ? [{ type: "stallEmptied" as const, player: id, stall, ticks }]
+        : [];
+    });
+  }
+
   /** One tick, in the order of spec §6. */
   tick() {
     this.state.tick++;
