@@ -25,7 +25,7 @@ export const PICKPOCKET_INTENT = "pickpocket";
 export const STEAL_INTENT = "steal";
 /** The open intent's message type, for clicking a strongbox; its payload is the strongbox's kind, a `StrongboxKind` (#253). */
 export const OPEN_INTENT = "open";
-/** Click an Agility obstacle. The payload is its ObstacleKind. */
+/** The cross intent’s message type. Its payload is the obstacle’s ObstacleKind. */
 export const CROSS_INTENT = "cross";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";

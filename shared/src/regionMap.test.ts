@@ -483,6 +483,13 @@ describe("obstacle placements", () => {
       load({ ...map, ...withLayer("features", [0, 3, 4, 0, 0, 5], map) }),
     ).toThrow("balanceBeam needs a clear landing");
   });
+  it("refuses an unknown obstacle", () => {
+    const map = mapWith({}, [respawn, { ...beam, name: "unknown" }]);
+    expect(() =>
+      load({ ...map, ...withLayer("features", [0, 3, 4, 0, 0, 0], map) }),
+    ).toThrow('unknown obstacle "unknown"');
+  });
+
   it.each([
     [
       "a landing outside the map",

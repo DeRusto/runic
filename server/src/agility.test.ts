@@ -17,10 +17,12 @@ test("two players share a crossing and clicks are discarded until both land", ()
     sim.queueWalk("a", { x: 2, y: 2 });
     sim.queueLogout("a");
     sim.setStance("a", "precise");
+    sim.pinSkill("a", { skill: "Attack", pinned: false });
     expect(player("a")).toMatchObject({ x: 1, y: 1, agilityXp: 0 });
     sim.tick();
   }
   expect(player("a").stance).toBe("balanced");
+  expect(player("a").pinnedSkills).toContain("Attack");
   sim.setStance("a", "forceful");
   expect(player("a").stance).toBe("forceful");
   expect(sim.loggedOut).toEqual([]);
@@ -43,12 +45,24 @@ test("enemies can hit a player only after the obstacle landing", () => {
   tiles[1]![1] = { ...tiles[1]![1]!, obstacle: "balanceBeam" };
   const sim = new Simulation(tiles, () => 0);
   sim.addPlayer("a");
-  sim.queueCross("a", "balanceBeam");
-  for (let tick = 0; tick < 4; tick++) sim.tick();
-  expect(sim.events.some(({ type }) => type === "enemySwing")).toBe(false);
-  expect(sim.state.players.get("a")!.health).toBe(1000);
+  const enemySwung = () =>
+    sim.events.some(
+      (event) => event.type === "enemySwing" && event.player === "a",
+    );
   for (let tick = 0; tick < 10; tick++) sim.tick();
-  expect(sim.events.some(({ type }) => type === "enemySwing")).toBe(true);
+  expect(enemySwung()).toBe(true);
+
+  sim.events.length = 0;
+  sim.queueCross("a", "balanceBeam");
+  for (let tick = 0; tick < 4; tick++) {
+    sim.tick();
+    expect(sim.isBusy("a")).toBe(true);
+    expect(enemySwung()).toBe(false);
+  }
+  sim.tick();
+  expect(sim.isBusy("a")).toBe(false);
+  for (let tick = 0; tick < 10; tick++) sim.tick();
+  expect(enemySwung()).toBe(true);
 });
 
 test("an out-of-order crossing still earns experience and resets the lap", () => {
@@ -102,4 +116,17 @@ test("a new player can walk from the village and complete the Southfield lap", (
     agilityXp: 200,
     masteryXp: 14,
   });
+});
+
+test("invalid and absent obstacles leave the current crossing intent in place", () => {
+  const tiles = parseRegion("TTTTTT\nTR...T\nT....T\nTTTTTT");
+  tiles[1]![1] = { ...tiles[1]![1]!, obstacle: "balanceBeam" };
+  const sim = new Simulation(tiles, () => 0);
+  sim.addPlayer("a");
+
+  sim.queueCross("a", "balanceBeam");
+  for (const payload of [7, "unknown", "hurdle"]) sim.queueCross("a", payload);
+  for (let tick = 0; tick < 5; tick++) sim.tick();
+
+  expect(sim.saveOf("a")).toMatchObject({ x: 3, y: 1, agilityXp: 30 });
 });

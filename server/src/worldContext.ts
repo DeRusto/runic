@@ -139,6 +139,7 @@ export class World {
     );
   }
 
+  /** Whether the player has started crossing and has yet to land. */
   isCrossing(id: string) {
     return this.unsyncedPlayers.get(id)?.crossing !== undefined;
   }

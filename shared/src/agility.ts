@@ -10,6 +10,7 @@ export const OBSTACLES = {
 
 export type ObstacleKind = keyof typeof OBSTACLES;
 
+/** The order in which crossings count toward a Southfield lap. */
 export const COURSE_ORDER: readonly ObstacleKind[] = [
   "balanceBeam",
   "hurdle",
@@ -24,6 +25,7 @@ export const COURSE_LAP_XP = 80;
 export const isObstacleKind = (kind: unknown): kind is ObstacleKind =>
   typeof kind === "string" && Object.hasOwn(OBSTACLES, kind);
 
+/** The landing tile given an obstacle and its placed start. */
 export function obstacleLanding(kind: ObstacleKind, start: Tile): Tile {
   const { dx, dy } = OBSTACLES[kind];
   return { x: start.x + dx, y: start.y + dy };

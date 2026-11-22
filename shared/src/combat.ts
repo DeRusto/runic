@@ -17,14 +17,15 @@ import { levelFor, type XpField } from "./skills.ts";
 import { meleeXpOf, type Stance } from "./stances.ts";
 import { avoidanceOf, blockOf, enemyHitChance, hitOf } from "./stats.ts";
 
+// Agility spec §1.
+const BASE_CRIT_PER_THOUSAND = 100;
+const CRIT_PER_THOUSAND_PER_LEVEL = 1;
+
 /** Chance from 0 to 1 that a landed player hit is critical (Agility spec §1). */
 export const playerCritChance = (agilityXp: number) =>
   (BASE_CRIT_PER_THOUSAND +
     (levelFor(agilityXp) - 1) * CRIT_PER_THOUSAND_PER_LEVEL) /
   1000;
-
-const BASE_CRIT_PER_THOUSAND = 100;
-const CRIT_PER_THOUSAND_PER_LEVEL = 1;
 
 type Worn = Partial<Record<GearSlot, string>>;
 

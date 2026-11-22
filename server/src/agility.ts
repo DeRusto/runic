@@ -27,6 +27,7 @@ export class Agility {
       return { kind: "approachingObstacle", obstacle };
   }
 
+  /** The start of an obstacle already validated by the crossing intent. */
   startOf(obstacle: ObstacleKind) {
     return this.starts.get(obstacle)!;
   }
