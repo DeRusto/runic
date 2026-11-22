@@ -3,9 +3,6 @@ import {
   addItems,
   AUGMENTATIONS,
   attemptChance,
-  COINS,
-  dealRefusal,
-  dealTotals,
   DELICIOUS_BUFF_INTERVAL_TICKS,
   DELICIOUS_BUFF_PERCENT,
   DELICIOUS_BUFF_TICKS,
@@ -24,7 +21,6 @@ import {
   GEAR_SLOTS,
   gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
-  INVENTORY_SLOTS,
   ITEMS,
   levelFor,
   LIGHTING_TICKS,
@@ -58,7 +54,6 @@ import {
   rollFinds,
   findItemOf,
   siteId,
-  SHELF_SLOTS,
   SKILLS,
   slotFor,
   takeRefusal,
@@ -69,7 +64,6 @@ import {
   WALK_TICKS_PER_TILE,
   ENEMIES,
   type Deal,
-  type DealLine,
   type VillagerId,
   type GatheringLeftField,
   type GatheringSkill,
@@ -102,7 +96,7 @@ import { canBeHit } from "./busy.ts";
 import { Enemies, Enemy } from "./enemies.ts";
 import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
-import { Shelf } from "./shelf.ts";
+import { GeneralStore } from "./generalStore.ts";
 import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
@@ -123,20 +117,6 @@ import {
   maxHealthTotal,
   World,
 } from "./worldContext.ts";
-
-/**
- * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
- * `max` items, each with a whole count above 0.
- */
-function dealLines(list: unknown, max: number) {
-  if (!Array.isArray(list) || list.length > max) return undefined;
-  const lines = list.map((line) => ({ item: line?.item, count: line?.count }));
-  return lines.every(
-    (line) => typeof line.item === "string" && isAmount(line.count),
-  )
-    ? (lines as DealLine[])
-    : undefined;
-}
 
 /** A site pool, with the ticks its run-out sites come back on, soonest first. */
 type SitePoolState = SitePool & { comebackTicks: number[] };
@@ -177,10 +157,10 @@ export class Simulation {
   private strongboxes = new Map<StrongboxKind, Tile>();
   /** The strongboxes each player has emptied, by username (#253). Not saved: a restart refills them. */
   private strongboxesEmptied = new PlayerTimers();
-  private readonly shelf: Shelf;
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
+  private readonly store: GeneralStore;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -199,7 +179,7 @@ export class Simulation {
     this.quests = new Quests(this.world);
     this.windows = new VillagerWindows(this.world, this.quests);
     this.bank = new Bank(this.world, this.windows);
-    this.shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
+    this.store = new GeneralStore(this.world, this.windows);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { villager, mark, stall, strongbox, station } = kind;
@@ -610,50 +590,9 @@ export class Simulation {
     this.windows.close(id, "store");
   }
 
-  /**
-   * Settles both trays at once, sales first so their coins pay for the buys (village spec §5). It comes
-   * straight off the network, so anything of the wrong shape, or from a player without the
-   * store open, is ignored. Like a drag it skips the queue and touches no action.
-   */
+  /** Comes straight off the network; see `GeneralStore.deal`. */
   deal(id: string, intent: Deal) {
-    const player = this.state.players.get(id);
-    if (
-      !player ||
-      !this.world.canAct(id) ||
-      !this.windows.windowOf(id, "store")
-    )
-      return;
-    const buy = dealLines(intent?.buy, SHELF_SLOTS);
-    const sell = dealLines(intent?.sell, INVENTORY_SLOTS);
-    if (!buy || !sell || (!buy.length && !sell.length)) return;
-    const deal = { buy, sell };
-    const tell = (line: string) =>
-      this.events.push({ type: "told", player: id, line });
-    const answer = (done: boolean) =>
-      this.events.push({ type: "dealAnswered", player: id, done });
-    const refusal = dealRefusal(deal, player, this.state);
-    if (refusal) {
-      tell(refusal);
-      return answer(false);
-    }
-    const { inventory, inventoryCounts } = player;
-    const { tick } = this.state;
-    for (const { item, count } of sell) {
-      removeItems(inventory, inventoryCounts, item, count);
-      this.shelf.stock(item, count, tick);
-    }
-    const { pay, get } = dealTotals(deal);
-    addItems(inventory, inventoryCounts, COINS, get);
-    removeItems(inventory, inventoryCounts, COINS, pay);
-    for (const { item, count } of buy) {
-      this.shelf.take(item, count, tick);
-      addItems(inventory, inventoryCounts, item, count);
-    }
-    // What waited on a slot meant what was there before.
-    this.world.queuedDrops.delete(id);
-    this.world.queuedEats.delete(id);
-    tell(`Deal done: you paid ${pay} coins and got ${get}.`);
-    answer(true);
+    this.store.deal(id, intent);
   }
 
   /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
@@ -945,7 +884,7 @@ export class Simulation {
     for (const enemy of this.enemies.returnDead(this.state.tick))
       this.events.push({ type: "enemyReturned", enemy });
     this.world.groundItems.advance(this.state.tick);
-    this.shelf.advance(this.state.tick);
+    this.store.advance(this.state.tick);
   }
 
   private applyIntents() {
