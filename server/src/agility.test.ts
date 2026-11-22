@@ -16,9 +16,13 @@ test("two players share a crossing and clicks are discarded until both land", ()
   for (let tick = 0; tick < 4; tick++) {
     sim.queueWalk("a", { x: 2, y: 2 });
     sim.queueLogout("a");
+    sim.setStance("a", "precise");
     expect(player("a")).toMatchObject({ x: 1, y: 1, agilityXp: 0 });
     sim.tick();
   }
+  expect(player("a").stance).toBe("balanced");
+  sim.setStance("a", "forceful");
+  expect(player("a").stance).toBe("forceful");
   expect(sim.loggedOut).toEqual([]);
   for (const id of ["a", "b"]) {
     expect(sim.isBusy(id)).toBe(false);

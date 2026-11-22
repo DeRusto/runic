@@ -33,6 +33,7 @@ export class Fighting {
 
   /** Comes straight off the network, so anything but a stance is ignored. Like pins, it skips the queue: the next swing reads it. */
   setStance(id: string, stance: string) {
+    if (this.world.isCrossing(id)) return;
     const player = this.world.state.players.get(id);
     if (player && isStance(stance)) player.stance = stance;
   }

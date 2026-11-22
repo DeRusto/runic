@@ -254,6 +254,7 @@ export class Figure {
   private to: THREE.Vector3;
   private slideStart = -Infinity;
   private slideMs = SLIDE_MS;
+  private crossingStart?: THREE.Vector3;
   private yaw = 0;
   private lastFrame = 0;
   private running = false;
@@ -446,6 +447,11 @@ export class Figure {
       to.set(destination.x, to.y, destination.y);
       this.slideStart = now;
       this.slideMs = crossing?.ms ?? SLIDE_MS;
+      // The final step onto the start and the crossing can arrive in the same patch.
+      this.crossingStart =
+        crossing && (from.x !== tile.x || from.z !== tile.y)
+          ? new THREE.Vector3(tile.x, to.y, tile.y)
+          : undefined;
       this.yaw = Math.atan2(dx, dz);
     } else if (
       faces &&
@@ -454,11 +460,19 @@ export class Figure {
     ) {
       this.yaw = Math.atan2(faces.x - tile.x, faces.y - tile.y);
     }
-    model.position.lerpVectors(
-      from,
-      to,
-      Math.min((now - this.slideStart) / this.slideMs, 1),
-    );
+    const elapsed = now - this.slideStart;
+    const start = this.crossingStart;
+    if (start && elapsed < TICK_MS) {
+      model.position.lerpVectors(from, start, elapsed / TICK_MS);
+      this.yaw = Math.atan2(start.x - from.x, start.z - from.z);
+    } else if (start) {
+      const progress = (elapsed - TICK_MS) / (this.slideMs - TICK_MS);
+      model.position.lerpVectors(start, to, Math.min(progress, 1));
+      if (!faces || elapsed < this.slideMs)
+        this.yaw = Math.atan2(to.x - start.x, to.z - start.z);
+    } else {
+      model.position.lerpVectors(from, to, Math.min(elapsed / this.slideMs, 1));
+    }
 
     const running =
       now - this.slideStart < this.slideMs + RUN_HOLD_MS - SLIDE_MS;
