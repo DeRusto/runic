@@ -104,6 +104,18 @@ describe("loadRegion", () => {
     ]);
   });
 
+  it("stands a mark on its tile, where it blocks like a villager (#250)", () => {
+    const { tiles } = load(
+      mapWith({}, [respawn, { type: "mark", name: "drunk", ...at(1, 1) }]),
+    );
+    expect(tiles[1]![1]).toEqual({
+      ground: "grass",
+      mark: "drunk",
+      blocks: true,
+    });
+    expect(tiles[1]![1]).toEqual(parseRegion("U")[0]![0]);
+  });
+
   it("loads what the grid shorthand parses, so test fixtures mean the same", () => {
     const { tiles } = load(mapWith());
     expect(tiles[0]![0]).toEqual(parseRegion("R")[0]![0]);
@@ -251,6 +263,11 @@ describe("loadRegion", () => {
     [
       "an unknown NPC",
       mapWith({}, [respawn, { type: "npc", name: "Bob", ...at(1, 1) }]),
+      "Bob",
+    ],
+    [
+      "an unknown mark",
+      mapWith({}, [respawn, { type: "mark", name: "Bob", ...at(1, 1) }]),
       "Bob",
     ],
     [

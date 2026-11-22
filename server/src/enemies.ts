@@ -47,6 +47,8 @@ export type EnemyWorld = {
     id: string;
     player: Fighter & { dead: boolean };
     dropped: boolean;
+    /** False while busy in a way enemies can't hit, such as Agility's crossing (#236). */
+    hittable: boolean;
   }>;
   /** A player, live, so a swing's damage shows at once; undefined once they have left. */
   player(id: string): Fighter | undefined;
@@ -230,9 +232,9 @@ export class Enemies {
     );
     let nearest: string | undefined;
     let nearestTiles = noticeTiles + 1;
-    for (const { id, player, dropped } of world.players()) {
+    for (const { id, player, dropped, hittable } of world.players()) {
       const tiles = tilesApart(enemy, player);
-      if (player.dead || dropped || chased.has(id)) continue;
+      if (player.dead || dropped || !hittable || chased.has(id)) continue;
       // Strictly nearer, so a tie stays with whoever was checked first.
       if (tiles >= nearestTiles) continue;
       nearest = id;

@@ -372,6 +372,7 @@ const SAVED = {
   runecraftingXp: 16,
   leatherworkingXp: 17,
   jewelsmithingXp: 18,
+  thievingXp: 19,
   blockingXp: 6,
   masteryXp: 7,
   masteryHundredths: 8,

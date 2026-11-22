@@ -684,3 +684,46 @@ describe("the mine event", () => {
     expect(overhead.pop).toHaveBeenCalledWith("Mined!", "pick");
   });
 });
+
+describe("the stunned event", () => {
+  const holdBlow = vi.fn();
+  const showBlow = vi.fn();
+  const send = (damage: number) => {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1]([{ type: "stunned", player: "a", damage }]);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    Object.assign(figure, { playingOnce: false, downed: false });
+    Object.assign(overhead, { holdBlow, showBlow });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  test("shows a failed pickpocket's hit at once, with Hit_A (#250)", () => {
+    send(100);
+    vi.advanceTimersByTime(0);
+    expect(showBlow).toHaveBeenCalledWith(100, false);
+    expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+
+  test("holds the hit off the bar before showing it, so the bar ends on the true health", () => {
+    send(100);
+    vi.advanceTimersByTime(0);
+    expect(holdBlow).toHaveBeenCalledWith(100);
+    expect(holdBlow.mock.invocationCallOrder[0]).toBeLessThan(
+      showBlow.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  test("a hit capped to 0 shows no Hit_A", () => {
+    send(0);
+    vi.advanceTimersByTime(0);
+    expect(figure.once).not.toHaveBeenCalled();
+  });
+});

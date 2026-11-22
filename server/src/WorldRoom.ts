@@ -41,6 +41,7 @@ import {
   TICK_DRIVER_MS,
   TICK_MS,
   VISIT_INTENT,
+  PICKPOCKET_INTENT,
   WALK_INTENT,
   type ChatLine,
   type GatheringIntent,
@@ -94,6 +95,8 @@ export class WorldRoom extends Room {
       client: Client,
       visit: { villager: string; then?: string },
     ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
+    [PICKPOCKET_INTENT]: (client: Client, mark: string) =>
+      this.sim.queuePickpocket(client.sessionId, mark),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),

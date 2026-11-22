@@ -74,6 +74,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
     runecraftingXp: 0,
     leatherworkingXp: 0,
     jewelsmithingXp: 0,
+    thievingXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     pinnedSkills,
@@ -405,6 +406,7 @@ describe("the Skills tab", () => {
       "Runecrafting 1",
       "Leatherworking 1",
       "Jewelsmithing 1",
+      "Thieving 1",
       "Blocking 1",
       "Mastery 1",
     ]);

@@ -17,6 +17,8 @@ export const MAKE_INTENT = "make";
  * Arriving opens the conversation, or with `then`, a `DialogueAction` the conversation offers, runs that instead.
  */
 export const VISIT_INTENT = "visit";
+/** The pickpocket intent's message type, for clicking a mark's Pickpocket; its payload is the mark's id (#250). */
+export const PICKPOCKET_INTENT = "pickpocket";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
@@ -219,7 +221,9 @@ export type WorldEvent =
   /** The player's bank window opens (village spec §6). */
   | { type: "bankOpened"; player: string }
   /** The server shut the bank window, on a walk away or a hit. */
-  | { type: "bankClosed"; player: string };
+  | { type: "bankClosed"; player: string }
+  /** A failed pickpocket's hit, in hundredths of a Hitpoints level, and the stun that follows (#250). */
+  | { type: "stunned"; player: string; damage: number };
 
 export * from "./bank.ts";
 export * from "./combat.ts";
@@ -238,6 +242,7 @@ export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./regionMap.ts";
 export * from "./skills.ts";
+export * from "./thieving.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";
