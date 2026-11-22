@@ -218,7 +218,8 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     swing: () => ({ clip: "Punch_Jab", contactMs: 350 }),
     death: "Death01",
     hit: "Hit_Chest",
-    returns: "respawn",
+    // Imp.glb has no Spawn_Ground clip, so it scales back up like the Spider.
+    returns: "reappear",
   },
   // The Ultimate Animated Animals Bull, as a black ox, with that pack's flinch.
   tarnOx: {

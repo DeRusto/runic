@@ -1,4 +1,4 @@
-import { parseRegion, type WorldEvent } from "@runic/shared";
+import { ENEMIES, parseRegion, type WorldEvent } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 import type { PlayerSave } from "./saves.ts";
@@ -98,6 +98,8 @@ describe("a Bristleback", () => {
     const swings = events(seen, "enemySwing");
     expect(swings.length).toBeGreaterThan(0);
     expect(s.state.players.get("a")!.health).toBe(900);
+    // A damage roll of 0 gives the least, so the ceiling is checked on the stat.
+    expect(ENEMIES.bristleback.maxDamage).toBe(100);
   });
 });
 

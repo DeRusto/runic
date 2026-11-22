@@ -29,7 +29,7 @@ This spec records the slice as built. Phase 3 later replaced Discard with Drop e
 
 ## 3. The region
 
-- Still one region in one room, now about 96×64 tiles. (It has since grown to 128×96 for [Runestone Hollow](runestone-hollow.md).) The new columns go on the east side, so every saved tile keeps its meaning. The draft may go wider if the Boneyard needs it.
+- Still one region in one room, now about 96×64 tiles. The new columns go on the east side, so every saved tile keeps its meaning. (It has since grown to 128×96 for [Runestone Hollow](runestone-hollow.md), east and south, which also keeps every saved tile.) The draft may go wider if the Boneyard needs it.
 - New grid characters:
 
 | Char | Tile | Blocks |

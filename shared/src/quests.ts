@@ -1,5 +1,6 @@
 import { VILLAGERS, type VillagerId } from "./dialogue.ts";
-import type { ItemId } from "./items.ts";
+import { itemName, type HasInventory, type ItemId } from "./items.ts";
+import { countOf } from "./making.ts";
 import type { VeinKind } from "./region.ts";
 import type { XpField } from "./skills.ts";
 import type { Tool } from "./tools.ts";
@@ -243,4 +244,16 @@ export function openingNodeOf(
     .filter((quest) => progresses?.has(quest.id))
     .at(-1);
   return earlier?.doneNode ?? VILLAGERS[villager].start;
+}
+
+/** A stage's journal text, and for a stage of several turn-ins the ones the player doesn't carry yet (Runestone Hollow spec §4). */
+export function journalLine(stage: QuestStage, player: HasInventory) {
+  const turnIns = turnInsOf(stage);
+  if (turnIns.length < 2) return stage.journal;
+  const missing = turnIns
+    .filter(({ item, count }) => countOf(item, player) < count)
+    .map(({ item }) => itemName(item));
+  return missing.length
+    ? `${stage.journal} Still needed: ${missing.join(", ")}.`
+    : `${stage.journal} You have them all.`;
 }

@@ -1,6 +1,7 @@
 import {
   currentQuestOf,
   ITEMS,
+  journalLine,
   nodesOf,
   openingNodeOf,
   QUESTS,
@@ -187,5 +188,24 @@ describe("the smithy's stations are Odo's to open", () => {
         questStages: [QUEST_DONE],
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("the journal", () => {
+  test("names the proof essences the player doesn't carry yet", () => {
+    const proof = stageOf(QUESTS.odoEssence, "proof")!;
+    const carrying = (...inventory: string[]) => ({
+      inventory,
+      inventoryCounts: inventory.map(() => 1),
+    });
+    expect(journalLine(proof, carrying("ironEssence"))).toBe(
+      `${proof.journal} Still needed: Copper essence, Emberite essence.`,
+    );
+    expect(
+      journalLine(
+        proof,
+        carrying("copperEssence", "ironEssence", "emberiteEssence"),
+      ),
+    ).toBe(`${proof.journal} You have them all.`);
   });
 });

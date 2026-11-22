@@ -209,7 +209,7 @@ _Avoid_: Frame, turn, cycle
 ### Quests
 
 **Quest**:
-Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first, and the strange material he teaches identification from is his second. Each quest is a row of the shared quests table, and the server holds each player's progress in it. A villager's quests run as one chain, in the order they stand in the table (#231, #232). Phase 11 owns the quests beyond these.
+Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first, the strange material and vein essences he teaches identification from are his second, and Hollis's offering that opens the rune altar follows them. Each quest is a row of the shared quests table, and the server holds each player's progress in it. A villager's quests run as one chain, in the order they stand in the table (#231, #232). Phase 11 owns the quests beyond these.
 _Avoid_: Mission, task (that's the Action), errand
 
 **Stage**:

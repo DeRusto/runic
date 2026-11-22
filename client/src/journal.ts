@@ -1,4 +1,10 @@
-import { QUESTS, QUEST_DONE, stageOf, type QuestId } from "@runic/shared";
+import {
+  QUESTS,
+  QUEST_DONE,
+  journalLine,
+  stageOf,
+  type QuestId,
+} from "@runic/shared";
 import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 
@@ -24,35 +30,34 @@ export function showJournal(room: WorldConnection) {
 
   const points = document.getElementById("journal-points")!;
   const list = document.getElementById("journal-quests")!;
-  /** Only redraws when the quests or points change, or each patch would lose a showing tooltip. */
+  /** Only redraws when the shown text changes, or each patch would lose a showing tooltip. */
   let drawn = "";
   room.onStateChange((state) => {
     const me = state.players.get(room.sessionId);
     if (!me) return;
-    const ids = [...me.quests];
     const stages = [...me.questStages];
-    const next = `${me.questPoints}:${ids.join()}→${stages.join()}`;
+    const quests = [...me.quests].flatMap((id, at) => {
+      if (!Object.hasOwn(QUESTS, id)) return [];
+      const quest = QUESTS[id as QuestId];
+      const done = stages[at] === QUEST_DONE;
+      const stage = stageOf(quest, stages[at]);
+      const line = done ? "Completed." : stage ? journalLine(stage, me) : "";
+      return [{ title: quest.title, done, line }];
+    });
+    const next = `${me.questPoints}:${JSON.stringify(quests)}`;
     if (next === drawn) return;
     drawn = next;
     points.textContent = `Quest points: ${me.questPoints}`;
-    const rows = ids
-      .map((id, at) => {
-        if (!Object.hasOwn(QUESTS, id)) return undefined;
-        const quest = QUESTS[id as QuestId];
-        const stage = stages[at]!;
-        const done = stage === QUEST_DONE;
-        const row = document.createElement("li");
-        const title = document.createElement("b");
-        title.textContent = quest.title;
-        const text = document.createElement("span");
-        text.textContent = done
-          ? "Completed."
-          : (stageOf(quest, stage)?.journal ?? "");
-        row.dataset.done = String(done);
-        row.append(title, text);
-        return row;
-      })
-      .filter((row) => row !== undefined);
+    const rows = quests.map(({ title: name, done, line }) => {
+      const row = document.createElement("li");
+      const title = document.createElement("b");
+      title.textContent = name;
+      const text = document.createElement("span");
+      text.textContent = line;
+      row.dataset.done = String(done);
+      row.append(title, text);
+      return row;
+    });
     list.replaceChildren(...(rows.length ? rows : [empty()]));
   });
 }
