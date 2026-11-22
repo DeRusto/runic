@@ -122,7 +122,10 @@ import {
   pickpocketRefusal,
   isStallKind,
   stallRefusal,
+  isStrongboxKind,
+  strongboxRefusal,
   type StallKind,
+  type StrongboxKind,
   type MarkId,
   type PickpocketTarget,
 } from "@runic/shared";
@@ -132,7 +135,7 @@ import { GroundItem, GroundItems } from "./groundItems.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import { PlayerTimers } from "./playerTimers.ts";
-import { pickpocket, stealFromStall } from "./thieving.ts";
+import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
 import {
   findPath,
   legalSteps,
@@ -300,6 +303,8 @@ type UnsyncedAction =
   | { kind: "pickpocketing"; target: PickpocketTarget }
   /** One theft on arrival, once the attempt interval allows (#252). */
   | { kind: "stealing"; stall: StallKind }
+  /** One attempt on arrival, once the attempt interval allows (#253). */
+  | { kind: "opening"; strongbox: StrongboxKind }
   /**
    * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
    * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
@@ -330,7 +335,8 @@ type QueuedAction =
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
   | { kind: "pickpocketing"; target: PickpocketTarget }
-  | { kind: "stealing"; stall: StallKind };
+  | { kind: "stealing"; stall: StallKind }
+  | { kind: "opening"; strongbox: StrongboxKind };
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -388,6 +394,10 @@ export class Simulation {
   /** The stalls each player has emptied, and those Marta has closed to them, by username (#252). Not saved: a restart refills and reopens them. */
   private stallsEmptied = new PlayerTimers();
   private stallsClosed = new PlayerTimers();
+  /** Each strongbox by its kind: the region has at most one of each (#253). */
+  private strongboxes = new Map<StrongboxKind, Tile>();
+  /** The strongboxes each player has emptied, by username (#253). Not saved: a restart refills them. */
+  private strongboxesEmptied = new PlayerTimers();
   /**
    * Each player's open villager window, the villager they must stay beside, and for a
    * conversation the node whose choices they can pick from, if any. A player has at most one.
@@ -428,10 +438,11 @@ export class Simulation {
     this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { villager, mark, stall, station } = kind;
+        const { villager, mark, stall, strongbox, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
         if (mark) this.marks.set(mark, { x, y });
         if (stall) this.stalls.set(stall, { x, y });
+        if (strongbox) this.strongboxes.set(strongbox, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const siteKind = kind[GATHERING[skill].site];
@@ -799,6 +810,15 @@ export class Simulation {
     if (!isStallKind(stall) || !this.stalls.has(stall)) return;
     if (stallRefusal(stall, player.thievingXp)) return;
     this.queuedActions.set(id, { kind: "stealing", stall });
+  }
+
+  /** `strongbox` comes straight off the network, so anything but a strongbox standing in this region is ignored, as is a click the rules refuse (#253). */
+  queueOpen(id: string, strongbox: unknown) {
+    const player = this.state.players.get(id);
+    if (!player || !this.canAct(id) || typeof strongbox !== "string") return;
+    if (!isStrongboxKind(strongbox) || !this.strongboxes.has(strongbox)) return;
+    if (strongboxRefusal(strongbox, player.thievingXp)) return;
+    this.queuedActions.set(id, { kind: "opening", strongbox });
   }
 
   /** Where a pickpocket target stands in this region, a mark or a villager, if they do. */
@@ -1421,20 +1441,28 @@ export class Simulation {
     );
   }
 
-  /** Restores the counters this player emptied before leaving. */
-  emptiedStallsFor(id: string) {
+  /** Restores the stalls and strongboxes this player emptied before leaving, as the events that emptied them. */
+  emptiedFor(
+    id: string,
+  ): Extract<WorldEvent, { type: "stallEmptied" | "strongboxEmptied" }>[] {
     const player = this.state.players.get(id);
     if (!player) return [];
-    return [...this.stalls.keys()].flatMap((stall) => {
-      const ticks = this.stallsEmptied.remaining(
-        player.username,
+    const { username } = player;
+    const { tick } = this.state;
+    return [
+      ...[...this.stalls.keys()].map((stall) => ({
+        type: "stallEmptied" as const,
+        player: id,
         stall,
-        this.state.tick,
-      );
-      return ticks
-        ? [{ type: "stallEmptied" as const, player: id, stall, ticks }]
-        : [];
-    });
+        ticks: this.stallsEmptied.remaining(username, stall, tick),
+      })),
+      ...[...this.strongboxes.keys()].map((strongbox) => ({
+        type: "strongboxEmptied" as const,
+        player: id,
+        strongbox,
+        ticks: this.strongboxesEmptied.remaining(username, strongbox, tick),
+      })),
+    ].filter(({ ticks }) => ticks > 0);
   }
 
   /** One tick, in the order of spec §6. */
@@ -1526,6 +1554,7 @@ export class Simulation {
         case "visiting":
         case "pickpocketing":
         case "stealing":
+        case "opening":
           goNextTo(intent);
           break;
         case "taking": {
@@ -1575,6 +1604,8 @@ export class Simulation {
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action?.kind === "pickpocketing") return this.standingAt(action.target);
     if (action?.kind === "stealing") return this.stalls.get(action.stall);
+    if (action?.kind === "opening")
+      return this.strongboxes.get(action.strongbox);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
   }
@@ -1891,9 +1922,14 @@ export class Simulation {
     const { tick } = this.state;
     this.stallsEmptied.forgetEnded(tick);
     this.stallsClosed.forgetEnded(tick);
+    this.strongboxesEmptied.forgetEnded(tick);
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action } = unsynced;
-      if (action?.kind !== "pickpocketing" && action?.kind !== "stealing")
+      if (
+        action?.kind !== "pickpocketing" &&
+        action?.kind !== "stealing" &&
+        action?.kind !== "opening"
+      )
         continue;
       if (unsynced.path.length || tick < unsynced.nextAttemptTick) continue;
       unsynced.action = undefined;
@@ -1923,6 +1959,30 @@ export class Simulation {
         continue;
       }
       const { username } = player;
+      if (action.kind === "opening") {
+        const { strongbox } = action;
+        openStrongbox(strongbox, {
+          ...world,
+          emptied: this.strongboxesEmptied.running(username, strongbox, tick),
+          empty: (ticks) => {
+            this.strongboxesEmptied.start(username, strongbox, tick, ticks);
+            this.events.push({
+              type: "strongboxEmptied",
+              player: id,
+              strongbox,
+              ticks,
+            });
+          },
+          springTrap: (ticks, hit) => {
+            const damage = Math.min(hit, player.health);
+            player.health -= damage;
+            this.events.push({ type: "trapSprung", player: id, damage });
+            if (player.health === 0) this.die(id, player);
+            else this.makeBusy(id, ticks, { hittable: true });
+          },
+        });
+        continue;
+      }
       const { stall } = action;
       stealFromStall(stall, {
         ...world,
@@ -1974,7 +2034,8 @@ export class Simulation {
         action.kind !== "taking" &&
         action.kind !== "following" &&
         action.kind !== "pickpocketing" &&
-        action.kind !== "stealing"
+        action.kind !== "stealing" &&
+        action.kind !== "opening"
           ? action.kind
           : path.length
             ? "walking"

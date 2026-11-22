@@ -1,6 +1,7 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { MarkId } from "./thieving.ts";
 import type { StallKind } from "./stalls.ts";
+import type { StrongboxKind } from "./strongboxes.ts";
 import type { EnemyKind } from "./enemies.ts";
 import type { FishingSpotKind } from "./fishing.ts";
 import type { FixedStation } from "./stations.ts";
@@ -51,6 +52,8 @@ export type TileKind = {
   mark?: MarkId;
   /** One of Marta's stalls outside the general store, which blocks like a station (#252). */
   stall?: StallKind;
+  /** A strongbox out where the danger is, which blocks like a stall (#253). */
+  strongbox?: StrongboxKind;
   house?: "wall" | "door";
   enemy?: EnemyKind;
   respawn?: true;
@@ -106,6 +109,9 @@ export const TILE_KINDS = {
   s: { ground: "grass", stall: "food", blocks: true },
   q: { ground: "grass", stall: "fish", blocks: true },
   z: { ground: "grass", stall: "gem", blocks: true },
+  // The strongboxes (#253): the Boneyard's on ashen ground, and Runestone Hollow's (V) on moss.
+  v: { ground: "ashen", strongbox: "boneyard", blocks: true },
+  V: { ground: "moss", strongbox: "hollow", blocks: true },
   "~": { ground: "water", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },

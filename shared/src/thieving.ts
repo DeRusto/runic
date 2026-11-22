@@ -98,7 +98,7 @@ export const failPercent = (level: number, required: number) =>
       SURE_HANDED_LEVELS,
   );
 
-/** Whether one attempt on any Thieving target that needs `required` fails, rolled once (#250, #252). */
+/** Whether one attempt on any Thieving target that needs `required` fails, rolled once (#250, #252, #253). */
 export const thievingFails = (
   required: number,
   thievingXp: number,
@@ -112,15 +112,39 @@ export const pickpocketFails = (
   random: () => number,
 ) => thievingFails(PICKPOCKETS[target].level, thievingXp, random);
 
+/** One row of a Thieving loot table: the item, how many of it, and its weight against the other rows (#252, #253). */
+export type LootRow = {
+  item: ItemId;
+  fewest: number;
+  most: number;
+  weight: number;
+};
+
+/** An even pick from `fewest` to `most`, both included. */
+export const evenPick = (
+  { fewest, most }: { fewest: number; most: number },
+  random: () => number,
+) => fewest + Math.floor(random() * (most - fewest + 1));
+
+/** One roll on a loot table: a row picked by weight, then an even pick of how many. */
+export function pickByWeight(
+  rows: readonly LootRow[],
+  random: () => number,
+): { item: ItemId; count: number } {
+  let pick = random() * rows.reduce((sum, row) => sum + row.weight, 0);
+  const row = rows.find((r) => (pick -= r.weight) < 0) ?? rows.at(-1)!;
+  return { item: row.item, count: evenPick(row, random) };
+}
+
 /** What one success takes: an even pick of the coins, and now and then the rare item as well (#250). */
 export function pickpocketLoot(
   target: PickpocketTarget,
   random: () => number,
 ): { item: ItemId; count: number }[] {
   const { coins, rare } = PICKPOCKETS[target];
-  const count =
-    coins.fewest + Math.floor(random() * (coins.most - coins.fewest + 1));
-  const loot: { item: ItemId; count: number }[] = [{ item: "coins", count }];
+  const loot: { item: ItemId; count: number }[] = [
+    { item: "coins", count: evenPick(coins, random) },
+  ];
   if (random() * 100 < rare.chancePercent)
     loot.push({ item: rare.item, count: 1 });
   return loot;
