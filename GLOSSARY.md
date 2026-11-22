@@ -253,7 +253,7 @@ The skill that raises a player's max hit in melee, by 100 every 20 levels; train
 _Avoid_: Power, damage skill, Combat
 
 **Stance**:
-How a player fights in melee, chosen on the character sheet's Gear tab: Balanced splits each hit's melee experience evenly between Attack and Strength, Precise gives it all to Attack, and Forceful all to Strength. It changes only where experience goes, never the hit itself. A new player starts Balanced.
+How a player fights in melee, chosen on the character sheet's Gear tab: Balanced splits each hit's melee experience evenly between Attack and Strength, Attack taking the odd point of an odd total, Precise gives it all to Attack, and Forceful all to Strength. It changes only where experience goes, never the hit itself. A new player starts Balanced.
 _Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
 
 **Combat** (retired):

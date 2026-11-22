@@ -283,8 +283,18 @@ describe("a save from just before the melee split", () => {
       masteryHundredths: 12,
       stance: "balanced",
     });
-    expect(readSave(8)).not.toHaveProperty("combatXp");
     await database.shutdown();
+    // Read from the table itself: a save only reads the columns the schema still names.
+    const sqlite = new DatabaseSync(path);
+    const columns = sqlite
+      .prepare("SELECT name FROM pragma_table_info('players')")
+      .all()
+      .map(({ name }) => name);
+    sqlite.close();
+    expect(columns).toEqual(
+      expect.arrayContaining(["attack_xp", "strength_xp", "stance"]),
+    );
+    expect(columns).not.toContain("combat_xp");
   });
 
   test("a pinned Combat becomes Attack and Strength in its place when the bar has room", async () => {

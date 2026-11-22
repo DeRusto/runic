@@ -315,6 +315,13 @@ describe("the stance", () => {
       "Forceful",
     ]);
     expect(el("stance").attributes["aria-label"]).toBe("Stance");
+    expect(
+      buttons().map((button: any) => button.attributes["aria-label"]),
+    ).toEqual([
+      "Balanced: Trains Attack and Strength evenly",
+      "Precise: Trains Attack",
+      "Forceful: Trains Strength",
+    ]);
     expect(buttons().map(tipOf)).toEqual([
       "Trains Attack and Strength evenly",
       "Trains Attack",

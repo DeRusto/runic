@@ -557,7 +557,12 @@ describe("improved gear", () => {
   });
 
   test("swings with its common form's hit bonus", () => {
-    start({ weapon: "emberiteSword:rare:fortitude", attackXp: LEVEL_20_XP });
+    start({
+      weapon: "emberiteSword:rare:fortitude",
+      attackXp: LEVEL_20_XP,
+      strengthXp: LEVEL_20_XP,
+    });
+    // The lowest damage roll: Strength raises only the max hit, so the min is 100 plus the bonus.
     rolls = [0, 0, 0];
     sim.queueTarget("a", "0");
     sim.tick();
@@ -603,7 +608,11 @@ describe("Virtues", () => {
   });
 
   test("a critical multiplies Might with the rest of the hit", () => {
-    start({ weapon: "emberiteSword:rare:might", attackXp: LEVEL_20_XP });
+    start({
+      weapon: "emberiteSword:rare:might",
+      attackXp: LEVEL_20_XP,
+      strengthXp: LEVEL_20_XP,
+    });
     rolls = [0, 0, 0];
     sim.queueTarget("a", "0");
     sim.tick();

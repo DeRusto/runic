@@ -134,6 +134,11 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = STANCES[stance].name;
+    // Each says what it trains in its name too, since the tooltip is pointer-only.
+    button.setAttribute(
+      "aria-label",
+      `${STANCES[stance].name}: ${STANCES[stance].trains}`,
+    );
     button.onclick = () => room.send(STANCE_INTENT, stance);
     addTip(button, () => STANCES[stance].trains);
     return { stance, button };

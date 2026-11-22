@@ -395,9 +395,16 @@ describe("the player's swing", () => {
       s.setStance("a", "precise");
       s.setStance("a", stance as string);
       expect(player(s).stance).toBe("precise");
-      s.setStance("nobody", "forceful");
     },
   );
+
+  test("a stance for a player who isn't here is ignored", () => {
+    const s = fight();
+    s.addPlayer("a");
+    expect(() => s.setStance("nobody", "forceful")).not.toThrow();
+    expect(player(s).stance).toBe("balanced");
+    expect(s.state.players.has("nobody")).toBe(false);
+  });
 
   test("the stance can change mid-fight, and the next swing pays the new one", () => {
     const s = fight(NEXT_TO, 0, TOP, MISS, MISS, 0, TOP);

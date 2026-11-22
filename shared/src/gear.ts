@@ -129,7 +129,7 @@ export const GEAR = new Map<string, Gear>([
   ["ironSword", sword(10, 200)],
   ["steelSword", sword(15, 250)],
   ["emberiteSword", sword(20, 300)],
-  // #228's bows, at the Combat levels their woods' Woodcutting gates sit at: 1, 10, 20.
+  // #228's bows, at the Attack levels their woods' Woodcutting gates sit at: 1, 10, 20.
   ["birchBow", bow(1, 100)],
   ["oakBow", bow(10, 200)],
   ["charwoodBow", bow(20, 300)],
