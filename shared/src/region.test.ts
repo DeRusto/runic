@@ -168,7 +168,7 @@ describe("the region", () => {
     ["forester", 1],
     ["fisher", 1],
     ["villager", 6],
-    ["mark", 1],
+    ["mark", 2],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -423,6 +423,11 @@ describe("the region", () => {
     expect(region[44]![12]!.mark).toBe("drunk");
     expect(region[45]![10]!.house).toBe("door");
     expect(region[45]![12]!.station).toBe("range");
+  });
+
+  it("stands Jory, the pedlar, in the village square, on its cobbles (#251)", () => {
+    expect(region[40]![20]!.mark).toBe("pedlar");
+    expect(region[40]![20]!.ground).toBe("cobble");
   });
 
   it("stands the furnace, anvil and Blacksmith at the crossroads' north-east corner", () => {

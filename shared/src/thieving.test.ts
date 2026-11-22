@@ -9,6 +9,7 @@ import {
   pickpocketFails,
   pickpocketLoot,
   pickpocketRefusal,
+  isPickpocketTarget,
 } from "./thieving.ts";
 
 test("a pickpocket fails half the time at the target's level", () => {
@@ -67,4 +68,60 @@ test("a player below the target's level is refused, with the level they need", (
     "You need Thieving 10 to pickpocket Pell.",
   );
   expect(pickpocketRefusal(target, xpForLevel(10))).toBe(undefined);
+});
+
+test("Jory the pedlar is a level 10 mark", () => {
+  expect(MARKS.pedlar).toEqual({ name: "Jory", role: "pedlar" });
+  expect(PICKPOCKETS.pedlar).toMatchObject({ called: "Jory", level: 10 });
+});
+
+test.each([
+  ["pedlar", 10, "rope"],
+  ["marta", 20, "vial"],
+  ["odo", 30, "ironBar"],
+  ["hollis", 45, "runeEssence"],
+] as const)(
+  "%s needs Thieving %i, and pays coins and now and then their own %s",
+  (target, level, rareItem) => {
+    const { called, coins, rare } = PICKPOCKETS[target];
+    expect(pickpocketRefusal(PICKPOCKETS[target], xpForLevel(level - 1))).toBe(
+      `You need Thieving ${level} to pickpocket ${called}.`,
+    );
+    expect(pickpocketRefusal(PICKPOCKETS[target], xpForLevel(level))).toBe(
+      undefined,
+    );
+    expect(rare.item).toBe(rareItem);
+    expect(pickpocketLoot(target, () => 0)).toEqual([
+      { item: "coins", count: coins.fewest },
+      { item: rareItem, count: 1 },
+    ]);
+    expect(pickpocketLoot(target, () => 0.99)).toEqual([
+      { item: "coins", count: coins.most },
+    ]);
+  },
+);
+
+test("a harder target pays more experience, more coins and a harder hit", () => {
+  const order = ["drunk", "pedlar", "marta", "odo", "hollis"] as const;
+  for (const [easier, harder] of order.slice(1).map((t, i) => [order[i]!, t])) {
+    expect(PICKPOCKETS[harder].level).toBeGreaterThan(
+      PICKPOCKETS[easier].level,
+    );
+    expect(PICKPOCKETS[harder].xp).toBeGreaterThan(PICKPOCKETS[easier].xp);
+    expect(PICKPOCKETS[harder].coins.most).toBeGreaterThan(
+      PICKPOCKETS[easier].coins.most,
+    );
+    expect(PICKPOCKETS[harder].failHit).toBeGreaterThan(
+      PICKPOCKETS[easier].failHit,
+    );
+  }
+});
+
+test("Marta, Odo and Hollis can be pickpocketed, and Aldous, the banker, never", () => {
+  expect(isPickpocketTarget("marta")).toBe(true);
+  expect(isPickpocketTarget("odo")).toBe(true);
+  expect(isPickpocketTarget("hollis")).toBe(true);
+  expect(isPickpocketTarget("aldous")).toBe(false);
+  expect(isPickpocketTarget("bram")).toBe(false);
+  expect(isPickpocketTarget("toString")).toBe(false);
 });

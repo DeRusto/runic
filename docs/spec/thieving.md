@@ -1,6 +1,6 @@
 # Runic: Thieving
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. The owner settled the design in #235 and the build order in #236, both on 2026-11-22. This page records the numbers the first build ticket (#250) chose, so the later Thieving tickets (#251 to #253) reuse them. Every number is a first value to tune in play.
+**Status: building.** Terms are defined in `GLOSSARY.md`. The owner settled the design in #235 and the build order in #236, both on 2026-11-22. This page records the numbers the first build ticket (#250) chose, so the later Thieving tickets (#251 to #253) reuse them, and the targets #251 added. Every number is a first value to tune in play.
 
 The values live in `shared/src/thieving.ts`; where this page and that file disagree, the file wins and this page is fixed.
 
@@ -10,13 +10,17 @@ Every Thieving target fails on the same curve. A player at exactly the target's 
 
 ## 2. Experience
 
-The experience scale starts with the drunk's 8 per success, the same as Fishing's lowest catch. A later target pays more as its level rises, in step with the other skills' tables at the same level (Fishing's level 10 trout pays 20 and its level 20 pike pays 32).
+The experience scale starts with the drunk's 8 per success, the same as Fishing's lowest catch. A later target pays more as its level rises, in step with the other skills' tables at the same level (Fishing's level 10 trout pays 20 and its level 20 pike pays 32). The pedlar and Marta match those two catches, and Odo and Hollis carry the same rise of about 1.2 per level on to levels 30 and 45.
 
 ## 3. Pickpocketing
 
 | Target          | Level | Experience | Coins | Rare item (chance)           | Failure hit |
 | --------------- | ----- | ---------- | ----- | ---------------------------- | ----------- |
 | Pell, the drunk | 1     | 8          | 1–5   | Cooked perch (12.5%, 1 in 8) | 100         |
+| Jory, the pedlar | 10 | 20 | 4–12 | Rope (12.5%) | 150 |
+| Marta | 20 | 32 | 8–20 | Vial (12.5%) | 200 |
+| Odo | 30 | 45 | 12–30 | Iron bar (12.5%) | 250 |
+| Hollis | 45 | 62 | 20–45 | Rune essence (12.5%) | 300 |
 
 - A success always pays coins, an even pick between the fewest and the most, and now and then the rare item as well. Loot that doesn't fit in the inventory goes on the ground at the player's feet.
 - A failure hits for the target's failure hit, in hundredths of a Hitpoints level, but never below 1 health, and then stuns. The hit shows over the player like an enemy's.
@@ -34,3 +38,11 @@ A stun lasts 8 ticks (`STUN_TICKS`), 2.4 seconds. It is the first use of the gen
 ## 5. Pell, the drunk
 
 Pell is a mark: he stands at (12,44), just outside the inn's door, under the nameplate "Pell, drunk", and offers only Pickpocket. A left-click pickpockets him, and a right-click offers Pickpocket.
+
+## 6. Jory, the pedlar, and the villagers
+
+Jory is the second mark: a travelling pedlar who stands at (20,40), on the village square's cobbles, under the nameplate "Jory, pedlar". Like Pell, a left-click pickpockets him and a right-click offers Pickpocket.
+
+Marta, Odo and Hollis are villagers first. A left-click still talks to them, and a right-click adds Pickpocket after their other choices. Each pays the rare item that fits their work: a vial from the general store, an iron bar from the forge, and rune essence from the stones. Aldous, the banker, has no Pickpocket choice, and the server ignores a pickpocket aimed at him. No villager can be attacked.
+
+Pickpocketing a villager never closes their shop or conversation to the player: once the stun ends, talking and trading work as before.

@@ -356,12 +356,16 @@ Stealing from a person, a villager or a mark, mostly for coins, now and then for
 _Avoid_: Steal from, rob
 
 **Mark**:
-A person who stands in the region only to be pickpocketed, with no job to offer, such as the drunk outside the inn. A mark is not a villager.
+A person who stands in the region only to be pickpocketed, with no job to offer, such as the drunk outside the inn or the pedlar in the square. A mark is not a villager.
 _Avoid_: Victim, target (alone), NPC
 
 **Pell**:
 The drunk, the first mark, who stands outside the inn's door. Pickpocketing him needs Thieving 1 and pays a few coins, and now and then a cooked perch as well (#250).
 _Avoid_: Drunkard, the sot
+
+**Jory**:
+The travelling pedlar, the second mark, who stands in the village square with his pack. Pickpocketing him needs Thieving 10 and pays coins, and now and then a rope as well (#251).
+_Avoid_: Peddler, trader, merchant
 
 **Stun**:
 A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them.

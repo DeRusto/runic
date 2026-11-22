@@ -100,6 +100,7 @@ export const TILE_KINDS = {
   f: { ground: "thicket", villager: "bram", blocks: true },
   Y: { ground: "grass", villager: "tamsin", blocks: true },
   U: { ground: "grass", mark: "drunk", blocks: true },
+  J: { ground: "grass", mark: "pedlar", blocks: true },
   "~": { ground: "water", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },

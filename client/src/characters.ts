@@ -773,6 +773,8 @@ async function loadKayKitFigure(tile: Tile, file: string, held?: string) {
 /** Each mark's KayKit model, one no player or villager wears (#250). */
 const MARK_MODELS: Record<MarkId, string> = {
   drunk: "Barbarian",
+  // A hooded traveller, empty-handed where Bram, in the same cloak, carries his axe.
+  pedlar: "Rogue_Hooded",
 };
 
 /** A mark on their tile (#250). */
