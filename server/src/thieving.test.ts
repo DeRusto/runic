@@ -283,7 +283,7 @@ describe.each([
     expect(lines(events)).toEqual([`You pick ${called}'s pocket.`]);
   });
 
-  test("a failure hits without killing and stuns, and talk and trade still work after", () => {
+  test("a failure deals its hit, then stuns", () => {
     const sim = thief(() => FAIL, {
       tiles,
       thievingXp: xpForLevel(level),
@@ -296,15 +296,34 @@ describe.each([
     expect(lines(events)).toEqual([
       `${called} catches you and shoves you. You're stunned.`,
     ]);
-
-    runTicks(sim, STUN_TICKS);
-    if (target === "pedlar") return;
-    sim.queueVisit("a", target);
-    const talked = runTicks(sim, 1);
-    expect(talked).toContainEqual(
-      expect.objectContaining({ type: "talk", player: "a", villager: target }),
-    );
   });
+
+  test("a failure's hit never kills", () => {
+    const sim = thief(() => FAIL, {
+      tiles,
+      thievingXp: xpForLevel(level),
+      health: failHit - 1,
+    });
+    sim.queuePickpocket("a", target);
+    runTicks(sim, 1);
+    expect(player(sim)).toMatchObject({ health: 1, dead: false });
+    expect(sim.isBusy("a")).toBe(true);
+  });
+
+  if (target !== "pedlar")
+    test("talk still opens once the stun ends", () => {
+      const sim = thief(() => FAIL, { tiles, thievingXp: xpForLevel(level) });
+      sim.queuePickpocket("a", target);
+      runTicks(sim, 1 + STUN_TICKS);
+      sim.queueVisit("a", target);
+      expect(runTicks(sim, 1)).toContainEqual(
+        expect.objectContaining({
+          type: "talk",
+          player: "a",
+          villager: target,
+        }),
+      );
+    });
 });
 
 describe("the villagers who aren't marks", () => {
@@ -322,8 +341,11 @@ describe("the villagers who aren't marks", () => {
     });
   });
 
-  test.each([["marta"], ["aldous"]])("%s can't be attacked", (villager) => {
-    const sim = thief(() => SUCCEED, { tiles: regionWith("M") });
+  test.each([
+    ["marta", "M"],
+    ["aldous", "$"],
+  ])("%s can't be attacked", (villager, tile) => {
+    const sim = thief(() => SUCCEED, { tiles: regionWith(tile) });
     sim.queueTarget("a", villager);
     runTicks(sim, 3);
     expect(player(sim)).toMatchObject({ x: 1, y: 1, action: "" });
