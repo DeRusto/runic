@@ -1,6 +1,7 @@
 import { VILLAGERS } from "./dialogue.ts";
 import { MARKS } from "./thieving.ts";
 import { STALLS } from "./stalls.ts";
+import { STRONGBOXES } from "./strongboxes.ts";
 import { ENEMIES } from "./enemies.ts";
 import { FISHING_SPOTS } from "./fishing.ts";
 import { BUSHES } from "./herblaw.ts";
@@ -69,6 +70,7 @@ const FEATURE_VALUES = {
   fishingSpot: FISHING_SPOTS,
   station: STATIONS,
   stall: STALLS,
+  strongbox: STRONGBOXES,
   house: { wall: 1, door: 1 } satisfies Record<
     NonNullable<TileKind["house"]>,
     1
@@ -206,7 +208,8 @@ export function loadRegion(
   const properties = readTiles(JSON.parse(tilesetText) as TiledTileset);
   const ids = new Set(properties.keys());
   const features = readCells(map, "features", ids);
-  const stalls = new Set<string>();
+  // The simulation finds each stall and strongbox by its kind, so the region has at most one of each.
+  const standing = new Set<string>();
   const tiles = readCells(map, "ground", ids).map((row, y) =>
     row.map((groundId, x) => {
       const { ground } = properties.get(groundId ?? -1) ?? {};
@@ -216,9 +219,13 @@ export function loadRegion(
       if (featureId !== undefined && Object.keys(feature).length === 0)
         fail(`tile ${featureId} in "features" means nothing`);
       if ("ground" in feature) fail(`ground tile in "features" at ${x},${y}`);
-      if (feature.stall) {
-        if (stalls.has(feature.stall)) fail(`two ${feature.stall} stalls`);
-        stalls.add(feature.stall);
+      for (const [kind, plural] of [
+        [feature.stall, "stalls"],
+        [feature.strongbox, "strongboxes"],
+      ] as const) {
+        if (!kind) continue;
+        if (standing.has(kind)) fail(`two ${kind} ${plural}`);
+        standing.add(kind);
       }
       return { ground, blocks: groundBlocks(ground), ...feature } as TileKind;
     }),

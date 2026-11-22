@@ -2,15 +2,20 @@ import {
   PICKPOCKETS,
   STALLS,
   STALL_LOCKOUT_TICKS,
+  STRONGBOXES,
   STUN_TICKS,
   pickpocketFails,
   pickpocketLoot,
   stallFails,
   stallLoot,
   stallName,
+  strongboxFails,
+  strongboxLoot,
+  strongboxName,
   type ItemId,
   type PickpocketTarget,
   type StallKind,
+  type StrongboxKind,
 } from "@runic/shared";
 
 /** What every Thieving attempt reads from and changes in the world, so Thieving's rules stay out of the simulation. */
@@ -42,6 +47,16 @@ export type StallWorld = ThievingWorld & {
   empty(ticks: number): void;
   /** Closes this stall to this player alone, for `ticks`. */
   close(ticks: number): void;
+};
+
+/** What one attempt on a strongbox reads from and changes in the world: its per-player timer among it (#253). */
+export type StrongboxWorld = ThievingWorld & {
+  /** Whether this strongbox is still empty for this player after their last success. */
+  emptied: boolean;
+  /** Empties this strongbox for this player alone, for `ticks`. */
+  empty(ticks: number): void;
+  /** Takes `damage` off the player's health, or all of it, killing them; a survivor is stunned for `ticks`. */
+  springTrap(ticks: number, damage: number): void;
 };
 
 /** Gives the loot, putting what doesn't fit on the ground, and says whether any went there. */
@@ -101,4 +116,24 @@ export function stealFromStall(kind: StallKind, world: StallWorld) {
   const onGround = giveOrDrop(world, [stallLoot(kind, world.random)]);
   world.empty(STALLS[kind].emptyTicks);
   world.tell(`You take from ${stall}.${onGround ? ON_GROUND : ""}`);
+}
+
+/**
+ * One attempt on a strongbox the player stands beside and has the level for (#253). A success pays
+ * coins, a gem, runes and experience, then empties the strongbox for this player alone. A failure
+ * springs its trap, which hits harder than a failed pickpocket and can kill.
+ */
+export function openStrongbox(kind: StrongboxKind, world: StrongboxWorld) {
+  const box = STRONGBOXES[kind];
+  const name = strongboxName(kind);
+  if (world.emptied)
+    return world.tell(`${capitalised(name)} is empty. Come back later.`);
+  if (strongboxFails(kind, world.thievingXp, world.random)) {
+    world.tell(`A trap springs as you open ${name}!`);
+    return world.springTrap(STUN_TICKS, box.trapHit);
+  }
+  world.earnXp(box.xp);
+  const onGround = giveOrDrop(world, strongboxLoot(kind, world.random));
+  world.empty(box.emptyTicks);
+  world.tell(`You open ${name}.${onGround ? ON_GROUND : ""}`);
 }

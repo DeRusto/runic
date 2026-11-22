@@ -3,6 +3,7 @@ import type { VillagerId } from "./dialogue.ts";
 import type { ItemId, Virtue } from "./items.ts";
 import type { StationKind } from "./stations.ts";
 import type { StallKind } from "./stalls.ts";
+import type { StrongboxKind } from "./strongboxes.ts";
 
 export const SERVER_PORT = 2567;
 export const WORLD_ROOM = "world";
@@ -22,6 +23,8 @@ export const VISIT_INTENT = "visit";
 export const PICKPOCKET_INTENT = "pickpocket";
 /** The steal intent's message type, for clicking one of Marta's stalls; its payload is the stall's kind, a `StallKind` (#252). */
 export const STEAL_INTENT = "steal";
+/** The open intent's message type, for clicking a strongbox; its payload is the strongbox's kind, a `StrongboxKind` (#253). */
+export const OPEN_INTENT = "open";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
@@ -228,7 +231,16 @@ export type WorldEvent =
   /** A failed pickpocket's hit, in hundredths of a Hitpoints level, and the stun that follows (#250). */
   | { type: "stunned"; player: string; damage: number }
   /** A theft emptied `stall` for `player` alone, for `ticks`: only their client shows it bare (#252). */
-  | { type: "stallEmptied"; player: string; stall: StallKind; ticks: number };
+  | { type: "stallEmptied"; player: string; stall: StallKind; ticks: number }
+  /** A success emptied `strongbox` for `player` alone, for `ticks`: only their client shows it open (#253). */
+  | {
+      type: "strongboxEmptied";
+      player: string;
+      strongbox: StrongboxKind;
+      ticks: number;
+    }
+  /** A failed strongbox's trap hit `player` for `damage`, in hundredths of a Hitpoints level; it can kill (#253). */
+  | { type: "trapSprung"; player: string; damage: number };
 
 export * from "./bank.ts";
 export * from "./combat.ts";
@@ -249,6 +261,7 @@ export * from "./regionMap.ts";
 export * from "./skills.ts";
 export * from "./thieving.ts";
 export * from "./stalls.ts";
+export * from "./strongboxes.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";

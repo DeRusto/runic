@@ -82,6 +82,8 @@ const IS = {
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   mark: (tile) => !!tile.mark,
+  boneyardStrongbox: (tile) => tile.strongbox === "boneyard",
+  hollowStrongbox: (tile) => tile.strongbox === "hollow",
   house: (tile) => !!tile.house,
 } satisfies Record<string, (tile: TileKind) => boolean>;
 
@@ -561,6 +563,32 @@ describe("the region", () => {
       spotsOf("essence").filter(([x, y]) => !IS.moss(region[y]![x]!)),
     ).toEqual([]);
   });
+
+  it.each([
+    ["the Boneyard strongbox", "boneyardStrongbox", "ashen", ["skeleton"]],
+    [
+      "the Runestone Hollow strongbox",
+      "hollowStrongbox",
+      "moss",
+      ["skeletonMage", "imp"],
+    ],
+  ] as const)(
+    "stands %s alone on its zone's ground, reached only across the Boneyard and within an enemy's reach (#253)",
+    (_, kind, ground, enemies) => {
+      const boxes = tilesOf(kind);
+      expect(boxes).toHaveLength(1);
+      const [box] = boxes as [readonly [number, number]];
+      expect(region[box[1]]![box[0]]!.ground).toBe(ground);
+      const beside = tilesNextTo(box);
+      expect(beside.some(([x, y]) => reachable.has(key(x, y)))).toBe(true);
+      expect(beside.some(([x, y]) => withoutAshen.has(key(x, y)))).toBe(false);
+      expect(
+        tilesOf(...enemies).some(
+          (home) => tilesApart(asTile(home), asTile(box)) <= reachOf(home),
+        ),
+      ).toBe(true);
+    },
+  );
 
   it("leaves the old stone circle on the Boneyard's far side as bare ground ringed by its rocks", () => {
     const ring = neighbours({ x: 86, y: 44 });

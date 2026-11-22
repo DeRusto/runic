@@ -1,14 +1,5 @@
-import type { ItemId } from "./items.ts";
 import { levelFor } from "./skills.ts";
-import { thievingFails } from "./thieving.ts";
-
-/** One row of a stall's loot table: the item, how many of it, and its weight against the other rows. */
-export type StallLootRow = {
-  item: ItemId;
-  fewest: number;
-  most: number;
-  weight: number;
-};
+import { pickByWeight, thievingFails, type LootRow } from "./thieving.ts";
 
 /**
  * What stealing from each of Marta's stalls outside the general store needs and pays (#252,
@@ -48,7 +39,7 @@ export const STALLS = {
   },
 } as const satisfies Record<
   string,
-  { level: number; xp: number; loot: StallLootRow[]; emptyTicks: number }
+  { level: number; xp: number; loot: LootRow[]; emptyTicks: number }
 >;
 export type StallKind = keyof typeof STALLS;
 
@@ -70,16 +61,8 @@ export const stallFails = (
 ) => thievingFails(STALLS[kind].level, thievingXp, random);
 
 /** What one theft takes: a row picked by weight, then an even pick of how many. */
-export function stallLoot(
-  kind: StallKind,
-  random: () => number,
-): { item: ItemId; count: number } {
-  const rows: readonly StallLootRow[] = STALLS[kind].loot;
-  let pick = random() * rows.reduce((sum, row) => sum + row.weight, 0);
-  const row = rows.find((r) => (pick -= r.weight) < 0) ?? rows.at(-1)!;
-  const count = row.fewest + Math.floor(random() * (row.most - row.fewest + 1));
-  return { item: row.item, count };
-}
+export const stallLoot = (kind: StallKind, random: () => number) =>
+  pickByWeight(STALLS[kind].loot, random);
 
 /** Why a player can't steal from this stall, or undefined if they can. */
 export const stallRefusal = (kind: StallKind, thievingXp: number) =>

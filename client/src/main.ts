@@ -13,7 +13,8 @@ import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
 import { addMarks } from "./marks.ts";
 import { addStalls } from "./stalls.ts";
-import { showStallsEmptied } from "./stallsEmptied.ts";
+import { showEmptied } from "./emptied.ts";
+import { addStrongboxes } from "./strongboxes.ts";
 import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadEnemies } from "./characters.ts";
@@ -57,6 +58,7 @@ const spots = pools.flatMap(({ skill, kind, spots }) =>
     return siteId({ x, y });
   }),
 );
+const strongboxes = addStrongboxes(tiles);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
 const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder, stalls] =
@@ -104,6 +106,7 @@ function enterWorld(room: WorldConnection) {
     villagerUnder,
     markUnder,
     stalls.stallUnder,
+    strongboxes.strongboxUnder,
     showGroundItems(room),
     // It opens only with the player on the pile, which the following camera settles at the screen's
     // centre; projecting the pile now would use the camera still on its way there.
@@ -115,7 +118,10 @@ function enterWorld(room: WorldConnection) {
   showJournal(room);
   showFights(room);
   showBuffs(room);
-  showStallsEmptied(room, stalls.wares);
+  showEmptied(room, {
+    stall: stalls.wares,
+    strongbox: strongboxes.closedLooks,
+  });
   showDialogueBox(room);
   showStoreWindow(room, openMenu);
   showBankWindow(room, openMenu);
