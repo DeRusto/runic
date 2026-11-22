@@ -15,6 +15,7 @@ import {
   XP_PER_DAMAGE_DEALT,
 } from "./index.ts";
 import type { XpField } from "./skills.ts";
+import { meleeXpOf, type Stance } from "./stances.ts";
 import { avoidanceOf, blockOf, enemyHitChance, hitOf } from "./stats.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
@@ -34,10 +35,13 @@ function rollDamage(
 /**
  * One player swing at an enemy with `enemyHealth` left. Rolls the hit, its damage, then a
  * critical. `mightBonus` is a Might potion's, added to the hit like the weapon's while its buff
- * lasts (#222). No experience for overkill: the damage is capped at the enemy's health.
+ * lasts (#222). No experience for overkill: the damage is capped at the enemy's health. The
+ * melee experience goes to Attack and Strength as `stance` splits it; Hitpoints gets the same
+ * amount again.
  */
 export function playerHit(
-  player: { combatXp: number } & Worn,
+  player: { attackXp: number; strengthXp: number } & Worn,
+  stance: Stance,
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
@@ -54,11 +58,13 @@ export function playerHit(
   const xp = Math.round(
     (damage * XP_PER_DAMAGE_DEALT) / HEALTH_PER_HITPOINTS_LEVEL,
   );
+  const { attackXp, strengthXp } = meleeXpOf(stance, xp);
   return {
     damage,
     critical,
     xp: [
-      ["combatXp", xp],
+      ["attackXp", attackXp],
+      ["strengthXp", strengthXp],
       ["hitpointsXp", xp],
     ] as [XpField, number][],
   };

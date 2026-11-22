@@ -1,5 +1,11 @@
 import { schema, t } from "@colyseus/schema";
-import { SKILLS, type FireLog, type PlayerAction } from "@runic/shared";
+import {
+  SKILLS,
+  STARTING_STANCE,
+  type FireLog,
+  type PlayerAction,
+  type Stance,
+} from "@runic/shared";
 import { Enemy } from "./enemies.ts";
 import { GroundItem } from "./groundItems.ts";
 
@@ -27,6 +33,8 @@ export const Player = schema(
     identifiesEssence: t.boolean().default(false),
     /** In any order; the sheet's order decides how they show. */
     pinnedSkills: t.array("string"),
+    /** Where melee experience goes (melee rework spec §3). */
+    stance: t.string<Stance>().default(STARTING_STANCE),
     health: t.uint16(),
     maxHealth: t.uint16(),
     inventory: t.array("string"),

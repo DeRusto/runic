@@ -48,9 +48,11 @@ test("progress is how far through the current level", () => {
   expect(levelProgress(480200)).toBe(1);
 });
 
-test("the registry holds 23 different skills, without Combat, which splits", () => {
+test("the registry holds 23 different skills, with Attack and Strength where Combat was", () => {
   const names = SKILL_REGISTRY.map(([skill]) => skill);
   expect(new Set(names).size).toBe(23);
+  expect(names).toContain("Attack");
+  expect(names).toContain("Strength");
   expect(names).not.toContain("Combat");
   expect(names).not.toContain("Foraging");
   expect(names).toContain("Herblaw");
@@ -58,7 +60,8 @@ test("the registry holds 23 different skills, without Combat, which splits", () 
 
 test("only the skills that can be trained reach the sheet, the bar and pinning", () => {
   expect(SKILLS.map(([skill]) => skill)).toEqual([
-    "Combat",
+    "Attack",
+    "Strength",
     "Defense",
     "Herblaw",
     "Hitpoints",
@@ -83,15 +86,16 @@ test("a new player's total level is Hitpoints 10 and 22 skills at 1", () => {
   expect(totalLevel({ hitpointsXp: 4050 })).toBe(32);
 });
 
-test("total level counts experience held, Herblaw's too, but not Combat's", () => {
+test("total level counts experience held, Attack's and Strength's each", () => {
   expect(
     totalLevel({
       hitpointsXp: 4050,
       miningXp: 50,
       herblawXp: xpForLevel(10),
-      combatXp: MAX_XP,
+      attackXp: xpForLevel(3),
+      strengthXp: xpForLevel(3),
     }),
-  ).toBe(42);
+  ).toBe(46);
 });
 
 test("total level tops out at 2,277", () => {
@@ -111,7 +115,8 @@ test("a player maxed in everything trainable is 138 by hand", () => {
   // 0.25 × (99 + 99 + 99 + 0) + 0.325 × (99 + 99) = 74.25 + 64.35
   expect(
     combatLevel({
-      combatXp: MAX_XP,
+      attackXp: MAX_XP,
+      strengthXp: MAX_XP,
       defenseXp: MAX_XP,
       blockingXp: MAX_XP,
       hitpointsXp: MAX_XP,
@@ -127,9 +132,20 @@ test("a player maxed in all of it is 150 by hand", () => {
   expect(combatLevel(maxed)).toBe(150);
 });
 
-test("Combat counts twice, for Attack and for Strength", () => {
+test("Attack and Strength each count in the melee term", () => {
   // 3 + 0.325 × (2 + 2) = 4.3
-  expect(combatLevel({ ...FRESH, combatXp: xpForLevel(2) })).toBe(4);
+  expect(
+    combatLevel({
+      ...FRESH,
+      attackXp: xpForLevel(2),
+      strengthXp: xpForLevel(2),
+    }),
+  ).toBe(4);
+  // 3 + 0.325 × (3 + 1) = 4.3, either way round
+  expect(combatLevel({ ...FRESH, attackXp: xpForLevel(3) })).toBe(4);
+  expect(combatLevel({ ...FRESH, strengthXp: xpForLevel(3) })).toBe(4);
+  // 3 + 0.325 × (2 + 1) = 3.975
+  expect(combatLevel({ ...FRESH, attackXp: xpForLevel(2) })).toBe(3);
 });
 
 test("Defense, Blocking and Hitpoints each count a quarter", () => {
@@ -156,14 +172,10 @@ test("the best style is the one that counts, and Prayer counts half", () => {
   expect(combatLevel({ ...FRESH, prayerXp: MAX_XP })).toBe(15);
 });
 
-test("real Attack and Strength replace Combat once they exist", () => {
-  // 3 + 0.325 × (99 + 1) = 35.5, and Combat would have made it 67
-  expect(
-    combatLevel({
-      ...FRESH,
-      combatXp: MAX_XP,
-      attackXp: MAX_XP,
-      strengthXp: 0,
-    }),
-  ).toBe(35);
+test("a split player keeps their combat level: Combat's experience copied to both gives what Combat gave", () => {
+  // 3 + 0.325 × (20 + 20) = 16
+  const copied = xpForLevel(20);
+  expect(combatLevel({ ...FRESH, attackXp: copied, strengthXp: copied })).toBe(
+    16,
+  );
 });

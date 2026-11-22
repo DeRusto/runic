@@ -10,11 +10,11 @@ import {
   type GearSlot,
 } from "./gear.ts";
 import {
-  COMBAT_LEVELS_PER_DAMAGE,
   HEALTH_PER_HITPOINTS_LEVEL,
   PLAYER_BASE_DAMAGE,
   PLAYER_HIT_CHANCE,
-  PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
+  PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL,
+  STRENGTH_LEVELS_PER_DAMAGE,
 } from "./index.ts";
 import { levelFor } from "./skills.ts";
 
@@ -52,22 +52,22 @@ export const enemyHitChance = (kind: EnemyKind, avoidance: number) =>
   );
 
 /**
- * A player's chance (0..1) to land a swing — its base, per Combat level and worn Accuracy
- * (#238's rings), a point each way being a percentage point (spec §5) — the landed hit's min
- * and max from Combat, and the weapon's hit bonus plus Might, which adds to both.
+ * A player's chance (0..1) to land a swing — its base, per Attack level and worn Accuracy
+ * (#238's rings), a point each way being a percentage point (spec §5) — the landed hit's min,
+ * its max from Strength, and the weapon's hit bonus plus Might, which adds to both (melee
+ * rework spec §2).
  */
-export function hitOf(player: { combatXp: number } & Worn) {
-  const combat = levelFor(player.combatXp);
+export function hitOf(player: { attackXp: number; strengthXp: number } & Worn) {
   return {
     chance:
       PLAYER_HIT_CHANCE +
-      PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1) +
+      PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL * (levelFor(player.attackXp) - 1) +
       wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
     min: HEALTH_PER_HITPOINTS_LEVEL,
     max:
       PLAYER_BASE_DAMAGE +
       HEALTH_PER_HITPOINTS_LEVEL *
-        Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
+        Math.floor(levelFor(player.strengthXp) / STRENGTH_LEVELS_PER_DAMAGE),
     gear:
       (gearOf(player.weapon ?? "")?.hitBonus ?? 0) + virtueOf(player, "might"),
   };

@@ -23,7 +23,7 @@ export const AVOIDANCE_TENTHS_PER_POINT = 10;
 const DEFENSE = { skill: "Defense", xp: "defenseXp" } as const;
 /** The skill that decides who can use what goes in each slot (spec §5): every maker's pieces gate on Defense but a weapon's (#217). */
 const GATES = {
-  weapon: { skill: "Combat", xp: "combatXp" },
+  weapon: { skill: "Attack", xp: "attackXp" },
   shield: DEFENSE,
   head: DEFENSE,
   body: DEFENSE,
@@ -119,7 +119,7 @@ const ring = (level: number, accuracy: number): Gear => ({
 /** Added to a shield's chance per Blocking level above 1 (spec §5). */
 export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
 
-/** Each wood's tier number, at the metal tier its bow's Combat gate matches (#228). */
+/** Each wood's tier number, at the metal tier its bow's Attack gate matches (#228). */
 const WOOD_TIERS = { birch: 1, oak: 3, charwood: 5 } as const;
 
 /** Spec §5, with Bronze and Steel at the midpoints (rebalance spec §3 Gear), by item id. Anything in here can be equipped. */
@@ -237,7 +237,7 @@ const CAPE_COMMON_VIRTUES: Record<
   avoidance: [1, 1, 2, 2, 3],
 };
 
-/** The size of `item`'s Virtue, 0 for a common piece. Its unit is multiplied by the tier number, read from the base id's prefix, and rare is double uncommon (spec §3). A bow is sized by the wood tier at the metal tier its Combat gate matches (#228), and a cape carries its Virtue at every Quality, on the ½-uncommon ladder above (#217). */
+/** The size of `item`'s Virtue, 0 for a common piece. Its unit is multiplied by the tier number, read from the base id's prefix, and rare is double uncommon (spec §3). A bow is sized by the wood tier at the metal tier its Attack gate matches (#228), and a cape carries its Virtue at every Quality, on the ½-uncommon ladder above (#217). */
 function virtueSize(item: string) {
   const { base, quality, virtue } = itemParts(item);
   if (!virtue) return 0;
@@ -280,7 +280,7 @@ export function gateOf(item: string) {
 /** Why this gear can't be equipped, or undefined if it can or isn't gear. The bar greys it, and the server tells the player. */
 export function gearRefusal(
   item: string,
-  player: { combatXp: number; defenseXp: number },
+  player: { attackXp: number; defenseXp: number },
 ) {
   const gate = gateOf(item);
   if (!gate) return undefined;

@@ -23,7 +23,6 @@ const SWING = [HIT, HIT, MISS];
 const SAVE: PlayerSave = {
   x: 2,
   y: 1,
-  combatXp: 0,
   defenseXp: 0,
   herblawXp: 0,
   hitpointsXp: 4050,

@@ -14,7 +14,10 @@ import {
   PLAYER_CRIT_CHANCE,
   PLAYER_CRIT_MULTIPLIER,
   SKILLS,
+  STANCE_INTENT,
+  STANCES,
   TAKE_OFF_INTENT,
+  type Stance,
   totalLevel,
   type GearSlot,
   virtueDoes,
@@ -121,6 +124,19 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   let gearDrawn: string | undefined;
   const stats = document.getElementById("gear-stats")!;
 
+  // Toggle buttons, one pressed, so each is a plain button a keyboard reaches.
+  const stanceGroup = document.getElementById("stance")!;
+  stanceGroup.setAttribute("aria-label", "Stance");
+  const stances = (Object.keys(STANCES) as Stance[]).map((stance) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = STANCES[stance].name;
+    button.onclick = () => room.send(STANCE_INTENT, stance);
+    addTip(button, () => STANCES[stance].trains);
+    return { stance, button };
+  });
+  stanceGroup.replaceChildren(...stances.map(({ button }) => button));
+
   const combat = document.createElement("p");
   const note = document.createElement("p");
   const rows = SKILLS.map(([skill, field]) => {
@@ -193,6 +209,10 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       if (stats.children.length !== lines.length)
         stats.replaceChildren(...lines.map(() => document.createElement("li")));
       lines.forEach((line, i) => (stats.children[i]!.textContent = line));
+    },
+    drawStance(me: SyncedPlayer) {
+      for (const { stance, button } of stances)
+        button.setAttribute("aria-pressed", String(me.stance === stance));
     },
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {

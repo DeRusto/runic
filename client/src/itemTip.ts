@@ -81,7 +81,7 @@ function kindOf(item: string) {
 /** `item`'s tip, with the refusal to equip it when `player` is given. */
 export function itemTip(
   item: string,
-  player?: { combatXp: number; defenseXp: number },
+  player?: { attackXp: number; defenseXp: number },
 ): ItemTip {
   const does = gearOf(item)?.does;
   const potion = potionOf(itemParts(item).base);

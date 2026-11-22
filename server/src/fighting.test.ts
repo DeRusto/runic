@@ -23,7 +23,6 @@ function fight(rows = NEXT_TO, ...rolls: number[]) {
 const SAVE: PlayerSave = {
   x: 1,
   y: 1,
-  combatXp: 0,
   defenseXp: 0,
   herblawXp: 0,
   hitpointsXp: 4050,
@@ -272,37 +271,53 @@ describe("the leash", () => {
 
 describe("the player's swing", () => {
   test.each([
-    { combatXp: 0, roll: 0.399, hits: true },
-    { combatXp: 0, roll: 0.401, hits: false },
-    { combatXp: 800, roll: 0.419, hits: true }, // Level 5.
-    { combatXp: 800, roll: 0.421, hits: false },
+    { attackXp: 0, roll: 0.399, hits: true },
+    { attackXp: 0, roll: 0.401, hits: false },
+    { attackXp: 800, roll: 0.419, hits: true }, // Level 5.
+    { attackXp: 800, roll: 0.421, hits: false },
   ])(
-    "with $combatXp Combat XP, a roll of $roll hits: $hits",
-    ({ combatXp, roll, hits }) => {
+    "with $attackXp Attack XP, a roll of $roll hits: $hits",
+    ({ attackXp, roll, hits }) => {
       const s = fight(NEXT_TO, roll, 0);
-      s.addPlayer("a", { ...SAVE, combatXp });
+      s.addPlayer("a", { ...SAVE, attackXp });
       s.queueTarget("a", "0");
       run(s, 1);
       expect(spider(s).health).toBe(hits ? 700 : 800);
     },
   );
 
+  test("Strength doesn't help a swing land", () => {
+    const s = fight(NEXT_TO, 0.401, 0);
+    s.addPlayer("a", { ...SAVE, strengthXp: MAX_XP });
+    s.queueTarget("a", "0");
+    run(s, 1);
+    expect(spider(s).health).toBe(800);
+  });
+
   test.each([
-    { combatXp: 0, roll: 0, damage: 100 },
-    { combatXp: 0, roll: 0.5, damage: 150 }, // Any whole number in range.
-    { combatXp: 0, roll: TOP, damage: 200 },
-    { combatXp: 16200, roll: TOP, damage: 200 }, // Level 19.
-    { combatXp: 18050, roll: TOP, damage: 300 }, // Level 20.
+    { strengthXp: 0, roll: 0, damage: 100 },
+    { strengthXp: 0, roll: 0.5, damage: 150 }, // Any whole number in range.
+    { strengthXp: 0, roll: TOP, damage: 200 },
+    { strengthXp: 16200, roll: TOP, damage: 200 }, // Level 19.
+    { strengthXp: 18050, roll: TOP, damage: 300 }, // Level 20.
   ])(
-    "with $combatXp Combat XP, a damage roll of $roll deals $damage",
-    ({ combatXp, roll, damage }) => {
+    "with $strengthXp Strength XP, a damage roll of $roll deals $damage",
+    ({ strengthXp, roll, damage }) => {
       const s = fight(NEXT_TO, 0, roll);
-      s.addPlayer("a", { ...SAVE, combatXp });
+      s.addPlayer("a", { ...SAVE, strengthXp });
       s.queueTarget("a", "0");
       run(s, 1);
       expect(spider(s).health).toBe(800 - damage);
     },
   );
+
+  test("Attack doesn't raise the max hit", () => {
+    const s = fight(NEXT_TO, 0, TOP);
+    s.addPlayer("a", { ...SAVE, attackXp: MAX_XP });
+    s.queueTarget("a", "0");
+    run(s, 1);
+    expect(spider(s).health).toBe(600);
+  });
 
   test.each([
     { roll: 0.0999, critical: true, damage: 225 },
@@ -314,7 +329,8 @@ describe("the player's swing", () => {
       s.addPlayer("a");
       s.queueTarget("a", "0");
       expect(run(s, 1)[0]).toMatchObject({ damage, critical });
-      expect(player(s).combatXp).toBe(Math.round((damage * 6) / 100));
+      const xp = Math.round((damage * 6) / 100);
+      expect(player(s).attackXp + player(s).strengthXp).toBe(xp);
     },
   );
 
@@ -336,17 +352,62 @@ describe("the player's swing", () => {
     spider(s).health = 250;
     s.queueTarget("a", "0");
     expect(run(s, 1)[0]).toMatchObject({ damage: 250, critical: true });
-    expect(player(s).combatXp).toBe(15);
+    expect(player(s)).toMatchObject({ attackXp: 8, strengthXp: 7 });
   });
 
-  test("Combat and Hitpoints give 6 XP per 100 damage, and a miss gives none", () => {
+  test("a Balanced hit splits 6 XP per 100 damage between Attack and Strength, Hitpoints gets 6 too, and a miss gives none", () => {
     const s = fight(NEXT_TO, 0, TOP);
     s.addPlayer("a");
+    expect(player(s).stance).toBe("balanced");
     s.queueTarget("a", "0");
     run(s, 1);
-    expect(player(s)).toMatchObject({ combatXp: 12, hitpointsXp: 4062 });
+    const paid = { attackXp: 6, strengthXp: 6, hitpointsXp: 4062 };
+    expect(player(s)).toMatchObject(paid);
     run(s, 8);
-    expect(player(s)).toMatchObject({ combatXp: 12, hitpointsXp: 4062 });
+    expect(player(s)).toMatchObject(paid);
+  });
+
+  test.each([
+    { stance: "precise", attackXp: 12, strengthXp: 0 },
+    { stance: "forceful", attackXp: 0, strengthXp: 12 },
+    { stance: "balanced", attackXp: 6, strengthXp: 6 },
+  ])(
+    "in the $stance stance, a 200 hit pays $attackXp Attack and $strengthXp Strength XP",
+    ({ stance, attackXp, strengthXp }) => {
+      const s = fight(NEXT_TO, 0, TOP);
+      s.addPlayer("a");
+      s.setStance("a", stance);
+      s.queueTarget("a", "0");
+      run(s, 1);
+      expect(player(s)).toMatchObject({
+        attackXp,
+        strengthXp,
+        hitpointsXp: 4062,
+      });
+    },
+  );
+
+  test.each([["Forceful"], ["defensive"], [""], [7], [undefined], [{}]])(
+    "a stance of %j is ignored",
+    (stance) => {
+      const s = fight();
+      s.addPlayer("a");
+      s.setStance("a", "precise");
+      s.setStance("a", stance as string);
+      expect(player(s).stance).toBe("precise");
+      s.setStance("nobody", "forceful");
+    },
+  );
+
+  test("the stance can change mid-fight, and the next swing pays the new one", () => {
+    const s = fight(NEXT_TO, 0, TOP, MISS, MISS, 0, TOP);
+    s.addPlayer("a");
+    s.setStance("a", "precise");
+    s.queueTarget("a", "0");
+    run(s, 1);
+    s.setStance("a", "forceful");
+    run(s, 8);
+    expect(player(s)).toMatchObject({ attackXp: 12, strengthXp: 12 });
   });
 
   test("each swing's XP rounds to the nearest whole number", () => {
@@ -355,7 +416,11 @@ describe("the player's swing", () => {
     spider(s).health = 109; // So the swing deals 109: 6.54 XP, rounding to 7.
     s.queueTarget("a", "0");
     run(s, 1);
-    expect(player(s)).toMatchObject({ combatXp: 7, hitpointsXp: 4057 });
+    expect(player(s)).toMatchObject({
+      attackXp: 4,
+      strengthXp: 3,
+      hitpointsXp: 4057,
+    });
   });
 
   test("overkill gives no XP", () => {
@@ -364,15 +429,28 @@ describe("the player's swing", () => {
     spider(s).health = 100;
     s.queueTarget("a", "0");
     run(s, 1);
-    expect(player(s)).toMatchObject({ combatXp: 6, hitpointsXp: 4056 });
+    expect(player(s)).toMatchObject({
+      attackXp: 3,
+      strengthXp: 3,
+      hitpointsXp: 4056,
+    });
   });
 
   test("XP stops at the cap", () => {
     const s = fight(NEXT_TO, 0, TOP);
-    s.addPlayer("a", { ...SAVE, combatXp: MAX_XP - 1, hitpointsXp: MAX_XP });
+    s.addPlayer("a", {
+      ...SAVE,
+      attackXp: MAX_XP - 1,
+      strengthXp: MAX_XP,
+      hitpointsXp: MAX_XP,
+    });
     s.queueTarget("a", "0");
     run(s, 1);
-    expect(player(s)).toMatchObject({ combatXp: MAX_XP, hitpointsXp: MAX_XP });
+    expect(player(s)).toMatchObject({
+      attackXp: MAX_XP,
+      strengthXp: MAX_XP,
+      hitpointsXp: MAX_XP,
+    });
   });
 
   test("a Hitpoints level-up raises max health, not health", () => {
@@ -480,7 +558,7 @@ describe("dying", () => {
   });
 
   test("they stay on their tile for 5 ticks, then respawn at full health with their XP kept", () => {
-    const s = dying({ combatXp: 200 });
+    const s = dying({ attackXp: 200, strengthXp: 200 });
     run(s, 5);
     expect(run(s, 4)).toEqual([]);
     expect(player(s)).toMatchObject({ x: 3, y: 1, health: 0, dead: true });
@@ -490,7 +568,8 @@ describe("dying", () => {
       y: 1,
       health: 1000,
       dead: false,
-      combatXp: 200,
+      attackXp: 200,
+      strengthXp: 200,
       defenseXp: 10,
     });
   });
@@ -596,13 +675,14 @@ describe("dying", () => {
   });
 
   test("a dead player saves as already respawned, while still lying where they fell", () => {
-    const s = dying({ combatXp: 200 });
+    const s = dying({ attackXp: 200, strengthXp: 200 });
     run(s, 5);
     expect(s.saveOf("a")).toMatchObject({
       x: 1,
       y: 1,
       health: 1000,
-      combatXp: 200,
+      attackXp: 200,
+      strengthXp: 200,
       defenseXp: 10,
     });
     expect(player(s)).toMatchObject({ x: 3, health: 0 });
@@ -815,8 +895,8 @@ describe("several players", () => {
     expect(spider(s).target).toBe("a");
     events.push(...run(s, 4));
 
-    expect(player(s, "a").combatXp).toBe(6);
-    expect(player(s, "b").combatXp).toBe(0);
+    expect(player(s, "a").attackXp).toBe(3);
+    expect(player(s, "b").attackXp).toBe(0);
     expect(swingTicks(events, "enemySwing")).toEqual([5, 13]);
     expect(events.filter((e) => e.type === "enemySwing")[0]).toMatchObject({
       player: "b",

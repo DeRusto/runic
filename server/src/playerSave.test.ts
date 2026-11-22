@@ -23,6 +23,7 @@ describe("player save", () => {
       inventoryCounts: [3, 0, 2],
       tools: ["pickaxe", "tinderbox"],
       pinnedSkills: ["Cooking", "Mining"],
+      stance: "forceful",
       bank: Array.from({ length: BANK_SLOTS }, (_, slot) =>
         slot === 5 ? "coins" : EMPTY_SLOT,
       ),

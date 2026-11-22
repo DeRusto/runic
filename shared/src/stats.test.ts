@@ -75,16 +75,45 @@ describe("an enemy's chance to hit", () => {
 });
 
 describe("a player's hit", () => {
-  test("at Combat 11 with an Emberite sword: 45% to land, 100 to 200 from skill, 300 from gear", () => {
+  test("at Attack 11 and Strength 1 with an Emberite sword: 45% to land, 100 to 200 from skill, 300 from gear", () => {
     expect(
-      hitOf({ combatXp: xpForLevel(11), weapon: "emberiteSword" }),
+      hitOf({
+        attackXp: xpForLevel(11),
+        strengthXp: 0,
+        weapon: "emberiteSword",
+      }),
     ).toEqual({ chance: 0.45, min: 100, max: 200, gear: 300 });
   });
 
-  test("Might adds to the gear part, and every 20 Combat levels to the max", () => {
+  test("Attack alone raises the chance to land and leaves the max hit", () => {
+    expect(hitOf({ attackXp: xpForLevel(99), strengthXp: 0 })).toEqual({
+      chance: 0.89,
+      min: 100,
+      max: 200,
+      gear: 0,
+    });
+  });
+
+  test("Strength alone raises the max hit, 100 each 20 levels, and leaves the chance to land", () => {
+    expect(hitOf({ attackXp: 0, strengthXp: xpForLevel(19) })).toMatchObject({
+      chance: 0.4,
+      max: 200,
+    });
+    expect(hitOf({ attackXp: 0, strengthXp: xpForLevel(20) })).toMatchObject({
+      chance: 0.4,
+      max: 300,
+    });
+    expect(hitOf({ attackXp: 0, strengthXp: xpForLevel(99) })).toMatchObject({
+      chance: 0.4,
+      max: 600,
+    });
+  });
+
+  test("Might adds to the gear part", () => {
     expect(
       hitOf({
-        combatXp: xpForLevel(20),
+        attackXp: 0,
+        strengthXp: xpForLevel(20),
         weapon: "copperSword",
         body: "copperChestplate:rare:might",
       }),
@@ -92,12 +121,9 @@ describe("a player's hit", () => {
   });
 
   test("a worn ring's Accuracy adds a percentage point a point (#238)", () => {
-    expect(hitOf({ combatXp: xpForLevel(11), ring: "copperRing" }).chance).toBe(
-      0.5,
-    );
-    expect(
-      hitOf({ combatXp: xpForLevel(11), ring: "emberiteRing" }).chance,
-    ).toBe(0.61);
+    const attack11 = { attackXp: xpForLevel(11), strengthXp: 0 };
+    expect(hitOf({ ...attack11, ring: "copperRing" }).chance).toBe(0.5);
+    expect(hitOf({ ...attack11, ring: "emberiteRing" }).chance).toBe(0.61);
   });
 });
 

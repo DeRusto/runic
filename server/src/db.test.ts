@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { GEAR_SLOTS, parseRegion } from "@runic/shared";
+import { combatLevel, GEAR_SLOTS, parseRegion } from "@runic/shared";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { db, openDatabase } from "./db.ts";
 import { NO_EXPERIENCE } from "./playerSave.ts";
@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns and Thieving's (#250).
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250) and the melee split, which turns Combat's column into Attack's and Strength's.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -43,11 +43,19 @@ const LATEST_COLUMNS = [
   "jewelsmithing_xp",
   "thieving_xp",
 ];
-const LATEST_MIGRATIONS = 17;
+const LATEST_MIGRATIONS = 18;
+
+/** Makes the melee split pending again: Combat's column back, and Attack's, Strength's and the stance gone. */
+function unapplySplit(sqlite: DatabaseSync) {
+  sqlite.exec("ALTER TABLE players DROP COLUMN strength_xp");
+  sqlite.exec("ALTER TABLE players DROP COLUMN stance");
+  sqlite.exec("ALTER TABLE players RENAME COLUMN attack_xp TO combat_xp");
+}
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {
   const sqlite = new DatabaseSync(path);
+  unapplySplit(sqlite);
   sqlite.exec("DROP TABLE IF EXISTS friends");
   sqlite.exec("DROP TABLE IF EXISTS ignores");
   sqlite.exec("ALTER TABLE players RENAME COLUMN herblaw_xp TO foraging_xp");
@@ -139,13 +147,14 @@ describe("a save from the first slice, written before the stacks migration", () 
     return openDatabase();
   }
 
-  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots, turn Foraging into Herblaw, start Woodcutting and Fishing at 0 and change nothing else", async () => {
+  test("the migrations backfill Mastery with 7% of the experience held, scale health by 100, add empty gear slots, turn Foraging into Herblaw, start Woodcutting and Fishing at 0, copy Combat to Attack and Strength and change nothing else", async () => {
     const database = await migratedFromOldRow();
     expect(readSave(7)).toEqual({
       accountId: 7,
       // Every skill the old row had no column for starts at 0.
       ...NO_EXPERIENCE,
-      combatXp: 1234,
+      attackXp: 1234,
+      strengthXp: 1234,
       defenseXp: 567,
       herblawXp: 890,
       hitpointsXp: 4500,
@@ -168,8 +177,9 @@ describe("a save from the first slice, written before the stacks migration", () 
       neck: "",
       ring: "",
       tools: [],
+      // A full bar has no room for Strength, so Attack alone takes Combat's place.
       pinnedSkills: [
-        "Combat",
+        "Attack",
         "Defense",
         "Herblaw",
         "Hitpoints",
@@ -181,6 +191,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       quests: {},
       questPoints: 0,
       identifiesEssence: false,
+      stance: "balanced",
     });
     await database.shutdown();
   });
@@ -203,7 +214,8 @@ describe("a save from the first slice, written before the stacks migration", () 
 
     const player = sim.state.players.get("a")!;
     expect(player).toMatchObject({
-      combatXp: 1234,
+      attackXp: 1234,
+      strengthXp: 1234,
       defenseXp: 567,
       herblawXp: 890,
       hitpointsXp: 4500,
@@ -233,8 +245,81 @@ describe("a save from the first slice, written before the stacks migration", () 
     expect(player.inventoryCounts[0]).toBe(2);
     expect(player.inventoryCounts[4]).toBe(1);
     expect(player.inventoryCounts[9]).toBe(1);
-    expect(player.combatXp).toBe(1234);
+    expect(player).toMatchObject({ attackXp: 1234, strengthXp: 1234 });
     expect(player.bank.every((item) => item === "")).toBe(true);
+    await database.shutdown();
+  });
+});
+
+describe("a save from just before the melee split", () => {
+  /** A row as the last build wrote it, with Combat's experience and these pins. */
+  async function splitFrom(pinnedSkills: string[]) {
+    await boot();
+    const sqlite = new DatabaseSync(path);
+    unapplySplit(sqlite);
+    sqlite.exec(
+      "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+    );
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (8, 'Fighter', 'fighter', 'x', 0)`);
+    sqlite
+      .prepare(
+        `INSERT INTO players (account_id, combat_xp, defense_xp, herblaw_xp, hitpoints_xp, x, y, health, inventory, mastery_xp, mastery_hundredths, pinned_skills)
+         VALUES (8, 18050, 900, 0, 20000, 4, 1, 1000, '[]', 2500, 12, ?)`,
+      )
+      .run(JSON.stringify(pinnedSkills));
+    sqlite.close();
+    return openDatabase();
+  }
+
+  test("each of Attack and Strength gets all of Combat's experience, and Mastery gets nothing for it", async () => {
+    const database = await splitFrom(["Combat", "Mining"]);
+    expect(readSave(8)).toMatchObject({
+      attackXp: 18050,
+      strengthXp: 18050,
+      defenseXp: 900,
+      hitpointsXp: 20000,
+      masteryXp: 2500,
+      masteryHundredths: 12,
+      stance: "balanced",
+    });
+    expect(readSave(8)).not.toHaveProperty("combatXp");
+    await database.shutdown();
+  });
+
+  test("a pinned Combat becomes Attack and Strength in its place when the bar has room", async () => {
+    const database = await splitFrom(["Mining", "Combat", "Herblaw"]);
+    expect(readSave(8)!.pinnedSkills).toEqual([
+      "Mining",
+      "Attack",
+      "Strength",
+      "Herblaw",
+    ]);
+    await database.shutdown();
+  });
+
+  test("pins without Combat are left as they were", async () => {
+    const database = await splitFrom(["Mining", "Herblaw"]);
+    expect(readSave(8)!.pinnedSkills).toEqual(["Mining", "Herblaw"]);
+    await database.shutdown();
+  });
+
+  test("the copy doesn't apply again on the next boot", async () => {
+    await (await splitFrom(["Combat"])).shutdown();
+    const database = await openDatabase();
+    expect(readSave(8)).toMatchObject({ attackXp: 18050, strengthXp: 18050 });
+    await database.shutdown();
+  });
+
+  test("the player loads at the combat level Combat gave them", async () => {
+    const database = await splitFrom(["Combat"]);
+    const sim = new Simulation(
+      parseRegion(["TTTTTTT", "TR....T", "TTTTTTT"].join("\n")),
+      () => 0,
+    );
+    sim.addPlayer("a", readSave(8)!, "Fighter");
+    // 0.25 × (5 + 1 + 21) + 0.325 × (20 + 20) = 19.75
+    expect(combatLevel(sim.state.players.get("a")!)).toBe(19);
     await database.shutdown();
   });
 });

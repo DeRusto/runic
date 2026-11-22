@@ -20,7 +20,6 @@ function world(rows: string[], ...rolls: number[]) {
 const SAVE: PlayerSave = {
   x: 1,
   y: 1,
-  combatXp: 0,
   defenseXp: 0,
   herblawXp: 0,
   hitpointsXp: 4050,
@@ -129,13 +128,13 @@ describe("a docile creature", () => {
     });
   });
 
-  test("a kill pays the game's Combat experience, 12 for a Tarn Ox's 200 health", () => {
+  test("a kill pays the game's melee experience, 12 for a Tarn Ox's 200 health", () => {
     const s = world(CORRIDOR, ...HIT);
     placed(s, "a", 3);
     s.queueTarget("a", "0");
     run(s, 1);
     const player = s.state.players.get("a")!;
-    expect(player.combatXp).toBe(12);
+    expect(player.attackXp + player.strengthXp).toBe(12);
     expect(player.hitpointsXp).toBe(4050 + 12);
   });
 

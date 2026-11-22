@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import { enemyHit, playerHit, rollLoot } from "./combat.ts";
 import { ENEMIES } from "./enemies.ts";
 import { BLOCKING_XP_PER_BLOCK } from "./index.ts";
+import { MAX_XP } from "./skills.ts";
 
 /** Hands out these rolls in order, then fails the test if asked for more. */
 const rolls = (...values: number[]) =>
@@ -10,38 +11,90 @@ const rolls = (...values: number[]) =>
     return values.shift()!;
   });
 
-const fresh = { combatXp: 0, defenseXp: 0, blockingXp: 0, health: 1000 };
+const fresh = {
+  attackXp: 0,
+  strengthXp: 0,
+  defenseXp: 0,
+  blockingXp: 0,
+  health: 1000,
+};
 
 describe("playerHit", () => {
   test("a miss rolls once and does nothing", () => {
-    expect(playerHit(fresh, 0, 800, rolls(0.99))).toEqual({
+    expect(playerHit(fresh, "balanced", 0, 800, rolls(0.99))).toEqual({
       damage: 0,
       critical: false,
       xp: [
-        ["combatXp", 0],
+        ["attackXp", 0],
+        ["strengthXp", 0],
         ["hitpointsXp", 0],
       ],
     });
   });
 
   test("a hit rolls its damage and then a critical, and a Might potion adds to it (#222)", () => {
-    expect(playerHit(fresh, 0, 800, rolls(0, 0, 0.99)).damage).toBe(100);
-    expect(playerHit(fresh, 100, 800, rolls(0, 0, 0.99)).damage).toBe(200);
-    expect(playerHit(fresh, 0, 800, rolls(0, 0, 0))).toMatchObject({
+    expect(playerHit(fresh, "balanced", 0, 800, rolls(0, 0, 0.99)).damage).toBe(
+      100,
+    );
+    expect(
+      playerHit(fresh, "balanced", 100, 800, rolls(0, 0, 0.99)).damage,
+    ).toBe(200);
+    expect(playerHit(fresh, "balanced", 0, 800, rolls(0, 0, 0))).toMatchObject({
       damage: 150,
       critical: true,
     });
   });
 
   test("damage and its experience stop at the enemy's health", () => {
-    expect(playerHit(fresh, 0, 50, rolls(0, 0, 0.99))).toEqual({
+    expect(playerHit(fresh, "balanced", 0, 50, rolls(0, 0, 0.99))).toEqual({
       damage: 50,
       critical: false,
       xp: [
-        ["combatXp", 3],
+        ["attackXp", 2],
+        ["strengthXp", 1],
         ["hitpointsXp", 3],
       ],
     });
+  });
+
+  test("the stance decides where the melee experience goes; Hitpoints gets its share either way", () => {
+    expect(playerHit(fresh, "precise", 0, 800, rolls(0, 0, 0.99)).xp).toEqual([
+      ["attackXp", 6],
+      ["strengthXp", 0],
+      ["hitpointsXp", 6],
+    ]);
+    expect(playerHit(fresh, "forceful", 0, 800, rolls(0, 0, 0.99)).xp).toEqual([
+      ["attackXp", 0],
+      ["strengthXp", 6],
+      ["hitpointsXp", 6],
+    ]);
+  });
+
+  test("Attack raises the chance to land: a roll that misses at Attack 1 lands at Attack 99", () => {
+    // 40% at Attack 1, 89% at Attack 99.
+    expect(playerHit(fresh, "balanced", 0, 800, rolls(0.5)).damage).toBe(0);
+    const attacker = { ...fresh, attackXp: MAX_XP };
+    expect(
+      playerHit(attacker, "balanced", 0, 800, rolls(0.5, 0, 0.99)).damage,
+    ).toBe(100);
+    // Strength doesn't help it land.
+    const striker = { ...fresh, strengthXp: MAX_XP };
+    expect(playerHit(striker, "balanced", 0, 800, rolls(0.5)).damage).toBe(0);
+  });
+
+  test("Strength raises the max hit: the top damage roll deals 200 at Strength 1 and 600 at Strength 99", () => {
+    expect(
+      playerHit(fresh, "balanced", 0, 800, rolls(0, 0.999, 0.99)).damage,
+    ).toBe(200);
+    const striker = { ...fresh, strengthXp: MAX_XP };
+    expect(
+      playerHit(striker, "balanced", 0, 800, rolls(0, 0.999, 0.99)).damage,
+    ).toBe(600);
+    // Attack doesn't raise it.
+    const attacker = { ...fresh, attackXp: MAX_XP };
+    expect(
+      playerHit(attacker, "balanced", 0, 800, rolls(0, 0.999, 0.99)).damage,
+    ).toBe(200);
   });
 });
 
