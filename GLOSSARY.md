@@ -38,6 +38,10 @@ _Avoid_: Keeper (alone), hermit
 The village's south-west building, with the range outside its door.
 _Avoid_: Tavern, pub
 
+**Pell**:
+The drunk: a mark who slumps outside the inn, by its west corner. He is the first person a player can pickpocket, at Thieving level 1, for a few coins and now and then a cooked perch (#250).
+_Avoid_: The drunk (as his name), beggar
+
 **Lake**:
 The body of water in the region, where players fish from the bank. Water can't be walked on. It is one kind of water among those a region may hold, alongside a river or the sea.
 _Avoid_: Pond, mere
@@ -360,8 +364,12 @@ A person who stands in the region only to be pickpocketed, with no job to offer,
 _Avoid_: Victim, target (alone), NPC
 
 **Stun**:
-A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them.
+A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them. It is one kind of busy.
 _Avoid_: Freeze, daze
+
+**Busy**:
+A player who can't act or move for a set number of ticks: their clicks are ignored until it ends. Whether enemies can hit them meanwhile depends on why they are busy: a stun leaves them open, and Agility's crossing will not (#236).
+_Avoid_: Locked (that's the combat lock), frozen
 
 **Stall**:
 One of the Storekeeper's carts outside the general store, holding food, fish or gems, that a player steals items from. It empties for that player alone, for a while. If a player fails, the Storekeeper catches them: no loot, no hit, and that stall is closed to them for a while.

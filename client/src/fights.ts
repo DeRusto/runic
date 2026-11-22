@@ -204,6 +204,12 @@ export function showFights(room: WorldConnection) {
             [event.item],
           ),
         );
+      } else if (event.type === "stunned") {
+        // Caught at once: the hit shows now, then the stun the chat names (#250).
+        atContact(playerOverheads.get(event.player), event.damage, 0, () => {
+          const victim = playerFigures.get(event.player);
+          if (victim && !victim.playingOnce) victim.once("Hit_A");
+        });
       } else if (event.type === "eaten") {
         const figure = playerFigures.get(event.player);
         if (figure && !figure.moving) figure.once("Use_Item", EAT_CLIP_SPEED);

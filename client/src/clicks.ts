@@ -2,6 +2,9 @@ import {
   GATHERING,
   offers,
   gatherRefusal,
+  PICKPOCKET_INTENT,
+  PICKPOCKETS,
+  pickpocketRefusal,
   stationRefusal,
   TAKE_INTENT,
   TARGET_INTENT,
@@ -24,11 +27,11 @@ import type { showEnemies } from "./enemies.ts";
 import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
-import type { addVillagers } from "./villagers.ts";
+import type { addMarks, addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on another player it opens the player menu. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on a mark, to pickpocket; on another player it opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -38,6 +41,7 @@ export function walkOnClick(
   fireUnder: ReturnType<typeof showFires>,
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   villagerUnder: Awaited<ReturnType<typeof addVillagers>>,
+  markUnder: Awaited<ReturnType<typeof addMarks>>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
   otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
@@ -71,9 +75,20 @@ export function walkOnClick(
   };
 
   // The browser's own menu never shows on the canvas, whatever is under the click.
+  /** Asks to pickpocket the mark, unless the rules refuse, which the chat says why (#250). */
+  const pickpocket = (mark: NonNullable<ReturnType<typeof markUnder>>) => {
+    const me = room.state.players.get(room.sessionId);
+    const refusal = me && pickpocketRefusal(PICKPOCKETS[mark.mark], me);
+    if (refusal) return printChatLine(refusal);
+    showMarker(mark.x, mark.y);
+    room.send(PICKPOCKET_INTENT, mark.mark);
+  };
+
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
     aim(event);
+    const mark = markUnder(raycaster);
+    if (mark) return openMenu(event, [["Pickpocket", () => pickpocket(mark)]]);
     const villager = villagerUnder(raycaster);
     if (villager) {
       const visit = (then?: DialogueAction) => () => {
@@ -139,6 +154,8 @@ export function walkOnClick(
       openSmithingPanel("fire", { x: fire.x, y: fire.y });
       return;
     }
+    const mark = markUnder(raycaster);
+    if (mark) return pickpocket(mark);
     const villager = villagerUnder(raycaster);
     if (villager) {
       showMarker(villager.x, villager.y);

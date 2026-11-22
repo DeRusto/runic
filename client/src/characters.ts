@@ -6,6 +6,7 @@ import {
   type EnemyKind,
   type GatheringSkill,
   type Tile,
+  type MarkId,
   type VillagerId,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -762,6 +763,22 @@ export async function loadVillager(tile: Tile, villager: VillagerId) {
     castShadows(tool);
     scene.getObjectByName("handslotr")!.add(tool);
   }
+  return new Figure(tile, scene, clips);
+}
+
+/** Each mark's KayKit model, one no player wears, on the players' shared clips (#250). */
+const MARK_MODELS: Record<MarkId, string> = {
+  // The drunk slumps in the Barbarian's furs.
+  drunk: "Barbarian",
+};
+
+/** A mark on their tile (#250). */
+export async function loadMark(tile: Tile, mark: MarkId) {
+  const [{ scene }, clips] = await Promise.all([
+    load(MARK_MODELS[mark]),
+    loadClips(),
+  ]);
+  fit(scene, (size) => HEIGHT / size.y);
   return new Figure(tile, scene, clips);
 }
 

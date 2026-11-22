@@ -6,11 +6,11 @@ Open `region.tmj` in Tiled to paint it, or edit it through the `tiled` MCP serve
 
 ## Layers
 
-| Layer        | Type    | Holds                                                | Rule                        |
-| ------------ | ------- | ---------------------------------------------------- | --------------------------- |
-| `ground`     | Tiles   | grass, thicket, path, cobble, ashen, water, moss     | Every cell is filled        |
-| `features`   | Tiles   | props, trees, stations, house walls and doors        | At most one per tile        |
-| `placements` | Objects | the respawn, enemy homes, NPCs, site pools and spots | One per tile, snapped to it |
+| Layer        | Type    | Holds                                               | Rule                        |
+| ------------ | ------- | --------------------------------------------------- | --------------------------- |
+| `ground`     | Tiles   | grass, thicket, path, cobble, ashen, water, moss    | Every cell is filled        |
+| `features`   | Tiles   | props, trees, stations, house walls and doors       | At most one per tile        |
+| `placements` | Objects | the respawn, enemy homes, NPCs, marks, pools, spots | One per tile, snapped to it |
 
 If it's just what stands on a tile, it's a tile in `features`. If it has a name, its own settings, or something refers to it, it's an object in `placements`.
 
@@ -29,6 +29,7 @@ An object's class is one of these:
 | `respawn`   | Nothing. There's exactly one                                                                                                                                     |
 | `enemyHome` | An `enemy` string property: `spider`, `skeleton`, or a docile creature: `tarnOx`, `bristleback`, `cinderhorn` (#238)                                             |
 | `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`, `tamsin`                                                                                              |
+| `mark`      | Its name: a mark id, `drunk` (#250)                                                                                                                              |
 | `sitePool`  | A rectangle with `site` (`vein`, `bush`, `fishingSpot`), `kind` and `active` (an int)                                                                            |
 | `siteSpot`  | A point inside a `sitePool`, on a tile that doesn't block, or on water for a fishing spot. Where pools overlap, its name is the `kind` of the pool it belongs to |
 
