@@ -11,6 +11,7 @@ import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
 import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
+import { addObstacles } from "./obstacles.ts";
 import { addMarks } from "./marks.ts";
 import { addStalls } from "./stalls.ts";
 import { showEmptied } from "./emptied.ts";
@@ -59,6 +60,7 @@ const spots = pools.flatMap(({ skill, kind, spots }) =>
   }),
 );
 const strongboxes = addStrongboxes(tiles);
+const obstacleUnder = addObstacles(tiles);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
 const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder, stalls] =
@@ -93,7 +95,7 @@ addBarButtons();
 /** Everything that shows a room tidies up after itself in that room's onLeave. */
 function enterWorld(room: WorldConnection) {
   status.textContent = "";
-  const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure);
+  const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure, tiles);
   const openMenu = showBottomBar(room, sayOverhead, tiles);
   walkOnClick(
     room,
@@ -107,6 +109,7 @@ function enterWorld(room: WorldConnection) {
     markUnder,
     stalls.stallUnder,
     strongboxes.strongboxUnder,
+    obstacleUnder,
     showGroundItems(room),
     // It opens only with the player on the pile, which the following camera settles at the screen's
     // centre; projecting the pile now would use the camera still on its way there.

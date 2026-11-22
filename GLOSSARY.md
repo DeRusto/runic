@@ -347,8 +347,8 @@ The skill trained only by crossing obstacles, on a course or a shortcut. It gate
 _Avoid_: Running, stamina
 
 **Obstacle**:
-A fixed place a player crosses for Agility experience, such as a log to balance on or a net to climb. Crossing one near its level can fail, which costs a little health but never kills.
-_Avoid_: Hurdle
+A crossing between a marked start tile and a landing tile that earns Agility experience. The crossing takes a fixed number of ticks. During those ticks the player cannot act or take a hit, and other players can cross the same obstacle. A shortcut can fail near its required level and cost a little health, but it never kills the player.
+_Avoid_: Hurdle as the general term for an obstacle. Hurdle is also the name of one Southfield obstacle.
 
 **Course**:
 A loop of obstacles crossed in order. Each obstacle pays experience, and finishing the loop pays a lap bonus.
@@ -383,7 +383,7 @@ A few ticks after a failed pickpocket when the player can't act or move and clic
 _Avoid_: Freeze, daze
 
 **Busy**:
-A player held for a set number of ticks, who can't act or move while the server ignores their clicks. Each use says whether enemies can still hit the player: a stun says yes, and Agility's crossing will say no (#236).
+A player held for a set number of ticks, who can't act or move while the server ignores their clicks. Each use says whether enemies can still hit the player: a stun says yes, and Agility's crossing says no (#236).
 _Avoid_: Locked (that's the combat lock), frozen
 
 **Stall**:

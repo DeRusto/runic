@@ -1,5 +1,11 @@
 import { Callbacks, type Room } from "@colyseus/sdk";
-import { itemParts } from "@runic/shared";
+import {
+  itemParts,
+  OBSTACLES,
+  obstacleLanding,
+  TICK_MS,
+  type TileKind,
+} from "@runic/shared";
 import type { WorldRoom } from "../../server/src/WorldRoom.ts";
 import {
   addSeeThroughOutline,
@@ -21,6 +27,7 @@ export { figures as playerFigures, overheads as playerOverheads };
 export function showPlayers(
   room: WorldConnection,
   newFigure: Awaited<ReturnType<typeof loadCharacters>>,
+  tiles: TileKind[][],
 ) {
   const callbacks = Callbacks.get(room);
 
@@ -55,7 +62,19 @@ export function showPlayers(
       const action = player?.action;
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;
-      figure.update(now);
+      const obstacle =
+        action === "crossing" && player
+          ? tiles[player.y]?.[player.x]?.obstacle
+          : undefined;
+      figure.update(
+        now,
+        obstacle && player
+          ? {
+              landing: obstacleLanding(obstacle, player),
+              ms: OBSTACLES[obstacle].ticks * TICK_MS,
+            }
+          : undefined,
+      );
       hitBoxes
         .get(id)!
         .position.copy(figure.model.position)

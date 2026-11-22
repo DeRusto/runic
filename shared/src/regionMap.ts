@@ -1,3 +1,4 @@
+import { isObstacleKind, obstacleLanding } from "./agility.ts";
 import { VILLAGERS } from "./dialogue.ts";
 import { MARKS } from "./thieving.ts";
 import { STALLS } from "./stalls.ts";
@@ -43,7 +44,9 @@ type TiledMap = {
 type TiledTileset = {
   tiles?: { id: number; properties?: TiledProperty[] }[];
 };
-type TileProperties = Partial<Omit<TileKind, "enemy" | "villager">>;
+type TileProperties = Partial<
+  Omit<TileKind, "enemy" | "villager" | "obstacle">
+>;
 
 const LAYERS = ["ground", "features", "placements"];
 
@@ -236,6 +239,7 @@ export function loadRegion(
   const rectangles = placements.objects.filter((o) => o.type === "sitePool");
   const pools = rectangles.map(readPool);
   const taken = new Set<string>();
+  const obstacles = new Map<string, Tile>();
   for (const object of placements.objects) {
     if (object.type === "sitePool") continue;
     const x = object.x / map.tilewidth;
@@ -244,6 +248,15 @@ export function loadRegion(
     if (!tile) return fail(`"${object.type}" is off the grid at ${x},${y}`);
     if (taken.has(`${x},${y}`)) fail(`two placements share ${x},${y}`);
     taken.add(`${x},${y}`);
+    if (object.type === "obstacle") {
+      if (!isObstacleKind(object.name))
+        return fail(`unknown obstacle "${String(object.name)}"`);
+      if (tile.blocks) fail(`"${object.name}" stands on a blocking tile`);
+      if (obstacles.has(object.name)) fail(`two ${object.name} obstacles`);
+      tile.obstacle = object.name;
+      obstacles.set(object.name, obstacleLanding(object.name, { x, y }));
+      continue;
+    }
     if (object.type !== "siteSpot") {
       place(tile, object);
       continue;
@@ -285,6 +298,13 @@ export function loadRegion(
       if (!beside.some(([bx, by]) => tiles[by!]?.[bx!]?.blocks === false))
         fail(`a ${siteName(pool)} at ${x},${y} has no walkable tile beside it`);
     }
+  const poolSpots = new Set(
+    pools.flatMap(({ spots }) => spots.map(({ x, y }) => `${x},${y}`)),
+  );
+  for (const [name, { x, y }] of obstacles) {
+    if (tiles[y]?.[x]?.blocks !== false || poolSpots.has(`${x},${y}`))
+      fail(`${name} needs a clear landing at ${x},${y}`);
+  }
   if (placements.objects.filter((o) => o.type === "respawn").length !== 1)
     fail("needs exactly one respawn");
   return { tiles, pools };

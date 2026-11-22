@@ -77,6 +77,7 @@ test("only the skills that can be trained reach the sheet, the bar and pinning",
     "Leatherworking",
     "Jewelsmithing",
     "Thieving",
+    "Agility",
     "Blocking",
     "Mastery",
   ]);
@@ -162,6 +163,10 @@ test("Mastery and Herblaw don't count", () => {
   expect(combatLevel({ ...FRESH, masteryXp: MAX_XP, herblawXp: MAX_XP })).toBe(
     3,
   );
+});
+
+test("Agility doesn't count, however high (#234)", () => {
+  expect(combatLevel({ ...FRESH, agilityXp: MAX_XP })).toBe(3);
 });
 
 test("the best style is the one that counts, and Prayer counts half", () => {

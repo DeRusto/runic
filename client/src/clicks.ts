@@ -1,4 +1,6 @@
 import {
+  CROSS_INTENT,
+  OBSTACLES,
   GATHERING,
   offers,
   gatherRefusal,
@@ -37,12 +39,16 @@ import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
 import type { addMarks } from "./marks.ts";
 import type { addStalls } from "./stalls.ts";
+import type { addObstacles } from "./obstacles.ts";
 import type { addStrongboxes } from "./strongboxes.ts";
 import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station, stall, strongbox, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens, and to pickpocket those who can be; on a mark it offers to pickpocket; on a stall, to steal from it; on a strongbox, to open it; on another player it opens the player menu. */
+/**
+ * Targets what is under a click or walks to the ground tile. Right-click opens the choices for
+ * villagers, marks, stalls, strongboxes, obstacles and other players.
+ */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -55,6 +61,7 @@ export function walkOnClick(
   markUnder: Awaited<ReturnType<typeof addMarks>>,
   stallUnder: Awaited<ReturnType<typeof addStalls>>["stallUnder"],
   strongboxUnder: ReturnType<typeof addStrongboxes>["strongboxUnder"],
+  obstacleUnder: ReturnType<typeof addObstacles>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
   otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
@@ -124,6 +131,19 @@ export function walkOnClick(
       y,
     );
 
+  const crossing = () =>
+    room.state.players.get(room.sessionId)?.action === "crossing";
+
+  const cross = ({
+    obstacle,
+    x,
+    y,
+  }: NonNullable<ReturnType<typeof obstacleUnder>>) => {
+    if (crossing()) return;
+    showMarker(x, y);
+    room.send(CROSS_INTENT, obstacle);
+  };
+
   const aim = (event: MouseEvent) => {
     pointer.set(
       (event.clientX / innerWidth) * 2 - 1,
@@ -135,6 +155,7 @@ export function walkOnClick(
   // The browser's own menu never shows on the canvas, whatever is under the click.
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
+    if (crossing()) return;
     aim(event);
     const villager = villagerUnder(raycaster);
     if (villager) {
@@ -174,11 +195,20 @@ export function walkOnClick(
           () => openStrongbox(strongbox.strongbox, strongbox.x, strongbox.y),
         ],
       ]);
+    const obstacle = obstacleUnder(raycaster);
+    if (obstacle)
+      return openMenu(event, [
+        [
+          `Cross ${OBSTACLES[obstacle.obstacle].name.toLowerCase()}`,
+          () => cross(obstacle),
+        ],
+      ]);
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
   };
 
   const onClick = (event: MouseEvent) => {
+    if (crossing()) return;
     aim(event);
     const enemy = enemyUnder(raycaster);
     if (enemy) {
@@ -222,6 +252,8 @@ export function walkOnClick(
     const strongbox = strongboxUnder(raycaster);
     if (strongbox)
       return openStrongbox(strongbox.strongbox, strongbox.x, strongbox.y);
+    const obstacle = obstacleUnder(raycaster);
+    if (obstacle) return cross(obstacle);
     const fire = fireUnder(raycaster);
     if (fire && me) {
       showMarker(fire.x, fire.y);

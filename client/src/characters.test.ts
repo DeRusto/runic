@@ -130,6 +130,24 @@ describe("characterFor", () => {
 });
 
 describe("Figure", () => {
+  test("a crossing slide moves through its marked start before the landing", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = new Figure(tile, new THREE.Object3D(), CLIPS);
+    const crossing = { landing: { x: 1, y: 2 }, ms: 1200 };
+    figure.update(1000);
+    tile.x = 1;
+    figure.update(1000, crossing);
+    figure.update(1150, crossing);
+    expect(figure.model.position).toMatchObject({ x: 0.5, z: 0 });
+    figure.update(1300, crossing);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 0 });
+    figure.update(1750, crossing);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 1 });
+    tile.y = 2;
+    figure.update(2200);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 2 });
+  });
+
   it("stands on its tile playing Idle_A", () => {
     const figure = figureAt({ x: 3, y: 4 });
     figure.update(16);

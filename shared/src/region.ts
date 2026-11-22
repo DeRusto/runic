@@ -1,6 +1,7 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { MarkId } from "./thieving.ts";
 import type { StallKind } from "./stalls.ts";
+import type { ObstacleKind } from "./agility.ts";
 import type { StrongboxKind } from "./strongboxes.ts";
 import type { EnemyKind } from "./enemies.ts";
 import type { FishingSpotKind } from "./fishing.ts";
@@ -54,6 +55,7 @@ export type TileKind = {
   stall?: StallKind;
   /** A strongbox out where the danger is, which blocks like a stall (#253). */
   strongbox?: StrongboxKind;
+  obstacle?: ObstacleKind;
   house?: "wall" | "door";
   enemy?: EnemyKind;
   respawn?: true;

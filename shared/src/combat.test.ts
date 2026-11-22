@@ -12,6 +12,7 @@ const rolls = (...values: number[]) =>
   });
 
 const fresh = {
+  agilityXp: 0,
   attackXp: 0,
   strengthXp: 0,
   defenseXp: 0,
@@ -20,6 +21,28 @@ const fresh = {
 };
 
 describe("playerHit", () => {
+  test.each([
+    [0, 0.1],
+    [MAX_XP, 0.198],
+  ])(
+    "Agility experience %i gives a critical chance of %f",
+    (agilityXp, threshold) => {
+      const swing = (roll: number) =>
+        playerHit(
+          { ...fresh, agilityXp },
+          "balanced",
+          0,
+          800,
+          rolls(0, 0, roll),
+        );
+      expect(swing(threshold - 0.00001)).toMatchObject({
+        damage: 150,
+        critical: true,
+      });
+      expect(swing(threshold)).toMatchObject({ damage: 100, critical: false });
+    },
+  );
+
   test("a miss rolls once and does nothing", () => {
     expect(playerHit(fresh, "balanced", 0, 800, rolls(0.99))).toEqual({
       damage: 0,

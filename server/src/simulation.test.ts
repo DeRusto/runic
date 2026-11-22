@@ -375,6 +375,7 @@ const SAVED = {
   leatherworkingXp: 17,
   jewelsmithingXp: 18,
   thievingXp: 19,
+  agilityXp: 25,
   blockingXp: 6,
   masteryXp: 7,
   masteryHundredths: 8,

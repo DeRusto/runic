@@ -14,6 +14,7 @@ import {
   type TileKind,
   type WorldEvent,
 } from "@runic/shared";
+import { Agility } from "./agility.ts";
 import { Bank } from "./banking.ts";
 import { dropFromSlot } from "./dropping.ts";
 import { Eating } from "./eating.ts";
@@ -71,6 +72,7 @@ export class Simulation {
   private readonly fighting: Fighting;
   private readonly thieving: ThievingTargets;
   private readonly walking: Walking;
+  private readonly agility: Agility;
   private readonly inventory: Inventory;
   private readonly taking: Taking;
   private queuedLogouts = new Set<string>();
@@ -110,11 +112,13 @@ export class Simulation {
       this.quests,
     );
     this.thieving = new ThievingTargets(this.world, this.fighting);
+    this.agility = new Agility(this.world);
     this.walking = new Walking(
       this.world,
       this.sites,
       this.thieving,
       this.firemaking,
+      this.agility,
     );
     this.sites.placePools(pools);
   }
@@ -223,7 +227,8 @@ export class Simulation {
   }
 
   queueLogout(id: string) {
-    if (this.state.players.has(id)) this.queuedLogouts.add(id);
+    if (this.state.players.has(id) && !this.world.isCrossing(id))
+      this.queuedLogouts.add(id);
   }
 
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
@@ -310,7 +315,12 @@ export class Simulation {
     this.queue(id, () => this.thieving.openIntent(id, strongbox));
   }
 
-  /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
+  /** Queues a crossing for an obstacle named by the client. */
+  queueCross(id: string, obstacle: unknown) {
+    this.queue(id, () => this.agility.crossIntent(obstacle));
+  }
+
+  /** Whether the player is busy this tick: stunned or crossing an Agility obstacle (#236). */
   isBusy(id: string) {
     return this.world.isBusy(id);
   }
@@ -394,6 +404,7 @@ export class Simulation {
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
   pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
+    if (this.world.isCrossing(id)) return;
     const pins = this.state.players.get(id)?.pinnedSkills;
     const { skill, pinned } = intent ?? {};
     if (!pins || !SKILLS.some(([name]) => name === skill)) return;
@@ -433,6 +444,7 @@ export class Simulation {
     this.state.tick++;
     this.applyIntents();
     this.walking.advance();
+    this.agility.advance();
     for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
     this.firemaking.advanceFires();
     this.making.advance();
