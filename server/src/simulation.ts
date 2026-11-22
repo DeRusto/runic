@@ -3,7 +3,6 @@ import {
   addItems,
   GATHERING_SKILLS,
   logoutRefusal,
-  stationOf,
   moveStack,
   MAX_PINNED_SKILLS,
   potionFromPlant,
@@ -14,8 +13,6 @@ import {
   siteId,
   SKILLS,
   takeRefusal,
-  tilesApart,
-  WALK_TICKS_PER_TILE,
   type Deal,
   type GatheringSkill,
   type GearSlot,
@@ -39,10 +36,10 @@ import { ThievingTargets } from "./thievingTargets.ts";
 import { Gathering } from "./gathering.ts";
 import { Firemaking } from "./firemaking.ts";
 import { Making } from "./making.ts";
+import { Walking } from "./walking.ts";
 import { GatheringSites } from "./gatheringSites.ts";
-import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
-import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
+import type { QueuedAction } from "./playerActions.ts";
 import {
   isAmount,
   isInventorySlot,
@@ -77,6 +74,7 @@ export class Simulation {
   private readonly eating: Eating;
   private readonly fighting: Fighting;
   private readonly thieving: ThievingTargets;
+  private readonly walking: Walking;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -119,6 +117,12 @@ export class Simulation {
       this.quests,
     );
     this.thieving = new ThievingTargets(this.world, this.fighting);
+    this.walking = new Walking(
+      this.world,
+      this.sites,
+      this.thieving,
+      this.firemaking,
+    );
     this.sites.placePools(pools);
   }
 
@@ -465,7 +469,7 @@ export class Simulation {
   tick() {
     this.state.tick++;
     this.applyIntents();
-    this.advancePlayers();
+    this.walking.advance();
     for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
     this.firemaking.advanceFires();
     this.making.advance();
@@ -474,7 +478,7 @@ export class Simulation {
     this.thieving.advance();
     this.advanceTakes();
     this.fighting.advancePlayerSwings();
-    this.syncActions();
+    this.walking.syncActions();
     this.enemies.advance({
       tick: this.state.tick,
       players: () =>
@@ -504,71 +508,8 @@ export class Simulation {
   }
 
   private applyIntents() {
-    for (const [id, intent] of this.queuedActions) {
-      const unsynced = this.world.unsyncedPlayers.get(id)!;
-      const player = this.state.players.get(id)!;
-      // With no way there, the old action still ends, and nothing replaces it.
-      const goNextTo = (action: UnsyncedAction) => {
-        const path = pathNextTo(
-          this.world.tiles,
-          player,
-          this.nextToOf(action)!,
-        );
-        unsynced.path = path ?? [];
-        unsynced.action = path && action;
-      };
-      switch (intent.kind) {
-        case "fighting":
-          unsynced.action = { kind: "fighting", enemy: intent.enemy };
-          break;
-        case "making": {
-          const { kind, item, all, at } = intent;
-          const action: UnsyncedAction = { kind, item, all, at };
-          // A fire the player is standing on or beside needs no walk (#224).
-          if (at && tilesApart(player, at) <= 1) {
-            unsynced.action = action;
-            unsynced.path = [];
-          } else {
-            goNextTo(action);
-          }
-          break;
-        }
-        case "lighting":
-          this.firemaking.startLighting(id, intent.slot);
-          break;
-        case "visiting":
-        case "pickpocketing":
-        case "stealing":
-        case "opening":
-          goNextTo(intent);
-          break;
-        case "taking": {
-          // Onto its tile, not next to it. It may have gone since the intent arrived.
-          const groundItem = this.state.groundItems.get(intent.groundItem);
-          unsynced.path = groundItem
-            ? findPath(this.world.tiles, player, groundItem)
-            : [];
-          unsynced.action = groundItem && intent;
-          break;
-        }
-        case "following":
-          // The target may have left or died since the intent arrived.
-          unsynced.action = this.world.alive(intent.player)
-            ? intent
-            : undefined;
-          unsynced.path = [];
-          break;
-        case "gathering":
-          goNextTo({ kind: intent.skill, site: intent.site });
-          break;
-        case "walking":
-          unsynced.action = undefined;
-          unsynced.path = findPath(this.world.tiles, player, intent.to);
-          break;
-        default:
-          intent satisfies never;
-      }
-    }
+    for (const [id, intent] of this.queuedActions)
+      this.walking.start(id, intent);
     this.queuedActions.clear();
     for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
     this.world.queuedEats.clear();
@@ -582,53 +523,6 @@ export class Simulation {
       else this.loggedOut.push(id);
     }
     this.queuedLogouts.clear();
-  }
-
-  /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
-  private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
-    if (action?.kind === "making")
-      return action.at ?? this.world.stations[stationOf(action.item)];
-    if (action?.kind === "visiting")
-      return this.world.villagers.get(action.villager);
-    const target = action && this.thieving.nextToOf(action);
-    if (target) return target;
-    if (action && "site" in action) return this.sites.get(action.site);
-    return undefined;
-  }
-
-  private advancePlayers() {
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
-      if (this.state.tick < unsynced.nextStepTick) continue;
-      const player = this.state.players.get(id)!;
-      if (unsynced.action?.kind === "fighting") {
-        // Re-pathed every step since it can move. A path's last step lands on its tile, so
-        // stopping short of that is exactly "next to" (spec D1).
-        const enemy = this.state.enemies.get(unsynced.action.enemy)!;
-        unsynced.path = findPath(this.world.tiles, player, enemy).slice(0, -1);
-      } else if (unsynced.action?.kind === "following") {
-        // Next to, never on, the target's tile: so a follower on it steps off.
-        const target = this.state.players.get(unsynced.action.player)!;
-        unsynced.path = pathNextTo(this.world.tiles, player, target) ?? [];
-      }
-      const next = unsynced.path[0];
-      // A pooled site may have come back on the way since the path was found,
-      // perhaps on the tile the walk ends on, so head for the target again.
-      if (
-        next &&
-        !legalSteps(this.world.tiles, player).some(
-          ({ x, y }) => x === next.x && y === next.y,
-        )
-      ) {
-        const nextTo = this.nextToOf(unsynced.action);
-        unsynced.path = nextTo
-          ? (pathNextTo(this.world.tiles, player, nextTo) ?? [])
-          : findPath(this.world.tiles, player, unsynced.path.at(-1)!);
-      }
-      if (!unsynced.path.length) continue;
-      Object.assign(player, unsynced.path.shift());
-      unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
-    }
   }
 
   /**
@@ -666,26 +560,6 @@ export class Simulation {
   /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
   lock(id: string) {
     this.world.lock(id);
-  }
-
-  /** After the swings, so each player's synced target and action show this tick's. */
-  private syncActions() {
-    for (const [id, { action, path }] of this.world.unsyncedPlayers) {
-      const player = this.state.players.get(id)!;
-      player.target = action?.kind === "fighting" ? action.enemy : "";
-      player.action =
-        action &&
-        action.kind !== "visiting" &&
-        action.kind !== "taking" &&
-        action.kind !== "following" &&
-        action.kind !== "pickpocketing" &&
-        action.kind !== "stealing" &&
-        action.kind !== "opening"
-          ? action.kind
-          : path.length
-            ? "walking"
-            : "";
-    }
   }
 
   /** Each player's respawn once their death is over, or else their healing (spec §6). */
