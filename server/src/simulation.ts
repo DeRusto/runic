@@ -1,7 +1,6 @@
 import { ArraySchema } from "@colyseus/schema";
 import {
   addItems,
-  addXp,
   AUGMENTATIONS,
   attemptChance,
   COINS,
@@ -58,7 +57,6 @@ import {
   rollCatch,
   rollFinds,
   findItemOf,
-  identifyEssence,
   siteId,
   SHELF_SLOTS,
   SKILLS,
@@ -71,28 +69,15 @@ import {
   bankSlotFor,
   depositRefusal,
   itemParts,
-  aTool,
   VILLAGERS,
   WALK_TICKS_PER_TILE,
   choicesNodeOf,
-  countOf,
-  QUEST_DONE,
-  currentQuestOf,
-  openingNodeOf,
-  stageOf,
-  turnInsOf,
   ENEMIES,
-  QUESTS,
-  type QuestId,
   type Deal,
   type DealLine,
   offers,
   type DialogueAction,
   nodesOf,
-  type Quest,
-  type QuestTurnIn,
-  type Tool,
-  type Villager,
   type VillagerId,
   type GatheringLeftField,
   type GatheringSkill,
@@ -126,6 +111,7 @@ import { Enemies, Enemy } from "./enemies.ts";
 import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
+import { Quests } from "./quests.ts";
 import { PlayerTimers } from "./playerTimers.ts";
 import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
 import {
@@ -219,11 +205,12 @@ export class Simulation {
     Exclude<DialogueAction, "quest">,
     (id: string, villager: VillagerId) => void
   > = {
-    giveTools: (id, villager) => this.giveTools(id, villager),
+    giveTools: (id, villager) => this.quests.giveTools(id, villager),
     openStore: (id, villager) => this.openWindow(id, "store", villager),
     openBank: (id, villager) => this.openWindow(id, "bank", villager),
   };
   private readonly shelf: Shelf;
+  private readonly quests: Quests;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -239,6 +226,7 @@ export class Simulation {
     this.world = new World(tiles, random);
     this.state = this.world.state;
     this.events = this.world.events;
+    this.quests = new Quests(this.world);
     this.shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
@@ -634,7 +622,7 @@ export class Simulation {
     if (!picked || !this.beside(id, talk.villager)) return;
     // A quest choice is the server's check: a turn-in it refuses keeps the node, which the box shows again from its first line (#231).
     if (picked.action === "quest") {
-      if (!this.advanceQuest(id, talk.villager)) {
+      if (!this.quests.advanceQuest(id, talk.villager)) {
         this.moveTalk(id, talk.villager, talk.node);
         return;
       }
@@ -687,11 +675,6 @@ export class Simulation {
   /** The player closed it, so walking away later says nothing. */
   private closeWindow(id: string, kind: VillagerWindow) {
     if (this.windowOf(id, kind)) this.windows.delete(id);
-  }
-
-  /** The node this villager's conversation opens with: the chain's current quest's stage-appropriate one, or their own start (#231, #232). */
-  private openingNode(id: string, villager: VillagerId) {
-    return openingNodeOf(villager, this.world.unsyncedPlayers.get(id)!.quests);
   }
 
   /** Closes the player's window from the server's side, with the line saying why. */
@@ -793,162 +776,6 @@ export class Simulation {
     if (!this.world.canAct(id) || !isBankSlot(from) || !isBankSlot(to)) return;
     const player = this.windowOf(id, "bank") && this.state.players.get(id);
     if (player) moveStack(player.bank, player.bankCounts, from, to);
-  }
-
-  private giveTools(id: string, villager: VillagerId, given?: readonly Tool[]) {
-    const player = this.state.players.get(id)!;
-    const { name, tools = [] }: Villager = VILLAGERS[villager];
-    const lacking = (given ?? tools).filter(
-      (tool) => !player.tools.includes(tool),
-    );
-    if (!lacking.length) return;
-    player.tools.push(...lacking);
-    const line = `${name} gives you ${lacking.map(aTool).join(" and ")}.`;
-    this.events.push({ type: "told", player: id, line });
-  }
-
-  /** Rewrites the player's synced quest arrays from their unsynced progress (#231). */
-  private syncQuests(id: string) {
-    const player = this.state.players.get(id)!;
-    const quests = this.world.unsyncedPlayers.get(id)!.quests;
-    player.quests = new ArraySchema(...quests.keys());
-    player.questStages = new ArraySchema(
-      ...[...quests.values()].map(({ stage }) => stage),
-    );
-  }
-
-  /**
-   * Runs the quest of this villager's chain that the player is on, for the choice picked:
-   * starting it, or turning in the stage's or a repeat's items. False when what it asks for
-   * isn't there yet, so the talk stays on the node (#231, #232).
-   */
-  private advanceQuest(id: string, villager: VillagerId) {
-    const quest = currentQuestOf(
-      villager,
-      this.world.unsyncedPlayers.get(id)!.quests,
-    );
-    if (!quest) return false;
-    const player = this.state.players.get(id)!;
-    const progress = this.world.unsyncedPlayers.get(id)!.quests.get(quest.id);
-    return progress
-      ? this.advanceStage(id, player, quest, progress)
-      : this.startQuest(id, player, quest);
-  }
-
-  /** Sets the first stage, and hands over the work's tools. It fails only while a quest it needs isn't done. */
-  private startQuest(
-    id: string,
-    player: InstanceType<typeof Player>,
-    quest: Quest,
-  ) {
-    const { needs } = quest;
-    if (
-      needs &&
-      this.world.unsyncedPlayers.get(id)!.quests.get(needs.quest)?.stage !==
-        QUEST_DONE
-    ) {
-      this.events.push({ type: "told", player: id, line: needs.line });
-      return false;
-    }
-    this.world.unsyncedPlayers
-      .get(id)!
-      .quests.set(quest.id, { stage: quest.stages[0]!.id, turns: 0 });
-    if (quest.gives) this.giveTools(id, quest.villager, quest.gives);
-    this.syncQuests(id);
-    return true;
-  }
-
-  /** Moves a started quest on one stage, taking its turn-in or a repeat's, and finishes it with its points. */
-  private advanceStage(
-    id: string,
-    player: InstanceType<typeof Player>,
-    quest: Quest,
-    progress: { stage: string; turns: number },
-  ) {
-    if (progress.stage === QUEST_DONE) {
-      const repeat = quest.repeat;
-      if (!repeat || progress.turns >= repeat.turns) return false;
-      if (!this.takeTurnIn(id, player, repeat.turnIn)) return false;
-      progress.turns++;
-      // Quest experience earns no Mastery share (glossary: Mastery).
-      player[repeat.xpField] = addXp(player[repeat.xpField], repeat.xp);
-      return true;
-    }
-    const stage = stageOf(quest, progress.stage)!;
-    if (!this.takeTurnIn(id, player, ...turnInsOf(stage))) return false;
-    const next = quest.stages[quest.stages.indexOf(stage) + 1];
-    if (next) progress.stage = next.id;
-    else {
-      progress.stage = QUEST_DONE;
-      player.questPoints += quest.points;
-      // Odo's teaching sets the flag at once, and every strange material the player holds,
-      // bank included, turns with it (#232).
-      if (quest.teaches === "essence") {
-        player.identifiesEssence = true;
-        identifyEssence(player);
-      }
-      this.events.push({
-        type: "told",
-        player: id,
-        line: `You finish ${quest.title}. You earn ${quest.points} quest point${quest.points === 1 ? "" : "s"}.`,
-      });
-    }
-    this.syncQuests(id);
-    return true;
-  }
-
-  /** Takes every turn-in out of the inventory together, or none and says the first that's missing. */
-  private takeTurnIn(
-    id: string,
-    player: InstanceType<typeof Player>,
-    ...turnIns: QuestTurnIn[]
-  ) {
-    const missing = turnIns.find(
-      ({ item, count }) => countOf(item, player) < count,
-    );
-    if (missing) {
-      this.events.push({
-        type: "told",
-        player: id,
-        line: `You have no ${itemTag(missing.item)} to hand over.`,
-        items: [missing.item],
-      });
-      return false;
-    }
-    for (const { item, count } of turnIns)
-      removeItems(player.inventory, player.inventoryCounts, item, count);
-    return true;
-  }
-
-  /** The quest stages this player is on now. */
-  private currentStages(id: string) {
-    return [...this.world.unsyncedPlayers.get(id)!.quests].flatMap(
-      ([questId, { stage }]) =>
-        stageOf(QUESTS[questId as QuestId], stage) ?? [],
-    );
-  }
-
-  /** Whether a stage this player is on still asks for more of `item` than they hold: its turn-in's count, or 1 for an item it only finds. */
-  private questWants(id: string, item: ItemId) {
-    const held = countOf(item, this.state.players.get(id)!);
-    return this.currentStages(id).some((stage) => {
-      const asked = turnInsOf(stage).find((turnIn) => turnIn.item === item);
-      const finds = stage.veinFinds?.some((roll) => roll.item === item);
-      return (asked || finds) && held < (asked?.count ?? 1);
-    });
-  }
-
-  /** The quest items a successful mine on a vein of `vein` gives this player, from the stages they're on, while each still wants more (Runestone Hollow spec §4). */
-  private questVeinFinds(id: string, vein: string) {
-    return this.currentStages(id).flatMap((stage) =>
-      (stage.veinFinds ?? []).flatMap((roll) =>
-        roll.vein === vein &&
-        this.questWants(id, roll.item) &&
-        this.random() < roll.chance
-          ? [roll.item]
-          : [],
-      ),
-    );
   }
 
   closeStore(id: string) {
@@ -1476,7 +1303,9 @@ export class Simulation {
             ...rollFinds(source, this.random).map((found) =>
               findItemOf(found, player.identifiesEssence),
             ),
-            ...(skill === "mining" ? this.questVeinFinds(id, site.kind) : []),
+            ...(skill === "mining"
+              ? this.quests.questVeinFinds(id, site.kind)
+              : []),
           ]
         : [];
       this.events.push(
@@ -1685,7 +1514,7 @@ export class Simulation {
         this.moveTalk(
           id,
           action.villager,
-          this.openingNode(id, action.villager),
+          this.quests.openingNode(id, action.villager),
         );
     }
     for (const [id, { villager }] of this.windows) {
@@ -1868,7 +1697,10 @@ export class Simulation {
         .flatMap(({ items }) => items.map(({ item }) => item)),
     );
     for (const won of loot)
-      if (!questLoot.has(won.item) || this.questWants(won.player, won.item))
+      if (
+        !questLoot.has(won.item) ||
+        this.quests.questWants(won.player, won.item)
+      )
         this.placeLoot(enemy, won);
     for (const unsynced of this.world.unsyncedPlayers.values()) {
       const { action } = unsynced;
