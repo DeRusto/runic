@@ -119,7 +119,7 @@ Tamsin, the villager on the Lake's bank where the path reaches it, who gives pla
 _Avoid_: Fisherman, angler
 
 **Storekeeper**:
-Marta, the villager who runs the general store.
+Marta, the villager who runs the general store, and owns the stalls outside it.
 _Avoid_: Shopkeeper, merchant, vendor
 
 **Banker**:
@@ -346,6 +346,30 @@ _Avoid_: Track, circuit
 **Shortcut**:
 An obstacle that leads somewhere: most open a pocket of the region that can't be reached any other way, and a few cut a long walk short. Each needs an Agility level. Some must first be **rigged** with a rope, which is spent once and keeps that shortcut open for that player for good.
 _Avoid_: Passage, agility route
+
+**Thieving**:
+The skill trained by stealing: pickpocketing villagers and marks, taking from stalls, and opening strongboxes. Each target needs a Thieving level. Loot is its only reward. It does not count toward combat level, and players never steal from each other (#235).
+_Avoid_: Stealing (as the skill's name), larceny
+
+**Pickpocket**:
+Stealing from a person, a villager or a mark, mostly for coins, now and then for an item that fits them. The banker is never a target. Failing costs a small hit that never kills, then a stun.
+_Avoid_: Steal from, rob
+
+**Mark**:
+A person who stands in the region only to be pickpocketed, with no job to offer, such as the drunk outside the inn. A mark is not a villager.
+_Avoid_: Victim, target (alone), NPC
+
+**Stun**:
+A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them.
+_Avoid_: Freeze, daze
+
+**Stall**:
+One of the Storekeeper's carts outside the general store, holding food, fish or gems, that a player steals items from. It empties for that player alone, for a while. If a player fails, the Storekeeper catches them: no loot, no hit, and that stall is closed to them for a while.
+_Avoid_: Market stall, cart, booth
+
+**Strongbox**:
+A locked box out where the danger is, in the Boneyard or Runestone Hollow, that a player opens for gems, runes and coins. It empties for that player alone, for a long while. If a player fails, a trap springs that hits harder than a failed pickpocket and can kill.
+_Avoid_: Chest (that's the bank's avoided word), coffer
 
 ### Players
 
