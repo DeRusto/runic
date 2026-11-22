@@ -30,6 +30,7 @@ import type { QueuedAction } from "./playerActions.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
+import { Taking } from "./taking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Walking } from "./walking.ts";
@@ -70,6 +71,7 @@ export class Simulation {
   private readonly thieving: ThievingTargets;
   private readonly walking: Walking;
   private readonly inventory: Inventory;
+  private readonly taking: Taking;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -90,6 +92,7 @@ export class Simulation {
     this.gear = new Gear(this.world);
     this.eating = new Eating(this.world);
     this.inventory = new Inventory(this.world);
+    this.taking = new Taking(this.world);
     this.sites = new GatheringSites(this.world);
     this.firemaking = new Firemaking(this.world);
     this.making = new Making(this.world);
@@ -358,12 +361,9 @@ export class Simulation {
     this.store.deal(id, intent);
   }
 
-  /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
+  /** `groundItem` comes straight off the network; see `Taking.takeIntent`. */
   queueTake(id: string, groundItem: string) {
-    if (typeof groundItem !== "string") return;
-    if (!this.world.canAct(id) || !this.inventory.canSee(id, groundItem))
-      return;
-    this.queuedActions.set(id, { kind: "taking", groundItem });
+    this.queue(id, () => this.taking.takeIntent(id, groundItem));
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
@@ -414,7 +414,7 @@ export class Simulation {
 
   /** Whether this player can see the ground item with this id; the room sends them only those. */
   canSee(id: string, groundItem: string) {
-    return this.inventory.canSee(id, groundItem);
+    return this.taking.canSee(id, groundItem);
   }
 
   /** Restores the stalls and strongboxes this player emptied before leaving, as the events that emptied them. */
@@ -433,7 +433,7 @@ export class Simulation {
     this.firemaking.advanceLighting();
     this.windows.advanceVisits();
     this.thieving.advance();
-    this.inventory.advanceTakes();
+    this.taking.advance();
     this.fighting.advancePlayerSwings();
     this.walking.syncActions();
     this.fighting.advanceEnemies();
