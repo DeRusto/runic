@@ -30,7 +30,7 @@ import { showPileWindow } from "./pileWindow.ts";
 import { showPlayers, type WorldConnection } from "./players.ts";
 import { isTakenOver, rejoin, servedVersion } from "./reconnect.ts";
 import { addRegionMeshes } from "./regionMeshes.ts";
-import { focusOn, scene, screenOf } from "./scene.ts";
+import { focusOn, scene } from "./scene.ts";
 import { showSmithingPanel } from "./smithingPanel.ts";
 import { showSocialPanel } from "./socialPanel.ts";
 import { showStoreWindow } from "./storeWindow.ts";
@@ -97,7 +97,9 @@ function enterWorld(room: WorldConnection) {
     showSmithingPanel(room),
     villagerUnder,
     showGroundItems(room),
-    showPileWindow(room, ({ x, y }) => screenOf(x, y)),
+    // It opens only with the player on the pile, which the following camera settles at the screen's
+    // centre; projecting the pile now would use the camera still on its way there.
+    showPileWindow(room, () => ({ x: innerWidth / 2, y: innerHeight / 2 })),
     otherPlayerUnder,
     openMenu,
   );

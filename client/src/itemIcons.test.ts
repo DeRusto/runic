@@ -131,7 +131,8 @@ describe("the committed icons", () => {
     expect(bytes / pngs.length).toBeLessThan(17_000);
   });
 
-  test("the licence copy names each Craftpix file, with its number in the pack", () => {
+  // shortcut: spot-checks the single icons; the tiered sets are named per pack in prose, so derive from render-icons' tables if attribution drifts.
+  test("the licence copy names Craftpix single icons with their numbers in the pack", () => {
     const licence = readFileSync(`${ICONS_DIR}/LICENSE.txt`, "utf8");
     for (const id of [
       "emberiteSword",
