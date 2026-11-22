@@ -4,8 +4,6 @@ import {
   AUGMENTATIONS,
   FIRES,
   GATHERING_SKILLS,
-  LIGHTING_TICKS,
-  lightRefusal,
   logoutRefusal,
   makeRefusal,
   make,
@@ -29,17 +27,15 @@ import {
   WALK_TICKS_PER_TILE,
   type Deal,
   type GatheringSkill,
-  type FireLog,
   type GearSlot,
   type SitePool,
   type Tile,
   type TileKind,
   type WorldEvent,
-  lightTileAt,
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { Enemies } from "./enemies.ts";
-import { Fire, Player } from "./worldState.ts";
+import { Player } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Gear } from "./gear.ts";
@@ -50,6 +46,7 @@ import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { Gathering } from "./gathering.ts";
+import { Firemaking } from "./firemaking.ts";
 import { GatheringSites } from "./gatheringSites.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
@@ -78,6 +75,7 @@ export class Simulation {
   private enemies: Enemies;
   private readonly sites: GatheringSites;
   private readonly gathering: Gathering;
+  private readonly firemaking: Firemaking;
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
@@ -106,6 +104,7 @@ export class Simulation {
     this.gear = new Gear(this.world);
     this.eating = new Eating(this.world);
     this.sites = new GatheringSites(this.world);
+    this.firemaking = new Firemaking(this.world);
     this.gathering = new Gathering(this.world, this.sites, this.quests);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
@@ -510,9 +509,9 @@ export class Simulation {
     this.applyIntents();
     this.advancePlayers();
     for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
-    this.advanceFires();
+    this.firemaking.advanceFires();
     this.advanceMaking();
-    this.advanceLighting();
+    this.firemaking.advanceLighting();
     this.windows.advanceVisits();
     this.thieving.advance();
     this.advanceTakes();
@@ -576,30 +575,9 @@ export class Simulation {
           }
           break;
         }
-        case "lighting": {
-          const log = player.inventory[intent.slot]!;
-          const refusal = lightRefusal(log, this.lightTileAt(player), player);
-          if (refusal) {
-            this.events.push({ type: "told", player: id, line: refusal });
-            break;
-          }
-          // The log is consumed at once, so a new click during the lighting loses it (#224).
-          removeItems(player.inventory, player.inventoryCounts, log, 1);
-          // Or a walk in progress would carry them off the tile the fire was checked for.
-          unsynced.path = [];
-          unsynced.action = {
-            kind: "lighting",
-            log: log as FireLog,
-            doneTick: this.state.tick + LIGHTING_TICKS,
-          };
-          this.events.push({
-            type: "make",
-            player: id,
-            station: "fire",
-            ticks: LIGHTING_TICKS,
-          });
+        case "lighting":
+          this.firemaking.startLighting(id, intent.slot);
           break;
-        }
         case "visiting":
         case "pickpocketing":
         case "stealing":
@@ -756,59 +734,6 @@ export class Simulation {
     if (outcome.made)
       this.events.push({ type: "made", player: id, item: outcome.made });
     return true;
-  }
-
-  /**
-   * What the player's tile is like for lighting a fire on it (#224). The tile kind gives the
-   * ground and any prop; a fire of their own and an enemy standing there come from state.
-   */
-  private lightTileAt(tile: Tile) {
-    return lightTileAt(tile, {
-      tiles: this.world.tiles,
-      fires: this.state.fires,
-      enemies: this.state.enemies.values(),
-    });
-  }
-
-  /** A fire of `log`'s tier on the player's own tile, and a station of kind "fire" while it burns (#224). */
-  private placeFire({ x, y }: Tile, log: FireLog) {
-    this.state.fires.set(
-      siteId({ x, y }),
-      Object.assign(new Fire(), {
-        log,
-        endTick: this.state.tick + FIRES[log].ticks,
-      }),
-    );
-    (this.world.stations.fire ??= []).push({ x, y });
-  }
-
-  /** Fires despawn silently when their time is up, and stop being stations (#224). */
-  private advanceFires() {
-    for (const [id, fire] of this.state.fires) {
-      if (this.state.tick < fire.endTick) continue;
-      this.state.fires.delete(id);
-      const [x, y] = id.split(",").map(Number) as [number, number];
-      const tiles = this.world.stations.fire!;
-      tiles.splice(
-        tiles.findIndex((tile) => tile.x === x && tile.y === y),
-        1,
-      );
-    }
-  }
-
-  /** When the lighting is over, the fire appears and pays its experience (#224). */
-  private advanceLighting() {
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "lighting" || this.state.tick < action.doneTick)
-        continue;
-      unsynced.action = undefined;
-      const player = this.state.players.get(id)!;
-      // A rival may have lit one here first; the log already burnt, so nothing is placed.
-      if (this.lightTileAt(player).fire) continue;
-      this.placeFire(player, action.log);
-      this.world.earnXp(player, "firemakingXp", FIRES[action.log].xp);
-    }
   }
 
   /**
