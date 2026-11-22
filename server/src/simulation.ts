@@ -4,7 +4,6 @@ import {
   addXp,
   AUGMENTATIONS,
   attemptChance,
-  COMBAT_LOCK_TICKS,
   COINS,
   dealRefusal,
   dealTotals,
@@ -32,7 +31,6 @@ import {
   LIGHTING_TICKS,
   lightRefusal,
   logoutRefusal,
-  maxHealthOf,
   makeRefusal,
   make,
   makingOf,
@@ -40,7 +38,6 @@ import {
   stationOf,
   type MakeItem,
   moveStack,
-  MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
   potionFromPlant,
@@ -70,7 +67,6 @@ import {
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
-  BANK_SLOTS,
   bankRefusal,
   bankSlotFor,
   depositRefusal,
@@ -100,17 +96,13 @@ import {
   type VillagerId,
   type GatheringLeftField,
   type GatheringSkill,
-  type PlayerAction,
   type FireLog,
   type GearSlot,
   type ItemId,
   type SitePool,
-  type StationKind,
-  type Virtue,
   type Tile,
   type TileKind,
   type WorldEvent,
-  type XpField,
   enemyHit,
   itemTag,
   lightTileAt,
@@ -129,10 +121,9 @@ import {
   type MarkId,
   type PickpocketTarget,
 } from "@runic/shared";
-import { canBeHit, isBusy, type Busy } from "./busy.ts";
+import { canBeHit } from "./busy.ts";
 import { Enemies, Enemy } from "./enemies.ts";
-import { GroundItems } from "./groundItems.ts";
-import { Fire, Player, SITE_SCHEMAS, WorldState } from "./worldState.ts";
+import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import { PlayerTimers } from "./playerTimers.ts";
@@ -145,7 +136,14 @@ import {
   tilesNextTo,
 } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
-import type { QuestProgress } from "@runic/shared";
+import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
+import {
+  isAmount,
+  isBankSlot,
+  isInventorySlot,
+  maxHealthTotal,
+  World,
+} from "./worldContext.ts";
 
 /** What opens and closes each kind of villager window, and what a hit makes the villager do. */
 const WINDOWS = {
@@ -154,14 +152,6 @@ const WINDOWS = {
   bank: { opened: "bankOpened", closed: "bankClosed", hit: "shuts the bank" },
 } as const;
 type VillagerWindow = keyof typeof WINDOWS;
-
-/** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
-const maxHealthTotal = (
-  player: { hitpointsXp: number } & Partial<Record<GearSlot, string>>,
-) => {
-  const { skill, gear } = maxHealthOf(player);
-  return skill + gear;
-};
 
 /**
  * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
@@ -177,12 +167,6 @@ function dealLines(list: unknown, max: number) {
     : undefined;
 }
 
-const isInventorySlot = (slot: number) =>
-  Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
-const isBankSlot = (slot: number) =>
-  Number.isInteger(slot) && slot >= 0 && slot < BANK_SLOTS;
-const isAmount = (amount: number) => Number.isInteger(amount) && amount > 0;
-
 /** A site pool, with the ticks its run-out sites come back on, soonest first. */
 type SitePoolState = SitePool & { comebackTicks: number[] };
 
@@ -195,96 +179,14 @@ type GatheringSite = Tile & {
   pool?: SitePoolState;
 };
 
-/** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
-type UnsyncedAction =
-  | { kind: "fighting"; enemy: string }
-  | { kind: GatheringSkill; site: string }
-  | {
-      kind: "visiting";
-      villager: VillagerId;
-      then?: Exclude<DialogueAction, "quest">;
-    }
-  | { kind: "taking"; groundItem: string }
-  | { kind: "following"; player: string }
-  /** One attempt on arrival, once the attempt interval allows (#250). */
-  | { kind: "pickpocketing"; target: PickpocketTarget }
-  /** One theft on arrival, once the attempt interval allows (#252). */
-  | { kind: "stealing"; stall: StallKind }
-  /** One attempt on arrival, once the attempt interval allows (#253). */
-  | { kind: "opening"; strongbox: StrongboxKind }
-  /**
-   * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
-   * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
-   * first wait.
-   */
-  | {
-      kind: "making";
-      item: MakeItem;
-      all: boolean;
-      at?: Tile;
-      doneTick?: number;
-    }
-  /** The log is already burnt: a new click or a death during the lighting loses it (#224). */
-  | { kind: "lighting"; log: FireLog; doneTick: number };
-
-/** A click waiting for the next tick, named for the action it starts. */
-type QueuedAction =
-  | { kind: "walking"; to: Tile }
-  | { kind: "fighting"; enemy: string }
-  | { kind: "gathering"; skill: GatheringSkill; site: string }
-  | {
-      kind: "visiting";
-      villager: VillagerId;
-      then?: Exclude<DialogueAction, "quest">;
-    }
-  | { kind: "making"; item: MakeItem; all: boolean; at?: Tile }
-  | { kind: "lighting"; slot: number }
-  | { kind: "taking"; groundItem: string }
-  | { kind: "following"; player: string }
-  | { kind: "pickpocketing"; target: PickpocketTarget }
-  | { kind: "stealing"; stall: StallKind }
-  | { kind: "opening"; strongbox: StrongboxKind };
-
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
-  state = new WorldState();
+  private readonly world: World;
+  readonly state: World["state"];
+  /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
+  readonly events: WorldEvent[];
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
   private queuedActions = new Map<string, QueuedAction>();
-  /** What a player's action and timers need that clients don't. */
-  private unsyncedPlayers = new Map<
-    string,
-    {
-      path: Tile[];
-      nextStepTick: number;
-      nextSwingTick: number;
-      action?: UnsyncedAction;
-      /** Outlives the action, so clicking again can't beat the attempt interval. */
-      nextAttemptTick: number;
-      nextEatTick: number;
-      /** What each healing tick still to come gives, in eating order. Not saved, so leaving loses it (spec §6). */
-      healingPool: number[];
-      /** A Delicious fish's buff, or none: its fish's per-tick heal, when it next heals and the tick it runs out on. Not saved (spec §6, #221). */
-      delicious?: { perTick: number; nextHealTick: number; endTick: number };
-      /**
-       * A Virtue potion's buff, or none: its Virtue, the tick it runs out on and the health
-       * a Fortitude one added, which the hit and Avoidance read from too. Not saved
-       * (spec §6, #222).
-       */
-      potion?: { virtue: Virtue; endTick: number; bonus: number };
-      /** The combat lock runs until this tick. */
-      lockEndTick: number;
-      /** A stun, or later Agility's crossing (#236). Not saved: leaving ends it. */
-      busy?: Busy;
-      respawnTick: number;
-      /** Each started quest's progress, by quest id, kept for the save (#231). */
-      quests: Map<string, { stage: string; turns: number }>;
-      dropped?: boolean;
-    }
-  >();
-  /** Apart from the action, which eating doesn't replace (spec §4). */
-  private queuedEats = new Map<string, number>();
-  /** Apart from the action too, which dropping doesn't replace (spec §4). */
-  private queuedDrops = new Map<string, { slot: number; amount: number }>();
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
@@ -294,7 +196,6 @@ export class Simulation {
   private enemies: Enemies;
   /** Every gathering site, by the tile that keys it. */
   private sites = new Map<string, GatheringSite>();
-  private villagers = new Map<VillagerId, Tile>();
   private marks = new Map<MarkId, Tile>();
   /** Each of Marta's stalls by its kind: the region has one of each (#252). */
   private stalls = new Map<StallKind, Tile>();
@@ -322,18 +223,11 @@ export class Simulation {
     openStore: (id, villager) => this.openWindow(id, "store", villager),
     openBank: (id, villager) => this.openWindow(id, "bank", villager),
   };
-  private readonly shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
-  /** Each station's tiles: the furnace covers four. */
-  private stations: Partial<Record<StationKind, Tile[]>> = {};
+  private readonly shelf: Shelf;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
-  private readonly groundItems = new GroundItems(this.state.groundItems);
-  /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
-  readonly events: WorldEvent[] = [];
 
-  /** The region's tiles, copied so that a pooled site can block its spot only while it's there. */
-  private tiles: TileKind[][];
   /** Each site pool, with the ticks its run-out sites come back on, soonest first. Not saved: a restart picks again. */
   private pools: SitePoolState[];
 
@@ -342,22 +236,29 @@ export class Simulation {
     readonly random: () => number,
     pools: SitePool[] = [],
   ) {
-    this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
+    this.world = new World(tiles, random);
+    this.state = this.world.state;
+    this.events = this.world.events;
+    this.shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { villager, mark, stall, strongbox, station } = kind;
-        if (villager) this.villagers.set(villager, { x, y });
+        if (villager) this.world.villagers.set(villager, { x, y });
         if (mark) this.marks.set(mark, { x, y });
         if (stall) this.stalls.set(stall, { x, y });
         if (strongbox) this.strongboxes.set(strongbox, { x, y });
-        if (station) (this.stations[station] ??= []).push({ x, y });
+        if (station) (this.world.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const siteKind = kind[GATHERING[skill].site];
           if (siteKind) this.addSite(skill, siteKind, { x, y });
         }
       }),
     );
-    this.enemies = new Enemies(this.tiles, this.state.enemies, this.random);
+    this.enemies = new Enemies(
+      this.world.tiles,
+      this.state.enemies,
+      this.random,
+    );
     this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
     for (const pool of this.pools)
       for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
@@ -378,7 +279,7 @@ export class Simulation {
     // The row keeps the schema and its map together, which the types can't follow.
     this.state[stateField].set(id, synced as never);
     this.sites.set(id, { x, y, skill, kind, synced, pool });
-    Object.assign(this.tiles[y]![x]!, { [site]: kind, blocks: true });
+    Object.assign(this.world.tiles[y]![x]!, { [site]: kind, blocks: true });
   }
 
   /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player, an enemy or a ground item on it. */
@@ -405,7 +306,7 @@ export class Simulation {
     const id = siteId(site);
     this.sites.delete(id);
     this.state[stateField].delete(id);
-    const tile = this.tiles[site.y]![site.x]!;
+    const tile = this.world.tiles[site.y]![site.x]!;
     delete tile[field];
     tile.blocks = groundBlocks(tile.ground);
     pool.comebackTicks.push(
@@ -433,7 +334,7 @@ export class Simulation {
       ...Object.values(questProgress).map(({ stage }) => stage),
     );
     this.state.players.set(id, player);
-    this.unsyncedPlayers.set(id, {
+    this.world.unsyncedPlayers.set(id, {
       path: [],
       nextStepTick: 0,
       nextSwingTick: 0,
@@ -449,9 +350,9 @@ export class Simulation {
   }
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
-    const respawn = respawnTile(this.tiles);
+    const respawn = respawnTile(this.world.tiles);
     if (!saved) return newSave(respawn);
-    const tile = this.tiles[saved.y]?.[saved.x];
+    const tile = this.world.tiles[saved.y]?.[saved.x];
     if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
     const nearest = this.sites.has(siteId(saved))
@@ -462,7 +363,7 @@ export class Simulation {
 
   /** The fewest steps from `from` to a walkable tile, walking through sites as if they had run out: undefined if nothing else is in reach. */
   private nearestPastSites(from: Tile): Tile | undefined {
-    const throughSites = this.tiles.map((row, y) =>
+    const throughSites = this.world.tiles.map((row, y) =>
       row.map((tile, x) =>
         this.sites.has(siteId({ x, y })) ? { ...tile, blocks: false } : tile,
       ),
@@ -471,7 +372,7 @@ export class Simulation {
     const queue = [from];
     // Breadth-first, so the first walkable tile found is the fewest steps away.
     for (const tile of queue) {
-      if (!this.tiles[tile.y]![tile.x]!.blocks) return tile;
+      if (!this.world.tiles[tile.y]![tile.x]!.blocks) return tile;
       for (const next of legalSteps(throughSites, tile)) {
         if (seen.has(siteId(next))) continue;
         seen.add(siteId(next));
@@ -494,7 +395,8 @@ export class Simulation {
           quest,
           {
             stage: player.questStages[at]!,
-            turns: this.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
+            turns:
+              this.world.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
           },
         ]),
       ),
@@ -505,93 +407,62 @@ export class Simulation {
 
   /** What dying changes, once it's over. */
   private respawned(player: InstanceType<typeof Player>) {
-    return { ...respawnTile(this.tiles), health: player.maxHealth };
+    return { ...respawnTile(this.world.tiles), health: player.maxHealth };
   }
 
   removePlayer(id: string) {
     const username = this.state.players.get(id)?.username;
-    const unsynced = this.unsyncedPlayers.get(id);
+    const unsynced = this.world.unsyncedPlayers.get(id);
     if (username && unsynced) {
       const { nextAttemptTick, nextEatTick } = unsynced;
       this.timersOfLeavers.set(username, { nextAttemptTick, nextEatTick });
     }
     this.state.players.delete(id);
-    this.unsyncedPlayers.delete(id);
+    this.world.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);
-    this.queuedEats.delete(id);
-    this.queuedDrops.delete(id);
+    this.world.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
     this.windows.delete(id);
-    this.stopFollowersOf(id);
+    this.world.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     this.enemies.forget(id);
   }
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
   dropPlayer(id: string) {
-    this.clearAction(id);
-    this.unsyncedPlayers.get(id)!.dropped = true;
+    this.world.clearAction(id);
+    this.world.unsyncedPlayers.get(id)!.dropped = true;
     this.windows.delete(id);
     this.queuedActions.delete(id);
-    this.queuedEats.delete(id);
-    this.queuedDrops.delete(id);
+    this.world.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
   }
 
-  /** Death or logout on the target's side ends following too. */
-  private stopFollowersOf(target: string) {
-    for (const [id, { action }] of this.unsyncedPlayers) {
-      if (action?.kind === "following" && action.player === target)
-        this.clearAction(id);
-    }
-  }
-
-  private clearAction(id: string) {
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    unsynced.path = [];
-    unsynced.action = undefined;
-    Object.assign(this.state.players.get(id)!, { target: "", action: "" });
-  }
-
   reconnectPlayer(id: string) {
-    this.unsyncedPlayers.get(id)!.dropped = false;
+    this.world.unsyncedPlayers.get(id)!.dropped = false;
   }
 
   lockRunning(id: string) {
-    return this.state.tick < (this.unsyncedPlayers.get(id)?.lockEndTick ?? 0);
+    return this.world.lockRunning(id);
   }
 
   queueLogout(id: string) {
     if (this.state.players.has(id)) this.queuedLogouts.add(id);
   }
 
-  /** Checked as an intent arrives. Enough, since death comes after intents apply in a tick. */
-  private alive(id: string) {
-    const player = this.state.players.get(id);
-    return player !== undefined && !player.dead;
-  }
-
-  /**
-   * Alive and not busy: a busy player's clicks are ignored, not saved for later (#236). Checked as
-   * an intent arrives, like `alive`, against the next tick, the one it would apply on: not the
-   * current one, or a click sent just after the stun's last tick would be lost too.
-   */
-  private canAct(id: string) {
-    const busy = this.unsyncedPlayers.get(id)?.busy;
-    return this.alive(id) && !isBusy(busy, this.state.tick + 1);
-  }
-
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
   queueWalk(id: string, to: Tile) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!Number.isInteger(to?.x) || !Number.isInteger(to?.y)) return;
-    if (!this.tiles[to.y]?.[to.x]) return;
+    if (!this.world.tiles[to.y]?.[to.x]) return;
     this.queuedActions.set(id, { kind: "walking", to: { x: to.x, y: to.y } });
   }
 
   /** `enemy` comes straight off the network, so anything but a live enemy's id is ignored. */
   queueTarget(id: string, enemy: string) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     const target = this.state.enemies.get(enemy);
     if (!target || target.state === "dead") return;
     this.queuedActions.set(id, { kind: "fighting", enemy });
@@ -599,7 +470,7 @@ export class Simulation {
 
   /** `target` is a player's session id, checked by the room's /follow command. */
   follow(id: string, target: string) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     this.queuedActions.set(id, { kind: "following", player: target });
   }
 
@@ -607,21 +478,21 @@ export class Simulation {
   following(id: string) {
     const queued = this.queuedActions.get(id);
     if (queued) return queued.kind === "following" ? queued.player : undefined;
-    const action = this.unsyncedPlayers.get(id)?.action;
+    const action = this.world.unsyncedPlayers.get(id)?.action;
     return action?.kind === "following" ? action.player : undefined;
   }
 
   unfollow(id: string) {
     if (!this.following(id)) return;
     this.queuedActions.delete(id);
-    this.clearAction(id);
+    this.world.clearAction(id);
   }
 
   /** `site` comes straight off the network, so anything but the id of this skill's site is ignored, as is a click the rules refuse. */
   queueGather(id: string, skill: GatheringSkill, site: string) {
     const player = this.state.players.get(id);
     const found = this.sites.get(site);
-    if (!player || found?.skill !== skill || !this.canAct(id)) return;
+    if (!player || found?.skill !== skill || !this.world.canAct(id)) return;
     if (this.siteRefusal(found, player)) return;
     this.queuedActions.set(id, { kind: "gathering", skill, site });
   }
@@ -644,7 +515,7 @@ export class Simulation {
     const player = this.state.players.get(id);
     const { item, all, at } = intent ?? {};
     // A string first: an array of one would pass hasOwn by turning into its element.
-    if (!player || !this.canAct(id) || typeof item !== "string") return;
+    if (!player || !this.world.canAct(id) || typeof item !== "string") return;
     if (!Object.hasOwn(RECIPES, item) && !Object.hasOwn(AUGMENTATIONS, item))
       return;
     const wanted = item as MakeItem;
@@ -661,7 +532,10 @@ export class Simulation {
       )
         return;
       fire = { x: x!, y: y! };
-    } else if (!this.stations[station] || stationRefusal(station, player)) {
+    } else if (
+      !this.world.stations[station] ||
+      stationRefusal(station, player)
+    ) {
       return;
     }
     this.queuedActions.set(id, {
@@ -678,7 +552,7 @@ export class Simulation {
    * standing on the tile already (#224).
    */
   queueLight(id: string, slot: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
     this.queuedActions.set(id, { kind: "lighting", slot });
   }
@@ -688,7 +562,11 @@ export class Simulation {
    * ignored, as is a `then` their conversation doesn't offer.
    */
   queueVisit(id: string, villager: string, then?: string) {
-    if (!this.canAct(id) || !this.villagers.has(villager as VillagerId)) return;
+    if (
+      !this.world.canAct(id) ||
+      !this.world.villagers.has(villager as VillagerId)
+    )
+      return;
     const visit = {
       kind: "visiting",
       villager: villager as VillagerId,
@@ -704,7 +582,7 @@ export class Simulation {
   /** `target` comes straight off the network, so anything but a mark or pickpocketable villager standing in this region is ignored, as is a click the rules refuse (#250, #251). */
   queuePickpocket(id: string, target: unknown) {
     const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || typeof target !== "string") return;
+    if (!player || !this.world.canAct(id) || typeof target !== "string") return;
     if (!isPickpocketTarget(target) || !this.standingAt(target)) return;
     if (pickpocketRefusal(PICKPOCKETS[target], player.thievingXp)) return;
     this.queuedActions.set(id, { kind: "pickpocketing", target });
@@ -713,7 +591,7 @@ export class Simulation {
   /** `stall` comes straight off the network, so anything but a stall standing in this region is ignored, as is a click the rules refuse (#252). */
   queueSteal(id: string, stall: unknown) {
     const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || typeof stall !== "string") return;
+    if (!player || !this.world.canAct(id) || typeof stall !== "string") return;
     if (!isStallKind(stall) || !this.stalls.has(stall)) return;
     if (stallRefusal(stall, player.thievingXp)) return;
     this.queuedActions.set(id, { kind: "stealing", stall });
@@ -722,7 +600,8 @@ export class Simulation {
   /** `strongbox` comes straight off the network, so anything but a strongbox standing in this region is ignored, as is a click the rules refuse (#253). */
   queueOpen(id: string, strongbox: unknown) {
     const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || typeof strongbox !== "string") return;
+    if (!player || !this.world.canAct(id) || typeof strongbox !== "string")
+      return;
     if (!isStrongboxKind(strongbox) || !this.strongboxes.has(strongbox)) return;
     if (strongboxRefusal(strongbox, player.thievingXp)) return;
     this.queuedActions.set(id, { kind: "opening", strongbox });
@@ -732,27 +611,23 @@ export class Simulation {
   private standingAt(target: PickpocketTarget) {
     return (
       this.marks.get(target as MarkId) ??
-      this.villagers.get(target as VillagerId)
+      this.world.villagers.get(target as VillagerId)
     );
   }
 
   /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
   isBusy(id: string) {
-    return isBusy(this.unsyncedPlayers.get(id)?.busy, this.state.tick);
+    return this.world.isBusy(id);
   }
 
   /** Makes the player busy for `ticks` from now: whatever they were doing stops, and their clicks are ignored until it ends (#236). */
-  makeBusy(id: string, ticks: number, { hittable }: { hittable: boolean }) {
-    this.clearAction(id);
-    this.unsyncedPlayers.get(id)!.busy = {
-      endTick: this.state.tick + ticks,
-      hittable,
-    };
+  makeBusy(id: string, ticks: number, busy: { hittable: boolean }) {
+    this.world.makeBusy(id, ticks, busy);
   }
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
   choose(id: string, choice: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     const talk = this.windowOf(id, "talk");
     if (!talk?.node || !Number.isInteger(choice)) return;
     const picked = nodesOf(talk.villager)[talk.node]!.choices![choice];
@@ -816,7 +691,7 @@ export class Simulation {
 
   /** The node this villager's conversation opens with: the chain's current quest's stage-appropriate one, or their own start (#231, #232). */
   private openingNode(id: string, villager: VillagerId) {
-    return openingNodeOf(villager, this.unsyncedPlayers.get(id)!.quests);
+    return openingNodeOf(villager, this.world.unsyncedPlayers.get(id)!.quests);
   }
 
   /** Closes the player's window from the server's side, with the line saying why. */
@@ -830,9 +705,10 @@ export class Simulation {
 
   private beside(id: string, villager: VillagerId) {
     const player = this.state.players.get(id)!;
-    return tilesNextTo(this.tiles, this.villagers.get(villager)!).some(
-      ({ x, y }) => x === player.x && y === player.y,
-    );
+    return tilesNextTo(
+      this.world.tiles,
+      this.world.villagers.get(villager)!,
+    ).some(({ x, y }) => x === player.x && y === player.y);
   }
 
   closeBank(id: string) {
@@ -841,7 +717,7 @@ export class Simulation {
 
   /** The player, if their bank is open and no combat lock refuses it; the refusal is told. */
   private playerAtBank(id: string) {
-    if (!this.windowOf(id, "bank") || !this.canAct(id)) return undefined;
+    if (!this.windowOf(id, "bank") || !this.world.canAct(id)) return undefined;
     const refusal = bankRefusal(this.lockRunning(id));
     if (refusal) this.events.push({ type: "told", player: id, line: refusal });
     return refusal ? undefined : this.state.players.get(id)!;
@@ -886,7 +762,8 @@ export class Simulation {
     player.bankCounts[to]! += count;
     player.inventoryCounts[slot]! -= count;
     if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
-    if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
+    if (this.world.queuedDrops.get(id)?.slot === slot)
+      this.world.queuedDrops.delete(id);
     return undefined;
   }
 
@@ -913,7 +790,7 @@ export class Simulation {
 
   /** A drag in the bank, under the inventory's rules; both come straight off the network. */
   moveBankItem(id: string, from: number, to: number) {
-    if (!this.canAct(id) || !isBankSlot(from) || !isBankSlot(to)) return;
+    if (!this.world.canAct(id) || !isBankSlot(from) || !isBankSlot(to)) return;
     const player = this.windowOf(id, "bank") && this.state.players.get(id);
     if (player) moveStack(player.bank, player.bankCounts, from, to);
   }
@@ -933,7 +810,7 @@ export class Simulation {
   /** Rewrites the player's synced quest arrays from their unsynced progress (#231). */
   private syncQuests(id: string) {
     const player = this.state.players.get(id)!;
-    const quests = this.unsyncedPlayers.get(id)!.quests;
+    const quests = this.world.unsyncedPlayers.get(id)!.quests;
     player.quests = new ArraySchema(...quests.keys());
     player.questStages = new ArraySchema(
       ...[...quests.values()].map(({ stage }) => stage),
@@ -948,11 +825,11 @@ export class Simulation {
   private advanceQuest(id: string, villager: VillagerId) {
     const quest = currentQuestOf(
       villager,
-      this.unsyncedPlayers.get(id)!.quests,
+      this.world.unsyncedPlayers.get(id)!.quests,
     );
     if (!quest) return false;
     const player = this.state.players.get(id)!;
-    const progress = this.unsyncedPlayers.get(id)!.quests.get(quest.id);
+    const progress = this.world.unsyncedPlayers.get(id)!.quests.get(quest.id);
     return progress
       ? this.advanceStage(id, player, quest, progress)
       : this.startQuest(id, player, quest);
@@ -967,13 +844,13 @@ export class Simulation {
     const { needs } = quest;
     if (
       needs &&
-      this.unsyncedPlayers.get(id)!.quests.get(needs.quest)?.stage !==
+      this.world.unsyncedPlayers.get(id)!.quests.get(needs.quest)?.stage !==
         QUEST_DONE
     ) {
       this.events.push({ type: "told", player: id, line: needs.line });
       return false;
     }
-    this.unsyncedPlayers
+    this.world.unsyncedPlayers
       .get(id)!
       .quests.set(quest.id, { stage: quest.stages[0]!.id, turns: 0 });
     if (quest.gives) this.giveTools(id, quest.villager, quest.gives);
@@ -1045,7 +922,7 @@ export class Simulation {
 
   /** The quest stages this player is on now. */
   private currentStages(id: string) {
-    return [...this.unsyncedPlayers.get(id)!.quests].flatMap(
+    return [...this.world.unsyncedPlayers.get(id)!.quests].flatMap(
       ([questId, { stage }]) =>
         stageOf(QUESTS[questId as QuestId], stage) ?? [],
     );
@@ -1085,7 +962,8 @@ export class Simulation {
    */
   deal(id: string, intent: Deal) {
     const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || !this.windowOf(id, "store")) return;
+    if (!player || !this.world.canAct(id) || !this.windowOf(id, "store"))
+      return;
     const buy = dealLines(intent?.buy, SHELF_SLOTS);
     const sell = dealLines(intent?.sell, INVENTORY_SLOTS);
     if (!buy || !sell || (!buy.length && !sell.length)) return;
@@ -1113,8 +991,8 @@ export class Simulation {
       addItems(inventory, inventoryCounts, item, count);
     }
     // What waited on a slot meant what was there before.
-    this.queuedDrops.delete(id);
-    this.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
+    this.world.queuedEats.delete(id);
     tell(`Deal done: you paid ${pay} coins and got ${get}.`);
     answer(true);
   }
@@ -1122,36 +1000,36 @@ export class Simulation {
   /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
   queueTake(id: string, groundItem: string) {
     if (typeof groundItem !== "string") return;
-    if (!this.canAct(id) || !this.canSee(id, groundItem)) return;
+    if (!this.world.canAct(id) || !this.canSee(id, groundItem)) return;
     this.queuedActions.set(id, { kind: "taking", groundItem });
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
-    this.queuedEats.set(id, slot);
+    this.world.queuedEats.set(id, slot);
   }
 
   /** Both come straight off the network, so anything but a slot's index and a whole number above 0 is ignored. */
   queueDrop(id: string, slot: number, amount: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
     if (!isAmount(amount)) return;
-    this.queuedDrops.set(id, { slot, amount });
+    this.world.queuedDrops.set(id, { slot, amount });
   }
 
   /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (village spec §4). */
   moveItem(id: string, from: number, to: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(from) || !isInventorySlot(to)) return;
     const player = this.state.players.get(id)!;
     moveStack(player.inventory, player.inventoryCounts, from, to);
     // What waited on a slot meant what was there before.
-    const drop = this.queuedDrops.get(id)?.slot;
-    if (drop === from || drop === to) this.queuedDrops.delete(id);
-    const eat = this.queuedEats.get(id);
-    if (eat === from || eat === to) this.queuedEats.delete(id);
+    const drop = this.world.queuedDrops.get(id)?.slot;
+    if (drop === from || drop === to) this.world.queuedDrops.delete(id);
+    const eat = this.world.queuedEats.get(id);
+    if (eat === from || eat === to) this.world.queuedEats.delete(id);
   }
 
   /**
@@ -1160,7 +1038,7 @@ export class Simulation {
    * nothing waits on it (#222).
    */
   mix(id: string, slot: number) {
-    if (!this.canAct(id) || !isInventorySlot(slot)) return;
+    if (!this.world.canAct(id) || !isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const potion = potionFromPlant(player.inventory[slot]!);
     if (!potion) return;
@@ -1174,7 +1052,7 @@ export class Simulation {
     removeItems(inventory, inventoryCounts, "vial", 1);
     removeItems(inventory, inventoryCounts, POTIONS[potion].plant, 1);
     addItems(inventory, inventoryCounts, potion, 1);
-    this.earnXp(player, "herblawXp", POTIONS[potion].xp);
+    this.world.earnXp(player, "herblawXp", POTIONS[potion].xp);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
@@ -1194,7 +1072,7 @@ export class Simulation {
    * touches no action or timer (spec §4).
    */
   equip(id: string, slot: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const item = player.inventory[slot]!;
@@ -1208,21 +1086,12 @@ export class Simulation {
     // Whatever was worn lands where this came from, so swapping always works (spec §4).
     this.placeGear(id, slot, player[gear.slot]);
     player[gear.slot] = item;
-    this.fitHealth(id);
-  }
-
-  /** After gear changes or a Fortitude potion starts or ends: max health follows worn Fortitude and an active potion's, and health drops to it but never rises (spec §2, #222). */
-  private fitHealth(id: string) {
-    const player = this.state.players.get(id)!;
-    player.maxHealth =
-      maxHealthTotal(player) +
-      (this.unsyncedPlayers.get(id)!.potion?.bonus ?? 0);
-    player.health = Math.min(player.health, player.maxHealth);
+    this.world.fitHealth(id);
   }
 
   /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
   takeOff(id: string, gearSlot: GearSlot) {
-    if (!this.canAct(id) || !GEAR_SLOTS.includes(gearSlot)) return;
+    if (!this.world.canAct(id) || !GEAR_SLOTS.includes(gearSlot)) return;
     const player = this.state.players.get(id)!;
     const worn = player[gearSlot];
     if (!worn) return;
@@ -1234,7 +1103,7 @@ export class Simulation {
     }
     this.placeGear(id, slot, worn);
     player[gearSlot] = "";
-    this.fitHealth(id);
+    this.world.fitHealth(id);
   }
 
   /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
@@ -1242,7 +1111,8 @@ export class Simulation {
     const player = this.state.players.get(id)!;
     player.inventory[slot] = item;
     player.inventoryCounts[slot] = item ? 1 : 0;
-    if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
+    if (this.world.queuedDrops.get(id)?.slot === slot)
+      this.world.queuedDrops.delete(id);
   }
 
   /** Adds one `item` to the slot `slotFor` chose. */
@@ -1273,14 +1143,20 @@ export class Simulation {
     if (!item) return;
     const count = Math.min(amount, player.inventoryCounts[slot]!);
     const { username } = player;
-    this.groundItems.spawn(player, item, count, username, this.state.tick);
+    this.world.groundItems.spawn(
+      player,
+      item,
+      count,
+      username,
+      this.state.tick,
+    );
     player.inventoryCounts[slot]! -= count;
     if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
   }
 
   private eat(id: string, slot: number) {
     const player = this.state.players.get(id)!;
-    const unsynced = this.unsyncedPlayers.get(id)!;
+    const unsynced = this.world.unsyncedPlayers.get(id)!;
     const parts = itemParts(player.inventory[slot]);
     const food = FOOD_HEALS.get(parts.base);
     const potion = potionOf(parts.base);
@@ -1328,7 +1204,7 @@ export class Simulation {
               )
             : 0,
       };
-      this.fitHealth(id);
+      this.world.fitHealth(id);
       this.events.push({
         type: "potion",
         player: id,
@@ -1344,7 +1220,7 @@ export class Simulation {
     const player = this.state.players.get(id);
     return (
       player !== undefined &&
-      this.groundItems.canSee(player.username, groundItem)
+      this.world.groundItems.canSee(player.username, groundItem)
     );
   }
 
@@ -1388,7 +1264,7 @@ export class Simulation {
     this.enemies.advance({
       tick: this.state.tick,
       players: () =>
-        [...this.unsyncedPlayers].map(([id, { dropped, busy }]) => ({
+        [...this.world.unsyncedPlayers].map(([id, { dropped, busy }]) => ({
           id,
           player: this.state.players.get(id)!,
           dropped: !!dropped,
@@ -1396,7 +1272,12 @@ export class Simulation {
         })),
       player: (id) => this.state.players.get(id),
       swing: (enemyId, playerId) => {
-        if (canBeHit(this.unsyncedPlayers.get(playerId)?.busy, this.state.tick))
+        if (
+          canBeHit(
+            this.world.unsyncedPlayers.get(playerId)?.busy,
+            this.state.tick,
+          )
+        )
           this.enemySwing(enemyId, playerId);
       },
     });
@@ -1404,17 +1285,21 @@ export class Simulation {
     this.advanceSites();
     for (const enemy of this.enemies.returnDead(this.state.tick))
       this.events.push({ type: "enemyReturned", enemy });
-    this.groundItems.advance(this.state.tick);
+    this.world.groundItems.advance(this.state.tick);
     this.shelf.advance(this.state.tick);
   }
 
   private applyIntents() {
     for (const [id, intent] of this.queuedActions) {
-      const unsynced = this.unsyncedPlayers.get(id)!;
+      const unsynced = this.world.unsyncedPlayers.get(id)!;
       const player = this.state.players.get(id)!;
       // With no way there, the old action still ends, and nothing replaces it.
       const goNextTo = (action: UnsyncedAction) => {
-        const path = pathNextTo(this.tiles, player, this.nextToOf(action)!);
+        const path = pathNextTo(
+          this.world.tiles,
+          player,
+          this.nextToOf(action)!,
+        );
         unsynced.path = path ?? [];
         unsynced.action = path && action;
       };
@@ -1468,14 +1353,16 @@ export class Simulation {
           // Onto its tile, not next to it. It may have gone since the intent arrived.
           const groundItem = this.state.groundItems.get(intent.groundItem);
           unsynced.path = groundItem
-            ? findPath(this.tiles, player, groundItem)
+            ? findPath(this.world.tiles, player, groundItem)
             : [];
           unsynced.action = groundItem && intent;
           break;
         }
         case "following":
           // The target may have left or died since the intent arrived.
-          unsynced.action = this.alive(intent.player) ? intent : undefined;
+          unsynced.action = this.world.alive(intent.player)
+            ? intent
+            : undefined;
           unsynced.path = [];
           break;
         case "gathering":
@@ -1483,18 +1370,18 @@ export class Simulation {
           break;
         case "walking":
           unsynced.action = undefined;
-          unsynced.path = findPath(this.tiles, player, intent.to);
+          unsynced.path = findPath(this.world.tiles, player, intent.to);
           break;
         default:
           intent satisfies never;
       }
     }
     this.queuedActions.clear();
-    for (const [id, slot] of this.queuedEats) this.eat(id, slot);
-    this.queuedEats.clear();
-    for (const [id, { slot, amount }] of this.queuedDrops)
+    for (const [id, slot] of this.world.queuedEats) this.eat(id, slot);
+    this.world.queuedEats.clear();
+    for (const [id, { slot, amount }] of this.world.queuedDrops)
       this.drop(id, slot, amount);
-    this.queuedDrops.clear();
+    this.world.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       const refusal = logoutRefusal(this.lockRunning(id));
       if (refusal)
@@ -1507,8 +1394,9 @@ export class Simulation {
   /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
     if (action?.kind === "making")
-      return action.at ?? this.stations[stationOf(action.item)];
-    if (action?.kind === "visiting") return this.villagers.get(action.villager);
+      return action.at ?? this.world.stations[stationOf(action.item)];
+    if (action?.kind === "visiting")
+      return this.world.villagers.get(action.villager);
     if (action?.kind === "pickpocketing") return this.standingAt(action.target);
     if (action?.kind === "stealing") return this.stalls.get(action.stall);
     if (action?.kind === "opening")
@@ -1518,7 +1406,7 @@ export class Simulation {
   }
 
   private advancePlayers() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
       if (this.state.tick < unsynced.nextStepTick) continue;
       const player = this.state.players.get(id)!;
@@ -1526,25 +1414,25 @@ export class Simulation {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
         // stopping short of that is exactly "next to" (spec D1).
         const enemy = this.state.enemies.get(unsynced.action.enemy)!;
-        unsynced.path = findPath(this.tiles, player, enemy).slice(0, -1);
+        unsynced.path = findPath(this.world.tiles, player, enemy).slice(0, -1);
       } else if (unsynced.action?.kind === "following") {
         // Next to, never on, the target's tile: so a follower on it steps off.
         const target = this.state.players.get(unsynced.action.player)!;
-        unsynced.path = pathNextTo(this.tiles, player, target) ?? [];
+        unsynced.path = pathNextTo(this.world.tiles, player, target) ?? [];
       }
       const next = unsynced.path[0];
       // A pooled site may have come back on the way since the path was found,
       // perhaps on the tile the walk ends on, so head for the target again.
       if (
         next &&
-        !legalSteps(this.tiles, player).some(
+        !legalSteps(this.world.tiles, player).some(
           ({ x, y }) => x === next.x && y === next.y,
         )
       ) {
         const nextTo = this.nextToOf(unsynced.action);
         unsynced.path = nextTo
-          ? (pathNextTo(this.tiles, player, nextTo) ?? [])
-          : findPath(this.tiles, player, unsynced.path.at(-1)!);
+          ? (pathNextTo(this.world.tiles, player, nextTo) ?? [])
+          : findPath(this.world.tiles, player, unsynced.path.at(-1)!);
       }
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
@@ -1555,7 +1443,7 @@ export class Simulation {
   /** After the steps, so the first attempt lands on the tick of arrival (D5). Every skill shares one timer, so swapping between them can't beat it. */
   private advanceGathering(skill: GatheringSkill) {
     const { xpField, verb, leftField } = GATHERING[skill];
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
       if (action?.kind !== skill || unsynced.path.length) continue;
       const player = this.state.players.get(id)!;
@@ -1565,7 +1453,7 @@ export class Simulation {
       if (
         !site ||
         this.siteRefusal(site, player) ||
-        !tilesNextTo(this.tiles, site).some(
+        !tilesNextTo(this.world.tiles, site).some(
           ({ x, y }) => x === player.x && y === player.y,
         )
       ) {
@@ -1601,14 +1489,14 @@ export class Simulation {
       const caught = rollCatch(source, level, this.random);
       const item = findItemOf(caught.item, player.identifiesEssence);
       const { xp } = caught;
-      this.earnXp(player, xpField, xp);
+      this.world.earnXp(player, xpField, xp);
       // Room is counted before either lands, so the second ore goes on the
       // ground, owned by the miner, when the first took the last of it.
       const room = this.roomFor(item, player);
       for (let i = 0; i < count; i++) {
         if (i < room) this.addToSlot(player, slotFor(item, player), item);
         else
-          this.groundItems.spawn(
+          this.world.groundItems.spawn(
             player,
             item,
             1,
@@ -1622,7 +1510,7 @@ export class Simulation {
         if (this.roomFor(found, player) > 0)
           this.addToSlot(player, slotFor(found, player), found);
         else
-          this.groundItems.spawn(
+          this.world.groundItems.spawn(
             player,
             found,
             1,
@@ -1640,7 +1528,7 @@ export class Simulation {
 
   /** After the steps, so the first wait starts on the tick of arrival. */
   private advanceMaking() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action: making } = unsynced;
       if (making?.kind !== "making" || unsynced.path.length) continue;
       // A fire can burn out mid-job, ending the cooking on it (#224).
@@ -1693,7 +1581,7 @@ export class Simulation {
       player.inventoryCounts[i] = outcome.inventoryCounts[i]!;
     });
     for (const [field, gained] of outcome.xp)
-      this.earnXp(player, field, gained);
+      this.world.earnXp(player, field, gained);
     if (outcome.told)
       this.events.push({ type: "told", player: id, ...outcome.told });
     if (outcome.made)
@@ -1707,7 +1595,7 @@ export class Simulation {
    */
   private lightTileAt(tile: Tile) {
     return lightTileAt(tile, {
-      tiles: this.tiles,
+      tiles: this.world.tiles,
       fires: this.state.fires,
       enemies: this.state.enemies.values(),
     });
@@ -1722,7 +1610,7 @@ export class Simulation {
         endTick: this.state.tick + FIRES[log].ticks,
       }),
     );
-    (this.stations.fire ??= []).push({ x, y });
+    (this.world.stations.fire ??= []).push({ x, y });
   }
 
   /** Fires despawn silently when their time is up, and stop being stations (#224). */
@@ -1731,7 +1619,7 @@ export class Simulation {
       if (this.state.tick < fire.endTick) continue;
       this.state.fires.delete(id);
       const [x, y] = id.split(",").map(Number) as [number, number];
-      const tiles = this.stations.fire!;
+      const tiles = this.world.stations.fire!;
       tiles.splice(
         tiles.findIndex((tile) => tile.x === x && tile.y === y),
         1,
@@ -1741,7 +1629,7 @@ export class Simulation {
 
   /** When the lighting is over, the fire appears and pays its experience (#224). */
   private advanceLighting() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
       if (action?.kind !== "lighting" || this.state.tick < action.doneTick)
         continue;
@@ -1750,23 +1638,8 @@ export class Simulation {
       // A rival may have lit one here first; the log already burnt, so nothing is placed.
       if (this.lightTileAt(player).fire) continue;
       this.placeFire(player, action.log);
-      this.earnXp(player, "firemakingXp", FIRES[action.log].xp);
+      this.world.earnXp(player, "firemakingXp", FIRES[action.log].xp);
     }
-  }
-
-  /** Mastery's share is of what lands, so experience lost to the cap earns none. */
-  private earnXp(
-    player: InstanceType<typeof Player>,
-    field: XpField,
-    gained: number,
-  ) {
-    const before = player[field];
-    player[field] = addXp(before, gained);
-    const hundredths =
-      player.masteryHundredths +
-      (player[field] - before) * MASTERY_SHARE_PERCENT;
-    player.masteryXp = addXp(player.masteryXp, Math.floor(hundredths / 100));
-    player.masteryHundredths = hundredths % 100;
   }
 
   /**
@@ -1775,7 +1648,7 @@ export class Simulation {
    */
   private advanceTakes() {
     const takenThisTick = new Set<string>();
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
       if (action?.kind !== "taking" || unsynced.path.length) continue;
       unsynced.action = undefined;
@@ -1796,14 +1669,14 @@ export class Simulation {
       const taken =
         groundItem.count -
         addItems(inventory, inventoryCounts, item, groundItem.count);
-      this.groundItems.take(action.groundItem, taken);
+      this.world.groundItems.take(action.groundItem, taken);
       takenThisTick.add(action.groundItem);
     }
   }
 
   /** After the steps, so a conversation opens on the tick of arrival, and one walked away from ends on the tick of the step. */
   private advanceVisits() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
       if (action?.kind !== "visiting" || unsynced.path.length) continue;
       unsynced.action = undefined;
@@ -1831,7 +1704,7 @@ export class Simulation {
     this.stallsEmptied.forgetEnded(tick);
     this.stallsClosed.forgetEnded(tick);
     this.strongboxesEmptied.forgetEnded(tick);
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
       if (
         action?.kind !== "pickpocketing" &&
@@ -1846,11 +1719,18 @@ export class Simulation {
       const world = {
         random: this.random,
         thievingXp: player.thievingXp,
-        earnXp: (gained: number) => this.earnXp(player, "thievingXp", gained),
+        earnXp: (gained: number) =>
+          this.world.earnXp(player, "thievingXp", gained),
         give: (item: ItemId, count: number) =>
           addItems(player.inventory, player.inventoryCounts, item, count),
         drop: (item: ItemId, count: number) =>
-          this.groundItems.spawn(player, item, count, player.username, tick),
+          this.world.groundItems.spawn(
+            player,
+            item,
+            count,
+            player.username,
+            tick,
+          ),
         tell: (line: string) =>
           this.events.push({ type: "told", player: id, line }),
       };
@@ -1923,17 +1803,17 @@ export class Simulation {
 
   /** After the moves, so the first swing lands on the tick the player arrives. */
   private advancePlayerSwings() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
       if (action?.kind !== "fighting") continue;
       const player = this.state.players.get(id)!;
       const enemy = this.state.enemies.get(action.enemy)!;
       if (this.state.tick < unsynced.nextSwingTick) continue;
-      if (!nextTo(this.tiles, player, enemy)) continue;
+      if (!nextTo(this.world.tiles, player, enemy)) continue;
       unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
       this.playerSwing(id, player, action.enemy, enemy);
     }
-    for (const [id, { action, path }] of this.unsyncedPlayers) {
+    for (const [id, { action, path }] of this.world.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
       player.target = action?.kind === "fighting" ? action.enemy : "";
       player.action =
@@ -1957,10 +1837,10 @@ export class Simulation {
     enemyId: string,
     enemy: InstanceType<typeof Enemy>,
   ) {
-    this.lock(id);
+    this.world.lock(id);
     // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
     const might =
-      this.unsyncedPlayers.get(id)!.potion?.virtue === "might"
+      this.world.unsyncedPlayers.get(id)!.potion?.virtue === "might"
         ? MIGHT_POTION_HIT
         : 0;
     const { damage, critical, xp } = playerHit(
@@ -1969,8 +1849,8 @@ export class Simulation {
       enemy.health,
       this.random,
     );
-    for (const [field, gained] of xp) this.earnXp(player, field, gained);
-    this.fitHealth(id);
+    for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
+    this.world.fitHealth(id);
     this.events.push({
       type: "playerSwing",
       player: id,
@@ -1990,7 +1870,7 @@ export class Simulation {
     for (const won of loot)
       if (!questLoot.has(won.item) || this.questWants(won.player, won.item))
         this.placeLoot(enemy, won);
-    for (const unsynced of this.unsyncedPlayers.values()) {
+    for (const unsynced of this.world.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
       unsynced.action = undefined;
@@ -2001,7 +1881,7 @@ export class Simulation {
   /** One winner's loot, on the enemy's tile and theirs for the first minute, with a line saying so. */
   private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
     const { username } = this.state.players.get(id)!;
-    this.groundItems.spawn(at, item, count, username, this.state.tick);
+    this.world.groundItems.spawn(at, item, count, username, this.state.tick);
     // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
     const amount =
       count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
@@ -2017,10 +1897,10 @@ export class Simulation {
   private enemySwing(enemyId: string, playerId: string) {
     const enemy = this.state.enemies.get(enemyId)!;
     const player = this.state.players.get(playerId)!;
-    this.lock(playerId);
+    this.world.lock(playerId);
     // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
     const avoidance =
-      this.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
+      this.world.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
         ? AVOIDANCE_POTION_POINTS
         : 0;
     const { damage, blocked, hit, xp } = enemyHit(
@@ -2030,7 +1910,7 @@ export class Simulation {
       this.random,
     );
     player.health -= damage;
-    for (const [field, gained] of xp) this.earnXp(player, field, gained);
+    for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
     this.events.push({
       type: "enemySwing",
       enemy: enemyId,
@@ -2057,8 +1937,8 @@ export class Simulation {
     player: InstanceType<typeof Player>,
     enemyId: string,
   ) {
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    if (unsynced.dropped || this.isBusy(id)) return;
+    const unsynced = this.world.unsyncedPlayers.get(id)!;
+    if (unsynced.dropped || this.world.isBusy(id)) return;
     unsynced.action = { kind: "fighting", enemy: enemyId };
     unsynced.nextSwingTick = Math.max(
       unsynced.nextSwingTick,
@@ -2070,29 +1950,33 @@ export class Simulation {
 
   /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
   lock(id: string) {
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    if (!unsynced.dropped)
-      unsynced.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
+    this.world.lock(id);
   }
 
   private die(id: string, player: InstanceType<typeof Player>) {
     player.dead = true;
-    this.clearAction(id);
-    this.stopFollowersOf(id);
+    this.world.clearAction(id);
+    this.world.stopFollowersOf(id);
     // Drop on death (#119): the Toolbelt stays.
     player.inventory.forEach((_, slot) => this.drop(id, slot));
     for (const gearSlot of GEAR_SLOTS) {
       const worn = player[gearSlot];
       if (!worn) continue;
-      this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
+      this.world.groundItems.spawn(
+        player,
+        worn,
+        1,
+        player.username,
+        this.state.tick,
+      );
       player[gearSlot] = "";
     }
-    const unsynced = this.unsyncedPlayers.get(id)!;
+    const unsynced = this.world.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;
     unsynced.delicious = undefined;
     unsynced.potion = undefined;
     unsynced.busy = undefined;
-    this.fitHealth(id);
+    this.world.fitHealth(id);
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });
   }
@@ -2100,7 +1984,7 @@ export class Simulation {
   private advancePlayerTimers() {
     const regenerates = this.state.tick % REGEN_INTERVAL_TICKS === 0;
     const poolGives = this.state.tick % HEALING_POOL_INTERVAL_TICKS === 0;
-    for (const [id, unsynced] of this.unsyncedPlayers) {
+    for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
       if (player.dead) {
         if (this.state.tick < unsynced.respawnTick) continue;
@@ -2144,7 +2028,7 @@ export class Simulation {
       // unspent Fortitude bonus is lost, and health settles on the normal max.
       if (potion && this.state.tick >= potion.endTick) {
         unsynced.potion = undefined;
-        this.fitHealth(id);
+        this.world.fitHealth(id);
       }
       if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
     }
