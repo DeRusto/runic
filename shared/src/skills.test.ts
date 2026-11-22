@@ -73,9 +73,16 @@ test("only the skills that can be trained reach the sheet, the bar and pinning",
     "Runecrafting",
     "Leatherworking",
     "Jewelsmithing",
+    "Thieving",
     "Blocking",
     "Mastery",
   ]);
+});
+
+test("Thieving doesn't count toward combat level (#235)", () => {
+  expect(combatLevel({ hitpointsXp: 4050, thievingXp: xpForLevel(99) })).toBe(
+    combatLevel({ hitpointsXp: 4050 }),
+  );
 });
 
 test("a new player's total level is Hitpoints 10 and 22 skills at 1", () => {
