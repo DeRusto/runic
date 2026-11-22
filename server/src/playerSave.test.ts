@@ -2,7 +2,7 @@ import { BANK_SLOTS, EMPTY_SLOT, SKILLS } from "@runic/shared";
 import { describe, expect, it } from "vitest";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import type { PlayerSave } from "./saves.ts";
-import { Player } from "./simulation.ts";
+import { Player } from "./worldState.ts";
 
 /** A player built from `save`, as the room builds one at login. */
 const playerFrom = (save: PlayerSave) =>

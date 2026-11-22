@@ -13,7 +13,7 @@ import {
 import { getTableColumns } from "drizzle-orm";
 import { players } from "./schema.ts";
 import type { PlayerSave } from "./saves.ts";
-import type { Player } from "./simulation.ts";
+import type { Player } from "./worldState.ts";
 
 /** Every column of the save, so a new column is saved without touching this file. */
 const SAVED_FIELDS = Object.keys(getTableColumns(players)).filter(
