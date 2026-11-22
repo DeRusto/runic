@@ -1,6 +1,7 @@
 import { parseRegion } from "@runic/shared";
 import { expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
+import { loadWorldRegion } from "./worldRegion.ts";
 
 test("two players share a crossing and clicks are discarded until both land", () => {
   const tiles = parseRegion("TTTTTT\nTR...T\nT....T\nTTTTTT");
@@ -73,5 +74,28 @@ test("an out-of-order crossing still earns experience and resets the lap", () =>
     agilityXp: 355,
     masteryXp: 24,
     masteryHundredths: 85,
+  });
+});
+
+test("a new player can walk from the village and complete the Southfield lap", () => {
+  const { tiles, pools } = loadWorldRegion();
+  const sim = new Simulation(tiles, () => 0.5, pools);
+  sim.addPlayer("a");
+
+  for (const obstacle of [
+    "balanceBeam",
+    "hurdle",
+    "steppingStones",
+    "crawlRail",
+  ]) {
+    sim.queueCross("a", obstacle);
+    for (let tick = 0; tick < 60; tick++) sim.tick();
+  }
+
+  expect(sim.saveOf("a")).toMatchObject({
+    x: 36,
+    y: 46,
+    agilityXp: 200,
+    masteryXp: 14,
   });
 });
