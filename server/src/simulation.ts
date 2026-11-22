@@ -1,18 +1,11 @@
 import { ArraySchema } from "@colyseus/schema";
 import {
-  addItems,
   GATHERING_SKILLS,
   logoutRefusal,
-  moveStack,
   MAX_PINNED_SKILLS,
-  potionFromPlant,
-  POTIONS,
-  mixRefusal,
-  removeItems,
   respawnTile,
   siteId,
   SKILLS,
-  takeRefusal,
   type Deal,
   type GatheringSkill,
   type GearSlot,
@@ -37,6 +30,7 @@ import { Gathering } from "./gathering.ts";
 import { Firemaking } from "./firemaking.ts";
 import { Making } from "./making.ts";
 import { Walking } from "./walking.ts";
+import { Inventory } from "./inventory.ts";
 import { GatheringSites } from "./gatheringSites.ts";
 import type { PlayerSave } from "./saves.ts";
 import type { QueuedAction } from "./playerActions.ts";
@@ -75,6 +69,7 @@ export class Simulation {
   private readonly fighting: Fighting;
   private readonly thieving: ThievingTargets;
   private readonly walking: Walking;
+  private readonly inventory: Inventory;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -94,6 +89,7 @@ export class Simulation {
     this.store = new GeneralStore(this.world, this.windows);
     this.gear = new Gear(this.world);
     this.eating = new Eating(this.world);
+    this.inventory = new Inventory(this.world);
     this.sites = new GatheringSites(this.world);
     this.firemaking = new Firemaking(this.world);
     this.making = new Making(this.world);
@@ -375,7 +371,8 @@ export class Simulation {
   /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
   queueTake(id: string, groundItem: string) {
     if (typeof groundItem !== "string") return;
-    if (!this.world.canAct(id) || !this.canSee(id, groundItem)) return;
+    if (!this.world.canAct(id) || !this.inventory.canSee(id, groundItem))
+      return;
     this.queuedActions.set(id, { kind: "taking", groundItem });
   }
 
@@ -394,40 +391,14 @@ export class Simulation {
     this.world.queuedDrops.set(id, { slot, amount });
   }
 
-  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (village spec §4). */
+  /** A drag; both come straight off the network. See `Inventory.moveItem`. */
   moveItem(id: string, from: number, to: number) {
-    if (!this.world.canAct(id)) return;
-    if (!isInventorySlot(from) || !isInventorySlot(to)) return;
-    const player = this.state.players.get(id)!;
-    moveStack(player.inventory, player.inventoryCounts, from, to);
-    // What waited on a slot meant what was there before.
-    const drop = this.world.queuedDrops.get(id)?.slot;
-    if (drop === from || drop === to) this.world.queuedDrops.delete(id);
-    const eat = this.world.queuedEats.get(id);
-    if (eat === from || eat === to) this.world.queuedEats.delete(id);
+    this.inventory.moveItem(id, from, to);
   }
 
-  /**
-   * Mixing a potion: `slot` comes straight off the network, so anything but a slot holding a
-   * mixable plant is ignored. Like a move it skips the queue and touches no action, as
-   * nothing waits on it (#222).
-   */
+  /** `slot` comes straight off the network; see `Inventory.mix`. */
   mix(id: string, slot: number) {
-    if (!this.world.canAct(id) || !isInventorySlot(slot)) return;
-    const player = this.state.players.get(id)!;
-    const potion = potionFromPlant(player.inventory[slot]!);
-    if (!potion) return;
-    const refusal = mixRefusal(potion, player);
-    if (refusal) {
-      this.events.push({ type: "told", player: id, line: refusal });
-      return;
-    }
-    // One vial and one plant become one potion, wherever each was (#222).
-    const { inventory, inventoryCounts } = player;
-    removeItems(inventory, inventoryCounts, "vial", 1);
-    removeItems(inventory, inventoryCounts, POTIONS[potion].plant, 1);
-    addItems(inventory, inventoryCounts, potion, 1);
-    this.world.earnXp(player, "herblawXp", POTIONS[potion].xp);
+    this.inventory.mix(id, slot);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
@@ -453,11 +424,7 @@ export class Simulation {
 
   /** Whether this player can see the ground item with this id; the room sends them only those. */
   canSee(id: string, groundItem: string) {
-    const player = this.state.players.get(id);
-    return (
-      player !== undefined &&
-      this.world.groundItems.canSee(player.username, groundItem)
-    );
+    return this.inventory.canSee(id, groundItem);
   }
 
   /** Restores the stalls and strongboxes this player emptied before leaving, as the events that emptied them. */
@@ -476,7 +443,7 @@ export class Simulation {
     this.firemaking.advanceLighting();
     this.windows.advanceVisits();
     this.thieving.advance();
-    this.advanceTakes();
+    this.inventory.advanceTakes();
     this.fighting.advancePlayerSwings();
     this.walking.syncActions();
     this.enemies.advance({
@@ -523,38 +490,6 @@ export class Simulation {
       else this.loggedOut.push(id);
     }
     this.queuedLogouts.clear();
-  }
-
-  /**
-   * After the steps, so the take lands on the tick of arrival. Visibility is checked again, and
-   * the first player to arrive takes what fits; a second on the same tick gets none, even of a remainder.
-   */
-  private advanceTakes() {
-    const takenThisTick = new Set<string>();
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "taking" || unsynced.path.length) continue;
-      unsynced.action = undefined;
-      const player = this.state.players.get(id)!;
-      const groundItem = this.state.groundItems.get(action.groundItem);
-      if (!groundItem || !this.canSee(id, action.groundItem)) continue;
-      if (takenThisTick.has(action.groundItem)) continue;
-      // With no way there, the path ran out short of the tile.
-      if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
-      const { item } = groundItem;
-      const line = takeRefusal(item, player);
-      if (line) {
-        this.events.push({ type: "told", player: id, line });
-        continue;
-      }
-      // In one go, as a pile of coins can run to millions.
-      const { inventory, inventoryCounts } = player;
-      const taken =
-        groundItem.count -
-        addItems(inventory, inventoryCounts, item, groundItem.count);
-      this.world.groundItems.take(action.groundItem, taken);
-      takenThisTick.add(action.groundItem);
-    }
   }
 
   /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
