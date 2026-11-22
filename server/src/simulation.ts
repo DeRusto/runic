@@ -1,28 +1,19 @@
 import { ArraySchema } from "@colyseus/schema";
 import {
   addItems,
-  AUGMENTATIONS,
-  FIRES,
   GATHERING_SKILLS,
   logoutRefusal,
-  makeRefusal,
-  make,
-  makingOf,
-  makingSkillOf,
   stationOf,
-  type MakeItem,
   moveStack,
   MAX_PINNED_SKILLS,
   potionFromPlant,
   POTIONS,
   mixRefusal,
   removeItems,
-  RECIPES,
   respawnTile,
   siteId,
   SKILLS,
   takeRefusal,
-  stationRefusal,
   tilesApart,
   WALK_TICKS_PER_TILE,
   type Deal,
@@ -47,6 +38,7 @@ import { Bank } from "./banking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { Gathering } from "./gathering.ts";
 import { Firemaking } from "./firemaking.ts";
+import { Making } from "./making.ts";
 import { GatheringSites } from "./gatheringSites.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
@@ -76,6 +68,7 @@ export class Simulation {
   private readonly sites: GatheringSites;
   private readonly gathering: Gathering;
   private readonly firemaking: Firemaking;
+  private readonly making: Making;
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
@@ -105,6 +98,7 @@ export class Simulation {
     this.eating = new Eating(this.world);
     this.sites = new GatheringSites(this.world);
     this.firemaking = new Firemaking(this.world);
+    this.making = new Making(this.world);
     this.gathering = new Gathering(this.world, this.sites, this.quests);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
@@ -281,45 +275,9 @@ export class Simulation {
     this.queue(id, this.sites.gatherIntent(id, skill, site));
   }
 
-  /**
-   * Comes straight off the network, so anything but a recipe's product or an augmentation is
-   * ignored, as is choosing an anvil recipe with no hammer. `at` names the fire to cook at
-   * instead of the range, and is refused unless one burns there. Level and materials wait for
-   * arrival (spec §4, #225).
-   */
+  /** Comes straight off the network; see `Making.makeIntent`. */
   queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
-    const player = this.state.players.get(id);
-    const { item, all, at } = intent ?? {};
-    // A string first: an array of one would pass hasOwn by turning into its element.
-    if (!player || !this.world.canAct(id) || typeof item !== "string") return;
-    if (!Object.hasOwn(RECIPES, item) && !Object.hasOwn(AUGMENTATIONS, item))
-      return;
-    const wanted = item as MakeItem;
-    const station = stationOf(wanted);
-    // `at` names the fire to make at, for a Making skill made over one (#224).
-    let fire: Tile | undefined;
-    if (at) {
-      const { x, y } = at as Partial<Tile>;
-      if (
-        !makingSkillOf(wanted).places.includes("fire") ||
-        !Number.isInteger(x) ||
-        !Number.isInteger(y) ||
-        !this.state.fires.has(siteId({ x, y } as Tile))
-      )
-        return;
-      fire = { x: x!, y: y! };
-    } else if (
-      !this.world.stations[station] ||
-      stationRefusal(station, player)
-    ) {
-      return;
-    }
-    this.queuedActions.set(id, {
-      kind: "making",
-      item: wanted,
-      all: all === true,
-      at: fire,
-    });
+    this.queue(id, this.making.makeIntent(id, intent));
   }
 
   /**
@@ -510,7 +468,7 @@ export class Simulation {
     this.advancePlayers();
     for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
     this.firemaking.advanceFires();
-    this.advanceMaking();
+    this.making.advance();
     this.firemaking.advanceLighting();
     this.windows.advanceVisits();
     this.thieving.advance();
@@ -671,69 +629,6 @@ export class Simulation {
       Object.assign(player, unsynced.path.shift());
       unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
     }
-  }
-
-  /** After the steps, so the first wait starts on the tick of arrival. */
-  private advanceMaking() {
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action: making } = unsynced;
-      if (making?.kind !== "making" || unsynced.path.length) continue;
-      // A fire can burn out mid-job, ending the cooking on it (#224).
-      if (making.at && !this.state.fires.has(siteId(making.at))) {
-        unsynced.action = undefined;
-        continue;
-      }
-      if (making.doneTick !== undefined) {
-        if (this.state.tick < making.doneTick) continue;
-        if (!this.finishItem(id, making) || !making.all) {
-          unsynced.action = undefined;
-          continue;
-        }
-      }
-      const player = this.state.players.get(id)!;
-      const refusal = makeRefusal(making.item, player);
-      if (refusal) {
-        unsynced.action = undefined;
-        this.events.push({ type: "told", player: id, line: refusal });
-        continue;
-      }
-      const { ticks } = makingOf(making.item);
-      making.doneTick = this.state.tick + ticks;
-      this.events.push({
-        type: "make",
-        player: id,
-        station: stationOf(making.item),
-        ticks,
-      });
-    }
-  }
-
-  /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
-  private finishItem(id: string, { item, at }: { item: MakeItem; at?: Tile }) {
-    const player = this.state.players.get(id)!;
-    // A fire burns more than the range, by the points of the log it burns (#224).
-    const fire = at ? this.state.fires.get(siteId(at)) : undefined;
-    const outcome = make(
-      item,
-      player,
-      this.random,
-      fire ? FIRES[fire.log].burnPercent : 0,
-    );
-    if ("refused" in outcome) {
-      this.events.push({ type: "told", player: id, line: outcome.refused });
-      return false;
-    }
-    outcome.inventory.forEach((held, i) => {
-      player.inventory[i] = held;
-      player.inventoryCounts[i] = outcome.inventoryCounts[i]!;
-    });
-    for (const [field, gained] of outcome.xp)
-      this.world.earnXp(player, field, gained);
-    if (outcome.told)
-      this.events.push({ type: "told", player: id, ...outcome.told });
-    if (outcome.made)
-      this.events.push({ type: "made", player: id, item: outcome.made });
-    return true;
   }
 
   /**
