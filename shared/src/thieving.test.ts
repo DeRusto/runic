@@ -38,29 +38,26 @@ test("the drunk is a level 1 mark outside the inn's door", () => {
   expect(PICKPOCKETS.drunk.level).toBe(1);
 });
 
-test("the drunk's pocket holds coins, and now and then food", () => {
+test("the drunk's pocket always holds coins, and now and then food as well", () => {
   const { coins, rare } = PICKPOCKETS.drunk;
-  expect(pickpocketLoot("drunk", () => 0.99)).toEqual({
-    item: "coins",
-    count: coins.most,
-  });
-  expect(pickpocketLoot("drunk", () => 0.5).item).toBe("coins");
-  expect(pickpocketLoot("drunk", () => 0)).toEqual({
-    item: rare.item,
-    count: 1,
-  });
+  // The first roll picks the coins; the second decides the rare item.
+  expect(pickpocketLoot("drunk", () => 0.99)).toEqual([
+    { item: "coins", count: coins.most },
+  ]);
+  expect(pickpocketLoot("drunk", () => 0)).toEqual([
+    { item: "coins", count: coins.fewest },
+    { item: rare.item, count: 1 },
+  ]);
 });
 
-test("coins come in every amount from the fewest to the most", () => {
-  const { coins, rare } = PICKPOCKETS.drunk;
-  const rareShare = rare.chancePercent / 100;
-  // The first roll skips the rare item; the second picks the amount.
-  const amountAt = (fraction: number) => {
-    const rolls = [rareShare, fraction];
-    return pickpocketLoot("drunk", () => rolls.shift()!).count;
-  };
-  expect(amountAt(0)).toBe(coins.fewest);
-  expect(amountAt(0.999)).toBe(coins.most);
+test("the rare item comes 1 time in 8", () => {
+  expect(PICKPOCKETS.drunk.rare.chancePercent).toBe(12.5);
+  const rareAt = (roll: number) =>
+    pickpocketLoot("drunk", () => roll).some(
+      ({ item }) => item === PICKPOCKETS.drunk.rare.item,
+    );
+  expect(rareAt(0.124)).toBe(true);
+  expect(rareAt(0.125)).toBe(false);
 });
 
 test("a player below the target's level is refused, with the level they need", () => {

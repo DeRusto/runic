@@ -359,6 +359,10 @@ _Avoid_: Steal from, rob
 A person who stands in the region only to be pickpocketed, with no job to offer, such as the drunk outside the inn. A mark is not a villager.
 _Avoid_: Victim, target (alone), NPC
 
+**Drunk**:
+The first mark, who stands outside the inn's door under the nameplate "Drunk", with no name of his own. Pickpocketing him needs Thieving 1 and pays a few coins, and now and then a cooked perch as well (#250).
+_Avoid_: Drunkard, the sot
+
 **Stun**:
 A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them.
 _Avoid_: Freeze, daze

@@ -138,6 +138,12 @@ export function showFights(room: WorldConnection) {
             if (victim && !victim.playingOnce) victim.once("Hit_A");
           },
         );
+      } else if (event.type === "stunned") {
+        // No swing to wait for: the mark shoves at once (#250).
+        atContact(playerOverheads.get(event.player), event.damage, 0, () => {
+          const victim = playerFigures.get(event.player);
+          if (victim && !victim.playingOnce) victim.once("Hit_A");
+        });
       } else if (event.type === "enemyDied") {
         const enemy = enemyFigures.get(event.enemy)!;
         const { death } = clipsOf(event.enemy);

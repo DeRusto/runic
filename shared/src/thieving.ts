@@ -9,7 +9,7 @@ export type MarkId = keyof typeof MARKS;
 
 /**
  * What pickpocketing each target needs and pays (#235, #250): the Thieving level, the experience a
- * success pays, its coins, the rare item that now and then comes instead, and the hit a failure
+ * success pays, its coins, the rare item that now and then comes with them, and the hit a failure
  * deals, in hundredths of a Hitpoints level. `called` is how messages name them.
  */
 export type Pickpocket = {
@@ -29,7 +29,7 @@ export const PICKPOCKETS = {
     xp: 8,
     coins: { fewest: 1, most: 5 },
     // Supper from the inn, still in his coat.
-    rare: { item: "cookedPerch", chancePercent: 12 },
+    rare: { item: "cookedPerch", chancePercent: 12.5 },
     failHit: 100,
   },
 } as const satisfies Record<MarkId, Pickpocket>;
@@ -60,16 +60,18 @@ export const pickpocketFails = (
 ) =>
   random() * 100 < failPercent(levelFor(thievingXp), PICKPOCKETS[target].level);
 
-/** What one success takes: the rare item, one of, or else an even pick of the coins. */
+/** What one success takes: an even pick of the coins, and now and then the rare item as well (#250). */
 export function pickpocketLoot(
   target: PickpocketTarget,
   random: () => number,
-): { item: ItemId; count: number } {
+): { item: ItemId; count: number }[] {
   const { coins, rare } = PICKPOCKETS[target];
-  if (random() * 100 < rare.chancePercent) return { item: rare.item, count: 1 };
   const count =
     coins.fewest + Math.floor(random() * (coins.most - coins.fewest + 1));
-  return { item: "coins", count };
+  const loot: { item: ItemId; count: number }[] = [{ item: "coins", count }];
+  if (random() * 100 < rare.chancePercent)
+    loot.push({ item: rare.item, count: 1 });
+  return loot;
 }
 
 /** Why a player can't pickpocket this target, or undefined if they can. */

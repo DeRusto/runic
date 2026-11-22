@@ -16,17 +16,17 @@ The experience scale starts with the drunk's 8 per success, the same as Fishing'
 
 | Target    | Level | Experience | Coins | Rare item (chance) | Failure hit |
 | --------- | ----- | ---------- | ----- | ------------------ | ----------- |
-| The drunk | 1     | 8          | 1–5   | Cooked perch (12%) | 100         |
+| The drunk | 1     | 8          | 1–5   | Cooked perch (12.5%, 1 in 8) | 100         |
 
-- A success pays coins, an even pick between the fewest and the most, or the rare item instead. Loot that doesn't fit in the inventory goes on the ground at the player's feet.
-- A failure hits for the target's failure hit, in hundredths of a Hitpoints level, but never below 1 health, and then stuns.
+- A success always pays coins, an even pick between the fewest and the most, and now and then the rare item as well. Loot that doesn't fit in the inventory goes on the ground at the player's feet.
+- A failure hits for the target's failure hit, in hundredths of a Hitpoints level, but never below 1 health, and then stuns. The hit shows over the player like an enemy's.
 - Attempts are at least 3 ticks apart (`PICKPOCKET_INTERVAL_TICKS`), however often the player clicks.
 
 ## 4. The stun and the busy state
 
 A stun lasts 8 ticks (`STUN_TICKS`), 2.4 seconds. It is the first use of the general **busy** state, which holds a player for a set number of ticks, with a switch for whether enemies can hit them:
 
-- While busy, the server drops every click the player sends (walking, actions, eating and dropping), and the player stops where they stand.
+- While busy, the server drops every click the player sends (walking, actions, eating, dropping, moving items, equipping, mixing, trading and banking), and the player stops where they stand.
 - With the switch on, as for the stun, enemies notice and hit the player as usual, but the player doesn't fight back.
 - With the switch off, as for Agility's crossing, enemies neither notice the player nor land a swing.
 - Dying ends the busy state, and leaving the game ends it too, since it isn't saved.

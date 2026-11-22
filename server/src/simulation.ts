@@ -785,6 +785,7 @@ export class Simulation {
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
   choose(id: string, choice: number) {
+    if (this.isBusy(id)) return;
     const talk = this.windowOf(id, "talk");
     if (!talk?.node || !Number.isInteger(choice)) return;
     const picked = nodesOf(talk.villager)[talk.node]!.choices![choice];
@@ -884,6 +885,7 @@ export class Simulation {
    * number above 0 is ignored. Like equip it skips the queue and touches no action.
    */
   deposit(id: string, slot: number, amount: number) {
+    if (this.isBusy(id)) return;
     if (!isInventorySlot(slot) || !isAmount(amount)) return;
     const player = this.playerAtBank(id);
     const line = player && this.depositSlot(id, player, slot, amount);
@@ -892,6 +894,7 @@ export class Simulation {
 
   /** Whatever fits goes in, and one line says when anything didn't (village spec §6). */
   depositInventory(id: string) {
+    if (this.isBusy(id)) return;
     const player = this.playerAtBank(id);
     if (!player) return;
     const refusals = Array.from({ length: INVENTORY_SLOTS }, (_, slot) =>
@@ -927,6 +930,7 @@ export class Simulation {
    * inventory's stacks before filling free slots, and the rest stays in the bank (village spec §6).
    */
   withdraw(id: string, slot: number, amount: number) {
+    if (this.isBusy(id)) return;
     if (!isBankSlot(slot) || !isAmount(amount)) return;
     const player = this.playerAtBank(id);
     const item = player?.bank[slot];
@@ -945,6 +949,7 @@ export class Simulation {
 
   /** A drag in the bank, under the inventory's rules; both come straight off the network. */
   moveBankItem(id: string, from: number, to: number) {
+    if (this.isBusy(id)) return;
     if (!isBankSlot(from) || !isBankSlot(to)) return;
     const player = this.windowOf(id, "bank") && this.state.players.get(id);
     if (player) moveStack(player.bank, player.bankCounts, from, to);
@@ -1116,6 +1121,7 @@ export class Simulation {
    * store open, is ignored. Like a drag it skips the queue and touches no action.
    */
   deal(id: string, intent: Deal) {
+    if (this.isBusy(id)) return;
     const player = this.state.players.get(id);
     if (!player || player.dead || !this.windowOf(id, "store")) return;
     const buy = dealLines(intent?.buy, SHELF_SLOTS);
@@ -1175,6 +1181,7 @@ export class Simulation {
 
   /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (village spec §4). */
   moveItem(id: string, from: number, to: number) {
+    if (this.isBusy(id)) return;
     if (!this.alive(id)) return;
     if (!isInventorySlot(from) || !isInventorySlot(to)) return;
     const player = this.state.players.get(id)!;
@@ -1192,6 +1199,7 @@ export class Simulation {
    * nothing waits on it (#222).
    */
   mix(id: string, slot: number) {
+    if (this.isBusy(id)) return;
     if (!this.alive(id) || !isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
     const potion = potionFromPlant(player.inventory[slot]!);
@@ -1226,6 +1234,7 @@ export class Simulation {
    * touches no action or timer (spec §4).
    */
   equip(id: string, slot: number) {
+    if (this.isBusy(id)) return;
     if (!this.alive(id)) return;
     if (!isInventorySlot(slot)) return;
     const player = this.state.players.get(id)!;
@@ -1254,6 +1263,7 @@ export class Simulation {
 
   /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
   takeOff(id: string, gearSlot: GearSlot) {
+    if (this.isBusy(id)) return;
     if (!this.alive(id) || !GEAR_SLOTS.includes(gearSlot)) return;
     const player = this.state.players.get(id)!;
     const worn = player[gearSlot];
@@ -1855,8 +1865,11 @@ export class Simulation {
             player.username,
             this.state.tick,
           ),
-        hurt: (damage) => (player.health -= damage),
-        stun: (ticks) => this.makeBusy(id, ticks, { hittable: true }),
+        stun: (ticks, damage) => {
+          player.health -= damage;
+          this.makeBusy(id, ticks, { hittable: true });
+          this.events.push({ type: "stunned", player: id, damage });
+        },
         tell: (line) => this.events.push({ type: "told", player: id, line }),
       });
     }

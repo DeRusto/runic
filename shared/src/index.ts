@@ -221,7 +221,9 @@ export type WorldEvent =
   /** The player's bank window opens (village spec §6). */
   | { type: "bankOpened"; player: string }
   /** The server shut the bank window, on a walk away or a hit. */
-  | { type: "bankClosed"; player: string };
+  | { type: "bankClosed"; player: string }
+  /** A failed pickpocket's hit, in hundredths of a Hitpoints level, and the stun that follows (#250). */
+  | { type: "stunned"; player: string; damage: number };
 
 export * from "./bank.ts";
 export * from "./combat.ts";

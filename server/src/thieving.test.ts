@@ -87,13 +87,14 @@ describe("pickpocketing the drunk", () => {
     expect(lines(events)).toEqual(["You pick the drunk's pocket."]);
   });
 
-  test("now and then takes food instead of coins", () => {
-    const sim = thief(rolls(SUCCEED, SUCCEED, 0));
+  test("now and then takes food as well as the coins", () => {
+    // The failure roll, then the coins' amount, then the rare item's roll.
+    const sim = thief(rolls(SUCCEED, SUCCEED, SUCCEED, 0));
     sim.queuePickpocket("a", "drunk");
     runTicks(sim, 1);
 
-    expect(player(sim).inventory[0]).toBe(PICKPOCKETS.drunk.rare.item);
-    expect(coins(sim)).toBe(0);
+    expect(coins(sim)).toBe(PICKPOCKETS.drunk.coins.most);
+    expect(player(sim).inventory).toContain(PICKPOCKETS.drunk.rare.item);
   });
 
   test("puts on the ground what a full inventory can't hold", () => {
@@ -124,6 +125,11 @@ describe("pickpocketing the drunk", () => {
       "The drunk catches you and shoves you. You're stunned.",
     ]);
     expect(sim.isBusy("a")).toBe(true);
+    expect(events).toContainEqual({
+      type: "stunned",
+      player: "a",
+      damage: PICKPOCKETS.drunk.failHit,
+    });
   });
 
   test("a failure's hit never kills", () => {
@@ -187,6 +193,26 @@ describe("pickpocketing the drunk", () => {
 });
 
 describe("the busy state", () => {
+  test("ignores the clicks that act at once: equipping, taking off, mixing and moving items", () => {
+    const sim = thief(() => SUCCEED, {
+      items: ["copperSword", "herb", "berry"],
+    });
+    sim.equip("a", 0);
+    sim.makeBusy("a", 5, { hittable: true });
+    const before = {
+      inventory: [...player(sim).inventory],
+      weapon: player(sim).weapon,
+    };
+
+    sim.takeOff("a", "weapon");
+    sim.mix("a", 1);
+    sim.moveItem("a", 1, 2);
+    sim.equip("a", 0);
+
+    expect([...player(sim).inventory]).toEqual(before.inventory);
+    expect(player(sim).weapon).toBe(before.weapon);
+  });
+
   test("a stunned player can still be hit, and doesn't fight back while stunned", () => {
     const sim = thief(() => FAIL, { tiles: SKELETON_TILES });
     sim.makeBusy("a", 20, { hittable: true });
