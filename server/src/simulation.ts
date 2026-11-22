@@ -259,12 +259,12 @@ export class Simulation {
 
   /** `site` comes straight off the network; see `GatheringSites.gatherIntent`. */
   queueGather(id: string, skill: GatheringSkill, site: string) {
-    this.queue(id, this.sites.gatherIntent(id, skill, site));
+    this.queue(id, () => this.sites.gatherIntent(id, skill, site));
   }
 
   /** Comes straight off the network; see `Making.makeIntent`. */
   queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
-    this.queue(id, this.making.makeIntent(id, intent));
+    this.queue(id, () => this.making.makeIntent(id, intent));
   }
 
   /**
@@ -280,27 +280,29 @@ export class Simulation {
 
   /** Both come straight off the network; see `VillagerWindows.visitIntent`. */
   queueVisit(id: string, villager: string, then?: string) {
-    this.queue(id, this.windows.visitIntent(villager, then));
+    this.queue(id, () => this.windows.visitIntent(villager, then));
   }
 
-  /** Queues a click for the next tick, if it asks for anything and the player can act. */
-  private queue(id: string, action: QueuedAction | undefined) {
-    if (action && this.world.canAct(id)) this.queuedActions.set(id, action);
+  /** Queues a click for the next tick, if the player can act and it asks for anything. Nothing in the payload is read until the player is known to act. */
+  private queue(id: string, intentOf: () => QueuedAction | undefined) {
+    if (!this.world.canAct(id)) return;
+    const action = intentOf();
+    if (action) this.queuedActions.set(id, action);
   }
 
   /** `target` comes straight off the network; see `ThievingTargets.pickpocketIntent`. */
   queuePickpocket(id: string, target: unknown) {
-    this.queue(id, this.thieving.pickpocketIntent(id, target));
+    this.queue(id, () => this.thieving.pickpocketIntent(id, target));
   }
 
   /** `stall` comes straight off the network; see `ThievingTargets.stealIntent`. */
   queueSteal(id: string, stall: unknown) {
-    this.queue(id, this.thieving.stealIntent(id, stall));
+    this.queue(id, () => this.thieving.stealIntent(id, stall));
   }
 
   /** `strongbox` comes straight off the network; see `ThievingTargets.openIntent`. */
   queueOpen(id: string, strongbox: unknown) {
-    this.queue(id, this.thieving.openIntent(id, strongbox));
+    this.queue(id, () => this.thieving.openIntent(id, strongbox));
   }
 
   /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */

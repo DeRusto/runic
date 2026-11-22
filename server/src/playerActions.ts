@@ -12,7 +12,10 @@ import type {
 } from "@runic/shared";
 import type { Busy } from "./busy.ts";
 
-/** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
+/**
+ * What a player is doing, beyond walking. Fighting, gathering, making and lighting are also
+ * their synced `PlayerAction`; the rest show as walking while a path remains, and idle after.
+ */
 export type UnsyncedAction =
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
