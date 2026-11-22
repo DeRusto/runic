@@ -17,9 +17,7 @@ import {
   gatherRefusal,
   GATHERING,
   GATHERING_SKILLS,
-  gearOf,
   GEAR_SLOTS,
-  gearRefusal,
   HEALING_POOL_INTERVAL_TICKS,
   ITEMS,
   levelFor,
@@ -97,6 +95,7 @@ import { Enemies, Enemy } from "./enemies.ts";
 import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { GeneralStore } from "./generalStore.ts";
+import { Gear } from "./gear.ts";
 import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
@@ -161,6 +160,7 @@ export class Simulation {
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
   private readonly store: GeneralStore;
+  private readonly gear: Gear;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -180,6 +180,7 @@ export class Simulation {
     this.windows = new VillagerWindows(this.world, this.quests);
     this.bank = new Bank(this.world, this.windows);
     this.store = new GeneralStore(this.world, this.windows);
+    this.gear = new Gear(this.world);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { villager, mark, stall, strongbox, station } = kind;
@@ -664,53 +665,14 @@ export class Simulation {
       pins.push(skill);
   }
 
-  /**
-   * `slot` comes straight off the network, so anything but a slot holding gear is ignored.
-   * Like pins it skips the queue, so a second click within the tick isn't lost, and it
-   * touches no action or timer (spec §4).
-   */
+  /** `slot` comes straight off the network; see `Gear.equip`. */
   equip(id: string, slot: number) {
-    if (!this.world.canAct(id)) return;
-    if (!isInventorySlot(slot)) return;
-    const player = this.state.players.get(id)!;
-    const item = player.inventory[slot]!;
-    const gear = gearOf(item);
-    if (!gear) return;
-    const refusal = gearRefusal(item, player);
-    if (refusal) {
-      this.events.push({ type: "told", player: id, line: refusal });
-      return;
-    }
-    // Whatever was worn lands where this came from, so swapping always works (spec §4).
-    this.placeGear(id, slot, player[gear.slot]);
-    player[gear.slot] = item;
-    this.world.fitHealth(id);
+    this.gear.equip(id, slot);
   }
 
-  /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
+  /** `gearSlot` comes straight off the network; see `Gear.takeOff`. */
   takeOff(id: string, gearSlot: GearSlot) {
-    if (!this.world.canAct(id) || !GEAR_SLOTS.includes(gearSlot)) return;
-    const player = this.state.players.get(id)!;
-    const worn = player[gearSlot];
-    if (!worn) return;
-    const slot = player.inventory.indexOf(EMPTY_SLOT);
-    if (slot < 0) {
-      const line = "You have no empty slot to take that off into.";
-      this.events.push({ type: "told", player: id, line });
-      return;
-    }
-    this.placeGear(id, slot, worn);
-    player[gearSlot] = "";
-    this.world.fitHealth(id);
-  }
-
-  /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
-  private placeGear(id: string, slot: number, item: string) {
-    const player = this.state.players.get(id)!;
-    player.inventory[slot] = item;
-    player.inventoryCounts[slot] = item ? 1 : 0;
-    if (this.world.queuedDrops.get(id)?.slot === slot)
-      this.world.queuedDrops.delete(id);
+    this.gear.takeOff(id, gearSlot);
   }
 
   /** Adds one `item` to the slot `slotFor` chose. */
