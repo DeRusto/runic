@@ -118,6 +118,7 @@ import {
   type LootWon,
   PICKPOCKET_INTERVAL_TICKS,
   PICKPOCKETS,
+  isPickpocketTarget,
   pickpocketRefusal,
   type MarkId,
   type PickpocketTarget,
@@ -769,14 +770,21 @@ export class Simulation {
       });
   }
 
-  /** `target` comes straight off the network, so anything but a mark standing in this region is ignored, as is a click the rules refuse (#250). */
+  /** `target` comes straight off the network, so anything but a mark or pickpocketable villager standing in this region is ignored, as is a click the rules refuse (#250, #251). */
   queuePickpocket(id: string, target: unknown) {
     const player = this.state.players.get(id);
     if (!player || !this.canAct(id) || typeof target !== "string") return;
-    if (!this.marks.has(target as MarkId)) return;
-    const mark = target as MarkId;
-    if (pickpocketRefusal(PICKPOCKETS[mark], player.thievingXp)) return;
-    this.queuedActions.set(id, { kind: "pickpocketing", target: mark });
+    if (!isPickpocketTarget(target) || !this.standingAt(target)) return;
+    if (pickpocketRefusal(PICKPOCKETS[target], player.thievingXp)) return;
+    this.queuedActions.set(id, { kind: "pickpocketing", target });
+  }
+
+  /** Where a pickpocket target stands in this region, a mark or a villager, if they do. */
+  private standingAt(target: PickpocketTarget) {
+    return (
+      this.marks.get(target as MarkId) ??
+      this.villagers.get(target as VillagerId)
+    );
   }
 
   /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
@@ -1526,7 +1534,7 @@ export class Simulation {
     if (action?.kind === "making")
       return action.at ?? this.stations[stationOf(action.item)];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
-    if (action?.kind === "pickpocketing") return this.marks.get(action.target);
+    if (action?.kind === "pickpocketing") return this.standingAt(action.target);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
   }

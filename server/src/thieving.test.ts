@@ -240,3 +240,106 @@ describe("the busy state", () => {
     expect(sim.isBusy("a")).toBe(false);
   });
 });
+
+/** A region like `TILES` with `standing` at (3,1) in the drunk's place. */
+const regionWith = (standing: string) =>
+  parseRegion(
+    ["TTTTTTT", `TR.${standing}..T`, "T.....T", "TTTTTTT"].join("\n"),
+  );
+
+describe.each([
+  ["pedlar", "J"],
+  ["marta", "M"],
+  ["odo", "B"],
+  ["hollis", "L"],
+] as const)("pickpocketing %s", (target, tile) => {
+  const { level, called, xp, failHit, coins: pays, rare } = PICKPOCKETS[target];
+  const tiles = regionWith(tile);
+
+  test("is refused a level below the requirement", () => {
+    const sim = thief(() => SUCCEED, {
+      tiles,
+      thievingXp: xpForLevel(level - 1),
+    });
+    sim.queuePickpocket("a", target);
+    runTicks(sim, 2);
+    expect(player(sim)).toMatchObject({ x: 1, y: 1 });
+    expect(player(sim).thievingXp).toBe(xpForLevel(level - 1));
+  });
+
+  test("at the requirement, walks over and pays coins, the rare item and experience", () => {
+    // The failure roll, then the coins' amount, then the rare item's roll.
+    const sim = thief(rolls(SUCCEED, SUCCEED, SUCCEED, 0), {
+      tiles,
+      thievingXp: xpForLevel(level),
+    });
+    sim.queuePickpocket("a", target);
+    const events = runTicks(sim, 1);
+
+    expect(player(sim)).toMatchObject({ x: 2, y: 1 });
+    expect(coins(sim)).toBe(pays.most);
+    expect(player(sim).inventory).toContain(rare.item);
+    expect(player(sim).thievingXp).toBe(xpForLevel(level) + xp);
+    expect(lines(events)).toEqual([`You pick ${called}'s pocket.`]);
+  });
+
+  test("a failure hits without killing and stuns, and talk and trade still work after", () => {
+    const sim = thief(() => FAIL, {
+      tiles,
+      thievingXp: xpForLevel(level),
+      health: failHit + 500,
+    });
+    sim.queuePickpocket("a", target);
+    const events = runTicks(sim, 1);
+    expect(player(sim).health).toBe(500);
+    expect(sim.isBusy("a")).toBe(true);
+    expect(lines(events)).toEqual([
+      `${called} catches you and shoves you. You're stunned.`,
+    ]);
+
+    runTicks(sim, STUN_TICKS);
+    if (target === "pedlar") return;
+    sim.queueVisit("a", target);
+    const talked = runTicks(sim, 1);
+    expect(talked).toContainEqual(
+      expect.objectContaining({ type: "talk", player: "a", villager: target }),
+    );
+  });
+});
+
+describe("the villagers who aren't marks", () => {
+  test("Aldous, the banker, can't be pickpocketed", () => {
+    const sim = thief(() => SUCCEED, {
+      tiles: regionWith("$"),
+      thievingXp: xpForLevel(99),
+    });
+    sim.queuePickpocket("a", "aldous");
+    runTicks(sim, 2);
+    expect(player(sim)).toMatchObject({
+      x: 1,
+      y: 1,
+      thievingXp: xpForLevel(99),
+    });
+  });
+
+  test.each([["marta"], ["aldous"]])("%s can't be attacked", (villager) => {
+    const sim = thief(() => SUCCEED, { tiles: regionWith("M") });
+    sim.queueTarget("a", villager);
+    runTicks(sim, 3);
+    expect(player(sim)).toMatchObject({ x: 1, y: 1, action: "" });
+  });
+
+  test("Marta's store still opens for a player she caught", () => {
+    const sim = thief(() => FAIL, {
+      tiles: regionWith("M"),
+      thievingXp: xpForLevel(20),
+    });
+    sim.queuePickpocket("a", "marta");
+    runTicks(sim, 1 + STUN_TICKS);
+    sim.queueVisit("a", "marta", "openStore");
+    expect(runTicks(sim, 1)).toContainEqual({
+      type: "storeOpened",
+      player: "a",
+    });
+  });
+});
