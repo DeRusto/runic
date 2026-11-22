@@ -2,6 +2,9 @@ import {
   GATHERING,
   offers,
   gatherRefusal,
+  PICKPOCKET_INTENT,
+  PICKPOCKETS,
+  pickpocketRefusal,
   stationRefusal,
   TAKE_INTENT,
   TARGET_INTENT,
@@ -9,6 +12,7 @@ import {
   VISIT_INTENT,
   WALK_INTENT,
   type DialogueAction,
+  type MarkId,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -24,11 +28,11 @@ import type { showEnemies } from "./enemies.ts";
 import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
-import type { addVillagers } from "./villagers.ts";
+import type { addMarks, addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station or villager under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on another player it opens the player menu. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on a mark it offers to pickpocket; on another player it opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -38,6 +42,7 @@ export function walkOnClick(
   fireUnder: ReturnType<typeof showFires>,
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   villagerUnder: Awaited<ReturnType<typeof addVillagers>>,
+  markUnder: Awaited<ReturnType<typeof addMarks>>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
   otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
@@ -60,6 +65,24 @@ export function walkOnClick(
     marker.visible = true;
     clearTimeout(hideMarker);
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
+  };
+
+  /** Pickpockets the mark, unless the rules refuse, which the chat says why (#250). */
+  const pickpocket = ({
+    mark,
+    x,
+    y,
+  }: {
+    mark: MarkId;
+    x: number;
+    y: number;
+  }) => {
+    const me = room.state.players.get(room.sessionId);
+    if (!me) return;
+    const refusal = pickpocketRefusal(PICKPOCKETS[mark], me.thievingXp);
+    if (refusal) return printChatLine(refusal);
+    showMarker(x, y);
+    room.send(PICKPOCKET_INTENT, mark);
   };
 
   const aim = (event: MouseEvent) => {
@@ -90,6 +113,8 @@ export function walkOnClick(
           : []),
       ]);
     }
+    const mark = markUnder(raycaster);
+    if (mark) return openMenu(event, [["Pickpocket", () => pickpocket(mark)]]);
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
   };
@@ -145,6 +170,8 @@ export function walkOnClick(
       room.send(VISIT_INTENT, { villager: villager.villager });
       return;
     }
+    const mark = markUnder(raycaster);
+    if (mark) return pickpocket(mark);
     if (!raycaster.ray.intersectPlane(ground, hit)) return;
     const x = Math.round(hit.x);
     const y = Math.round(hit.z);

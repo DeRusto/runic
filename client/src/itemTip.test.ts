@@ -17,6 +17,7 @@ const player = (
   runecraftingXp: 0,
   leatherworkingXp: 0,
   jewelsmithingXp: 0,
+  thievingXp: 0,
   inventory: ["copperBar", ""],
   inventoryCounts: [5, 0],
 });

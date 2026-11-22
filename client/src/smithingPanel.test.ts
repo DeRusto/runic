@@ -65,6 +65,7 @@ const me = (held: [string, number][], more: Partial<SyncedPlayer> = {}) =>
     runecraftingXp: 0,
     leatherworkingXp: 0,
     jewelsmithingXp: 0,
+    thievingXp: 0,
     inventory: held.map(([item]) => item),
     inventoryCounts: held.map(([, count]) => count),
     ...more,

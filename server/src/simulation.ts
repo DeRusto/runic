@@ -116,11 +116,18 @@ import {
   lightTileAt,
   playerHit,
   type LootWon,
+  PICKPOCKET_INTERVAL_TICKS,
+  PICKPOCKETS,
+  pickpocketRefusal,
+  type MarkId,
+  type PickpocketTarget,
 } from "@runic/shared";
+import { canBeHit, isBusy, type Busy } from "./busy.ts";
 import { Enemies, Enemy } from "./enemies.ts";
 import { GroundItem, GroundItems } from "./groundItems.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
+import { pickpocket } from "./thieving.ts";
 import {
   findPath,
   legalSteps,
@@ -284,6 +291,8 @@ type UnsyncedAction =
     }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
+  /** One attempt on arrival, once the attempt interval allows (#250). */
+  | { kind: "pickpocketing"; target: PickpocketTarget }
   /**
    * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
    * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
@@ -312,7 +321,8 @@ type QueuedAction =
   | { kind: "making"; item: MakeItem; all: boolean; at?: Tile }
   | { kind: "lighting"; slot: number }
   | { kind: "taking"; groundItem: string }
-  | { kind: "following"; player: string };
+  | { kind: "following"; player: string }
+  | { kind: "pickpocketing"; target: PickpocketTarget };
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -342,6 +352,8 @@ export class Simulation {
       potion?: { virtue: Virtue; endTick: number; bonus: number };
       /** The combat lock runs until this tick. */
       lockEndTick: number;
+      /** A stun, or later Agility's crossing (#236). Not saved: leaving ends it. */
+      busy?: Busy;
       respawnTick: number;
       /** Each started quest's progress, by quest id, kept for the save (#231). */
       quests: Map<string, { stage: string; turns: number }>;
@@ -362,6 +374,7 @@ export class Simulation {
   /** Every gathering site, by the tile that keys it. */
   private sites = new Map<string, GatheringSite>();
   private villagers = new Map<VillagerId, Tile>();
+  private marks = new Map<MarkId, Tile>();
   /**
    * Each player's open villager window, the villager they must stay beside, and for a
    * conversation the node whose choices they can pick from, if any. A player has at most one.
@@ -402,8 +415,9 @@ export class Simulation {
     this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { villager, station } = kind;
+        const { villager, mark, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
+        if (mark) this.marks.set(mark, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const siteKind = kind[GATHERING[skill].site];
@@ -743,6 +757,30 @@ export class Simulation {
         ...visit,
         then: then as Exclude<DialogueAction, "quest">,
       });
+  }
+
+  /** `target` comes straight off the network, so anything but a mark standing in this region is ignored, as is a click the rules refuse (#250). */
+  queuePickpocket(id: string, target: unknown) {
+    const player = this.state.players.get(id);
+    if (!player || player.dead || typeof target !== "string") return;
+    if (!this.marks.has(target as MarkId)) return;
+    const mark = target as MarkId;
+    if (pickpocketRefusal(PICKPOCKETS[mark], player.thievingXp)) return;
+    this.queuedActions.set(id, { kind: "pickpocketing", target: mark });
+  }
+
+  /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
+  isBusy(id: string) {
+    return isBusy(this.unsyncedPlayers.get(id)?.busy, this.state.tick);
+  }
+
+  /** Makes the player busy for `ticks` from now: whatever they were doing stops, and their clicks are ignored until it ends (#236). */
+  makeBusy(id: string, ticks: number, { hittable }: { hittable: boolean }) {
+    this.clearAction(id);
+    this.unsyncedPlayers.get(id)!.busy = {
+      endTick: this.state.tick + ticks,
+      hittable,
+    };
   }
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
@@ -1352,18 +1390,23 @@ export class Simulation {
     this.advanceMaking();
     this.advanceLighting();
     this.advanceVisits();
+    this.advancePickpocketing();
     this.advanceTakes();
     this.advancePlayerSwings();
     this.enemies.advance({
       tick: this.state.tick,
       players: () =>
-        [...this.unsyncedPlayers].map(([id, { dropped }]) => ({
+        [...this.unsyncedPlayers].map(([id, { dropped, busy }]) => ({
           id,
           player: this.state.players.get(id)!,
           dropped: !!dropped,
+          hittable: canBeHit(busy, this.state.tick),
         })),
       player: (id) => this.state.players.get(id),
-      swing: (enemyId, playerId) => this.enemySwing(enemyId, playerId),
+      swing: (enemyId, playerId) => {
+        if (canBeHit(this.unsyncedPlayers.get(playerId)?.busy, this.state.tick))
+          this.enemySwing(enemyId, playerId);
+      },
     });
     this.advancePlayerTimers();
     this.advanceSites();
@@ -1374,6 +1417,13 @@ export class Simulation {
   }
 
   private applyIntents() {
+    // A busy player's clicks are ignored, not saved for later (#236).
+    for (const id of this.unsyncedPlayers.keys()) {
+      if (!this.isBusy(id)) continue;
+      this.queuedActions.delete(id);
+      this.queuedEats.delete(id);
+      this.queuedDrops.delete(id);
+    }
     for (const [id, intent] of this.queuedActions) {
       const unsynced = this.unsyncedPlayers.get(id)!;
       const player = this.state.players.get(id)!;
@@ -1424,6 +1474,7 @@ export class Simulation {
           break;
         }
         case "visiting":
+        case "pickpocketing":
           goNextTo(intent);
           break;
         case "taking": {
@@ -1471,6 +1522,7 @@ export class Simulation {
     if (action?.kind === "making")
       return action.at ?? this.stations[stationOf(action.item)];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
+    if (action?.kind === "pickpocketing") return this.marks.get(action.target);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
   }
@@ -1779,6 +1831,37 @@ export class Simulation {
     }
   }
 
+  /** After the steps, so the attempt lands on the tick of arrival, or as soon after as the attempt interval allows (#250). */
+  private advancePickpocketing() {
+    for (const [id, unsynced] of this.unsyncedPlayers) {
+      const { action } = unsynced;
+      if (action?.kind !== "pickpocketing" || unsynced.path.length) continue;
+      if (this.state.tick < unsynced.nextAttemptTick) continue;
+      unsynced.action = undefined;
+      unsynced.nextAttemptTick = this.state.tick + PICKPOCKET_INTERVAL_TICKS;
+      const player = this.state.players.get(id)!;
+      pickpocket(action.target, {
+        random: this.random,
+        thievingXp: player.thievingXp,
+        health: player.health,
+        earnXp: (gained) => this.earnXp(player, "thievingXp", gained),
+        give: (item, count) =>
+          addItems(player.inventory, player.inventoryCounts, item, count),
+        drop: (item, count) =>
+          this.groundItems.spawn(
+            player,
+            item,
+            count,
+            player.username,
+            this.state.tick,
+          ),
+        hurt: (damage) => (player.health -= damage),
+        stun: (ticks) => this.makeBusy(id, ticks, { hittable: true }),
+        tell: (line) => this.events.push({ type: "told", player: id, line }),
+      });
+    }
+  }
+
   private advanceSites() {
     for (const site of this.sites.values()) {
       if (this.state.tick !== site.regrowTick) continue;
@@ -1814,7 +1897,8 @@ export class Simulation {
         action &&
         action.kind !== "visiting" &&
         action.kind !== "taking" &&
-        action.kind !== "following"
+        action.kind !== "following" &&
+        action.kind !== "pickpocketing"
           ? action.kind
           : path.length
             ? "walking"
@@ -1929,7 +2013,7 @@ export class Simulation {
     enemyId: string,
   ) {
     const unsynced = this.unsyncedPlayers.get(id)!;
-    if (unsynced.dropped) return;
+    if (unsynced.dropped || this.isBusy(id)) return;
     unsynced.action = { kind: "fighting", enemy: enemyId };
     unsynced.nextSwingTick = Math.max(
       unsynced.nextSwingTick,
@@ -1962,6 +2046,7 @@ export class Simulation {
     unsynced.healingPool.length = 0;
     unsynced.delicious = undefined;
     unsynced.potion = undefined;
+    unsynced.busy = undefined;
     this.fitHealth(id);
     unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
     this.events.push({ type: "playerDied", player: id });

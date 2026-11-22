@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting and #238's two skills' columns.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns and Thieving's (#250).
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -41,8 +41,9 @@ const LATEST_COLUMNS = [
   "runecrafting_xp",
   "leatherworking_xp",
   "jewelsmithing_xp",
+  "thieving_xp",
 ];
-const LATEST_MIGRATIONS = 16;
+const LATEST_MIGRATIONS = 17;
 
 /** Makes the newest migrations pending again, as if this build had just added them. */
 function unapplyLatest() {

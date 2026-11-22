@@ -81,6 +81,7 @@ const IS = {
   altar: (tile) => tile.station === "altar",
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
+  mark: (tile) => !!tile.mark,
   house: (tile) => !!tile.house,
 } satisfies Record<string, (tile: TileKind) => boolean>;
 
@@ -167,6 +168,7 @@ describe("the region", () => {
     ["forester", 1],
     ["fisher", 1],
     ["villager", 6],
+    ["mark", 1],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -213,7 +215,13 @@ describe("the region", () => {
   it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...STATIONS_AND_BLACKSMITH, "range", "villager", ...TREES),
+        ...tilesOf(
+          ...STATIONS_AND_BLACKSMITH,
+          "range",
+          "villager",
+          "mark",
+          ...TREES,
+        ),
         ...spotsOf(...VEINS, "essence", ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
@@ -409,6 +417,12 @@ describe("the region", () => {
     ["aldous", 26, 41],
   ] as const)("stands %s at %i,%i", (villager, x, y) => {
     expect(region[y]![x]!.villager).toBe(villager);
+  });
+
+  it("stands the drunk outside the inn, beside its door (#250)", () => {
+    expect(region[44]![12]!.mark).toBe("drunk");
+    expect(region[45]![10]!.house).toBe("door");
+    expect(region[45]![12]!.station).toBe("range");
   });
 
   it("stands the furnace, anvil and Blacksmith at the crossroads' north-east corner", () => {

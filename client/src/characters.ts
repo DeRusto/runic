@@ -5,6 +5,7 @@ import {
   WALK_TICKS_PER_TILE,
   type EnemyKind,
   type GatheringSkill,
+  type MarkId,
   type Tile,
   type VillagerId,
 } from "@runic/shared";
@@ -753,9 +754,13 @@ export async function loadVillager(tile: Tile, villager: VillagerId) {
     };
     return new Figure(tile, scene, clips, gait);
   }
-  const [{ scene }, clips] = await Promise.all([load(look), loadClips()]);
+  return loadKayKitFigure(tile, look, VILLAGER_TOOLS[villager]);
+}
+
+/** A KayKit adventurer on the players' shared clips, holding `held` if given. */
+async function loadKayKitFigure(tile: Tile, file: string, held?: string) {
+  const [{ scene }, clips] = await Promise.all([load(file), loadClips()]);
   fit(scene, (size) => HEIGHT / size.y);
-  const held = VILLAGER_TOOLS[villager];
   if (held) {
     const tool = (await loadGltf(held)).scene;
     tool.rotation.y = TOOL_TURN[held] ?? 0;
@@ -764,6 +769,15 @@ export async function loadVillager(tile: Tile, villager: VillagerId) {
   }
   return new Figure(tile, scene, clips);
 }
+
+/** Each mark's KayKit model, one no player or villager wears (#250). */
+const MARK_MODELS: Record<MarkId, string> = {
+  drunk: "Barbarian",
+};
+
+/** A mark on their tile (#250). */
+export const loadMark = (tile: Tile, mark: MarkId) =>
+  loadKayKitFigure(tile, MARK_MODELS[mark]);
 
 /** So a hit's red flash shows on this enemy alone. */
 function withOwnMaterials(model: THREE.Object3D) {

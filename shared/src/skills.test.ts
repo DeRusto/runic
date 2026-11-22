@@ -73,6 +73,7 @@ test("only the skills that can be trained reach the sheet, the bar and pinning",
     "Runecrafting",
     "Leatherworking",
     "Jewelsmithing",
+    "Thieving",
     "Blocking",
     "Mastery",
   ]);

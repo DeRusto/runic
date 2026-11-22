@@ -363,6 +363,10 @@ _Avoid_: Victim, target (alone), NPC
 A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them.
 _Avoid_: Freeze, daze
 
+**Busy**:
+A player held for a set number of ticks, who can't act or move while the server ignores their clicks. Each use says whether enemies can still hit the player: a stun says yes, and Agility's crossing will say no (#236).
+_Avoid_: Locked (that's the combat lock), frozen
+
 **Stall**:
 One of the Storekeeper's carts outside the general store, holding food, fish or gems, that a player steals items from. It empties for that player alone, for a while. If a player fails, the Storekeeper catches them: no loot, no hit, and that stall is closed to them for a while.
 _Avoid_: Market stall, cart, booth

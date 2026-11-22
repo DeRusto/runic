@@ -28,6 +28,7 @@ function world(players: Record<string, Fighter>, damage = 0) {
         id,
         player,
         dropped: false,
+        hittable: true,
       })),
     player: (id) => players[id],
     swing: (enemy, player) => {
