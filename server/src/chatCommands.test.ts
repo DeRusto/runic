@@ -42,13 +42,14 @@ async function joinAs(name: string): Promise<Player> {
   return { room, lines };
 }
 
+// Full parallel runs can starve the real server and three logins of event-loop time.
 beforeAll(async () => {
   server = await startServer(PORT);
   sender = await joinAs("PmSender");
   target = await joinAs("PmTarget");
   bystander = await joinAs("PmBystander");
-});
-afterAll(() => server.gracefullyShutdown(false));
+}, 30_000);
+afterAll(() => server?.gracefullyShutdown(false));
 beforeEach(() => {
   for (const { lines } of [sender, target, bystander]) lines.length = 0;
 });

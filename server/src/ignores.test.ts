@@ -16,7 +16,7 @@ import { startServer } from "./server.ts";
 import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
-const PORT = await freePort();
+let port = await freePort();
 let server: Awaited<ReturnType<typeof startServer>>;
 
 /** A logged-in player, every chat-box line they have received, and the last lists sent to them. */
@@ -29,8 +29,8 @@ type Player = {
 const tokens = new Map<string, string>();
 
 async function joinAs(name: string): Promise<Player> {
-  const client = new Client(`http://localhost:${PORT}`);
-  if (!tokens.has(name)) tokens.set(name, await testToken(PORT, name));
+  const client = new Client(`http://localhost:${port}`);
+  if (!tokens.has(name)) tokens.set(name, await testToken(port, name));
   client.auth.token = tokens.get(name)!;
   const room = await client.join(WORLD_ROOM);
   const player: Player = { room, lines: [] };
@@ -55,15 +55,26 @@ let me: Player;
 let pest: Player;
 let bystander: Player;
 
+// Leave room for port retries and four logins under full parallel load.
 beforeAll(async () => {
-  server = await startServer(PORT);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      server = await startServer(port);
+      break;
+    } catch (error) {
+      if (attempt === 2 || (error as NodeJS.ErrnoException).code !== "EACCES")
+        throw error;
+      // Windows can refuse a port between the probe closing and this bind (see #239).
+      port = await freePort();
+    }
+  }
   // An account that exists but is never online.
-  await testToken(PORT, "IgAway");
+  await testToken(port, "IgAway");
   me = await joinAs("IgMe");
   pest = await joinAs("IgPest");
   bystander = await joinAs("IgBystander");
-});
-afterAll(() => server.gracefullyShutdown(false));
+}, 30_000);
+afterAll(() => server?.gracefullyShutdown(false));
 beforeEach(() => {
   for (const { lines } of [me, pest, bystander]) lines.length = 0;
 });
