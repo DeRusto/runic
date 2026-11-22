@@ -3,22 +3,15 @@ import {
   addItems,
   AUGMENTATIONS,
   attemptChance,
-  DELICIOUS_BUFF_INTERVAL_TICKS,
-  DELICIOUS_BUFF_PERCENT,
-  DELICIOUS_BUFF_TICKS,
   DOUBLE_YIELD,
-  EAT_INTERVAL_TICKS,
-  EAT_SWING_DELAY_TICKS,
   EMPTY_SLOT,
   FIGHT_BACK_DELAY_TICKS,
   FIRES,
-  FOOD_HEALS,
   gatheringSource,
   gatherRefusal,
   GATHERING,
   GATHERING_SKILLS,
   GEAR_SLOTS,
-  HEALING_POOL_INTERVAL_TICKS,
   ITEMS,
   levelFor,
   LIGHTING_TICKS,
@@ -34,18 +27,13 @@ import {
   MAX_PINNED_SKILLS,
   pickIntervalTicks,
   potionFromPlant,
-  potionOf,
   POTIONS,
-  POTION_BUFF_TICKS,
   AVOIDANCE_POTION_POINTS,
-  FORTITUDE_POTION_PERCENT,
   MIGHT_POTION_HIT,
   mixRefusal,
   removeItems,
   PLAYER_DEAD_TICKS,
   RECIPES,
-  REGEN_INTERVAL_TICKS,
-  REGEN_PERCENT_OF_MAX_HEALTH,
   groundBlocks,
   respawnTile,
   rollCatch,
@@ -58,7 +46,6 @@ import {
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
-  itemParts,
   WALK_TICKS_PER_TILE,
   ENEMIES,
   type Deal,
@@ -96,6 +83,7 @@ import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Gear } from "./gear.ts";
+import { Eating } from "./eating.ts";
 import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
@@ -161,6 +149,7 @@ export class Simulation {
   private readonly bank: Bank;
   private readonly store: GeneralStore;
   private readonly gear: Gear;
+  private readonly eating: Eating;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -181,6 +170,7 @@ export class Simulation {
     this.bank = new Bank(this.world, this.windows);
     this.store = new GeneralStore(this.world, this.windows);
     this.gear = new Gear(this.world);
+    this.eating = new Eating(this.world);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { villager, mark, stall, strongbox, station } = kind;
@@ -714,67 +704,6 @@ export class Simulation {
     if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
   }
 
-  private eat(id: string, slot: number) {
-    const player = this.state.players.get(id)!;
-    const unsynced = this.world.unsyncedPlayers.get(id)!;
-    const parts = itemParts(player.inventory[slot]);
-    const food = FOOD_HEALS.get(parts.base);
-    const potion = potionOf(parts.base);
-    if (
-      (food === undefined && !potion) ||
-      this.state.tick < unsynced.nextEatTick
-    )
-      return;
-    unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
-    // From now if no swing is waiting, or a past timer would swallow the delay.
-    unsynced.nextSwingTick =
-      Math.max(unsynced.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
-    if (--player.inventoryCounts[slot]! === 0)
-      player.inventory[slot] = EMPTY_SLOT;
-    // Not at full health, or a swing later this tick could save it from being lost.
-    if (food && player.health < player.maxHealth) {
-      unsynced.healingPool.push(
-        ...Array<number>(food.ticks).fill(food.perTick),
-      );
-    }
-    // A Delicious fish heals on its own afterwards, and another one only refreshes it (#221).
-    if (parts.quality === "delicious") {
-      unsynced.delicious = {
-        perTick: food!.perTick,
-        nextHealTick: this.state.tick + DELICIOUS_BUFF_INTERVAL_TICKS,
-        endTick: this.state.tick + DELICIOUS_BUFF_TICKS,
-      };
-      this.events.push({
-        type: "delicious",
-        player: id,
-        ticks: DELICIOUS_BUFF_TICKS,
-      });
-    }
-    // A potion's Virtue replaces the heal: two minutes of it, refreshed never stacked (#222).
-    if (potion) {
-      const { virtue } = POTIONS[potion];
-      unsynced.potion = {
-        virtue,
-        endTick: this.state.tick + POTION_BUFF_TICKS,
-        // A Fortitude potion's quarter is worked out once, on the normal max.
-        bonus:
-          virtue === "fortitude"
-            ? Math.round(
-                (maxHealthTotal(player) * FORTITUDE_POTION_PERCENT) / 100,
-              )
-            : 0,
-      };
-      this.world.fitHealth(id);
-      this.events.push({
-        type: "potion",
-        player: id,
-        virtue,
-        ticks: POTION_BUFF_TICKS,
-      });
-    }
-    this.events.push({ type: "eaten", player: id });
-  }
-
   /** Whether this player can see the ground item with this id; the room sends them only those. */
   canSee(id: string, groundItem: string) {
     const player = this.state.players.get(id);
@@ -937,7 +866,7 @@ export class Simulation {
       }
     }
     this.queuedActions.clear();
-    for (const [id, slot] of this.world.queuedEats) this.eat(id, slot);
+    for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
     this.world.queuedEats.clear();
     for (const [id, { slot, amount }] of this.world.queuedDrops)
       this.drop(id, slot, amount);
@@ -1518,56 +1447,19 @@ export class Simulation {
     this.events.push({ type: "playerDied", player: id });
   }
 
+  /** Each player's respawn once their death is over, or else their healing (spec §6). */
   private advancePlayerTimers() {
-    const regenerates = this.state.tick % REGEN_INTERVAL_TICKS === 0;
-    const poolGives = this.state.tick % HEALING_POOL_INTERVAL_TICKS === 0;
+    const { tick } = this.state;
     for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const player = this.state.players.get(id)!;
-      if (player.dead) {
-        if (this.state.tick < unsynced.respawnTick) continue;
-        Object.assign(player, this.respawned(player), { dead: false });
-        unsynced.lockEndTick = 0;
-        this.events.push({ type: "playerRespawned", player: id });
+      const player = this.world.player(id);
+      if (!player.dead) {
+        this.eating.heal(id, tick);
         continue;
       }
-      if (regenerates && this.state.tick >= unsynced.lockEndTick) {
-        const heals = Math.ceil(
-          (player.maxHealth * REGEN_PERCENT_OF_MAX_HEALTH) / 100,
-        );
-        player.health = Math.min(player.health + heals, player.maxHealth);
-      }
-      if (poolGives && unsynced.healingPool.length > 0) {
-        const amount = Math.min(
-          unsynced.healingPool.shift()!,
-          player.maxHealth - player.health,
-        );
-        player.health += amount;
-        if (amount > 0)
-          this.events.push({ type: "healed", player: id, amount });
-      }
-      // A Delicious fish heals through a fight, where regeneration pauses (#221).
-      const { delicious, potion } = unsynced;
-      if (delicious) {
-        if (this.state.tick >= delicious.nextHealTick) {
-          delicious.nextHealTick += DELICIOUS_BUFF_INTERVAL_TICKS;
-          const amount = Math.min(
-            Math.round((delicious.perTick * DELICIOUS_BUFF_PERCENT) / 100),
-            player.maxHealth - player.health,
-          );
-          player.health += amount;
-          if (amount > 0)
-            this.events.push({ type: "healed", player: id, amount });
-        }
-        if (this.state.tick >= delicious.endTick)
-          unsynced.delicious = undefined;
-      }
-      // A potion's Virtue runs out like the Delicious buff's healing does (#222): the
-      // unspent Fortitude bonus is lost, and health settles on the normal max.
-      if (potion && this.state.tick >= potion.endTick) {
-        unsynced.potion = undefined;
-        this.world.fitHealth(id);
-      }
-      if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
+      if (tick < unsynced.respawnTick) continue;
+      Object.assign(player, this.respawned(player), { dead: false });
+      unsynced.lockEndTick = 0;
+      this.events.push({ type: "playerRespawned", player: id });
     }
   }
 }
