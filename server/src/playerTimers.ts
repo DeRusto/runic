@@ -1,6 +1,6 @@
 /**
  * Countdowns kept per player and per thing in the world, such as a stall emptied for one thief
- * or closed to one Marta caught (#252), and later a strongbox emptied for one player (#253).
+ * or closed to one Marta caught (#252), and a strongbox emptied for one player (#253).
  * Other players and other things are unaffected. Keyed by username, so leaving and joining
  * again can't end one early. Counted in ticks, like every game timer.
  */

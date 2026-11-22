@@ -1,8 +1,8 @@
 # Runic: Thieving
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. The owner settled the design in #235 and the build order in #236, both on 2026-11-22. This page records the numbers the first build ticket (#250) chose, so the later Thieving tickets (#251 to #253) reuse them, the targets #251 added, and Marta's stalls from #252. Every number is a first value to tune in play.
+**Status: building.** Terms are defined in `GLOSSARY.md`. The owner settled the design in #235 and the build order in #236, both on 2026-11-22. This page records the numbers the first build ticket (#250) chose, so the later Thieving tickets (#251 to #253) reuse them, the targets #251 added, Marta's stalls from #252, and the strongboxes from #253. Every number is a first value to tune in play.
 
-The values live in `shared/src/thieving.ts` and, for the stalls, `shared/src/stalls.ts`; where this page and that file disagree, the file wins and this page is fixed.
+The values live in `shared/src/thieving.ts` and, for the stalls and strongboxes, `shared/src/stalls.ts` and `shared/src/strongboxes.ts`; where this page and that file disagree, the file wins and this page is fixed.
 
 ## 1. Failure chance
 
@@ -63,4 +63,19 @@ Three stalls stand outside the general store, and all belong to Marta. The food 
 - On a failure Marta catches the player: no loot, no hit and no stun. That stall is closed to that player for 100 ticks, 30 seconds (`STALL_LOCKOUT_TICKS`); their other stalls, and other players, are unaffected.
 - Both timers are kept by username, so leaving and joining again doesn't end one early. They aren't saved: a server restart refills and reopens every stall.
 
-The per-player timer is `PlayerTimers` in `server/src/playerTimers.ts`, kept apart from the stalls so that #253's strongboxes can reuse it.
+The per-player timer is `PlayerTimers` in `server/src/playerTimers.ts`, which the strongboxes (§8) share.
+
+## 8. Strongboxes
+
+Two strongboxes stand out where the danger is. The Boneyard strongbox stands at (83,37) on the Boneyard's ashen ground, among the Skeletons. The Runestone Hollow strongbox stands at (120,38) on the Hollow's moss, within reach of its Skeleton Mages and Imps, so the walk to it crosses the Boneyard. A left-click opens a strongbox, and a right-click offers Open. An attempt rolls on the same failure curve as a pickpocket (§1), and the attempt interval of §3 holds across every Thieving target.
+
+| Strongbox        | Level | Experience | Coins  | Gem, one picked by weight                       | Runes, one kind picked evenly | Empty for              | Trap hit |
+| ---------------- | ----- | ---------- | ------ | ----------------------------------------------- | ----------------------------- | ---------------------- | -------- |
+| Boneyard         | 40    | 56         | 25–60  | Ashstone (6), cinderglass (3), heartflame (1)   | 2–5                           | 1000 ticks, 5 minutes  | 800      |
+| Runestone Hollow | 55    | 74         | 50–120 | Ashstone (2), cinderglass (5), heartflame (3)   | 4–10                          | 2000 ticks, 10 minutes | 1200     |
+
+- The experience carries §2's rise of about 1.2 per level on from Hollis.
+- A success always pays all three: coins, an even pick between the fewest and the most; one gem; and a handful of one elemental rune (air, water, earth or fire). Loot that doesn't fit in the inventory goes on the ground, as a pickpocket's does.
+- After a success the strongbox is empty for that player alone until its timer runs out (`emptyTicks`); other players can still open it. Only that player's client shows its lid open. The timer is kept by username in the same `PlayerTimers` as the stalls', so leaving and joining again doesn't end it early, and it isn't saved: a server restart refills every strongbox.
+- A failure gives no loot and leaves the strongbox full. Its trap hits for the trap hit, in hundredths of a Hitpoints level, at least twice as hard as Hollis's 300. The hit shows over the player like an enemy's. A player it leaves alive is stunned as for a failed pickpocket (§4).
+- A trap can kill: a hit that would take more health than the player has takes all of it. Death and respawn then work as for any death: the player respawns in the village with full health and keeps every level and all experience, and drops the inventory and worn gear where they fell, as any death does (#119).
