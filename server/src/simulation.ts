@@ -2,15 +2,8 @@ import { ArraySchema } from "@colyseus/schema";
 import {
   addItems,
   AUGMENTATIONS,
-  attemptChance,
-  DOUBLE_YIELD,
-  EMPTY_SLOT,
   FIRES,
-  gatheringSource,
-  GATHERING,
   GATHERING_SKILLS,
-  ITEMS,
-  levelFor,
   LIGHTING_TICKS,
   lightRefusal,
   logoutRefusal,
@@ -22,19 +15,14 @@ import {
   type MakeItem,
   moveStack,
   MAX_PINNED_SKILLS,
-  pickIntervalTicks,
   potionFromPlant,
   POTIONS,
   mixRefusal,
   removeItems,
   RECIPES,
   respawnTile,
-  rollCatch,
-  rollFinds,
-  findItemOf,
   siteId,
   SKILLS,
-  slotFor,
   takeRefusal,
   stationRefusal,
   tilesApart,
@@ -43,7 +31,6 @@ import {
   type GatheringSkill,
   type FireLog,
   type GearSlot,
-  type ItemId,
   type SitePool,
   type Tile,
   type TileKind,
@@ -62,13 +49,9 @@ import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
+import { Gathering } from "./gathering.ts";
 import { GatheringSites } from "./gatheringSites.ts";
-import {
-  findPath,
-  legalSteps,
-  pathNextTo,
-  tilesNextTo,
-} from "./pathfinding.ts";
+import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
 import type { PlayerSave } from "./saves.ts";
 import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
 import {
@@ -94,6 +77,7 @@ export class Simulation {
   /** Every enemy, which fights on its own and tells the world its swings and loot. */
   private enemies: Enemies;
   private readonly sites: GatheringSites;
+  private readonly gathering: Gathering;
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
@@ -122,6 +106,7 @@ export class Simulation {
     this.gear = new Gear(this.world);
     this.eating = new Eating(this.world);
     this.sites = new GatheringSites(this.world);
+    this.gathering = new Gathering(this.world, this.sites, this.quests);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { villager, station } = kind;
@@ -505,27 +490,6 @@ export class Simulation {
     this.gear.takeOff(id, gearSlot);
   }
 
-  /** Adds one `item` to the slot `slotFor` chose. */
-  private addToSlot(
-    player: InstanceType<typeof Player>,
-    slot: number,
-    item: string,
-  ) {
-    player.inventory[slot] = item;
-    player.inventoryCounts[slot]!++;
-  }
-
-  /** How many more of `item` fit: spaces in its stacks, plus one per empty slot. Counted before any land, so a double with a single free slot and no stack leaves its second ore on the ground (#152). */
-  private roomFor(item: ItemId, player: InstanceType<typeof Player>) {
-    let room = 0;
-    player.inventory.forEach((held, slot) => {
-      if (held === EMPTY_SLOT) room++;
-      else if (held === item)
-        room += ITEMS[item].stack - player.inventoryCounts[slot]!;
-    });
-    return room;
-  }
-
   /** Whether this player can see the ground item with this id; the room sends them only those. */
   canSee(id: string, groundItem: string) {
     const player = this.state.players.get(id);
@@ -545,7 +509,7 @@ export class Simulation {
     this.state.tick++;
     this.applyIntents();
     this.advancePlayers();
-    for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
+    for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
     this.advanceFires();
     this.advanceMaking();
     this.advanceLighting();
@@ -728,94 +692,6 @@ export class Simulation {
       if (!unsynced.path.length) continue;
       Object.assign(player, unsynced.path.shift());
       unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
-    }
-  }
-
-  /** After the steps, so the first attempt lands on the tick of arrival (D5). Every skill shares one timer, so swapping between them can't beat it. */
-  private advanceGathering(skill: GatheringSkill) {
-    const { xpField, verb, leftField } = GATHERING[skill];
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== skill || unsynced.path.length) continue;
-      const player = this.state.players.get(id)!;
-      // A pooled site that ran out is gone from its spot.
-      const site = this.sites.get(action.site);
-      // A site that came back may have left no way to stand next to it.
-      if (
-        !site ||
-        this.sites.siteRefusal(site, player) ||
-        !tilesNextTo(this.world.tiles, site).some(
-          ({ x, y }) => x === player.x && y === player.y,
-        )
-      ) {
-        unsynced.action = undefined;
-        continue;
-      }
-      if (this.state.tick < unsynced.nextAttemptTick) continue;
-      const level = levelFor(player[xpField]);
-      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
-      const source = gatheringSource(skill, site.kind);
-      const success = this.random() < attemptChance(source.level, level);
-      const count: 1 | 2 =
-        success &&
-        source.doubleChance !== undefined &&
-        this.random() < source.doubleChance
-          ? DOUBLE_YIELD
-          : 1;
-      const finds = success
-        ? [
-            ...rollFinds(source, this.random).map((found) =>
-              findItemOf(found, player.identifiesEssence),
-            ),
-            ...(skill === "mining"
-              ? this.quests.questVeinFinds(id, site.kind)
-              : []),
-          ]
-        : [];
-      this.events.push(
-        success
-          ? { type: verb, player: id, success, count, finds }
-          : { type: verb, player: id, success },
-      );
-      if (!success) continue;
-      // An essence rock's own item is essence, unmasked like a find for a player who identifies it.
-      const caught = rollCatch(source, level, this.random);
-      const item = findItemOf(caught.item, player.identifiesEssence);
-      const { xp } = caught;
-      this.world.earnXp(player, xpField, xp);
-      // Room is counted before either lands, so the second ore goes on the
-      // ground, owned by the miner, when the first took the last of it.
-      const room = this.roomFor(item, player);
-      for (let i = 0; i < count; i++) {
-        if (i < room) this.addToSlot(player, slotFor(item, player), item);
-        else
-          this.world.groundItems.spawn(
-            player,
-            item,
-            1,
-            player.username,
-            this.state.tick,
-          );
-      }
-      // Each find rolls on its own; one with no room goes to the ground, owned
-      // by the miner, like the second ore.
-      for (const found of finds) {
-        if (this.roomFor(found, player) > 0)
-          this.addToSlot(player, slotFor(found, player), found);
-        else
-          this.world.groundItems.spawn(
-            player,
-            found,
-            1,
-            player.username,
-            this.state.tick,
-          );
-      }
-      if (--site.synced[leftField]! === 0) {
-        if (site.pool) this.sites.removePooledSite(site, site.pool);
-        else site.regrowTick = this.state.tick + source.regrowTicks;
-      }
-      unsynced.action = undefined;
     }
   }
 
