@@ -65,9 +65,6 @@ import {
   stationRefusal,
   tilesApart,
   SWING_INTERVAL_TICKS,
-  bankRefusal,
-  bankSlotFor,
-  depositRefusal,
   itemParts,
   WALK_TICKS_PER_TILE,
   ENEMIES,
@@ -108,6 +105,7 @@ import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
+import { Bank } from "./banking.ts";
 import { PlayerTimers } from "./playerTimers.ts";
 import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
 import {
@@ -121,7 +119,6 @@ import type { PlayerSave } from "./saves.ts";
 import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
 import {
   isAmount,
-  isBankSlot,
   isInventorySlot,
   maxHealthTotal,
   World,
@@ -183,6 +180,7 @@ export class Simulation {
   private readonly shelf: Shelf;
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
+  private readonly bank: Bank;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -200,6 +198,7 @@ export class Simulation {
     this.events = this.world.events;
     this.quests = new Quests(this.world);
     this.windows = new VillagerWindows(this.world, this.quests);
+    this.bank = new Bank(this.world, this.windows);
     this.shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
@@ -588,86 +587,23 @@ export class Simulation {
     this.windows.close(id, "bank");
   }
 
-  /** The player, if their bank is open and no combat lock refuses it; the refusal is told. */
-  private playerAtBank(id: string) {
-    if (!this.windows.windowOf(id, "bank") || !this.world.canAct(id))
-      return undefined;
-    const refusal = bankRefusal(this.lockRunning(id));
-    if (refusal) this.events.push({ type: "told", player: id, line: refusal });
-    return refusal ? undefined : this.state.players.get(id)!;
-  }
-
-  /**
-   * Both come straight off the network, so anything but an inventory slot's index and a whole
-   * number above 0 is ignored. Like equip it skips the queue and touches no action.
-   */
+  /** Both come straight off the network; see `Bank.deposit`. */
   deposit(id: string, slot: number, amount: number) {
-    if (!isInventorySlot(slot) || !isAmount(amount)) return;
-    const player = this.playerAtBank(id);
-    const line = player && this.depositSlot(id, player, slot, amount);
-    if (line) this.events.push({ type: "told", player: id, line });
+    this.bank.deposit(id, slot, amount);
   }
 
-  /** Whatever fits goes in, and one line says when anything didn't (village spec §6). */
   depositInventory(id: string) {
-    const player = this.playerAtBank(id);
-    if (!player) return;
-    const refusals = Array.from({ length: INVENTORY_SLOTS }, (_, slot) =>
-      this.depositSlot(id, player, slot, Infinity),
-    );
-    const line = refusals.find(Boolean);
-    if (line) this.events.push({ type: "told", player: id, line });
+    this.bank.depositInventory(id);
   }
 
-  /** Returns why the slot's item stays where it is, if it does. */
-  private depositSlot(
-    id: string,
-    player: InstanceType<typeof Player>,
-    slot: number,
-    amount: number,
-  ) {
-    const item = player.inventory[slot]!;
-    if (item === EMPTY_SLOT) return undefined;
-    const refusal = depositRefusal(item, player.bank);
-    if (refusal) return refusal;
-    const to = bankSlotFor(item, player.bank);
-    const count = Math.min(amount, player.inventoryCounts[slot]!);
-    player.bank[to] = item;
-    player.bankCounts[to]! += count;
-    player.inventoryCounts[slot]! -= count;
-    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
-    if (this.world.queuedDrops.get(id)?.slot === slot)
-      this.world.queuedDrops.delete(id);
-    return undefined;
-  }
-
-  /**
-   * Both come straight off the network, as for deposit. Takes as many as fit, topping up the
-   * inventory's stacks before filling free slots, and the rest stays in the bank (village spec §6).
-   */
+  /** Both come straight off the network; see `Bank.withdraw`. */
   withdraw(id: string, slot: number, amount: number) {
-    if (!isBankSlot(slot) || !isAmount(amount)) return;
-    const player = this.playerAtBank(id);
-    const item = player?.bank[slot];
-    if (!player || !item) return;
-    const refusal = takeRefusal(item, player);
-    if (refusal) {
-      this.events.push({ type: "told", player: id, line: refusal });
-      return;
-    }
-    const { inventory, inventoryCounts } = player;
-    const count = Math.min(amount, player.bankCounts[slot]!);
-    player.bankCounts[slot]! -=
-      count - addItems(inventory, inventoryCounts, item, count);
-    if (!player.bankCounts[slot]) player.bank[slot] = EMPTY_SLOT;
+    this.bank.withdraw(id, slot, amount);
   }
 
-  /** A drag in the bank, under the inventory's rules; both come straight off the network. */
+  /** Both come straight off the network; see `Bank.moveBankItem`. */
   moveBankItem(id: string, from: number, to: number) {
-    if (!this.world.canAct(id) || !isBankSlot(from) || !isBankSlot(to)) return;
-    const player =
-      this.windows.windowOf(id, "bank") && this.state.players.get(id);
-    if (player) moveStack(player.bank, player.bankCounts, from, to);
+    this.bank.moveBankItem(id, from, to);
   }
 
   closeStore(id: string) {
