@@ -14,9 +14,9 @@ The experience scale starts with the drunk's 8 per success, the same as Fishing'
 
 ## 3. Pickpocketing
 
-| Target    | Level | Experience | Coins | Rare item (chance) | Failure hit |
-| --------- | ----- | ---------- | ----- | ------------------ | ----------- |
-| The drunk | 1     | 8          | 1–5   | Cooked perch (12.5%, 1 in 8) | 100         |
+| Target          | Level | Experience | Coins | Rare item (chance)           | Failure hit |
+| --------------- | ----- | ---------- | ----- | ---------------------------- | ----------- |
+| Pell, the drunk | 1     | 8          | 1–5   | Cooked perch (12.5%, 1 in 8) | 100         |
 
 - A success always pays coins, an even pick between the fewest and the most, and now and then the rare item as well. Loot that doesn't fit in the inventory goes on the ground at the player's feet.
 - A failure hits for the target's failure hit, in hundredths of a Hitpoints level, but never below 1 health, and then stuns. The hit shows over the player like an enemy's.
@@ -26,11 +26,11 @@ The experience scale starts with the drunk's 8 per success, the same as Fishing'
 
 A stun lasts 8 ticks (`STUN_TICKS`), 2.4 seconds. It is the first use of the general **busy** state, which holds a player for a set number of ticks, with a switch for whether enemies can hit them:
 
-- While busy, the server drops every click the player sends (walking, actions, eating, dropping, moving items, equipping, mixing, trading and banking), and the player stops where they stand.
+- While busy, the server ignores every click the player sends (walking, actions, eating, dropping, moving items, equipping, mixing, trading and banking), and the player stops where they stand. Each click is checked as it arrives, against the tick it would apply on.
 - With the switch on, as for the stun, enemies notice and hit the player as usual, but the player doesn't fight back.
 - With the switch off, as for Agility's crossing, enemies neither notice the player nor land a swing.
 - Dying ends the busy state, and leaving the game ends it too, since it isn't saved.
 
-## 5. The drunk
+## 5. Pell, the drunk
 
-The drunk is a mark: he stands at (12,44), just outside the inn's door, under the nameplate "Drunk", and offers only Pickpocket. A left-click pickpockets him, and a right-click offers Pickpocket.
+Pell is a mark: he stands at (12,44), just outside the inn's door, under the nameplate "Pell, drunk", and offers only Pickpocket. A left-click pickpockets him, and a right-click offers Pickpocket.

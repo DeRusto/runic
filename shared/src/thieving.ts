@@ -1,9 +1,9 @@
 import type { ItemId } from "./items.ts";
 import { levelFor } from "./skills.ts";
 
-/** A person who stands in the region only to be pickpocketed (#235): their nameplate. Add one by adding a row. */
+/** A person who stands in the region only to be pickpocketed (#235): their name and what they are, for the nameplate ("Pell, drunk"). Add one by adding a row. */
 export const MARKS = {
-  drunk: { name: "Drunk" },
+  drunk: { name: "Pell", role: "drunk" },
 } as const;
 export type MarkId = keyof typeof MARKS;
 
@@ -24,7 +24,7 @@ export type Pickpocket = {
 /** Every target that can be pickpocketed, by its mark's id (#250). Villagers join in #251. */
 export const PICKPOCKETS = {
   drunk: {
-    called: "the drunk",
+    called: "Pell",
     level: 1,
     xp: 8,
     coins: { fewest: 1, most: 5 },

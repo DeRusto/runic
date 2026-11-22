@@ -28,7 +28,8 @@ import type { showEnemies } from "./enemies.ts";
 import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
-import type { addMarks, addVillagers } from "./villagers.ts";
+import type { addMarks } from "./marks.ts";
+import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 

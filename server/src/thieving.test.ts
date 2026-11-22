@@ -84,7 +84,7 @@ describe("pickpocketing the drunk", () => {
     expect(player(sim).thievingXp).toBe(PICKPOCKETS.drunk.xp);
     // 7% of 8 is 56 hundredths of a point.
     expect(player(sim).masteryHundredths).toBe(56);
-    expect(lines(events)).toEqual(["You pick the drunk's pocket."]);
+    expect(lines(events)).toEqual(["You pick Pell's pocket."]);
   });
 
   test("now and then takes food as well as the coins", () => {
@@ -109,7 +109,7 @@ describe("pickpocketing the drunk", () => {
       { item: "coins", count: 5, x: 2, y: 1 },
     ]);
     expect(lines(events)).toContain(
-      "You pick the drunk's pocket. It is on the ground.",
+      "You pick Pell's pocket. It is on the ground.",
     );
   });
 
@@ -122,7 +122,7 @@ describe("pickpocketing the drunk", () => {
     expect(player(sim).thievingXp).toBe(0);
     expect(coins(sim)).toBe(0);
     expect(lines(events)).toEqual([
-      "The drunk catches you and shoves you. You're stunned.",
+      "Pell catches you and shoves you. You're stunned.",
     ]);
     expect(sim.isBusy("a")).toBe(true);
     expect(events).toContainEqual({

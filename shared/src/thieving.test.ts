@@ -33,8 +33,9 @@ test("a roll under the failure chance fails, and one at or over it succeeds", ()
   expect(pickpocketFails("drunk", xpForLevel(21), () => 0)).toBe(false);
 });
 
-test("the drunk is a level 1 mark outside the inn's door", () => {
-  expect(MARKS.drunk.name).toBe("Drunk");
+test("the drunk is Pell, a level 1 mark outside the inn's door", () => {
+  expect(MARKS.drunk).toEqual({ name: "Pell", role: "drunk" });
+  expect(PICKPOCKETS.drunk.called).toBe("Pell");
   expect(PICKPOCKETS.drunk.level).toBe(1);
 });
 
@@ -63,7 +64,7 @@ test("the rare item comes 1 time in 8", () => {
 test("a player below the target's level is refused, with the level they need", () => {
   const target = { ...PICKPOCKETS.drunk, level: 10 };
   expect(pickpocketRefusal(target, 0)).toBe(
-    "You need Thieving 10 to pickpocket the drunk.",
+    "You need Thieving 10 to pickpocket Pell.",
   );
   expect(pickpocketRefusal(target, xpForLevel(10))).toBe(undefined);
 });
