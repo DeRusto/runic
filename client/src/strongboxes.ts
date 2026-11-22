@@ -10,6 +10,7 @@ const DEPTH = 0.42;
 const HEIGHT = 0.32;
 const WALL = 0.05;
 const LID = 0.07;
+const STRAP = 0.012;
 // How far an open lid falls back on its hinge, in radians.
 const OPEN_LID = 1.9;
 // Turned off the grid, like the stalls, so it reads as left there rather than built in.
@@ -48,7 +49,7 @@ function lid(wood: THREE.Material, fittings: THREE.Material) {
 }
 
 /**
- * One strongbox: four walls and a floor in its wood with two iron bands, and a lid shown either
+ * One strongbox: four walls and a floor in its wood with two iron bands outside, and a lid shown either
  * shut or fallen open. `closed` is what an empty one hides, the shut lid, which shows the open one
  * in its place.
  */
@@ -71,15 +72,15 @@ function strongbox(kind: StrongboxKind) {
     block(wood, [WIDTH, HEIGHT, WALL], [0, HEIGHT / 2, -halfD + WALL / 2]),
     block(wood, [WALL, HEIGHT, DEPTH], [halfW - WALL / 2, HEIGHT / 2, 0]),
     block(wood, [WALL, HEIGHT, DEPTH], [-halfW + WALL / 2, HEIGHT / 2, 0]),
-    block(
-      fittings,
-      [0.06, HEIGHT + 0.01, DEPTH + 0.01],
-      [-halfW * 0.55, HEIGHT / 2, 0],
-    ),
-    block(
-      fittings,
-      [0.06, HEIGHT + 0.01, DEPTH + 0.01],
-      [halfW * 0.55, HEIGHT / 2, 0],
+    // Two iron bands, each a strap on the front and back faces, so an open box stays bare inside.
+    ...[-1, 1].flatMap((side) =>
+      [-1, 1].map((face) =>
+        block(
+          fittings,
+          [0.06, HEIGHT, STRAP],
+          [side * halfW * 0.55, HEIGHT / 2, face * (halfD + STRAP / 2)],
+        ),
+      ),
     ),
   );
   const shut = lid(wood, fittings);
