@@ -10,7 +10,7 @@ import {
   STATIONS,
   type FixedStation,
   type TreeKind,
-  type VeinTier,
+  type VeinKind,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -18,8 +18,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MTLLoader } from "three/addons/loaders/MTLLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { HOUSE_MODELS, houseParts } from "./houseParts.ts";
-import { STATION_LOOKS } from "./stationLooks.ts";
+import { BUILDING_LOOKS, HOUSE_MODELS, houseParts } from "./houseParts.ts";
+import { flameLook } from "./flame.ts";
+import { STATION_LOOKS, type StationPart } from "./stationLooks.ts";
 
 const STATION_KINDS = Object.keys(STATIONS) as FixedStation[];
 
@@ -30,7 +31,28 @@ const GROUND: Record<GroundKind, { color: number; top: number }> = {
   path: { color: 0xa77b4f, top: -0.05 },
   ashen: { color: 0x6e6862, top: -0.01 },
   water: { color: 0x3b78b0, top: -0.12 },
+  moss: { color: 0x4f5e4a, top: -0.01 },
+  // Under the cobbles, the road's dirt, which their own dirt is painted in too.
+  cobble: { color: 0xa77b4f, top: -0.05 },
 };
+/** The village kit's cobble floor: 2×2 tiles, its middle half a tile off its origin each way, so halved and recentred. */
+const COBBLES = "Cobblestone_Floor_1";
+/** The kit's cobbles thinning out to dirt, four ways: dense on their -x half, sparse on their +x half. */
+const COBBLE_EDGES = [1, 2, 3, 4].map(
+  (n) => `Cobblestone_Dirt_Transition_${n}`,
+);
+// Just above the slab's top, which the floor's base would otherwise share and flicker against.
+const COBBLE_LIFT = 0.004;
+// Turns a +x-facing piece to face each way, as a house's parts are turned.
+const FACING = [
+  { dx: 1, dy: 0, angle: 0 },
+  { dx: 0, dy: -1, angle: Math.PI / 2 },
+  { dx: -1, dy: 0, angle: Math.PI },
+  { dx: 0, dy: 1, angle: -Math.PI / 2 },
+];
+const cobbleFit = new THREE.Matrix4()
+  .makeScale(0.5, 1, 0.5)
+  .multiply(new THREE.Matrix4().makeTranslation(0.5, 0, -0.5));
 const BUSH_WIDTH = 0.9;
 const BUSH_TINT: Record<BushKind, number> = {
   berryBush: 0xffb0b0,
@@ -40,10 +62,12 @@ const BUSH_TINT: Record<BushKind, number> = {
   emberbloomBush: 0xffa64d,
 };
 // Not gear's tints, which leave veins looking like plain or dark rock. They multiply the ore's near-white vein.
-const VEIN_TINT: Record<VeinTier, THREE.Color> = {
+// The essence rock's vein is a pale violet, apart from every metal's.
+const VEIN_TINT: Record<VeinKind, THREE.Color> = {
   copper: new THREE.Color(0xff8a3c),
   iron: new THREE.Color(0x4f8fd8),
   emberite: new THREE.Color(0xd42a1a),
+  essence: new THREE.Color(0xc89cff),
 };
 export const ORE_SCALE = 0.45;
 const RUN_OUT_SCALE = new THREE.Vector3(0.6, 0.6, 0.6);
@@ -103,9 +127,77 @@ const VILLAGE_PROPS = {
   barrel: { scale: 1, models: ["Prop_Barrel_1"] },
   crate: { scale: 0.6, models: ["Prop_Crate_1"] },
 };
-const PROP_MODELS: Record<PropKind, { scale: number; models: string[] }> = {
+// Kenney's Nature Kit, flat-coloured like the stump, so their colours bake the same way. The gate keeps
+// its turn, across the south road, where every other prop takes a random one; it spans its tile and
+// is stretched up well past a character's height, two of them making the road's double gate.
+const NATURE_PROPS = {
+  gate: {
+    scale: [1, 4.5, 1] as [number, number, number],
+    models: ["fenceGate"],
+    fixed: true,
+  },
+  column: { scale: 1.6, models: ["statueColumn", "statueColumnDamaged"] },
+  standingStone: { scale: 1.3, models: ["stoneTallB", "stoneTallE"] },
+};
+/**
+ * The goods outside the general store: textured models drawn whole, as a station's parts are,
+ * rather than baked to vertex colours like the props above. Each faces the road, to the south.
+ */
+// Kenney's green stall's counter, in tiles up from the ground.
+const COUNTER = 0.366;
+const GOODS = {
+  appleBarrel: { parts: [{ file: "Barrel_Apples.glb", width: 0.55 }] },
+  carrotCrate: { parts: [{ file: "FarmCrate_Carrot.glb", width: 0.75 }] },
+  fruitBasket: { parts: [{ file: "display-fruit.glb", width: 0.6 }] },
+  // Turned off the grid, so it reads as set down rather than built in; Food Kit wares on its counter.
+  marketStall: {
+    yaw: 0.45,
+    parts: [
+      { file: "stall-green.glb", width: 1 },
+      { file: "cheese.glb", width: 0.2, at: [-0.24, 0.12], y: COUNTER },
+      {
+        file: "bread.glb",
+        width: 0.22,
+        at: [0.02, 0.18],
+        y: COUNTER,
+        yaw: 0.6,
+      },
+      { file: "pumpkin.glb", width: 0.22, at: [0.25, 0.1], y: COUNTER },
+      { file: "apple.glb", width: 0.08, at: [-0.05, -0.05], y: COUNTER },
+      { file: "apple.glb", width: 0.08, at: [0.04, -0.08], y: COUNTER },
+      { file: "pear.glb", width: 0.08, at: [-0.12, -0.12], y: COUNTER },
+      {
+        file: "grapes.glb",
+        width: 0.14,
+        at: [0.2, -0.15],
+        y: COUNTER,
+        yaw: -0.4,
+      },
+      {
+        file: "carrot.glb",
+        width: 0.2,
+        at: [-0.27, -0.15],
+        y: COUNTER,
+        yaw: 0.3,
+        lay: true,
+      },
+    ],
+  },
+} satisfies Partial<Record<PropKind, { parts: StationPart[]; yaw?: number }>>;
+type Goods = keyof typeof GOODS;
+const isGoods = (prop: PropKind): prop is Goods => Object.hasOwn(GOODS, prop);
+
+const PROP_MODELS: Record<
+  Exclude<PropKind, Goods>,
+  {
+    scale: number | [number, number, number];
+    models: string[];
+    fixed?: boolean;
+  }
+> = {
   ...KAYKIT_PROPS,
   ...VILLAGE_PROPS,
+  ...NATURE_PROPS,
 };
 
 async function loadModel(name: string) {
@@ -115,8 +207,18 @@ async function loadModel(name: string) {
   return scene.children[0] as THREE.Mesh;
 }
 
-/** A loaded OBJ as one geometry with its materials' colours baked into its vertices, so the model takes one draw call. */
-function bakeColours(model: THREE.Group) {
+// The kit's dark roof tiles against its light ones, kept in a building's own roof colour.
+const RED_TILES = 0.42 / 0.58;
+
+/**
+ * A loaded OBJ as one geometry with its materials' colours baked into its vertices, so the model
+ * takes one draw call. `look` gives the red tiles its roof colour and the cream its plaster.
+ */
+function bakeColours(
+  model: THREE.Group,
+  look?: (typeof BUILDING_LOOKS)[keyof typeof BUILDING_LOOKS],
+  dirt?: number,
+) {
   const parts = (model.children as THREE.Mesh[]).map((mesh) => {
     const materials = [mesh.material].flat() as THREE.MeshPhongMaterial[];
     const geometry = mesh.geometry.deleteAttribute("uv");
@@ -126,7 +228,25 @@ function bakeColours(model: THREE.Group) {
       ? geometry.groups
       : [{ start: 0, count, materialIndex: 0 }];
     for (const { start, count, materialIndex } of groups) {
-      const { r, g, b } = materials[materialIndex!]!.color;
+      const material = materials[materialIndex!]!;
+      const shade = new Map([
+        ["Red_Roof", 1],
+        ["Dark_Red_Roof", RED_TILES],
+      ]).get(material.name);
+      const { r, g, b } =
+        dirt !== undefined && material.name === "Dirt"
+          ? new THREE.Color(dirt)
+          : !look
+            ? material.color
+            : shade
+              ? new THREE.Color(look.roof).multiplyScalar(shade)
+              : material.name === "Canvas" && look.cloth !== undefined
+                ? new THREE.Color(look.cloth)
+                : material.name === "Stucco"
+                  ? material.color
+                      .clone()
+                      .multiply(new THREE.Color(look.plaster))
+                  : material.color;
       for (let i = start; i < start + count; i++) colours.setXYZ(i, r, g, b);
     }
     return geometry.setAttribute("color", colours);
@@ -147,20 +267,53 @@ async function loadVillageModels(names: string[]) {
         async (name) =>
           [
             name,
-            bakeColours(await loader.loadAsync(`/models/${name}.obj`)),
+            bakeColours(
+              await loader.loadAsync(`/models/${name.split(":")[0]}.obj`),
+              BUILDING_LOOKS[name.split(":")[1] as keyof typeof BUILDING_LOOKS],
+              // The cobbles' dirt in the road's, so they thin out into the road without a seam.
+              [COBBLES, ...COBBLE_EDGES].includes(name)
+                ? GROUND.path.color
+                : undefined,
+            ),
           ] as const,
       ),
     ),
   );
 }
 
-/** A station's model, scaled to its width. */
-async function loadStation({ file, width }: { file: string; width: number }) {
+/** A model scaled to its width, laid on its side first if asked, with its base on the ground. */
+export async function loadPart({ file, width, lay }: StationPart) {
   const { scene } = await new GLTFLoader().loadAsync(`/models/${file}`);
   scene.traverse((o) => (o.castShadow = o instanceof THREE.Mesh));
+  if (lay) scene.rotation.z = Math.PI / 2;
   const { max, min } = new THREE.Box3().setFromObject(scene);
   scene.scale.setScalar(width / Math.max(max.x - min.x, max.z - min.z));
+  if (lay) scene.position.y = -new THREE.Box3().setFromObject(scene).min.y;
   return scene;
+}
+
+/** A station's look: its parts and flame in one group, centred on the middle of its tiles. */
+async function loadStation({
+  parts,
+  flame,
+}: (typeof STATION_LOOKS)[FixedStation]) {
+  const group = new THREE.Group();
+  let top = 0;
+  for (const [i, model] of (await Promise.all(parts.map(loadPart))).entries()) {
+    const { at = [0, 0], y = 0, yaw = 0, onTop } = parts[i]!;
+    const holder = new THREE.Group().add(model);
+    holder.position.set(at[0], y + (onTop ? top : 0), at[1]);
+    holder.rotation.y = yaw;
+    group.add(holder);
+    if (!onTop) top = new THREE.Box3().setFromObject(holder).max.y;
+  }
+  if (flame) {
+    const fire = flameLook(flame.at[0], flame.at[1]);
+    fire.position.set(flame.at[0], flame.y, flame.at[1]);
+    fire.scale.setScalar(flame.size);
+    group.add(fire);
+  }
+  return group;
 }
 
 /** The ore model's two meshes, apart so that only the vein takes a tier's tint. */
@@ -186,6 +339,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     stationModels,
     oreModel,
     stumpModel,
+    natureModels,
     village,
   ] = await Promise.all([
     Promise.all(
@@ -200,8 +354,15 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     Promise.all(STATION_KINDS.map((kind) => loadStation(STATION_LOOKS[kind]))),
     new GLTFLoader().loadAsync("/models/ore.glb"),
     new GLTFLoader().loadAsync("/models/stump_round.glb"),
+    Promise.all(
+      Object.values(NATURE_PROPS)
+        .flatMap(({ models }) => models)
+        .map((name) => new GLTFLoader().loadAsync(`/models/${name}.glb`)),
+    ),
     loadVillageModels([
       ...Object.values(HOUSE_MODELS),
+      COBBLES,
+      ...COBBLE_EDGES,
       ...Object.values(VILLAGE_PROPS).flatMap(({ models }) => models),
     ]),
   ]);
@@ -235,6 +396,24 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   for (const [kind, { models }] of Object.entries(VILLAGE_PROPS)) {
     propVariants[kind as PropKind] = models.map((name) => village.get(name)!);
   }
+  // Every mesh in the model, each moved by its own node's transform, as one group for bakeColours.
+  const natureGeometries = natureModels.map(({ scene }) => {
+    scene.updateMatrixWorld();
+    const meshes: THREE.Mesh[] = [];
+    scene.traverse((o) => {
+      if (o instanceof THREE.Mesh)
+        meshes.push(
+          new THREE.Mesh(
+            o.geometry.clone().applyMatrix4(o.matrixWorld),
+            o.material,
+          ),
+        );
+    });
+    return bakeColours(new THREE.Group().add(...meshes));
+  });
+  for (const [kind, { models }] of Object.entries(NATURE_PROPS)) {
+    propVariants[kind as PropKind] = natureGeometries.splice(0, models.length);
+  }
   // The whole pack paints from one texture, so one material covers every model.
   const material = new THREE.MeshLambertMaterial({
     map: (berryBush!.material as THREE.MeshStandardMaterial).map,
@@ -262,6 +441,9 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     ownMaterials.set(geometry, villageMaterial);
   }
   ownMaterials.set(stump, villageMaterial);
+  for (const kind of Object.keys(NATURE_PROPS))
+    for (const geometry of propVariants[kind as PropKind])
+      ownMaterials.set(geometry, villageMaterial);
   const ripple = rippleGeometry();
   const rippleMaterial = new THREE.MeshBasicMaterial({
     transparent: true,
@@ -354,6 +536,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const color = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
 
+  const goods: { prop: Goods; at: THREE.Vector3 }[] = [];
   tiles.forEach((row, y) =>
     row.forEach((tile, x) => {
       const hash = tileHash(x, y);
@@ -367,18 +550,47 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
         color.set(groundColor).offsetHSL(0, 0, shade),
       );
 
+      if (tile.ground === "cobble") {
+        // Where a dirt road leaves the cobbles, an edge piece thins them out towards it;
+        // elsewhere a quarter turn by the tile's hash, so the stones don't repeat tile to tile.
+        const road = FACING.find(
+          ({ dx, dy }) => tiles[y + dy]?.[x + dx]?.ground === "path",
+        );
+        const turn = new THREE.Matrix4().makeRotationY(
+          road ? road.angle : ((hash >>> 4) & 3) * (Math.PI / 2),
+        );
+        place(
+          village.get(road ? COBBLE_EDGES[(hash >>> 6) & 3]! : COBBLES)!,
+          new THREE.Matrix4()
+            .makeTranslation(x, top + COBBLE_LIFT, y)
+            .multiply(turn)
+            .multiply(cobbleFit),
+        );
+      }
       const { prop, station, house } = tile;
       const site = SITE_FIELDS.find((field) => tile[field]);
       if (station) footprints[station].push(new THREE.Vector3(x, top, y));
       if (house) {
-        for (const { part, angle, height } of houseParts(tiles, x, y)) {
+        for (const {
+          part,
+          angle,
+          height,
+          out = 0,
+          along = 0,
+          scale = 1,
+          tint,
+        } of houseParts(tiles, x, y)) {
+          const turn = new THREE.Quaternion().setFromAxisAngle(up, angle);
           place(
             village.get(HOUSE_MODELS[part])!,
             new THREE.Matrix4().compose(
-              new THREE.Vector3(x, top + height, y),
-              new THREE.Quaternion().setFromAxisAngle(up, angle),
-              new THREE.Vector3(1, 1, 1),
+              new THREE.Vector3(out, 0, along)
+                .applyQuaternion(turn)
+                .add(new THREE.Vector3(x, top + height, y)),
+              turn,
+              new THREE.Vector3(scale, scale, scale),
             ),
+            tint === undefined ? undefined : new THREE.Color(tint),
           );
         }
       }
@@ -408,15 +620,40 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
             }),
           ),
         );
+      } else if (isGoods(prop!)) {
+        goods.push({ prop: prop as Goods, at });
       } else {
         const options = propVariants[prop!];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const scale = new THREE.Vector3().setScalar(PROP_MODELS[prop!].scale);
-        place(geometry, new THREE.Matrix4().compose(at, rotation, scale));
+        const { scale, fixed } = PROP_MODELS[prop as Exclude<PropKind, Goods>];
+        place(
+          geometry,
+          new THREE.Matrix4().compose(
+            at,
+            fixed ? new THREE.Quaternion() : rotation,
+            typeof scale === "number"
+              ? new THREE.Vector3().setScalar(scale)
+              : new THREE.Vector3(...scale),
+          ),
+        );
       }
     }),
   );
   scene.add(slabs);
+  const goodsModels = new Map(
+    await Promise.all(
+      Object.entries(GOODS).map(async ([kind, look]) => {
+        const model = await loadStation(look);
+        model.rotation.y = "yaw" in look ? look.yaw : 0;
+        return [kind, model] as const;
+      }),
+    ),
+  );
+  for (const { prop, at } of goods) {
+    const model = goodsModels.get(prop)!.clone();
+    model.position.add(at);
+    scene.add(model);
+  }
   // One model per station, at the middle of the tiles it covers.
   for (const [kind, tilesUnder] of Object.entries(footprints)) {
     if (!tilesUnder.length) continue;
@@ -426,6 +663,9 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   }
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
+  const cobbleGeometries = new Set(
+    [COBBLES, ...COBBLE_EDGES].map((name) => village.get(name)!),
+  );
   for (const [geometry, list] of placements) {
     const mesh = new THREE.InstancedMesh(
       geometry,
@@ -437,6 +677,8 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       mesh.setColorAt(i, item.color);
     });
     mesh.castShadow = geometry !== ripple;
+    // The cobbles cover their slabs, so they take the shadows the slabs would.
+    mesh.receiveShadow = cobbleGeometries.has(geometry);
     scene.add(mesh);
     meshes.set(geometry, mesh);
   }

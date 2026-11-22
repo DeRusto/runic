@@ -61,7 +61,8 @@ export function watchPanels() {
 /**
  * Registers a panel (spec §6): a press on it brings it to the front, and its title bar drags
  * it. `close` is how Escape shuts it, and `side` is where it first opens. Call `opened` once
- * it is shown, so it can be measured, and `closed` once it is hidden.
+ * it is shown, so it can be measured, and `closed` once it is hidden. `opened` given a place
+ * opens there, over where the panel was last left: for a panel that belongs beside something.
  */
 export function addPanel(
   element: HTMLElement,
@@ -86,9 +87,9 @@ export function addPanel(
     titleBar.onlostpointercapture = () => (titleBar.onpointermove = null);
   };
   return {
-    opened: () => {
+    opened: (at?: { left: number; top: number }) => {
       without(element);
-      const last = leftAt.get(element);
+      const last = at ?? leftAt.get(element);
       if (last) moveTo(element, last.left, last.top);
       else {
         const offset = open.length * CASCADE_PX;

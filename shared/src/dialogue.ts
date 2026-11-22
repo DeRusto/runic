@@ -185,14 +185,14 @@ export const VILLAGERS = {
             "There it is. Essence, of a kind — the stuff runes are made from.",
           ),
           villager(
-            "But I'll want proof you can find it in every vein. Three more pieces, and I'll teach you to know it on sight.",
+            "But I'll want proof it runs through every vein. Keep mining and bring me an essence from each: copper, iron and emberite. Then I'll teach you to know it on sight.",
           ),
         ],
       },
       proofQuest: {
         lines: [
           villager(
-            "Proof, remember? A piece from every vein — copper, iron and emberite. Three pieces.",
+            "Proof, remember? An essence from every vein: copper, iron and emberite. Keep mining and they'll turn up.",
           ),
         ],
         choices: [
@@ -210,14 +210,14 @@ export const VILLAGERS = {
             "There. From today you'll know it for rune essence, and the veins will give it up as essence too.",
           ),
           villager(
-            "The old stone circle out on the Boneyard's far side is where you'll make runes of it. Mind the bones.",
+            "You'll make runes of it at the altar in Runestone Hollow, through the Boneyard and past the Emberite. Mind the bones.",
           ),
         ],
       },
       runes: {
         lines: [
           villager(
-            "Essence to runes at the old stone circle, out past the Emberite. Mind the bones.",
+            "Essence to runes at the altar in Runestone Hollow, out past the Emberite. Mind the bones.",
           ),
         ],
         choices: [{ text: "Bye.", to: "bye" }],
@@ -324,6 +324,93 @@ export const VILLAGERS = {
         ],
       },
       bye: { lines: [you("Bye."), villager("Tight lines.")] },
+    },
+  },
+  // Runestone Hollow's runekeeper (spec §3): an old hermit who tends the stones, quiet and
+  // cryptic, whose quest opens the altar. The name is the owner's pick, after the Hollow.
+  hollis: {
+    name: "Hollis",
+    role: "runekeeper",
+    start: "greet",
+    nodes: {
+      greet: {
+        lines: [
+          villager("Mm. Another pair of feet on the moss."),
+          villager("I keep the stones. They were here before the bones were."),
+        ],
+        choices: [
+          { text: "What is this place?", to: "place" },
+          { text: "Can I use the altar?", to: "altar" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      place: {
+        lines: [
+          you("What is this place?"),
+          villager(
+            "The Hollow. Old hands cut runes here, long before your village had a well.",
+          ),
+          villager(
+            "The stones still remember the shapes. Listen and you'll hear.",
+          ),
+        ],
+        then: "greet",
+      },
+      altar: {
+        lines: [
+          you("Can I use the altar?"),
+          villager("The altar is not a forge. It answers to an offering."),
+          villager(
+            "Bring me five pieces of the Hollow's own essence, from the violet rocks, and the bone sigil a Mage carries.",
+          ),
+        ],
+        choices: [
+          { text: "I'll bring them.", to: "offering", action: "quest" },
+          { text: "Not yet.", to: "notYet" },
+        ],
+      },
+      offering: {
+        lines: [
+          you("I'll bring them."),
+          villager(
+            "The rocks give their essence only to one who is looking for it. You are, now.",
+          ),
+          villager("And mind the Mages. They remember too."),
+        ],
+      },
+      notYet: {
+        lines: [you("Not yet."), villager("The stones are patient. So am I.")],
+      },
+      // Hollis's quest stage, while the offering is asked for: the server checks the turn-in.
+      offeringQuest: {
+        lines: [
+          villager(
+            "Five Hollow essence and a bone sigil. The stones are listening.",
+          ),
+        ],
+        choices: [
+          { text: "Here is the offering.", to: "opened", action: "quest" },
+          { text: "Bye.", to: "bye" },
+        ],
+      },
+      opened: {
+        lines: [
+          you("Here is the offering."),
+          villager("Yes. The stones know you now."),
+          villager(
+            "Lay essence on the altar and it will take a rune's shape. Go gently.",
+          ),
+        ],
+      },
+      keeper: {
+        lines: [
+          villager(
+            "The altar knows you. Essence on the slab, and the stones do the rest.",
+          ),
+        ],
+        choices: [{ text: "Bye.", to: "bye" }],
+      },
+      bye: { lines: [you("Bye."), villager("Mind the Mages.")] },
     },
   },
 } satisfies Record<string, Villager>;

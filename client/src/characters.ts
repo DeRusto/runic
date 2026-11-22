@@ -42,7 +42,15 @@ export const SPIDER_GAIT = {
   fight: "Spider_Idle",
 };
 
-/** The docile creatures' clips, as the Farm Animals pack names them (#238). They never walk: they stand. */
+/** The Imp's clips, as the Universal Animation Library names them. */
+const IMP_GAIT = {
+  idle: "Idle_Loop",
+  move: "Jog_Fwd_Loop",
+  moveSpeed: 1.5,
+  fight: "Idle_Loop",
+};
+
+/** The hide creatures' clips, as Quaternius's Ultimate Animated Animals names them (#238). They stand rather than walk. */
 const CREATURE_GAIT = {
   idle: "Idle",
   move: "Walk",
@@ -138,14 +146,14 @@ type EnemyFit = { height: number } | { width: number };
 
 /**
  * How each enemy looks and moves on the client. `file` is its model, sized by `fit`. Its clips
- * are its own model's, the players' shared packs, or (for a model with none) two empty stand-ins.
+ * are its own model's or the players' shared packs.
  * `held` is a weapon model put in a hand slot, and `armed` keeps it out in every stance. The
  * clips it plays that aren't in its gait follow, and `hit` is played when a blow lands, if any.
  */
 type EnemyLook = {
   file: string;
   fit: EnemyFit;
-  clips: "own" | "players" | "still";
+  clips: "own" | "players";
   gait?: typeof PLAYER_GAIT;
   held?: { file: string; slot: string };
   armed?: true;
@@ -155,9 +163,12 @@ type EnemyLook = {
   returns: "reappear" | "respawn";
 };
 
-/** #238's docile creatures never swing, and a dying one falls into the ground like a Spider does, then grows back. */
+/** The Bull's headbutt, as Bristleback and Cinderhorn bite back: its one second lands near the middle. */
+const HEADBUTT = () => ({ clip: "Attack_Headbutt", contactMs: 450 });
+
+/** #238's hide creatures: they stand, and a dying one falls into the ground like a Spider does, then grows back. Only Bristleback and Cinderhorn swing, set on their rows. */
 const DOCILE = {
-  clips: "still",
+  clips: "own",
   gait: CREATURE_GAIT,
   swing: () => ({ clip: "Idle", contactMs: 0 }),
   death: "Death",
@@ -186,10 +197,53 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     hit: "Hit_A",
     returns: "respawn",
   },
-  // The Farm Animals Tarn Ox carries its own clips; the two Meshy models have none.
-  tarnOx: { ...DOCILE, file: "TarnOx.glb", fit: { width: 1.5 }, clips: "own" },
-  bristleback: { ...DOCILE, file: "Bristleback.glb", fit: { width: 1.1 } },
-  cinderhorn: { ...DOCILE, file: "Cinderhorn.glb", fit: { width: 1.4 } },
+  // Runestone Hollow's: the Mage on the Skeleton's rig with its staff always out, and the Imp
+  // with the Universal Animation Library's clips baked into its model.
+  skeletonMage: {
+    file: "Skeleton_Mage.glb",
+    fit: { height: HEIGHT },
+    clips: "players",
+    held: { file: "Skeleton_Staff.gltf", slot: "handslotr" },
+    armed: true,
+    swing: armedSwing,
+    death: "Death_A",
+    hit: "Hit_A",
+    returns: "respawn",
+  },
+  imp: {
+    file: "Imp.glb",
+    fit: { height: HEIGHT * 0.7 },
+    clips: "own",
+    gait: IMP_GAIT,
+    swing: () => ({ clip: "Punch_Jab", contactMs: 350 }),
+    death: "Death01",
+    hit: "Hit_Chest",
+    // Imp.glb has no Spawn_Ground clip, so it scales back up like the Spider.
+    returns: "reappear",
+  },
+  // The Ultimate Animated Animals Bull, as a black ox, with that pack's flinch.
+  tarnOx: {
+    ...DOCILE,
+    file: "TarnOx.glb",
+    fit: { width: 1.5 },
+    hit: "Idle_HitReact1",
+  },
+  // The owner's Meshy creatures, rigged in Blender on the Ultimate Animated Animals Bull's
+  // skeleton, which brings that pack's clips with it: a flinch, and a headbutt for biting back.
+  bristleback: {
+    ...DOCILE,
+    file: "Bristleback.glb",
+    fit: { width: 1.1 },
+    swing: HEADBUTT,
+    hit: "Idle_HitReact1",
+  },
+  cinderhorn: {
+    ...DOCILE,
+    file: "Cinderhorn.glb",
+    fit: { width: 1.4 },
+    swing: HEADBUTT,
+    hit: "Idle_HitReact1",
+  },
 };
 
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
@@ -584,18 +638,43 @@ export function paintGear(
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
   const gearLooks = Object.entries(GEAR_LOOKS);
-  const [knight, barbarian, hammer, clips, gear, heldTools] = await Promise.all(
-    [
+  const [adventurer, knight, barbarian, hammer, clips, gear, heldTools] =
+    await Promise.all([
+      // The owner's Meshy adventurer, on the Universal Animation Library's clips under the players' names.
+      load("Adventurer"),
       load("Knight"),
       load("Barbarian"),
       loadGltf("hammer"),
       loadClips(),
       Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
       Promise.all(HELD_TOOLS.map(([, tool]) => loadGltf(tool))),
-    ],
+    ]);
+  const models = {
+    Knight: knight.scene,
+    Barbarian: barbarian.scene,
+    Adventurer: adventurer.scene,
+  };
+  const adventurerClips = new Map(
+    adventurer.animations.map((clip) => [clip.name, clip]),
   );
-  const models = { Knight: knight.scene, Barbarian: barbarian.scene };
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
+  // Tools and gear are sized for KayKit's hand slot; a model built at another scale holds them at
+  // KayKit's size by their slots' world scales.
+  const slotScale = (m: THREE.Object3D) => {
+    m.updateMatrixWorld(true);
+    return m.getObjectByName("handslotr")!.getWorldScale(new THREE.Vector3()).x;
+  };
+  const inHandScale = new Map<THREE.Object3D, number>(
+    Object.values(models).map((m) => [
+      m,
+      slotScale(models.Knight) / slotScale(m),
+    ]),
+  );
+  const holdIn = (m: THREE.Object3D, slot: string, item: THREE.Object3D) => {
+    const copy = item.clone();
+    copy.scale.multiplyScalar(inHandScale.get(m)!);
+    m.getObjectByName(slot)!.add(copy);
+  };
   // Every Figure's clone carries its own, and shows it only during the action.
   for (const [tool, name] of [
     ...HELD_TOOLS.map(([, name], i) => [heldTools[i]!, name] as const),
@@ -605,9 +684,7 @@ export async function loadCharacters() {
     tool.scene.rotation.y = TOOL_TURN[name] ?? 0;
     tool.scene.visible = false;
     castShadows(tool.scene);
-    Object.values(models).forEach((m) =>
-      m.getObjectByName("handslotr")!.add(tool.scene.clone()),
-    );
+    Object.values(models).forEach((m) => holdIn(m, "handslotr", tool.scene));
   }
   // The same: each clone carries every tier, sharing its materials, and shows what's worn only in a fight.
   let grey: THREE.Texture | undefined;
@@ -621,36 +698,62 @@ export async function loadCharacters() {
       if (o instanceof THREE.Mesh) grey ??= greyVersion(o.material.map);
     });
     paintGear(held, look, grey!);
-    Object.values(models).forEach((m) =>
-      m.getObjectByName(look.hand)!.add(held.clone()),
-    );
+    Object.values(models).forEach((m) => holdIn(m, look.hand, held));
   });
-  return (tile: Tile, name: string) =>
-    new Figure(tile, cloneSkinned(models[characterFor(name)]), clips);
+  // shortcut: every player wears the adventurer, to see it in game; was
+  // models[characterFor(name)] on the shared clips, the Knight or the Barbarian by name.
+  return (tile: Tile, _name: string) =>
+    new Figure(tile, cloneSkinned(models.Adventurer), adventurerClips);
 }
 
-/** Models no player has, so villagers read apart (spec D18). */
-const VILLAGER_MODELS = {
-  odo: "Ranger",
-  marta: "Rogue",
-  aldous: "Mage",
+/**
+ * Models no player has, so villagers read apart (spec D18): a KayKit adventurer on the players'
+ * shared clips, or one of the owner's Meshy villagers with its own clips, idling on `idle` and
+ * walking on `move` ("Walking" unless named).
+ */
+const VILLAGER_MODELS: Record<
+  VillagerId,
+  string | { file: string; idle: string; move?: string; height?: number }
+> = {
+  // The owner's Meshy blacksmith, carrying a KayKit hammer, on Universal Animation Library clips
+  // retargeted in Blender: Meshy's own idle bent him out of shape.
+  // A big man: fitted 15% taller than the other villagers, and so as much broader too.
+  odo: {
+    file: "Odo",
+    idle: "Idle_Loop",
+    move: "Walk_Loop",
+    height: HEIGHT * 1.15,
+  },
+  marta: { file: "Marta", idle: "Idle_02" },
+  // The owner's Meshy banker, holding his ledger, on the same retargeted library clips as Odo.
+  aldous: { file: "Aldous", idle: "Idle_Loop", move: "Walk_Loop" },
   bram: "Rogue_Hooded",
-  // Every KayKit adventurer is taken, and Tamsin stands far from Marta.
-  tamsin: "Rogue",
-} satisfies Record<VillagerId, string>;
+  tamsin: { file: "Tamsin", idle: "Idle_02" },
+  // A robed hermit, in the KayKit Mage's robes.
+  hollis: "Mage",
+};
 
-/** What a villager holds, by their model's node name for it. */
+/** What a KayKit villager holds, by their model's node name for it. */
 const VILLAGER_TOOLS: Partial<Record<VillagerId, string>> = {
-  odo: "hammer",
   bram: "axe",
 };
 
 /** A villager on their tile, holding their tool if they have one. */
 export async function loadVillager(tile: Tile, villager: VillagerId) {
-  const [{ scene }, clips] = await Promise.all([
-    load(VILLAGER_MODELS[villager]),
-    loadClips(),
-  ]);
+  const look = VILLAGER_MODELS[villager];
+  if (typeof look !== "string") {
+    const { scene, animations } = await load(look.file);
+    fit(scene, (size) => (look.height ?? HEIGHT) / size.y);
+    const clips = new Map(animations.map((clip) => [clip.name, clip]));
+    const gait = {
+      idle: look.idle,
+      move: look.move ?? "Walking",
+      moveSpeed: 1,
+      fight: look.idle,
+    };
+    return new Figure(tile, scene, clips, gait);
+  }
+  const [{ scene }, clips] = await Promise.all([load(look), loadClips()]);
   fit(scene, (size) => HEIGHT / size.y);
   const held = VILLAGER_TOOLS[villager];
   if (held) {
@@ -671,21 +774,8 @@ function withOwnMaterials(model: THREE.Object3D) {
 }
 
 /**
- * The two clips a docile creature with no animations of its own still needs: an empty
- * idle stands in the bind pose, and an empty death gives the Figure something to hold
- * while it sinks (#238).
- */
-function stillClips() {
-  return new Map(
-    ["Idle", "Death"].map(
-      (name) => [name, new THREE.AnimationClip(name, 0.4, [])] as const,
-    ),
-  );
-}
-
-/**
  * Loads every enemy's model once, each sized by its row, and returns what makes a Figure of each
- * kind. Every Figure of a kind shares its clips, except stand-ins, which are made per Figure.
+ * kind. Every Figure of a kind shares its clips.
  */
 export async function loadEnemies(loadModel: LoadModel = fetchModel) {
   const kinds = Object.keys(ENEMY_LOOKS) as EnemyKind[];
@@ -708,15 +798,14 @@ export async function loadEnemies(loadModel: LoadModel = fetchModel) {
         scene.getObjectByName(look.held!.slot)!.add(held.scene);
       }
       const own = new Map(animations.map((c) => [c.name, c]));
-      const clipsFor = () =>
-        look.clips === "still" ? stillClips() : (shared ?? own);
+      const clips = shared ?? own;
       return [
         kind,
         (tile: Tile) => {
           const figure = new Figure(
             tile,
             withOwnMaterials(cloneSkinned(scene)),
-            clipsFor(),
+            clips,
             look.gait,
           );
           if (look.armed) figure.alwaysArmed = true;

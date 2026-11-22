@@ -17,10 +17,10 @@ import {
   vi,
 } from "vitest";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
-const PORT = 45000 + (process.pid % 5000);
+const PORT = await freePort();
 let server: Awaited<ReturnType<typeof startServer>>;
 
 /** A logged-in player and every chat-box line they have received, public and private. */

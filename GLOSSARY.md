@@ -26,12 +26,24 @@ _Avoid_: Wilderness, combat zone
 The field where Skeletons roam.
 _Avoid_: Graveyard, dungeon
 
+**Runestone Hollow**:
+The ruined valley east of the Boneyard, floored with moss and set with broken columns and standing stones, where the altar stands. Its only way in is a gap in the trees behind the Emberite veins, so the walk there crosses the Boneyard. It is not part of the Boneyard.
+_Avoid_: Stone circle, shrine
+
+**Hollis**:
+The runekeeper: an old hermit who tends the stones of Runestone Hollow, standing just inside its gap. Their quest, after Odo's essence quest, asks for five Hollow essence and a Skeleton Mage's **bone sigil**, and opens the altar.
+_Avoid_: Keeper (alone), hermit
+
+**Inn**:
+The village's south-west building, with the range outside its door.
+_Avoid_: Tavern, pub
+
 **Lake**:
 The body of water in the region, where players fish from the bank. Water can't be walked on. It is one kind of water among those a region may hold, alongside a river or the sea.
 _Avoid_: Pond, mere
 
 **Smithy**:
-The part of the village where the furnace, anvil, range, workbench and Blacksmith stand.
+The part of the village where the furnace, anvil, workbench and Blacksmith stand.
 _Avoid_: Forge, workshop
 
 **Bush**:
@@ -67,7 +79,7 @@ A fixed tile where a player turns bars into gear.
 _Avoid_: Forge
 
 **Range**:
-A fixed tile in the smithy, beside the furnace, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
+A cauldron over a fire, with a table beside it, outside the inn's door, where a player cooks: a raw fish alone, or with a berry or a herb, becomes food. It can burn a fish, and a fish cooked well comes out Delicious.
 _Avoid_: Stove, oven, cooker
 
 **Fire**:
@@ -75,12 +87,12 @@ A cooking station a player lights with a tinderbox from one log, on the tile the
 _Avoid_: Campfire, bonfire
 
 **Workbench**:
-A fixed tile in the smithy, between the range and the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
+A fixed place in the smithy, beside the furnace and north of the anvil, where a player crafts: leftovers and rare finds become the game's utilities, and a cape gains its reagent's gift (#225).
 _Avoid_: Crafting table, work table
 
 **Altar**:
-A fixed tile out in the Boneyard's far side, an old stone circle ringed by rocks, where a player turns rune essence into runes (#232). It asks no level of its own, gives no tools, and never runs out; the walk there is the gate.
-_Avoid_: Stone circle (that's its look), rune stone
+A stone slab in Runestone Hollow, with a ring stone behind it and an obelisk on either side, where a player turns rune essence into runes (#232). It opens once Hollis's quest is done, asks no level of its own, gives no tools, and never runs out; the walk there is part of the gate. Its old place on the Boneyard's far side is a ring of rocks around bare ground.
+_Avoid_: Stone circle, rune stone
 
 **Station**:
 A furnace, an anvil, a range, a workbench or an altar: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
@@ -167,7 +179,7 @@ The harder enemy: an armed skeleton that attacks players who come near, unlike a
 _Avoid_: Undead, boss
 
 **Docile creature**:
-An enemy that never fights back, never chases and never wanders: it stands where it starts while it is hit. The three hide bands' creatures are — the Tarn Ox, the Bristleback and the Cinderhorn — and each leaves its hide with every player who damaged it.
+An enemy that never fights back, never chases and never wanders: it stands where it starts while it is hit. Only the Tarn Ox is one now. With the Bristleback and the Cinderhorn it makes the three **hide creatures**, each of which leaves its hide with every player who damaged it.
 _Avoid_: Passive mob, harmless enemy
 
 **Tarn Ox**:
@@ -175,15 +187,15 @@ The docile creature that grazes by the Lake's shore, the hide band 1's: its tarn
 _Avoid_: Cow, ox (alone)
 
 **Bristleback**:
-The docile creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces.
+The hide creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces. It never starts a fight, but once hit it headbutts back, seldom and for as little as a hit can do.
 _Avoid_: Boar, pig
 
 **Cinderhorn**:
-The docile creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces.
+The hide creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces. Like the Bristleback, it bites back only once hit, and weakly.
 _Avoid_: Ox of ash, fire beast
 
 **Hide**:
-The skin a docile creature leaves with each of its killers, one to a player, every kill. It stacks like ore, and Leatherworking works two of a band's hides into its pieces.
+The skin a hide creature leaves with each of its killers, one to a player, every kill. It stacks like ore, and Leatherworking works two of a band's hides into its pieces.
 _Avoid_: Pelt, leather (that's what the pieces are made of)
 
 **Leash**:
@@ -197,7 +209,7 @@ _Avoid_: Frame, turn, cycle
 ### Quests
 
 **Quest**:
-Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first, and the strange material he teaches identification from is his second. Each quest is a row of the shared quests table, and the server holds each player's progress in it. A villager's quests run as one chain, in the order they stand in the table (#231, #232). Phase 11 owns the quests beyond these.
+Work a villager asks of a player, done one stage at a time: Odo's copper ore for his forge is the first, the strange material and vein essences he teaches identification from are his second, and Hollis's offering that opens the rune altar follows them. Each quest is a row of the shared quests table, and the server holds each player's progress in it. A villager's quests run as one chain, in the order they stand in the table (#231, #232). Phase 11 owns the quests beyond these.
 _Avoid_: Mission, task (that's the Action), errand
 
 **Stage**:
@@ -492,6 +504,10 @@ _Avoid_: Mystery item, unknown material
 **Rune essence**:
 The essence unmasked, once Odo's second quest teaches identification (#232): the stuff runes are made from. One essence makes one rune at the altar, or two once the player's Runecrafting is at that rune's doubling level.
 _Avoid_: Essence (alone), pure essence
+
+**Quest essence**:
+An essence a vein gives only while a quest asks for it, and only until the player holds as many as it asks for. Odo's proof asks for one each of **copper essence**, **iron essence** and **emberite essence**, each from its own tier's veins at a 1 in 5 chance a successful mine. Hollis asks for five **Hollow essence**, from the essence rocks at 1 in 4. It is worth a coin at the store and is no use to anyone but the villager who asked.
+_Avoid_: Proof piece, quest ore
 
 **Rune**:
 A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Today only the four elementals exist — the **air rune** (1), the **water rune** (5), the **earth rune** (10) and the **fire rune** (20); higher runes come with Phase 9's spells.

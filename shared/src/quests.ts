@@ -1,10 +1,15 @@
 import { VILLAGERS, type VillagerId } from "./dialogue.ts";
-import type { ItemId } from "./items.ts";
+import { itemName, type HasInventory, type ItemId } from "./items.ts";
+import { countOf } from "./making.ts";
+import type { VeinKind } from "./region.ts";
 import type { XpField } from "./skills.ts";
 import type { Tool } from "./tools.ts";
 
 /** What a stage's turn-in asks the player to hand over: the item and how many of it. */
 export type QuestTurnIn = { item: ItemId; count: number };
+
+/** A quest item mining gives while its stage is current: each successful mine on a vein of `vein` has `chance` to give `item`, while the player holds fewer than the stage asks for. */
+export type QuestVeinFind = { vein: VeinKind; item: ItemId; chance: number };
 
 /** One step of a quest: the node its villager's conversation opens with, what the journal shows while it is current, and the turn-in that finishes it. */
 export type QuestStage = {
@@ -13,9 +18,18 @@ export type QuestStage = {
   node: string;
   /** What the journal shows while the player is on this stage. */
   journal: string;
-  /** What the player hands over to finish the stage; a stage without one finishes when its choice is picked. */
-  turnIn?: QuestTurnIn;
+  /** What the player hands over to finish the stage, one item or several, all at once; a stage without one finishes when its choice is picked. */
+  turnIn?: QuestTurnIn | readonly QuestTurnIn[];
+  /** The quest items mining gives while this stage is current. */
+  veinFinds?: readonly QuestVeinFind[];
 };
+
+/** A stage's turn-in as a list, empty when it has none. */
+export const turnInsOf = ({ turnIn }: QuestStage): readonly QuestTurnIn[] =>
+  turnIn === undefined ? [] : "item" in turnIn ? [turnIn] : turnIn;
+
+/** The chance a successful mine gives one of Odo's proof pieces while he asks for it. */
+export const PROOF_ESSENCE_CHANCE = 0.2;
 
 /** The turn-ins a villager still takes after their quest is done, each paying experience (#75's repeatable reward). */
 export type QuestRepeat = {
@@ -43,6 +57,8 @@ export type Quest = {
   gives?: readonly Tool[];
   /** What finishing the quest teaches at once, whose rule it turns on (#232): essence identification so far. */
   teaches?: "essence";
+  /** Another quest, maybe another villager's, that must be done before this one starts, and what the villager says until it is. */
+  needs?: { quest: string; line: string };
   stages: QuestStage[];
   repeat?: QuestRepeat;
   /** The node the conversation opens with once the quest and its turn-ins are all done. */
@@ -79,8 +95,9 @@ export const QUESTS = {
     doneNode: "forge",
   },
   // The identification chain's second quest (#232): a strange material for Odo to name, then
-  // proof it comes from every vein. Finishing it teaches identification, which turns what the
-  // player holds into rune essence and unmasks the veins' drops from then on.
+  // proof it comes from every vein, as one essence from each tier that mining gives only while he
+  // asks for it (Runestone Hollow spec §4). Finishing it teaches identification, which turns what
+  // the player holds into rune essence and unmasks the veins' drops from then on.
   odoEssence: {
     id: "odoEssence",
     title: "The strange material",
@@ -98,11 +115,55 @@ export const QUESTS = {
         id: "proof",
         node: "proofQuest",
         journal:
-          "Odo wants proof: a strange material from every vein, three in all.",
-        turnIn: { item: "strangeMaterial", count: 3 },
+          "Odo wants proof: a copper essence, an iron essence and an emberite essence, mined from their veins.",
+        turnIn: [
+          { item: "copperEssence", count: 1 },
+          { item: "ironEssence", count: 1 },
+          { item: "emberiteEssence", count: 1 },
+        ],
+        veinFinds: [
+          {
+            vein: "copper",
+            item: "copperEssence",
+            chance: PROOF_ESSENCE_CHANCE,
+          },
+          { vein: "iron", item: "ironEssence", chance: PROOF_ESSENCE_CHANCE },
+          {
+            vein: "emberite",
+            item: "emberiteEssence",
+            chance: PROOF_ESSENCE_CHANCE,
+          },
+        ],
       },
     ],
     doneNode: "runes",
+  },
+  // Runestone Hollow's quest (spec §4): Hollis opens the altar to a player who already knows
+  // essence from Odo, once they bring Hollow essence from the essence rocks and a Skeleton
+  // Mage's bone sigil. Hollow essence comes only while this stage runs, until five are held.
+  hollisRunes: {
+    id: "hollisRunes",
+    title: "The stones remember",
+    villager: "hollis",
+    points: 1,
+    needs: {
+      quest: "odoEssence",
+      line: "Hollis looks through you. Learn to know essence first: the Blacksmith can teach it.",
+    },
+    stages: [
+      {
+        id: "offering",
+        node: "offeringQuest",
+        journal:
+          "Hollis wants five Hollow essence from the essence rocks and a bone sigil from a Skeleton Mage.",
+        turnIn: [
+          { item: "hollowEssence", count: 5 },
+          { item: "boneSigil", count: 1 },
+        ],
+        veinFinds: [{ vein: "essence", item: "hollowEssence", chance: 0.25 }],
+      },
+    ],
+    doneNode: "keeper",
   },
 } as const satisfies Record<string, Quest>;
 export type QuestId = keyof typeof QUESTS;
@@ -183,4 +244,16 @@ export function openingNodeOf(
     .filter((quest) => progresses?.has(quest.id))
     .at(-1);
   return earlier?.doneNode ?? VILLAGERS[villager].start;
+}
+
+/** A stage's journal text, and for a stage of several turn-ins the ones the player doesn't carry yet (Runestone Hollow spec §4). */
+export function journalLine(stage: QuestStage, player: HasInventory) {
+  const turnIns = turnInsOf(stage);
+  if (turnIns.length < 2) return stage.journal;
+  const missing = turnIns
+    .filter(({ item, count }) => countOf(item, player) < count)
+    .map(({ item }) => itemName(item));
+  return missing.length
+    ? `${stage.journal} Still needed: ${missing.join(", ")}.`
+    : `${stage.journal} You have them all.`;
 }

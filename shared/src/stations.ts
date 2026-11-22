@@ -15,7 +15,8 @@ export const STATIONS = {
   anvil: { tool: "hammer", quest: "odoCopper" },
   range: {},
   workbench: {},
-  altar: {},
+  // Runestone Hollow's runekeeper opens it (Runestone Hollow spec §4).
+  altar: { quest: "hollisRunes" },
 } as const satisfies Record<string, StationRow>;
 export type FixedStation = keyof typeof STATIONS;
 /** A fixed station, or a fire, which a player places and which burns out, so no tile is one (#224). */

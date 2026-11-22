@@ -11,7 +11,7 @@ test("every fixed station has a test-map character", () => {
 
 test("a fire and the ungated stations are never refused", () => {
   const nothing = { tools: [] };
-  for (const station of ["fire", "range", "workbench", "altar"] as const)
+  for (const station of ["fire", "range", "workbench"] as const)
     expect(stationRefusal(station, nothing)).toBeUndefined();
 });
 
@@ -20,4 +20,7 @@ test("a gated station names its quest's villager, after its tool (#231)", () => 
     "You need to help Odo first.",
   );
   expect(stationRefusal("anvil", { tools: [] })).toMatch(/^You need a hammer/);
+  expect(stationRefusal("altar", { tools: [] })).toBe(
+    "You need to help Hollis first.",
+  );
 });

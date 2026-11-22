@@ -15,10 +15,10 @@ import {
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { readSave } from "./saves.ts";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
-const PORT = 40000 + (process.pid % 5000);
+const PORT = await freePort();
 const folder = mkdtempSync(join(tmpdir(), "runic-dropping-"));
 let server: Awaited<ReturnType<typeof startServer>>;
 

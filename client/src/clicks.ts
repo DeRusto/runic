@@ -149,6 +149,8 @@ export function walkOnClick(
     const x = Math.round(hit.x);
     const y = Math.round(hit.z);
     if (!tiles[y]?.[x]) return;
+    if (tiles[y][x].prop === "gate")
+      return printChatLine("The gate is locked.");
 
     showMarker(x, y);
     room.send(WALK_INTENT, { x, y });

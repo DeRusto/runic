@@ -97,7 +97,7 @@ describe("chat items", () => {
 describe("the committed icons", () => {
   const pngs = readdirSync(ICONS_DIR).filter((file) => file.endsWith(".png"));
 
-  test("cover every item, the workbench's cloak and the five tools, 137 in all (spec §7)", () => {
+  test("cover every item, the workbench's cloak and the five tools (spec §7)", () => {
     expect(pngs.sort()).toEqual(
       [
         ...Object.keys(ITEMS),
@@ -111,7 +111,6 @@ describe("the committed icons", () => {
         .map((id) => `${id}.png`)
         .sort(),
     );
-    expect(pngs).toHaveLength(137);
   });
 
   test("each is the file iconUrl names, and a real PNG", () => {
@@ -131,9 +130,29 @@ describe("the committed icons", () => {
     expect(bytes / pngs.length).toBeLessThan(17_000);
   });
 
-  test("the licence copy says which file is Craftpix's", () => {
+  // shortcut: spot-checks the single icons; the tiered sets are named per pack in prose, so derive from render-icons' tables if attribution drifts.
+  test("the licence copy names Craftpix single icons with their numbers in the pack", () => {
     const licence = readFileSync(`${ICONS_DIR}/LICENSE.txt`, "utf8");
-    expect(licence).toContain("emberiteSword.png");
+    for (const id of [
+      "emberiteSword",
+      "copperOre",
+      "ironOre",
+      "emberiteOre",
+      "tin",
+      "cinderglass",
+      "heartflame",
+      "runeEssence",
+      "hollowEssence",
+      "pickaxe",
+      "emberbone",
+      "feather",
+      "berry",
+      "herb",
+      "spiderSilk",
+      "mightPotion",
+      "avoidancePotion",
+    ])
+      expect(licence).toContain(`${id}.png (`);
     expect(licence).toContain("https://craftpix.net/file-licenses/");
   });
 });

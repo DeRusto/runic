@@ -79,6 +79,14 @@ test("a Spider dead when first seen is hidden, counts as down, and can come back
   expect(figure.downed).toBe(false);
 });
 
+/** A GLB's JSON chunk alone, as its embedded textures won't decode outside a browser. */
+const glbJson = (file: string) => {
+  const glb = readFileSync(`client/public/models/${file}.glb`);
+  return JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString());
+};
+const clipsOf = (file: string): string[] =>
+  glbJson(file).animations.map((clip: { name: string }) => clip.name);
+
 describe("a player already dead when first seen", () => {
   const deathClip = (figure: Figure) =>
     figure.mixer.clipAction(CLIPS.get("Death_A")!);
@@ -479,9 +487,13 @@ async function fakeModel(path: string) {
   scene.name = path;
   return {
     scene,
-    animations: [`${path} clip`, "Idle", "Spider_Idle", "Idle_A"].map(
-      (name) => new THREE.AnimationClip(name, 1, []),
-    ),
+    animations: [
+      `${path} clip`,
+      "Idle",
+      "Spider_Idle",
+      "Idle_A",
+      "Idle_Loop",
+    ].map((name) => new THREE.AnimationClip(name, 1, [])),
   } as unknown as GLTF;
 }
 
@@ -509,17 +521,17 @@ describe("loadEnemies", () => {
     }
   });
 
-  it("gives each kind its clips: its own, the players' packs, or stand-ins made per Figure", async () => {
+  it("gives each kind its clips: its own, or the players' packs", async () => {
     const newEnemy = await loadEnemies(fakeModel);
     const clipsOf = (figure: Figure) => [...figure["clips"].keys()];
     expect(clipsOf(newEnemy.spider(tile))).toContain("Spider.glb clip");
     expect(clipsOf(newEnemy.tarnOx(tile))).toContain("TarnOx.glb clip");
+    expect(clipsOf(newEnemy.bristleback(tile))).toContain(
+      "Bristleback.glb clip",
+    );
     expect(clipsOf(newEnemy.skeleton(tile))).toContain(
       "Rig_Medium_General.glb clip",
     );
-    const [one, two] = [newEnemy.bristleback(tile), newEnemy.bristleback(tile)];
-    expect(clipsOf(one)).toEqual(["Idle", "Death"]);
-    expect(one["clips"]).not.toBe(two["clips"]);
   });
 
   it("puts the Skeleton's blade in its hand and keeps it armed, and no one else's", async () => {
@@ -528,6 +540,40 @@ describe("loadEnemies", () => {
     expect(skeleton.model.getObjectByName("Skeleton_Blade.gltf")).toBeDefined();
     expect(skeleton.alwaysArmed).toBe(true);
     expect(newEnemy.spider(tile).alwaysArmed).toBeFalsy();
+  });
+});
+
+describe("the owner's Meshy villagers", () => {
+  it.each([
+    ["Odo", "Idle_Loop"],
+    ["Aldous", "Idle_Loop"],
+    ["Marta", "Idle_02"],
+    ["Tamsin", "Idle_02"],
+  ])("%s.glb carries the clip it idles on", (file, idle) => {
+    expect(clipsOf(file)).toContain(idle);
+  });
+});
+
+describe("the Meshy creatures, rigged on the Bull's skeleton", () => {
+  it.each(["Bristleback", "Cinderhorn"])(
+    "%s.glb carries the clips its look plays",
+    (file) => {
+      expect(clipsOf(file)).toEqual(
+        expect.arrayContaining(["Idle", "Walk", "Death", "Idle_HitReact1"]),
+      );
+    },
+  );
+});
+
+describe("Imp.glb", () => {
+  it("carries the Universal Animation Library clips its look plays", async () => {
+    expect(clipsOf("Imp").sort()).toEqual([
+      "Death01",
+      "Hit_Chest",
+      "Idle_Loop",
+      "Jog_Fwd_Loop",
+      "Punch_Jab",
+    ]);
   });
 });
 
@@ -988,12 +1034,9 @@ describe("paintGear", () => {
 });
 
 describe("the Skeleton", () => {
-  /** The joint names in a GLB's JSON chunk, as its embedded texture won't load outside a browser. */
+  /** The joint names in a GLB. */
   const jointsOf = (file: string) => {
-    const glb = readFileSync(`client/public/models/${file}.glb`);
-    const { nodes, skins } = JSON.parse(
-      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
-    );
+    const { nodes, skins } = glbJson(file);
     return skins[0].joints.map((i: number) => nodes[i].name).sort();
   };
   const STANCE_CLIPS = new Map(

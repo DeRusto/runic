@@ -91,14 +91,18 @@ const { tiles, pools } = loadWorldRegion();
 type Vein = { tier: VeinTier; tile: Tile; left: number; regrowTick: number };
 const veinTiles: { tier: VeinTier; tile: Tile }[] = [];
 // shortcut: plays each pool's first `active` spots as veins that grow back in place; model the move to another spot if pacing comes to hinge on the walk to it.
+// Essence rocks give no ore, so smithing's pacing leaves them out.
 for (const { skill, kind, active, spots } of pools)
-  for (const tile of skill === "mining" ? spots.slice(0, active) : [])
+  for (const tile of skill === "mining" && kind !== "essence"
+    ? spots.slice(0, active)
+    : [])
     veinTiles.push({ tier: kind as VeinTier, tile });
 let furnace: Tile | undefined;
 let anvil: Tile | undefined;
 tiles.forEach((line, y) =>
   line.forEach((kind, x) => {
-    if (kind.vein) veinTiles.push({ tier: kind.vein, tile: { x, y } });
+    if (kind.vein && kind.vein !== "essence")
+      veinTiles.push({ tier: kind.vein, tile: { x, y } });
     if (kind.station === "furnace") furnace = { x, y };
     if (kind.station === "anvil") anvil = { x, y };
   }),

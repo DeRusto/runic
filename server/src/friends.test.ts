@@ -11,10 +11,10 @@ import {
 } from "@runic/shared";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { startServer } from "./server.ts";
-import { testToken } from "./testToken.ts";
+import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
-const PORT = 50000 + (process.pid % 5000);
+const PORT = await freePort();
 let server: Awaited<ReturnType<typeof startServer>>;
 
 /** A logged-in player, every chat-box line they have received, and the last friends list sent to them. */

@@ -1,11 +1,11 @@
-{ "columns":24,
+{ "columns":39,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":480,
+ "imagewidth":624,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":30,
+ "tilecount":39,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -322,13 +322,13 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                },
+                }, 
                 {
                  "name":"station",
                  "type":"string",
                  "value":"range"
                 }]
-        },
+        }, 
         {
          "id":25,
          "properties":[
@@ -336,13 +336,13 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                },
+                }, 
                 {
                  "name":"bush",
                  "type":"string",
                  "value":"dewpetalBush"
                 }]
-        },
+        }, 
         {
          "id":26,
          "properties":[
@@ -350,13 +350,13 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                },
+                }, 
                 {
                  "name":"bush",
                  "type":"string",
                  "value":"nightbloomBush"
                 }]
-        },
+        }, 
         {
          "id":27,
          "properties":[
@@ -364,13 +364,13 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                },
+                }, 
                 {
                  "name":"bush",
                  "type":"string",
                  "value":"emberbloomBush"
                 }]
-        },
+        }, 
         {
          "id":28,
          "properties":[
@@ -378,13 +378,13 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                },
+                }, 
                 {
                  "name":"station",
                  "type":"string",
                  "value":"workbench"
                 }]
-        },
+        }, 
         {
          "id":29,
          "properties":[
@@ -392,11 +392,127 @@
                  "name":"blocks",
                  "type":"bool",
                  "value":true
-                },
+                }, 
                 {
                  "name":"station",
                  "type":"string",
                  "value":"altar"
+                }]
+        }, 
+        {
+         "id":30,
+         "properties":[
+                {
+                 "name":"ground",
+                 "type":"string",
+                 "value":"moss"
+                }]
+        }, 
+        {
+         "id":31,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"gate"
+                }]
+        }, 
+        {
+         "id":32,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"column"
+                }]
+        }, 
+        {
+         "id":33,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"standingStone"
+                }]
+        }, 
+        {
+         "id":34,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"appleBarrel"
+                }]
+        }, 
+        {
+         "id":35,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"carrotCrate"
+                }]
+        }, 
+        {
+         "id":36,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"fruitBasket"
+                }]
+        }, 
+        {
+         "id":37,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                }, 
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"marketStall"
+                }]
+        }, 
+        {
+         "id":38,
+         "properties":[
+                {
+                 "name":"ground",
+                 "type":"string",
+                 "value":"cobble"
                 }]
         }],
  "tilewidth":16,

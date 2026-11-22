@@ -1234,6 +1234,8 @@ describe("runecrafting at the altar (#232)", () => {
         runecraftingXp,
         inventory,
         inventoryCounts,
+        // Hollis's offering is made, so the altar is open (Runestone Hollow spec §4).
+        quests: { hollisRunes: { stage: QUEST_DONE, turns: 0 } },
       },
       id,
     );
@@ -1257,7 +1259,16 @@ describe("runecrafting at the altar (#232)", () => {
       ])
       .filter(([item]) => item !== EMPTY_SLOT);
 
-  test("the altar needs no quest and no tool, and the air rune is the first rune", () => {
+  test("the altar refuses a player who hasn't made Hollis's offering", () => {
+    craft([["runeEssence", 1]]);
+    sim.state.players.get("a")!.quests.clear();
+    sim.state.players.get("a")!.questStages.clear();
+    sim.queueMake("a", { item: "airRune", all: false });
+    run(7);
+    expect(items()).toEqual([["runeEssence", 1]]);
+  });
+
+  test("with Hollis's offering made, the altar needs no tool, and the air rune is the first rune", () => {
     craft([["runeEssence", 1]]);
     sim.queueMake("a", { item: "airRune", all: false });
     run(7);

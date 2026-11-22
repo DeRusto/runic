@@ -10,7 +10,113 @@ const WEAPONS = "/KayKit_FantasyWeaponsBits_1.0_FREE/Assets/gltf";
 const TOOLS = "/KayKit_RPGToolsBits_1.0_FREE/Assets/gltf";
 const SURVIVAL = "/kenney-game-assets/3D assets/Survival Kit/Models/GLB format";
 const KNIGHT = "/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb";
-const CRAFTPIX_SWORD = "/sword-rpg-game-icon-set/PNG/without background/21.png";
+const MINING_ICONS = "/50-rpg-mining-icons/PNG/Without background";
+const SPIDER_ICONS = "/rpg-spider-loot-icons/PNG/without background";
+const MONSTER_ICONS = "/rpg-monster-loot-icons/PNG/without background";
+/** The icons taken from the owner's Craftpix packs rather than rendered, scaled to match (spec §7). */
+const PACK_ICONS: Record<string, string> = {
+  emberiteSword: "/sword-rpg-game-icon-set/PNG/without background/21.png",
+  copperOre: `${MINING_ICONS}/37.png`,
+  ironOre: `${MINING_ICONS}/26.png`,
+  emberiteOre: `${MINING_ICONS}/38.png`,
+  tin: `${MINING_ICONS}/31.png`,
+  cinderglass: `${MINING_ICONS}/35.png`,
+  heartflame: `${MINING_ICONS}/39.png`,
+  runeEssence: `${MINING_ICONS}/49.png`,
+  hollowEssence: `${MINING_ICONS}/43.png`,
+  pickaxe: `${MINING_ICONS}/2.png`,
+  emberbone: `${MONSTER_ICONS}/24.png`,
+  feather: `${MONSTER_ICONS}/33.png`,
+  berry: `${MONSTER_ICONS}/7.png`,
+  herb: `${MONSTER_ICONS}/8.png`,
+  spiderSilk: `${SPIDER_ICONS}/5.png`,
+  mightPotion: `${SPIDER_ICONS}/33.png`,
+  avoidancePotion: `${SPIDER_ICONS}/41.png`,
+};
+
+const icon = (pack: string, n: number) =>
+  `/${pack}/PNG/without background/${n}.png`;
+const DWARF = "rpg-dwarf-loot-icons";
+const KOBOLD = "rpg-kobold-loot-icons";
+const FOOD = "50-rpg-food-icons";
+const FLOWER = "rpg-flower-game-icons";
+/** More Craftpix icons, from the packs bought on 2026-11-16 (the owner's picks). */
+Object.assign(PACK_ICONS, {
+  axe: icon(DWARF, 12),
+  hammer: icon(DWARF, 21),
+  torch: icon(KOBOLD, 23),
+  rope: icon("rpg-pirate-loot-icons", 13),
+  vial: icon("rpg-pirate-loot-icons", 17),
+  coins: icon("treasure-and-chest-rpg-icons", 45),
+  ashstone: icon(KOBOLD, 3),
+  strangeMaterial: icon(KOBOLD, 50),
+  arrowShaft: icon("rpg-cooking-ingredient-icon-pack", 38),
+  boneSigil: icon("magical-artifact-rpg-game-icons", 39),
+  bristleHide: icon(DWARF, 50),
+  cinderHide: icon("50-rpg-loot-game-icons", 7),
+  tarnHide: icon(DWARF, 37),
+  dewpetal: icon(FLOWER, 1),
+  nightbloom: icon(FLOWER, 25),
+  emberbloom: icon(FLOWER, 13),
+  fortitudePotion: icon("rpg-elixir-icons", 23),
+  perch: icon("rpg-sea-loot-icons", 34),
+  pike: icon("rpg-sea-loot-icons", 35),
+  trout: icon("rpg-pirate-loot-icons", 35),
+  cookedPerch: icon(FOOD, 1),
+  cookedPike: icon(FOOD, 47),
+  cookedTrout: icon(FOOD, 27),
+  birchBow: icon("bow-and-crossbow-rpg-icons", 1),
+  oakBow: icon("bow-and-crossbow-rpg-icons", 12),
+  charwoodBow: icon("bow-and-crossbow-rpg-icons", 17),
+  oakLog: icon(DWARF, 35),
+  gossamerCloak: icon("50-rpg-armor-icons", 38),
+});
+
+/** Pack icons recoloured: `mix` of the way from the painting to its shading in `look`'s colours. */
+const RECOLOURED: { id: string; url: string; look: Look; mix?: number }[] = [
+  // The pack's grey stones, blackened: as painted they read as silver ore.
+  {
+    id: "coal",
+    url: icon(KOBOLD, 40),
+    look: { tint: 0x1a1817, glow: 0x5c5853 },
+  },
+  // The logs as the bows: one log, pale and charred.
+  { id: "birchLog", url: icon(DWARF, 35), look: { tint: 0xf0e6cc } },
+  { id: "charwoodLog", url: icon(DWARF, 35), look: { tint: 0x6a3a30 } },
+  // The berry and herb dishes: the cooked fish, mostly rosy or herbal (#221); at half they barely differ.
+  ...(
+    [
+      ["Perch", 1, 0xb05429, 0x6e6320],
+      ["Pike", 47, 0x8a492c, 0x565723],
+      ["Trout", 27, 0xc05837, 0x77692b],
+    ] as const
+  ).flatMap(([fish, n, berry, herb]) => [
+    { id: `berry${fish}`, url: icon(FOOD, n), look: { tint: berry }, mix: 0.8 },
+    { id: `herb${fish}`, url: icon(FOOD, n), look: { tint: herb }, mix: 0.8 },
+  ]),
+];
+/** Tiered gear: one painting a slot, in each tier's colours as in hand (spec §7). */
+const TIERED_ICONS: Record<string, string> = {
+  Bar: icon(DWARF, 28),
+  Helmet: icon("rpg-helmet-icons", 26),
+  Chestplate: icon("50-rpg-armor-icons", 23),
+  Leggings: icon("rpg-greaves-icons", 16),
+  Boots: icon("rpg-pirate-loot-icons", 26),
+  Gloves: icon("50-rpg-glove-icons", 46),
+  Ring: icon("50-rpg-jewelry-icons", 10),
+  Amulet: icon("50-rpg-jewelry-icons", 24),
+  Arrow: icon("rpg-undead-loot-icons", 47),
+  ThrowingKnife: icon("50-rpg-dagger-icons", 31),
+  // Odo's proof essences: only copper, iron and emberite exist, so the others are skipped below.
+  Essence: icon("magical-artifact-rpg-game-icons", 4),
+  // All three Virtues' capes share their tier's icon (#217).
+  ...Object.fromEntries(
+    VIRTUES.map((v) => [
+      `${v[0]!.toUpperCase()}${v.slice(1)}Cape`,
+      icon("50-rpg-armor-icons", 7),
+    ]),
+  ),
+};
 
 // Tier looks, as worn (spec §7).
 const {
@@ -422,17 +528,58 @@ function draw(model: THREE.Object3D, turn: Turn) {
 const toPng = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!)));
 
-/** The one icon not rendered: a Craftpix PNG, scaled to match (spec §7). */
-async function craftpixSword() {
+/** A pack PNG, scaled to match the rendered icons (spec §7), and recoloured if given a look. */
+async function packIcon(url: string, look?: Look, mix = 1, quarter = false) {
   const image = new Image();
-  image.src = CRAFTPIX_SWORD;
+  image.src = url;
   await image.decode();
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = SIZE;
   const context = canvas.getContext("2d")!;
   context.imageSmoothingQuality = "high";
-  context.drawImage(image, 0, 0, SIZE, SIZE);
+  const { width: w, height: h } = image;
+  // `quarter`: only the top-right quarter, where a diagonal weapon's head is.
+  if (quarter)
+    context.drawImage(image, w / 2, 0, w / 2, h / 2, 0, 0, SIZE, SIZE);
+  else context.drawImage(image, 0, 0, SIZE, SIZE);
+  if (look?.tint !== undefined)
+    recolour(context, look.tint, look.glow ?? 0xffffff, mix);
   return toPng(canvas);
+}
+
+/**
+ * Repaints the canvas by its shading: black through `tint` (at a brightness of 110 of 255) to `light`,
+ * after stretching the brightness to the full range, then mixes that `mix` of the way in.
+ */
+function recolour(
+  context: CanvasRenderingContext2D,
+  tint: number,
+  light: number,
+  mix: number,
+) {
+  const data = context.getImageData(0, 0, SIZE, SIZE);
+  const px = data.data;
+  const lum = (i: number) =>
+    0.299 * px[i]! + 0.587 * px[i + 1]! + 0.114 * px[i + 2]!;
+  const seen: number[] = [];
+  for (let i = 0; i < px.length; i += 4) if (px[i + 3]! > 0) seen.push(lum(i));
+  seen.sort((a, b) => a - b);
+  // The 1st and 99th centiles, so a few specks don't set the range.
+  const lo = seen[Math.floor(seen.length * 0.01)] ?? 0;
+  const hi = Math.max(seen[Math.floor(seen.length * 0.99)] ?? 255, lo + 1);
+  const channels = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+  const [mid, top] = [channels(tint), channels(light)];
+  for (let i = 0; i < px.length; i += 4) {
+    const t = Math.min(Math.max(((lum(i) - lo) / (hi - lo)) * 255, 0), 255);
+    for (let k = 0; k < 3; k++) {
+      const shade =
+        t < 110
+          ? (mid[k]! * t) / 110
+          : mid[k]! + ((top[k]! - mid[k]!) * (t - 110)) / 145;
+      px[i + k] = px[i + k]! + (shade - px[i + k]!) * mix;
+    }
+  }
+  context.putImageData(data, 0, 0);
 }
 
 const loader = new GLTFLoader();
@@ -737,6 +884,30 @@ function essence() {
   return group;
 }
 
+/** A Skeleton Mage's bone sigil for Hollis: a bone disc with a violet crystal set in its face. */
+function boneSigil() {
+  const group = new THREE.Group();
+  const bone = new THREE.MeshStandardMaterial({
+    color: 0xe8dcc0,
+    roughness: 0.8,
+    flatShading: true,
+  });
+  group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.2, 8), bone));
+  const crystal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.35),
+    new THREE.MeshStandardMaterial({
+      color: 0xc89cff,
+      flatShading: true,
+      emissive: 0x4a2370,
+      emissiveIntensity: GLOW_INTENSITY,
+    }),
+  );
+  crystal.position.y = 0.2;
+  crystal.scale.y = 0.6;
+  group.add(crystal);
+  return group;
+}
+
 /** Kenney's rune slabs are gone: #238 re-renders the runes from the owner's four medallions (shown for review). */
 
 const bone = emberbone();
@@ -751,7 +922,6 @@ draw(gem(0xd86a1e, 0x7a2a00), FLAT);
 pngs.set("cinderglass", await toPng(renderer.domElement));
 draw(gem(0xe83a10, 0xff4a10), FLAT);
 pngs.set("heartflame", await toPng(renderer.domElement));
-pngs.set("emberiteSword", await craftpixSword());
 draw(rod(), LEAN);
 pngs.set("rod", await toPng(renderer.domElement));
 draw(tinderbox(), LEAN);
@@ -769,6 +939,21 @@ draw(strange, FLAT);
 pngs.set("strangeMaterial", await toPng(renderer.domElement));
 draw(essence(), FLAT);
 pngs.set("runeEssence", await toPng(renderer.domElement));
+// Odo's proof pieces: the essence's crystals, each tinted and lit by its vein's metal.
+for (const [id, tint, glow] of [
+  ["copperEssence", 0xe8955a, 0x7a3a10],
+  ["ironEssence", 0x8fb4e0, 0x23436e],
+  ["emberiteEssence", 0xff6a40, 0x8a1a00],
+  // Hollis's Hollow essence, in the essence rocks' violet.
+  ["hollowEssence", 0xc89cff, 0x4a2370],
+] as const) {
+  const proof = essence();
+  applyLook(proof, { tint, glow });
+  draw(proof, FLAT);
+  pngs.set(id, await toPng(renderer.domElement));
+}
+draw(boneSigil(), FLAT);
+pngs.set("boneSigil", await toPng(renderer.domElement));
 // The owner's four rune medallions, rendered from their own models as the runes (#238),
 // shown for the owner's review in place of the Kenney slabs.
 const RUNES = [
@@ -781,6 +966,27 @@ for (const [id, file] of RUNES) {
   const { scene: medallion } = await loader.loadAsync(`/personal/${file}`);
   draw(medallion, FLAT);
   pngs.set(id, await toPng(renderer.domElement));
+}
+
+// shortcut: the icons above still render first and are replaced here; drop their renders if render time starts to matter.
+for (const [id, url] of Object.entries(PACK_ICONS))
+  pngs.set(id, await packIcon(url));
+for (const { id, url, look, mix } of RECOLOURED)
+  pngs.set(id, await packIcon(url, look, mix));
+for (const [piece, url] of Object.entries(TIERED_ICONS))
+  for (const [tier, look] of Object.entries(TIER_LOOKS))
+    if (pngs.has(`${tier}${piece}`))
+      pngs.set(`${tier}${piece}`, await packIcon(url, look));
+// No pack has an arrowhead: a lance's head, cut from its icon. It is painted so bright that the
+// tier colour washes out, so its highlights stop halfway to white.
+for (const [tier, { tint, glow }] of Object.entries(TIER_LOOKS)) {
+  const light =
+    glow ?? new THREE.Color(tint).lerp(new THREE.Color(0xffffff), 0.5).getHex();
+  const head = icon("50-rpg-lance-icons", 2);
+  pngs.set(
+    `${tier}Arrowhead`,
+    await packIcon(head, { tint, glow: light }, 1, true),
+  );
 }
 
 const shown = document.getElementById("icons")!;
@@ -798,6 +1004,10 @@ const status = document.getElementById("status")!;
 const total = [...pngs.values()].reduce((sum, png) => sum + png.size, 0);
 status.textContent = `${pngs.size} icons, ${Math.round(total / 1024)} KB`;
 
+// shortcut: the canvas saves full-colour PNGs, and the painted icons then average 29 KB, past
+// itemIcons.test.ts's budget. They were cut to 256 colours by hand with Pillow
+// (Image.quantize(256, FASTOCTREE, FLOYDSTEINBERG), about 7 KB each); repeat that after a re-save,
+// or quantise here once a PNG encoder such as upng-js is a dev dependency.
 const save = document.getElementById("save") as HTMLButtonElement;
 save.disabled = false;
 save.onclick = async () => {

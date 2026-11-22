@@ -157,6 +157,14 @@ test("a panel reopens where it was last left", () => {
   expect(at(a.element)).toEqual(["0px", "0px"]);
 });
 
+test("a panel opened at a place goes there, not where it was last left", () => {
+  const a = open();
+  drag(a.element, corner(a.element), [-100, -100]);
+  a.close();
+  a.handle.opened({ left: 50, top: 60 });
+  expect(at(a.element)).toEqual(["50px", "60px"]);
+});
+
 test("Escape in the chat box closes nothing", () => {
   const a = open();
   keydown({ key: "Escape", target: new FakeInput() });

@@ -4,6 +4,7 @@ import { takeRefusal, type HasInventory, type ItemId } from "./items.ts";
 import { toolRefusal } from "./tools.ts";
 import { VEINS } from "./mining.ts";
 import type { Tile } from "./region.ts";
+import { findItemOf } from "./runecrafting.ts";
 import { levelFor } from "./skills.ts";
 import { TREES } from "./woodcutting.ts";
 
@@ -191,9 +192,10 @@ export function gatherRefusal(
   skill: GatheringSkill,
   kind: string,
   left: number,
-  player: HasInventory & { tools: Iterable<string> } & Partial<
-      Record<GatheringRow["xpField"], number>
-    >,
+  player: HasInventory & {
+    tools: Iterable<string>;
+    identifiesEssence?: boolean;
+  } & Partial<Record<GatheringRow["xpField"], number>>,
 ) {
   const row = GATHERING[skill];
   const { level, item } = gatheringSource(skill, kind);
@@ -203,5 +205,8 @@ export function gatherRefusal(
   if (noTool) return noTool;
   if (levelFor(player[row.xpField] ?? 0) < level)
     return `You need ${row.skill} ${level} to ${row.verb} this.`;
-  return runOut ?? takeRefusal(item, player);
+  // Room for what the player would get: an essence rock gives rune essence once they identify it.
+  return (
+    runOut ?? takeRefusal(findItemOf(item, !!player.identifiesEssence), player)
+  );
 }

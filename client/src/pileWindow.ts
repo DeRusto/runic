@@ -8,10 +8,17 @@ import { addTip, hideTip } from "./tooltip.ts";
 /**
  * The window a click on a pile opens, once the player stands on its tile. It lists only the
  * ground items the player can see (the server sends no others), and a row takes that one.
+ * It opens beside the pile, where `screenOf` says the tile is on screen.
  * Returns how to ask for it. Rows are only ever changed in place, or a patch landing between
  * a press and its release would lose the click.
  */
-export function showPileWindow(room: WorldConnection) {
+/** How far right of the pile's place on screen the window opens, clear of the bag and the player on it. */
+const BESIDE_PX = 48;
+
+export function showPileWindow(
+  room: WorldConnection,
+  screenOf?: (tile: Tile) => { x: number; y: number },
+) {
   const panel = document.getElementById("pile")!;
   const list = document.getElementById("pile-rows")!;
   const rows = new Map<string, HTMLButtonElement>();
@@ -65,7 +72,11 @@ export function showPileWindow(room: WorldConnection) {
     panel.hidden = false;
     draw(tile);
     // After its rows, so it is measured with them; an empty pile has closed it already.
-    if (!panel.hidden) placed.opened();
+    if (panel.hidden) return;
+    const at = screenOf?.(tile);
+    placed.opened(
+      at && { left: at.x + BESIDE_PX, top: at.y - panel.offsetHeight / 2 },
+    );
   };
 
   close();

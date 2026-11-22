@@ -10,8 +10,9 @@ import { JWT } from "@colyseus/auth";
 import { WORLD_ROOM } from "@runic/shared";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { startServer } from "./server.ts";
+import { freePort } from "./testToken.ts";
 
-const PORT = 20000 + (process.pid % 5000);
+const PORT = await freePort();
 const INVITE = process.env.INVITE_CODE!;
 const dir = mkdtempSync(join(tmpdir(), "runic-accounts-"));
 const dbPath = join(dir, "test.db");

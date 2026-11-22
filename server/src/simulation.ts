@@ -84,6 +84,10 @@ import {
   currentQuestOf,
   openingNodeOf,
   stageOf,
+  turnInsOf,
+  ENEMIES,
+  QUESTS,
+  type QuestId,
   type Deal,
   type DealLine,
   offers,
@@ -935,12 +939,21 @@ export class Simulation {
       : this.startQuest(id, player, quest);
   }
 
-  /** Sets the first stage, and hands over the work's tools. Starting a quest never fails. */
+  /** Sets the first stage, and hands over the work's tools. It fails only while a quest it needs isn't done. */
   private startQuest(
     id: string,
     player: InstanceType<typeof Player>,
     quest: Quest,
   ) {
+    const { needs } = quest;
+    if (
+      needs &&
+      this.unsyncedPlayers.get(id)!.quests.get(needs.quest)?.stage !==
+        QUEST_DONE
+    ) {
+      this.events.push({ type: "told", player: id, line: needs.line });
+      return false;
+    }
     this.unsyncedPlayers
       .get(id)!
       .quests.set(quest.id, { stage: quest.stages[0]!.id, turns: 0 });
@@ -966,8 +979,7 @@ export class Simulation {
       return true;
     }
     const stage = stageOf(quest, progress.stage)!;
-    if (stage.turnIn && !this.takeTurnIn(id, player, stage.turnIn))
-      return false;
+    if (!this.takeTurnIn(id, player, ...turnInsOf(stage))) return false;
     const next = quest.stages[quest.stages.indexOf(stage) + 1];
     if (next) progress.stage = next.id;
     else {
@@ -989,23 +1001,58 @@ export class Simulation {
     return true;
   }
 
-  /** Takes a turn-in out of the inventory, or says what's missing. */
+  /** Takes every turn-in out of the inventory together, or none and says the first that's missing. */
   private takeTurnIn(
     id: string,
     player: InstanceType<typeof Player>,
-    { item, count }: QuestTurnIn,
+    ...turnIns: QuestTurnIn[]
   ) {
-    if (countOf(item, player) < count) {
+    const missing = turnIns.find(
+      ({ item, count }) => countOf(item, player) < count,
+    );
+    if (missing) {
       this.events.push({
         type: "told",
         player: id,
-        line: `You have no ${itemTag(item)} to hand over.`,
-        items: [item],
+        line: `You have no ${itemTag(missing.item)} to hand over.`,
+        items: [missing.item],
       });
       return false;
     }
-    removeItems(player.inventory, player.inventoryCounts, item, count);
+    for (const { item, count } of turnIns)
+      removeItems(player.inventory, player.inventoryCounts, item, count);
     return true;
+  }
+
+  /** The quest stages this player is on now. */
+  private currentStages(id: string) {
+    return [...this.unsyncedPlayers.get(id)!.quests].flatMap(
+      ([questId, { stage }]) =>
+        stageOf(QUESTS[questId as QuestId], stage) ?? [],
+    );
+  }
+
+  /** Whether a stage this player is on still asks for more of `item` than they hold: its turn-in's count, or 1 for an item it only finds. */
+  private questWants(id: string, item: ItemId) {
+    const held = countOf(item, this.state.players.get(id)!);
+    return this.currentStages(id).some((stage) => {
+      const asked = turnInsOf(stage).find((turnIn) => turnIn.item === item);
+      const finds = stage.veinFinds?.some((roll) => roll.item === item);
+      return (asked || finds) && held < (asked?.count ?? 1);
+    });
+  }
+
+  /** The quest items a successful mine on a vein of `vein` gives this player, from the stages they're on, while each still wants more (Runestone Hollow spec §4). */
+  private questVeinFinds(id: string, vein: string) {
+    return this.currentStages(id).flatMap((stage) =>
+      (stage.veinFinds ?? []).flatMap((roll) =>
+        roll.vein === vein &&
+        this.questWants(id, roll.item) &&
+        this.random() < roll.chance
+          ? [roll.item]
+          : [],
+      ),
+    );
   }
 
   closeStore(id: string) {
@@ -1483,9 +1530,12 @@ export class Simulation {
           ? DOUBLE_YIELD
           : 1;
       const finds = success
-        ? rollFinds(source, this.random).map((found) =>
-            findItemOf(found, player.identifiesEssence),
-          )
+        ? [
+            ...rollFinds(source, this.random).map((found) =>
+              findItemOf(found, player.identifiesEssence),
+            ),
+            ...(skill === "mining" ? this.questVeinFinds(id, site.kind) : []),
+          ]
         : [];
       this.events.push(
         success
@@ -1493,7 +1543,10 @@ export class Simulation {
           : { type: verb, player: id, success },
       );
       if (!success) continue;
-      const { item, xp } = rollCatch(source, level, this.random);
+      // An essence rock's own item is essence, unmasked like a find for a player who identifies it.
+      const caught = rollCatch(source, level, this.random);
+      const item = findItemOf(caught.item, player.identifiesEssence);
+      const { xp } = caught;
       this.earnXp(player, xpField, xp);
       // Room is counted before either lands, so the second ore goes on the
       // ground, owned by the miner, when the first took the last of it.
@@ -1787,7 +1840,15 @@ export class Simulation {
     const loot = this.enemies.takeHit(this.state.tick, enemyId, id, damage);
     if (!loot) return;
     this.events.push({ type: "enemyDied", enemy: enemyId });
-    for (const won of loot) this.placeLoot(enemy, won);
+    // A quest-category drop lands only for a winner whose quest stage still asks for it.
+    const questLoot = new Set(
+      ENEMIES[enemy.kind].loot
+        .filter(({ category }) => category === "quest")
+        .flatMap(({ items }) => items.map(({ item }) => item)),
+    );
+    for (const won of loot)
+      if (!questLoot.has(won.item) || this.questWants(won.player, won.item))
+        this.placeLoot(enemy, won);
     for (const unsynced of this.unsyncedPlayers.values()) {
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;

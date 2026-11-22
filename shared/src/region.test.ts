@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  ENEMIES,
   loadRegion,
   TREES as TREES_TABLE,
   neighbours,
@@ -55,19 +56,24 @@ const IS = {
   emberbloomBush: (tile) => tile.bush === "emberbloomBush",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
+  skeletonMage: (tile) => tile.enemy === "skeletonMage",
+  imp: (tile) => tile.enemy === "imp",
   tarnOx: (tile) => tile.enemy === "tarnOx",
   bristleback: (tile) => tile.enemy === "bristleback",
   cinderhorn: (tile) => tile.enemy === "cinderhorn",
   copper: (tile) => tile.vein === "copper",
   iron: (tile) => tile.vein === "iron",
   emberite: (tile) => tile.vein === "emberite",
+  essence: (tile) => tile.vein === "essence",
   birch: (tile) => tile.tree === "birch",
   oak: (tile) => tile.tree === "oak",
   charwood: (tile) => tile.tree === "charwood",
   forester: (tile) => tile.villager === "bram",
   fisher: (tile) => tile.villager === "tamsin",
+  runekeeper: (tile) => tile.villager === "hollis",
   water: (tile) => tile.ground === "water",
   path: (tile) => tile.ground === "path",
+  moss: (tile) => tile.ground === "moss",
   furnace: (tile) => tile.station === "furnace",
   anvil: (tile) => tile.station === "anvil",
   range: (tile) => tile.station === "range",
@@ -125,7 +131,6 @@ const BUSHES = [
 const STATIONS_AND_BLACKSMITH = [
   "furnace",
   "anvil",
-  "range",
   "workbench",
   "blacksmith",
 ] as const;
@@ -140,26 +145,28 @@ describe("the region", () => {
     (x, y) => blocks(x, y) || region[y]![x]!.ground === "ashen",
   );
 
-  it("is exactly 96×64", () => {
-    expect(region.map((row) => row.length)).toEqual(Array(64).fill(96));
+  it("is exactly 128×96, grown east and south so every older tile kept its place", () => {
+    expect(region.map((row) => row.length)).toEqual(Array(96).fill(128));
   });
 
   it.each([
     ["respawn", 1],
     ["spider", 8],
     ["skeleton", 6],
+    ["skeletonMage", 4],
+    ["imp", 3],
     ["tarnOx", 4],
     ["bristleback", 4],
     ["cinderhorn", 3],
     ["furnace", 4],
     ["anvil", 1],
-    ["range", 1],
-    ["workbench", 1],
-    ["altar", 1],
+    ["range", 2],
+    ["workbench", 2],
+    ["altar", 4],
     ["blacksmith", 1],
     ["forester", 1],
     ["fisher", 1],
-    ["villager", 5],
+    ["villager", 6],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -168,6 +175,7 @@ describe("the region", () => {
     ["copper", "mining", 9, 18],
     ["iron", "mining", 6, 12],
     ["emberite", "mining", 5, 9],
+    ["essence", "mining", 5, 9],
     ["berryBush", "herblaw", 12, 24],
     ["dewpetalBush", "herblaw", 5, 8],
     ["herbBush", "herblaw", 6, 12],
@@ -186,11 +194,11 @@ describe("the region", () => {
   );
 
   it("has an outer ring of blocks", () => {
-    for (let x = 0; x < 96; x++) {
-      expect([blocks(x, 0), blocks(x, 63)]).toEqual([true, true]);
+    for (let x = 0; x < 128; x++) {
+      expect([blocks(x, 0), blocks(x, 95)]).toEqual([true, true]);
     }
-    for (let y = 0; y < 64; y++) {
-      expect([blocks(0, y), blocks(95, y)]).toEqual([true, true]);
+    for (let y = 0; y < 96; y++) {
+      expect([blocks(0, y), blocks(127, y)]).toEqual([true, true]);
     }
   });
 
@@ -205,12 +213,18 @@ describe("the region", () => {
   it("lets a player walk next to every spot, station and villager", () => {
     expect(
       [
-        ...tilesOf(...STATIONS_AND_BLACKSMITH, "altar", "villager", ...TREES),
-        ...spotsOf(...VEINS, ...BUSHES, "shore"),
+        ...tilesOf(...STATIONS_AND_BLACKSMITH, "range", "villager", ...TREES),
+        ...spotsOf(...VEINS, "essence", ...BUSHES, "shore"),
       ].filter(
         (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
       ),
     ).toEqual([]);
+    // A walk to a station ends next to any of its tiles, so the altar's walled-in obelisk tile is fine.
+    expect(
+      tilesOf("altar").some((tile) =>
+        tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
+      ),
+    ).toBe(true);
   });
 
   describe("houses", () => {
@@ -416,14 +430,20 @@ describe("the region", () => {
     ]);
   });
 
-  it("stands the range beside the furnace's north-east corner (#221)", () => {
-    const [[x, y]] = tilesOf("furnace") as [[number, number]];
-    expect(tilesOf("range")).toEqual([[x + 3, y]]);
+  it("stands the range outside the inn, the town's south-west building, east of its door (#221)", () => {
+    expect(region[45]![10]!.house).toBe("door");
+    expect(tilesOf("range")).toEqual([
+      [12, 45],
+      [13, 45],
+    ]);
   });
 
-  it("stands the workbench between the range and the anvil (#226)", () => {
+  it("stands the workbench beside the anvil, two tiles wide for its grindstone (#226)", () => {
     const [[x, y]] = tilesOf("furnace") as [[number, number]];
-    expect(tilesOf("workbench")).toEqual([[x + 3, y + 1]]);
+    expect(tilesOf("workbench")).toEqual([
+      [x + 3, y + 1],
+      [x + 4, y + 1],
+    ]);
   });
 
   it("hides none of the smithy from the default camera, which looks north-west", () => {
@@ -450,20 +470,17 @@ describe("the region", () => {
     }
   });
 
-  it("stands the rune altar on the Boneyard's far side, ringed by rock props with one way in (#232)", () => {
-    const [{ x, y }] = tilesOf("altar").map(([tx, ty]) => ({ x: tx, y: ty }));
-    expect(region[y]![x]!.ground).toBe("ashen");
+  it("stands the rune altar in Runestone Hollow, its slab with the ring stone's tile north and an obelisk's either side", () => {
+    const [x, y] = tilesOf("altar")[2]!;
+    expect(tilesOf("altar")).toEqual([
+      [x, y - 1],
+      [x - 1, y],
+      [x, y],
+      [x + 1, y],
+    ]);
+    expect(region[y]![x]!.ground).toBe("moss");
+    // The walk is the gate: no way to the slab keeps off the Boneyard's ashen ground, and it's a long one.
     const ring = neighbours({ x, y });
-    const props = ring.filter(
-      ({ x: nx, y: ny }) => region[ny]![nx]!.prop === "rock",
-    );
-    expect(props).toHaveLength(7);
-    // One unblocked neighbour keeps the altar walkable-to.
-    expect(ring.some(({ x: nx, y: ny }) => !region[ny]![nx]!.blocks)).toBe(
-      true,
-    );
-    // The walk is the gate: it stands on the far side of the Boneyard, so no way
-    // there keeps off the ashen ground, and the nearest way in is over 55 steps.
     expect(ring.some(({ x: nx, y: ny }) => withoutAshen.has(key(nx, ny)))).toBe(
       false,
     );
@@ -471,6 +488,84 @@ describe("the region", () => {
       ...ring.map(({ x: nx, y: ny }) => reachable.get(key(nx, ny)) ?? Infinity),
     );
     expect(nearest).toBeGreaterThan(55);
+  });
+
+  it("lets a player into Runestone Hollow only through the Boneyard, by the gap behind the Emberite pocket", () => {
+    const moss = tilesOf("moss");
+    expect(moss.length).toBeGreaterThan(0);
+    expect(moss.filter(([x, y]) => withoutAshen.has(key(x, y)))).toEqual([]);
+    // Every walkable way out of the Hollow is the one gap tile in the old east border.
+    const ways = moss.filter(
+      ([x, y]) =>
+        !blocks(x, y) &&
+        tilesNextTo([x, y]).some(([nx, ny]) => !IS.moss(region[ny]![nx]!)),
+    );
+    expect(ways).toEqual([[95, 42]]);
+  });
+
+  // Spec §5's reach: home + wander + notice + leash.
+  const reachOf = ([x, y]: readonly [number, number]) => {
+    const {
+      wanderTiles,
+      noticeTiles = 0,
+      leashTiles,
+    } = ENEMIES[region[y]![x]!.enemy!];
+    return wanderTiles + noticeTiles + leashTiles;
+  };
+
+  it("homes Runestone Hollow's Skeleton Mages and Imps on its moss, their reach off the Emberite pocket and the gap", () => {
+    const hollow = tilesOf("skeletonMage", "imp");
+    expect(hollow.filter(([x, y]) => !IS.moss(region[y]![x]!))).toEqual([]);
+    expect(hollow.filter(([x, y]) => !reachable.has(key(x, y)))).toEqual([]);
+    const safe = [...spotsOf("emberite"), [95, 42] as const];
+    expect(
+      hollow.flatMap((home) =>
+        safe.filter(
+          (tile) => tilesApart(asTile(home), asTile(tile)) <= reachOf(home),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("stands Hollis just inside Runestone Hollow, out of every Mage's and Imp's reach", () => {
+    const [hollis] = tilesOf("runekeeper");
+    expect(hollis).toEqual([97, 42]);
+    expect(IS.moss(region[42]![97]!)).toBe(true);
+    for (const home of tilesOf("skeletonMage", "imp"))
+      expect(tilesApart(asTile(home), asTile(hollis!))).toBeGreaterThan(
+        reachOf(home),
+      );
+  });
+
+  it("puts every essence rock spot on Runestone Hollow's moss", () => {
+    expect(
+      spotsOf("essence").filter(([x, y]) => !IS.moss(region[y]![x]!)),
+    ).toEqual([]);
+  });
+
+  it("leaves the old stone circle on the Boneyard's far side as bare ground ringed by its rocks", () => {
+    const ring = neighbours({ x: 86, y: 44 });
+    expect(region[44]![86]).toEqual({ ground: "ashen", blocks: false });
+    expect(
+      ring.filter(({ x, y }) => region[y]![x]!.prop === "rock"),
+    ).toHaveLength(7);
+  });
+
+  it("runs the town's south road to a locked double gate, and nothing past it can be reached", () => {
+    expect([region[63]![18]!.prop, region[63]![19]!.prop]).toEqual([
+      "gate",
+      "gate",
+    ]);
+    expect([blocks(18, 63), blocks(19, 63)]).toEqual([true, true]);
+    for (let y = 57; y <= 62; y++)
+      expect([IS.path(region[y]![18]!), IS.path(region[y]![19]!)]).toEqual([
+        true,
+        true,
+      ]);
+    expect(reachable.has(key(18, 62))).toBe(true);
+    expect([...reachable.keys()].filter((k) => +k.split(",")[1]! > 63)).toEqual(
+      [],
+    );
   });
 });
 

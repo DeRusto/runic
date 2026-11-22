@@ -1,7 +1,13 @@
 import type { ItemId } from "./items.ts";
 
 export type EnemyKind =
-  "spider" | "skeleton" | "tarnOx" | "bristleback" | "cinderhorn";
+  | "spider"
+  | "skeleton"
+  | "tarnOx"
+  | "bristleback"
+  | "cinderhorn"
+  | "skeletonMage"
+  | "imp";
 export type EnemyState = "idle" | "fighting" | "going home" | "dead";
 
 /** What a loot category is for. A label only for now: a quest category may later give only to players on its quest. */
@@ -80,9 +86,42 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
       { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
     ],
   },
-  // #238's three docile creatures, on the hide bands 1/10/20. Their combat tuning is
-  // Phase 8's: they never fight back, never leash and never wander — they stand, and each
-  // swing against them is free. The ticket's 10/25/50 Hitpoints levels of health would pay
+  // Runestone Hollow's (spec §5), first values to tune: a Skeleton Mage is a Skeleton that hits
+  // harder and lasts longer, still in melee until Phase 8's Ranged work, and an Imp is a quick,
+  // weaker pest that notices from further off. A Mage drops Hollis's bone sigil, one kill in three,
+  // and only to a player Hollis asks it of; Imps drop nothing yet.
+  skeletonMage: {
+    health: 3200,
+    hitChance: 0.6,
+    accuracy: 10,
+    maxDamage: 650,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 200,
+    wanderChance: 0.1,
+    wanderTiles: 3,
+    noticeTiles: 3,
+    leashTiles: 4,
+    loot: [
+      { category: "quest", chance: 1 / 3, items: [{ item: "boneSigil" }] },
+    ],
+  },
+  imp: {
+    health: 1200,
+    hitChance: 0.5,
+    accuracy: 0,
+    maxDamage: 300,
+    swingIntervalTicks: 6,
+    firstSwingDelayTicks: 3,
+    returnTicks: 150,
+    wanderChance: 0.15,
+    wanderTiles: 5,
+    noticeTiles: 4,
+    leashTiles: 5,
+    loot: [],
+  },
+  // #238's three hide creatures, on the hide bands 1/10/20. The Tarn Ox is docile: it never
+  // fights back, leashes or wanders, so each swing against it is free. The ticket's 10/25/50 Hitpoints levels of health would pay
   // 60/150/300 by spec §5's 6-experience-per-100 rule, above a Spider and Skeleton, so the
   // healths here are the 2/5/10 levels whose kills pay the ticket's own 12/30/60, a few
   // hits each.
@@ -101,18 +140,20 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     // Every player who damaged it finds its hide (#238).
     loot: [{ category: "material", chance: 1, items: [{ item: "tarnHide" }] }],
   },
+  // Bristleback and Cinderhorn fight back once hit, like a Spider, but never start a fight,
+  // never wander, and chase only a couple of tiles. Every hit lands at least 100, so they hit
+  // seldom and as little as the game allows: the owner wants them to bite back, barely.
   bristleback: {
     health: 500,
-    hitChance: 0,
+    hitChance: 0.2,
     accuracy: 0,
-    maxDamage: 0,
+    maxDamage: 100,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
     wanderChance: 0,
     wanderTiles: 0,
-    leashTiles: 0,
-    docile: true,
+    leashTiles: 2,
     // Every player who damaged it finds its hide (#238).
     loot: [
       { category: "material", chance: 1, items: [{ item: "bristleHide" }] },
@@ -120,16 +161,15 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
   },
   cinderhorn: {
     health: 1000,
-    hitChance: 0,
+    hitChance: 0.25,
     accuracy: 0,
-    maxDamage: 0,
+    maxDamage: 150,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 200,
     wanderChance: 0,
     wanderTiles: 0,
-    leashTiles: 0,
-    docile: true,
+    leashTiles: 2,
     // Every player who damaged it finds its hide (#238).
     loot: [
       { category: "material", chance: 1, items: [{ item: "cinderHide" }] },

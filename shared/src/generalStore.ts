@@ -33,6 +33,12 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   // outsells the essence it is made of, by its gate.
   strangeMaterial: 1,
   runeEssence: 6,
+  // Odo's proof pieces are only for him, so the store gives a coin like the masked find.
+  copperEssence: 1,
+  ironEssence: 1,
+  emberiteEssence: 1,
+  hollowEssence: 1,
+  boneSigil: 1,
   airRune: 8,
   waterRune: 12,
   earthRune: 18,

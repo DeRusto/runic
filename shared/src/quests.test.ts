@@ -1,6 +1,7 @@
 import {
   currentQuestOf,
   ITEMS,
+  journalLine,
   nodesOf,
   openingNodeOf,
   QUESTS,
@@ -10,7 +11,9 @@ import {
   questsOfVillager,
   stageOf,
   stationRefusal,
+  turnInsOf,
   type Quest,
+  type QuestStage,
 } from "@runic/shared";
 import { describe, expect, test } from "vitest";
 
@@ -24,7 +27,10 @@ describe("the quest engine", () => {
       for (const stage of quest.stages) {
         expect(stageOf(quest, stage.id)).toBe(stage);
         expect(nodes[stage.node]).toBeDefined();
-        if (stage.turnIn) expect(ITEMS[stage.turnIn.item]).toBeDefined();
+        for (const { item } of turnInsOf(stage))
+          expect(ITEMS[item as keyof typeof ITEMS]).toBeDefined();
+        for (const { item } of (stage as QuestStage).veinFinds ?? [])
+          expect(ITEMS[item as keyof typeof ITEMS]).toBeDefined();
       }
       if ("repeat" in quest)
         expect(ITEMS[quest.repeat.turnIn.item]).toBeDefined();
@@ -166,8 +172,40 @@ describe("the smithy's stations are Odo's to open", () => {
     );
   });
 
-  test("the range, fire, workbench and altar need neither", () => {
-    for (const station of ["range", "fire", "workbench", "altar"] as const)
+  test("the range, fire and workbench need neither", () => {
+    for (const station of ["range", "fire", "workbench"] as const)
       expect(stationRefusal(station, unhelped)).toBeUndefined();
+  });
+
+  test("the altar waits on Hollis's offering, Odo's help or not (Runestone Hollow spec §4)", () => {
+    expect(stationRefusal("altar", unhelped)).toBe(
+      "You need to help Hollis first.",
+    );
+    expect(
+      stationRefusal("altar", {
+        tools: [],
+        quests: ["hollisRunes"],
+        questStages: [QUEST_DONE],
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe("the journal", () => {
+  test("names the proof essences the player doesn't carry yet", () => {
+    const proof = stageOf(QUESTS.odoEssence, "proof")!;
+    const carrying = (...inventory: string[]) => ({
+      inventory,
+      inventoryCounts: inventory.map(() => 1),
+    });
+    expect(journalLine(proof, carrying("ironEssence"))).toBe(
+      `${proof.journal} Still needed: Copper essence, Emberite essence.`,
+    );
+    expect(
+      journalLine(
+        proof,
+        carrying("copperEssence", "ironEssence", "emberiteEssence"),
+      ),
+    ).toBe(`${proof.journal} You have them all.`);
   });
 });

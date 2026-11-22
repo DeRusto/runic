@@ -5,21 +5,43 @@ import type { FixedStation } from "./stations.ts";
 import type { BushKind } from "./herblaw.ts";
 import type { TreeKind } from "./woodcutting.ts";
 
-export type GroundKind = "grass" | "thicket" | "path" | "ashen" | "water";
+/** `moss` is Runestone Hollow's mossy stone floor; `cobble` is the village's streets. */
+export type GroundKind =
+  "grass" | "thicket" | "path" | "ashen" | "water" | "moss" | "cobble";
 /** Water can never be walked on, with or without a site on it. */
 export const groundBlocks = (ground: GroundKind) => ground === "water";
+/**
+ * `gate` is the locked gate on the south road; `column` and `standingStone` are Runestone Hollow's
+ * ruins; `appleBarrel`, `carrotCrate`, `fruitBasket` and `marketStall` are the goods outside the
+ * general store.
+ */
 export type PropKind =
-  "tree" | "rock" | "tuft" | "well" | "lamp" | "barrel" | "crate";
+  | "tree"
+  | "rock"
+  | "tuft"
+  | "well"
+  | "lamp"
+  | "barrel"
+  | "crate"
+  | "gate"
+  | "column"
+  | "standingStone"
+  | "appleBarrel"
+  | "carrotCrate"
+  | "fruitBasket"
+  | "marketStall";
 /** The five metals, lowest first. Each tier's item ids start with it (`bronzeSword`). */
 export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
 /** The tiers that have veins: Bronze and Steel are smelted from another tier's ore and a find. */
 export type VeinTier = Exclude<Tier, "bronze" | "steel">;
+/** Every kind of vein: a tier's ore, or Runestone Hollow's essence rock. */
+export type VeinKind = VeinTier | "essence";
 export type TileKind = {
   ground: GroundKind;
   prop?: PropKind;
   bush?: BushKind;
-  vein?: VeinTier;
+  vein?: VeinKind;
   tree?: TreeKind;
   fishingSpot?: FishingSpotKind;
   /** A fire is never a tile's station: no map places one (#224). */
@@ -58,6 +80,9 @@ export const TILE_KINDS = {
   c: { ground: "grass", vein: "copper", blocks: true },
   i: { ground: "grass", vein: "iron", blocks: true },
   e: { ground: "ashen", vein: "emberite", blocks: true },
+  E: { ground: "moss", vein: "essence", blocks: true },
+  L: { ground: "moss", villager: "hollis", blocks: true },
+  Z: { ground: "moss", enemy: "skeletonMage", blocks: false },
   g: { ground: "thicket", tree: "birch", blocks: true },
   k: { ground: "grass", tree: "oak", blocks: true },
   C: { ground: "ashen", tree: "charwood", blocks: true },

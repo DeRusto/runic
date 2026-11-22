@@ -19,6 +19,13 @@ export const ITEMS = {
   /** #232's essence find, which every vein rolls: a strange material until the player identifies it, then rune essence. */
   strangeMaterial: STACKS,
   runeEssence: STACKS,
+  /** Odo's proof: one from each vein tier, which a mine gives only while his essence quest asks for it. */
+  copperEssence: STACKS,
+  ironEssence: STACKS,
+  emberiteEssence: STACKS,
+  /** Hollis's offering (Runestone Hollow spec §4): essence rocks give Hollow essence only while the quest asks for it, and a Skeleton Mage drops its bone sigil only to a player it's asked of. */
+  hollowEssence: STACKS,
+  boneSigil: STACKS,
   /** #232's four elemental runes, made from one rune essence each at the altar. */
   airRune: STACKS,
   waterRune: STACKS,

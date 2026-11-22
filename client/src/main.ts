@@ -97,7 +97,9 @@ function enterWorld(room: WorldConnection) {
     showSmithingPanel(room),
     villagerUnder,
     showGroundItems(room),
-    showPileWindow(room),
+    // It opens only with the player on the pile, which the following camera settles at the screen's
+    // centre; projecting the pile now would use the camera still on its way there.
+    showPileWindow(room, () => ({ x: innerWidth / 2, y: innerHeight / 2 })),
     otherPlayerUnder,
     openMenu,
   );

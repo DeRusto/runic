@@ -1,5 +1,5 @@
 import { ESSENCE_FIND_CHANCE, STRANGE_MATERIAL } from "./runecrafting.ts";
-import type { VeinTier } from "./region.ts";
+import type { VeinKind } from "./region.ts";
 
 /** Spec §3, by tier, with #232's essence find last on every vein. `level` is the Mining level needed; `holds` is how many successful mines a vein holds. `xp` is per successful mine; `doubleChance` is the chance a success gives 2 ore; `finds` are the materials a success can give along with its ore, each rolling on its own. */
 export const VEINS = {
@@ -47,4 +47,13 @@ export const VEINS = {
       { chance: ESSENCE_FIND_CHANCE, item: STRANGE_MATERIAL },
     ],
   },
-} as const satisfies Record<VeinTier, unknown>;
+  // Runestone Hollow's essence rock, a step past Emberite's gate: its own item is essence, strange material until the player identifies it.
+  essence: {
+    level: 25,
+    holds: 3,
+    regrowTicks: 600,
+    xp: 20,
+    doubleChance: 0.2,
+    item: STRANGE_MATERIAL,
+  },
+} as const satisfies Record<VeinKind, unknown>;

@@ -38,4 +38,14 @@ describe("houseParts", () => {
     expect(named(2, 1, "ridge")).toHaveLength(1);
     expect(named(2, 2, "ridge")).toEqual([]);
   });
+
+  it("dresses the house its keeper stands at in that building's look", () => {
+    const bank = parseRegion([".....", ".HDH.", ".HHH.", "..$.."].join("\n"));
+    const roof = houseParts(bank, 2, 2).find((p) => p.part.endsWith("oof"));
+    expect(roof!.part).toBe("bankRoof");
+    expect(houseParts(bank, 2, 1).map((p) => p.part)).toContain("ornateDoor");
+    expect(
+      houseParts(bank, 2, 2).filter((p) => p.part === "bankRoof"),
+    ).toHaveLength(1);
+  });
 });
