@@ -89,10 +89,10 @@ test("picking walks next to the station and starts work on arrival", () => {
   add([["copperOre", 1]], { x: 1, y: 1 });
   sim.queueMake("a", { item: "copperBar", all: false });
   run(1);
-  expect(player().action).toBe("smithing");
+  expect(player().action).toBe("making");
   expect(makes()).toEqual([]);
   run(2);
-  expect(player()).toMatchObject({ x: 3, y: 1, action: "smithing" });
+  expect(player()).toMatchObject({ x: 3, y: 1, action: "making" });
   expect(makes()).toEqual([
     {
       tick: 3,
@@ -175,7 +175,7 @@ test("Make all goes on until the materials run out, then says so once", () => {
     ["copperOre", 1],
     ["copperBar", 1],
   ]);
-  expect(player().action).toBe("smithing");
+  expect(player().action).toBe("making");
   expect(makes().map(({ tick }) => tick)).toEqual([1, 7]);
   expect(lines()).toEqual([]);
   run(30);
@@ -237,7 +237,7 @@ test("materials dropped during the wait end it with a line, and nothing is made"
   run(3);
   sim.queueDrop("a", 0, 20);
   run(1);
-  expect(player().action).toBe("smithing");
+  expect(player().action).toBe("making");
   run(10);
   expect(items()).toEqual([]);
   expect(player().smithingXp).toBe(0);
@@ -359,7 +359,7 @@ test("an enemy's swing doesn't turn someone working", () => {
   sim.queueMake("a", { item: "copperBar", all: true });
   run(20);
   expect(seen.some(({ event }) => event.type === "enemySwing")).toBe(true);
-  expect(player()).toMatchObject({ action: "smithing", target: "" });
+  expect(player()).toMatchObject({ action: "making", target: "" });
 });
 
 test("a lost connection stops the work", () => {

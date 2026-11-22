@@ -154,7 +154,7 @@ export const PLAYER_CRIT_MULTIPLIER = 1.5;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
-  "" | "walking" | GatheringSkill | "smithing" | "lighting" | "fighting";
+  "" | "walking" | GatheringSkill | "making" | "lighting" | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";

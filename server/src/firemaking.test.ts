@@ -362,7 +362,7 @@ describe("cooking at a fire (#224)", () => {
     cook([["perch", 2]], { log: "charwoodLog" });
     sim.queueMake("a", { item: "cookedPerch", all: true, at: { x: 2, y: 1 } });
     run(1);
-    expect(player().action).toBe("smithing");
+    expect(player().action).toBe("making");
     // The fire dies after the first fish is done, before the second's wait is over.
     fireAt(2, 1)!.endTick = sim.state.tick + 7;
     run(20);
