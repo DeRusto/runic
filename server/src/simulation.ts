@@ -25,6 +25,7 @@ import { Gear } from "./gear.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Inventory } from "./inventory.ts";
 import { Making } from "./making.ts";
+import { mixPotion } from "./mixing.ts";
 import type { QueuedAction } from "./playerActions.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Quests } from "./quests.ts";
@@ -385,9 +386,9 @@ export class Simulation {
     this.inventory.moveItem(id, from, to);
   }
 
-  /** `slot` comes straight off the network; see `Inventory.mix`. */
+  /** `slot` comes straight off the network; see `mixPotion`. */
   mix(id: string, slot: number) {
-    this.inventory.mix(id, slot);
+    mixPotion(this.world, id, slot);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
