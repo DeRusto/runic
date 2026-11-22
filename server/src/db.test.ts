@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250) and the melee split, which turns Combat's column into Attack's and Strength's.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, and Agility's (#234).
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -42,8 +42,9 @@ const LATEST_COLUMNS = [
   "leatherworking_xp",
   "jewelsmithing_xp",
   "thieving_xp",
+  "agility_xp",
 ];
-const LATEST_MIGRATIONS = 18;
+const LATEST_MIGRATIONS = 19;
 
 /** Makes the melee split pending again: Combat's column back, and Attack's, Strength's and the stance gone. */
 function unapplySplit(sqlite: DatabaseSync) {
@@ -256,9 +257,11 @@ describe("a save from just before the melee split", () => {
   async function splitFrom(pinnedSkills: string[]) {
     await boot();
     const sqlite = new DatabaseSync(path);
+    // Agility's column came after the split, so it goes first.
+    sqlite.exec("ALTER TABLE players DROP COLUMN agility_xp");
     unapplySplit(sqlite);
     sqlite.exec(
-      "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+      "DELETE FROM __drizzle_migrations WHERE id IN (SELECT id FROM __drizzle_migrations ORDER BY id DESC LIMIT 2)",
     );
     sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
       VALUES (8, 'Fighter', 'fighter', 'x', 0)`);
@@ -318,6 +321,16 @@ describe("a save from just before the melee split", () => {
     await (await splitFrom(["Combat"])).shutdown();
     const database = await openDatabase();
     expect(readSave(8)).toMatchObject({ attackXp: 18050, strengthXp: 18050 });
+    await database.shutdown();
+  });
+
+  test("Agility's column arrives after the split, at 0, and the rest is kept", async () => {
+    const database = await splitFrom(["Combat"]);
+    expect(readSave(8)).toMatchObject({
+      agilityXp: 0,
+      attackXp: 18050,
+      hitpointsXp: 20000,
+    });
     await database.shutdown();
   });
 
