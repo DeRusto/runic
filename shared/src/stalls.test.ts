@@ -43,6 +43,8 @@ test("a theft takes items, never coins", () => {
 });
 
 test("each stall's loot table picks by weight: a low roll takes the first row, a high one the last", () => {
+  expect(stallLoot("food", () => 0).item).toBe("berry");
+  expect(stallLoot("food", () => 0.99).item).toBe("cookedPerch");
   expect(stallLoot("fish", () => 0).item).toBe("perch");
   expect(stallLoot("fish", () => 0.99).item).toBe("pike");
   expect(stallLoot("gem", () => 0).item).toBe("ashstone");

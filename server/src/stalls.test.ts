@@ -119,21 +119,24 @@ describe.each([["food"], ["fish"], ["gem"]] as const)(
     });
 
     test("after a theft it is empty for that player until its timer runs out", () => {
-      const sim = thief(() => SUCCEED, level);
-      steal(sim, kind);
-      const held = itemsHeld(sim);
-
-      // Each try waits out the attempt interval, so only the empty stall can stop it.
-      runTicks(sim, PICKPOCKET_INTERVAL_TICKS);
-      const events = steal(sim, kind);
-      expect(itemsHeld(sim)).toBe(held);
-      expect(lines(events)).toEqual([
+      const beforeExpiry = thief(() => SUCCEED, level);
+      steal(beforeExpiry, kind);
+      const held = itemsHeld(beforeExpiry);
+      runTicks(beforeExpiry, emptyTicks - 2);
+      beforeExpiry.queueSteal("a", kind);
+      expect(lines(runTicks(beforeExpiry, 1))).toEqual([
         `The ${kind} stall is empty. Come back soon.`,
       ]);
+      expect(itemsHeld(beforeExpiry)).toBe(held);
 
-      runTicks(sim, emptyTicks);
-      steal(sim, kind);
-      expect(itemsHeld(sim)).toBeGreaterThan(held);
+      const atExpiry = thief(() => SUCCEED, level);
+      steal(atExpiry, kind);
+      runTicks(atExpiry, emptyTicks - 1);
+      atExpiry.queueSteal("a", kind);
+      expect(lines(runTicks(atExpiry, 1))).toEqual([
+        `You take from the ${kind} stall.`,
+      ]);
+      expect(itemsHeld(atExpiry)).toBeGreaterThan(held);
     });
   },
 );
@@ -185,20 +188,23 @@ describe("Marta's stalls", () => {
   });
 
   test("the lockout holds for its length, then ends", () => {
-    // The first theft fails; every roll after succeeds.
-    const sim = thief(rolls(SUCCEED, FAIL), 15);
-    steal(sim, "fish");
-
-    runTicks(sim, PICKPOCKET_INTERVAL_TICKS);
-    const events = steal(sim, "fish");
-    expect(itemsHeld(sim)).toBe(0);
-    expect(lines(events)).toEqual([
+    const beforeExpiry = thief(rolls(SUCCEED, FAIL), 15);
+    steal(beforeExpiry, "fish");
+    runTicks(beforeExpiry, STALL_LOCKOUT_TICKS - 2);
+    beforeExpiry.queueSteal("a", "fish");
+    expect(lines(runTicks(beforeExpiry, 1))).toEqual([
       "Marta won't let you near the fish stall yet.",
     ]);
+    expect(itemsHeld(beforeExpiry)).toBe(0);
 
-    runTicks(sim, STALL_LOCKOUT_TICKS);
-    steal(sim, "fish");
-    expect(itemsHeld(sim)).toBeGreaterThan(0);
+    const atExpiry = thief(rolls(SUCCEED, FAIL), 15);
+    steal(atExpiry, "fish");
+    runTicks(atExpiry, STALL_LOCKOUT_TICKS - 1);
+    atExpiry.queueSteal("a", "fish");
+    expect(lines(runTicks(atExpiry, 1))).toEqual([
+      "You take from the fish stall.",
+    ]);
+    expect(itemsHeld(atExpiry)).toBeGreaterThan(0);
   });
 
   test("a lockout leaves the player's other stalls and other players alone", () => {

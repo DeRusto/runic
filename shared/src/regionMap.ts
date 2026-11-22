@@ -206,6 +206,7 @@ export function loadRegion(
   const properties = readTiles(JSON.parse(tilesetText) as TiledTileset);
   const ids = new Set(properties.keys());
   const features = readCells(map, "features", ids);
+  const stalls = new Set<string>();
   const tiles = readCells(map, "ground", ids).map((row, y) =>
     row.map((groundId, x) => {
       const { ground } = properties.get(groundId ?? -1) ?? {};
@@ -215,6 +216,10 @@ export function loadRegion(
       if (featureId !== undefined && Object.keys(feature).length === 0)
         fail(`tile ${featureId} in "features" means nothing`);
       if ("ground" in feature) fail(`ground tile in "features" at ${x},${y}`);
+      if (feature.stall) {
+        if (stalls.has(feature.stall)) fail(`two ${feature.stall} stalls`);
+        stalls.add(feature.stall);
+      }
       return { ground, blocks: groundBlocks(ground), ...feature } as TileKind;
     }),
   );

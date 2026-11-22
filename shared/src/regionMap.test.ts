@@ -78,6 +78,20 @@ const lake = (objects: object[], ground = [2, 1, 1, 1, 6, 1]) =>
   mapWith(withLayer("ground", ground, mapWith({}, objects)));
 
 describe("loadRegion", () => {
+  it("refuses two stalls of the same kind", () => {
+    const tileset = {
+      tiles: [
+        ...TILESET.tiles,
+        {
+          id: 6,
+          properties: [property("stall", "fish"), property("blocks", true)],
+        },
+      ],
+    };
+    const map = mapWith(withLayer("features", [0, 7, 0, 0, 7, 0]));
+    expect(() => load(map, tileset)).toThrow("two fish stalls");
+  });
+
   it("merges ground, features and placements into one tile each", () => {
     const { tiles } = load(
       mapWith({}, [

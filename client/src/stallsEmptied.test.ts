@@ -31,6 +31,7 @@ beforeEach(() => {
   wares = new Map([
     ["food", { visible: true }],
     ["fish", { visible: true }],
+    ["gem", { visible: true }],
   ]);
   showStallsEmptied(room, wares);
 });
@@ -62,7 +63,11 @@ test("emptying it again restarts the wait", () => {
 });
 
 test("leaving the room puts every stall's wares back", () => {
-  send(emptied("me", "fish", 20));
+  send(
+    emptied("me", "food", 10),
+    emptied("me", "fish", 20),
+    emptied("me", "gem", 50),
+  );
   for (const leave of leaves) leave();
-  expect(wares.get("fish")!.visible).toBe(true);
+  expect([...wares.values()].every(({ visible }) => visible)).toBe(true);
 });
