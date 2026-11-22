@@ -98,13 +98,19 @@ export const failPercent = (level: number, required: number) =>
       SURE_HANDED_LEVELS,
   );
 
+/** Whether one attempt on any Thieving target that needs `required` fails, rolled once (#250, #252). */
+export const thievingFails = (
+  required: number,
+  thievingXp: number,
+  random: () => number,
+) => random() * 100 < failPercent(levelFor(thievingXp), required);
+
 /** Whether one attempt on `target` fails, rolled once. */
 export const pickpocketFails = (
   target: PickpocketTarget,
   thievingXp: number,
   random: () => number,
-) =>
-  random() * 100 < failPercent(levelFor(thievingXp), PICKPOCKETS[target].level);
+) => thievingFails(PICKPOCKETS[target].level, thievingXp, random);
 
 /** What one success takes: an even pick of the coins, and now and then the rare item as well (#250). */
 export function pickpocketLoot(

@@ -1,8 +1,8 @@
 # Runic: Thieving
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. The owner settled the design in #235 and the build order in #236, both on 2026-11-22. This page records the numbers the first build ticket (#250) chose, so the later Thieving tickets (#251 to #253) reuse them, and the targets #251 added. Every number is a first value to tune in play.
+**Status: building.** Terms are defined in `GLOSSARY.md`. The owner settled the design in #235 and the build order in #236, both on 2026-11-22. This page records the numbers the first build ticket (#250) chose, so the later Thieving tickets (#251 to #253) reuse them, the targets #251 added, and Marta's stalls from #252. Every number is a first value to tune in play.
 
-The values live in `shared/src/thieving.ts`; where this page and that file disagree, the file wins and this page is fixed.
+The values live in `shared/src/thieving.ts` and, for the stalls, `shared/src/stalls.ts`; where this page and that file disagree, the file wins and this page is fixed.
 
 ## 1. Failure chance
 
@@ -46,3 +46,21 @@ Jory is the second mark: a travelling pedlar who stands at (20,40), on the villa
 Marta, Odo and Hollis are villagers first. A left-click still talks to them, and a right-click adds Pickpocket after their other choices. Each pays the rare item that fits their work: a vial from the general store, an iron bar from the forge, and rune essence from the stones. Aldous, the banker, has no Pickpocket choice, and the server ignores a pickpocket aimed at him. No villager can be attacked.
 
 Pickpocketing a villager never closes their shop or conversation to the player: once the stun ends, talking and trading work as before.
+
+## 7. Marta's stalls
+
+Three stalls stand outside the general store, and all belong to Marta. The food stall stands east of the store's front at (13,40), where the village's market stall stood; the gem stall and the fish stall stand west of it at (7,40) and (8,40). A left-click steals from a stall, and a right-click offers Steal-from. Theft rolls on the same failure curve as a pickpocket (§1), and the attempt interval of §3 holds across both, so a player can't alternate targets to beat it.
+
+| Stall | Level | Experience | Loot, one row picked by weight                           | Empty for |
+| ----- | ----- | ---------- | -------------------------------------------------------- | --------- |
+| Food  | 5     | 14         | Berry 2–4 (3), cooked perch 1 (1)                        | 10 ticks  |
+| Fish  | 15    | 26         | Perch 1–2 (6), trout 1 (3), pike 1 (1)                   | 20 ticks  |
+| Gem   | 25    | 38         | Ashstone 1 (6), cinderglass 1 (3), heartflame 1 (1)      | 50 ticks  |
+
+- The experience follows §2's rise of about 1.2 per level.
+- A theft pays items, never coins. Loot that doesn't fit in the inventory goes on the ground, as a pickpocket's does.
+- After a theft the stall is empty for that player alone until its timer runs out (`emptyTicks`); other players can still steal from it. Only the thief's own client shows its counter bare.
+- On a failure Marta catches the player: no loot, no hit and no stun. That stall is closed to that player for 100 ticks, 30 seconds (`STALL_LOCKOUT_TICKS`); their other stalls, and other players, are unaffected.
+- Both timers are kept by username, so leaving and joining again doesn't end one early. They aren't saved: a server restart refills and reopens every stall.
+
+The per-player timer is `PlayerTimers` in `server/src/playerTimers.ts`, kept apart from the stalls so that #253's strongboxes can reuse it.

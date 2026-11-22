@@ -12,6 +12,8 @@ import regionTileset from "../../maps/region.tsj?raw";
 import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
 import { addMarks } from "./marks.ts";
+import { addStalls } from "./stalls.ts";
+import { showStallsEmptied } from "./stallsEmptied.ts";
 import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadEnemies } from "./characters.ts";
@@ -57,13 +59,14 @@ const spots = pools.flatMap(({ skill, kind, spots }) =>
 );
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder] =
+const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder, stalls] =
   await Promise.all([
     loadCharacters(),
     loadEnemies(),
     addRegionMeshes(scene, tiles),
     addVillagers(tiles),
     addMarks(tiles),
+    addStalls(tiles),
   ])
     // Loads still in flight after a failure would look for a bar that is gone.
     .finally(() => (DefaultLoadingManager.onProgress = () => {}))
@@ -100,6 +103,7 @@ function enterWorld(room: WorldConnection) {
     showSmithingPanel(room),
     villagerUnder,
     markUnder,
+    stalls.stallUnder,
     showGroundItems(room),
     // It opens only with the player on the pile, which the following camera settles at the screen's
     // centre; projecting the pile now would use the camera still on its way there.
@@ -111,6 +115,7 @@ function enterWorld(room: WorldConnection) {
   showJournal(room);
   showFights(room);
   showBuffs(room);
+  showStallsEmptied(room, stalls.wares);
   showDialogueBox(room);
   showStoreWindow(room, openMenu);
   showBankWindow(room, openMenu);
