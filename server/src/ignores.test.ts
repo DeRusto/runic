@@ -17,7 +17,7 @@ import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
 let port = await freePort();
-let server: Awaited<ReturnType<typeof startServer>>;
+let serverStarted: ReturnType<typeof startServer> | undefined;
 
 /** A logged-in player, every chat-box line they have received, and the last lists sent to them. */
 type Player = {
@@ -55,26 +55,34 @@ let me: Player;
 let pest: Player;
 let bystander: Player;
 
-// Leave room for port retries and four logins under full parallel load.
-beforeAll(async () => {
-  for (let attempt = 0; attempt < 3; attempt++) {
+/** Starts the server, moving to a fresh port when Windows refuses one between probe and bind (#239). */
+async function startOnFreePort() {
+  for (let attempt = 0; ; attempt++) {
     try {
-      server = await startServer(port);
-      break;
+      return await startServer(port);
     } catch (error) {
       if (attempt === 2 || (error as NodeJS.ErrnoException).code !== "EACCES")
         throw error;
-      // Windows can refuse a port between the probe closing and this bind (see #239).
       port = await freePort();
     }
   }
+}
+
+// Leave room for port retries and four logins under full parallel load.
+beforeAll(async () => {
+  // One promise for every attempt, so afterAll still closes a retry that wins after a timeout.
+  serverStarted = startOnFreePort();
+  await serverStarted;
   // An account that exists but is never online.
   await testToken(port, "IgAway");
   me = await joinAs("IgMe");
   pest = await joinAs("IgPest");
   bystander = await joinAs("IgBystander");
 }, 30_000);
-afterAll(() => server?.gracefullyShutdown(false));
+afterAll(async () => {
+  const server = await serverStarted?.catch(() => undefined);
+  await server?.gracefullyShutdown(false);
+}, 30_000);
 beforeEach(() => {
   for (const { lines } of [me, pest, bystander]) lines.length = 0;
 });

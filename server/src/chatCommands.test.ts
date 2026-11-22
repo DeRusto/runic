@@ -21,7 +21,7 @@ import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
 const PORT = await freePort();
-let server: Awaited<ReturnType<typeof startServer>>;
+let serverStarted: ReturnType<typeof startServer> | undefined;
 
 /** A logged-in player and every chat-box line they have received, public and private. */
 type Player = { room: Room; lines: string[] };
@@ -44,12 +44,16 @@ async function joinAs(name: string): Promise<Player> {
 
 // Full parallel runs can starve the real server and three logins of event-loop time.
 beforeAll(async () => {
-  server = await startServer(PORT);
+  serverStarted = startServer(PORT);
+  await serverStarted;
   sender = await joinAs("PmSender");
   target = await joinAs("PmTarget");
   bystander = await joinAs("PmBystander");
 }, 30_000);
-afterAll(() => server?.gracefullyShutdown(false));
+afterAll(async () => {
+  const server = await serverStarted?.catch(() => undefined);
+  await server?.gracefullyShutdown(false);
+}, 30_000);
 beforeEach(() => {
   for (const { lines } of [sender, target, bystander]) lines.length = 0;
 });
