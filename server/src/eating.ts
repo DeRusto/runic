@@ -17,7 +17,7 @@ import {
 } from "@runic/shared";
 import { maxHealthTotal, type World } from "./worldContext.ts";
 
-/** Eating food and drinking potions, and the healing and buffs that follow (spec §6, #221, #222). */
+/** Eating food and drinking potions, and the healing and Virtues that follow (spec §6, #221, #222). */
 export class Eating {
   constructor(private readonly world: World) {}
 
@@ -83,7 +83,7 @@ export class Eating {
     this.world.events.push({ type: "eaten", player: id });
   }
 
-  /** One tick of a living player's healing: regeneration outside the lock, the healing pool, the Delicious buff, and a potion running out (spec §6, #221, #222). */
+  /** One tick of a living player's healing: regeneration outside the lock, the healing pool, a Delicious fish's own healing, and a potion's Virtue running out (spec §6, #221, #222). */
   heal(id: string, tick: number) {
     const player = this.world.player(id);
     const unsynced = this.world.unsynced(id);
