@@ -42,7 +42,6 @@ import {
   tilesApart,
   WALK_TICKS_PER_TILE,
   type Deal,
-  type VillagerId,
   type GatheringLeftField,
   type GatheringSkill,
   type FireLog,
@@ -53,18 +52,6 @@ import {
   type TileKind,
   type WorldEvent,
   lightTileAt,
-  PICKPOCKET_INTERVAL_TICKS,
-  PICKPOCKETS,
-  isPickpocketTarget,
-  pickpocketRefusal,
-  isStallKind,
-  stallRefusal,
-  isStrongboxKind,
-  strongboxRefusal,
-  type StallKind,
-  type StrongboxKind,
-  type MarkId,
-  type PickpocketTarget,
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { Enemies } from "./enemies.ts";
@@ -77,8 +64,7 @@ import { Fighting } from "./fighting.ts";
 import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
-import { PlayerTimers } from "./playerTimers.ts";
-import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
+import { ThievingTargets } from "./thievingTargets.ts";
 import {
   findPath,
   legalSteps,
@@ -123,16 +109,6 @@ export class Simulation {
   private enemies: Enemies;
   /** Every gathering site, by the tile that keys it. */
   private sites = new Map<string, GatheringSite>();
-  private marks = new Map<MarkId, Tile>();
-  /** Each of Marta's stalls by its kind: the region has one of each (#252). */
-  private stalls = new Map<StallKind, Tile>();
-  /** The stalls each player has emptied, and those Marta has closed to them, by username (#252). Not saved: a restart refills and reopens them. */
-  private stallsEmptied = new PlayerTimers();
-  private stallsClosed = new PlayerTimers();
-  /** Each strongbox by its kind: the region has at most one of each (#253). */
-  private strongboxes = new Map<StrongboxKind, Tile>();
-  /** The strongboxes each player has emptied, by username (#253). Not saved: a restart refills them. */
-  private strongboxesEmptied = new PlayerTimers();
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
@@ -140,6 +116,7 @@ export class Simulation {
   private readonly gear: Gear;
   private readonly eating: Eating;
   private readonly fighting: Fighting;
+  private readonly thieving: ThievingTargets;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -164,11 +141,8 @@ export class Simulation {
     this.eating = new Eating(this.world);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { villager, mark, stall, strongbox, station } = kind;
+        const { villager, station } = kind;
         if (villager) this.world.villagers.set(villager, { x, y });
-        if (mark) this.marks.set(mark, { x, y });
-        if (stall) this.stalls.set(stall, { x, y });
-        if (strongbox) this.strongboxes.set(strongbox, { x, y });
         if (station) (this.world.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const siteKind = kind[GATHERING[skill].site];
@@ -187,6 +161,7 @@ export class Simulation {
       this.windows,
       this.quests,
     );
+    this.thieving = new ThievingTargets(this.world, this.fighting);
     this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
     for (const pool of this.pools)
       for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
@@ -490,40 +465,19 @@ export class Simulation {
     if (action && this.world.canAct(id)) this.queuedActions.set(id, action);
   }
 
-  /** `target` comes straight off the network, so anything but a mark or pickpocketable villager standing in this region is ignored, as is a click the rules refuse (#250, #251). */
+  /** `target` comes straight off the network; see `ThievingTargets.pickpocketIntent`. */
   queuePickpocket(id: string, target: unknown) {
-    const player = this.state.players.get(id);
-    if (!player || !this.world.canAct(id) || typeof target !== "string") return;
-    if (!isPickpocketTarget(target) || !this.standingAt(target)) return;
-    if (pickpocketRefusal(PICKPOCKETS[target], player.thievingXp)) return;
-    this.queuedActions.set(id, { kind: "pickpocketing", target });
+    this.queue(id, this.thieving.pickpocketIntent(id, target));
   }
 
-  /** `stall` comes straight off the network, so anything but a stall standing in this region is ignored, as is a click the rules refuse (#252). */
+  /** `stall` comes straight off the network; see `ThievingTargets.stealIntent`. */
   queueSteal(id: string, stall: unknown) {
-    const player = this.state.players.get(id);
-    if (!player || !this.world.canAct(id) || typeof stall !== "string") return;
-    if (!isStallKind(stall) || !this.stalls.has(stall)) return;
-    if (stallRefusal(stall, player.thievingXp)) return;
-    this.queuedActions.set(id, { kind: "stealing", stall });
+    this.queue(id, this.thieving.stealIntent(id, stall));
   }
 
-  /** `strongbox` comes straight off the network, so anything but a strongbox standing in this region is ignored, as is a click the rules refuse (#253). */
+  /** `strongbox` comes straight off the network; see `ThievingTargets.openIntent`. */
   queueOpen(id: string, strongbox: unknown) {
-    const player = this.state.players.get(id);
-    if (!player || !this.world.canAct(id) || typeof strongbox !== "string")
-      return;
-    if (!isStrongboxKind(strongbox) || !this.strongboxes.has(strongbox)) return;
-    if (strongboxRefusal(strongbox, player.thievingXp)) return;
-    this.queuedActions.set(id, { kind: "opening", strongbox });
-  }
-
-  /** Where a pickpocket target stands in this region, a mark or a villager, if they do. */
-  private standingAt(target: PickpocketTarget) {
-    return (
-      this.marks.get(target as MarkId) ??
-      this.world.villagers.get(target as VillagerId)
-    );
+    this.queue(id, this.thieving.openIntent(id, strongbox));
   }
 
   /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
@@ -688,27 +642,8 @@ export class Simulation {
   }
 
   /** Restores the stalls and strongboxes this player emptied before leaving, as the events that emptied them. */
-  emptiedFor(
-    id: string,
-  ): Extract<WorldEvent, { type: "stallEmptied" | "strongboxEmptied" }>[] {
-    const player = this.state.players.get(id);
-    if (!player) return [];
-    const { username } = player;
-    const { tick } = this.state;
-    return [
-      ...[...this.stalls.keys()].map((stall) => ({
-        type: "stallEmptied" as const,
-        player: id,
-        stall,
-        ticks: this.stallsEmptied.remaining(username, stall, tick),
-      })),
-      ...[...this.strongboxes.keys()].map((strongbox) => ({
-        type: "strongboxEmptied" as const,
-        player: id,
-        strongbox,
-        ticks: this.strongboxesEmptied.remaining(username, strongbox, tick),
-      })),
-    ].filter(({ ticks }) => ticks > 0);
+  emptiedFor(id: string) {
+    return this.thieving.emptiedFor(id);
   }
 
   /** One tick, in the order of spec §6. */
@@ -721,7 +656,7 @@ export class Simulation {
     this.advanceMaking();
     this.advanceLighting();
     this.windows.advanceVisits();
-    this.advanceThieving();
+    this.thieving.advance();
     this.advanceTakes();
     this.fighting.advancePlayerSwings();
     this.syncActions();
@@ -861,10 +796,8 @@ export class Simulation {
       return action.at ?? this.world.stations[stationOf(action.item)];
     if (action?.kind === "visiting")
       return this.world.villagers.get(action.villager);
-    if (action?.kind === "pickpocketing") return this.standingAt(action.target);
-    if (action?.kind === "stealing") return this.stalls.get(action.stall);
-    if (action?.kind === "opening")
-      return this.strongboxes.get(action.strongbox);
+    const target = action && this.thieving.nextToOf(action);
+    if (target) return target;
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
   }
@@ -1137,97 +1070,6 @@ export class Simulation {
         addItems(inventory, inventoryCounts, item, groundItem.count);
       this.world.groundItems.take(action.groundItem, taken);
       takenThisTick.add(action.groundItem);
-    }
-  }
-
-  /**
-   * After the steps, so a pickpocket, a theft from a stall or a strongbox attempt lands on the tick
-   * of arrival, or as soon after as the attempt interval allows (#250, #252, #253). All three share
-   * the interval.
-   */
-  private advanceThieving() {
-    const { tick } = this.state;
-    this.stallsEmptied.forgetEnded(tick);
-    this.stallsClosed.forgetEnded(tick);
-    this.strongboxesEmptied.forgetEnded(tick);
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (
-        action?.kind !== "pickpocketing" &&
-        action?.kind !== "stealing" &&
-        action?.kind !== "opening"
-      )
-        continue;
-      if (unsynced.path.length || tick < unsynced.nextAttemptTick) continue;
-      unsynced.action = undefined;
-      unsynced.nextAttemptTick = tick + PICKPOCKET_INTERVAL_TICKS;
-      const player = this.state.players.get(id)!;
-      const world = {
-        random: this.random,
-        thievingXp: player.thievingXp,
-        earnXp: (gained: number) =>
-          this.world.earnXp(player, "thievingXp", gained),
-        give: (item: ItemId, count: number) =>
-          addItems(player.inventory, player.inventoryCounts, item, count),
-        drop: (item: ItemId, count: number) =>
-          this.world.groundItems.spawn(
-            player,
-            item,
-            count,
-            player.username,
-            tick,
-          ),
-        tell: (line: string) =>
-          this.events.push({ type: "told", player: id, line }),
-      };
-      if (action.kind === "pickpocketing") {
-        pickpocket(action.target, {
-          ...world,
-          health: player.health,
-          stun: (ticks, damage) => {
-            player.health -= damage;
-            this.makeBusy(id, ticks, { hittable: true });
-            this.events.push({ type: "stunned", player: id, damage });
-          },
-        });
-        continue;
-      }
-      const { username } = player;
-      if (action.kind === "opening") {
-        const { strongbox } = action;
-        openStrongbox(strongbox, {
-          ...world,
-          emptied: this.strongboxesEmptied.running(username, strongbox, tick),
-          empty: (ticks) => {
-            this.strongboxesEmptied.start(username, strongbox, tick, ticks);
-            this.events.push({
-              type: "strongboxEmptied",
-              player: id,
-              strongbox,
-              ticks,
-            });
-          },
-          springTrap: (ticks, hit) => {
-            const damage = Math.min(hit, player.health);
-            player.health -= damage;
-            this.events.push({ type: "trapSprung", player: id, damage });
-            if (player.health === 0) this.fighting.die(id, player);
-            else this.makeBusy(id, ticks, { hittable: true });
-          },
-        });
-        continue;
-      }
-      const { stall } = action;
-      stealFromStall(stall, {
-        ...world,
-        emptied: this.stallsEmptied.running(username, stall, tick),
-        closed: this.stallsClosed.running(username, stall, tick),
-        empty: (ticks) => {
-          this.stallsEmptied.start(username, stall, tick, ticks);
-          this.events.push({ type: "stallEmptied", player: id, stall, ticks });
-        },
-        close: (ticks) => this.stallsClosed.start(username, stall, tick, ticks),
-      });
     }
   }
 
