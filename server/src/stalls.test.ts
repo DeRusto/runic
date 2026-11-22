@@ -38,7 +38,6 @@ function addThief(
     {
       x: 1,
       y: 2,
-      combatXp: 0,
       defenseXp: 0,
       herblawXp: 0,
       hitpointsXp: 4050,

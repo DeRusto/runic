@@ -26,7 +26,6 @@ export function addGatherer(
     {
       x,
       y,
-      combatXp: 0,
       defenseXp: 0,
       herblawXp: 0,
       [GATHERING[skill].xpField]: xp,

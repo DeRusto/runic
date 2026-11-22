@@ -5,12 +5,12 @@ import { Simulation } from "./simulation.ts";
 
 const TILES = parseRegion(["TTTTT", "TR..T", "TTTTT"].join("\n"));
 const STARTING_PINS = [
-  "Combat",
+  "Attack",
+  "Strength",
   "Defense",
   "Herblaw",
   "Hitpoints",
   "Mining",
-  "Smithing",
 ];
 
 let sim: Simulation;
@@ -22,7 +22,7 @@ beforeEach(() => {
   sim.addPlayer("a");
 });
 
-test("a new player starts with today's skills pinned, Herblaw where Herblaw was, and Blocking not", () => {
+test("a new player starts with today's skills pinned, Attack and Strength where Combat was, and Blocking not", () => {
   expect(pins()).toEqual(STARTING_PINS);
 });
 
@@ -51,7 +51,6 @@ test("a save's experience and pins come back at login", () => {
   sim.addPlayer("b", {
     x: 1,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
@@ -70,7 +69,7 @@ test("a save's experience and pins come back at login", () => {
 });
 
 test("unpinning frees a pin, and pinning takes it", () => {
-  sim.pinSkill("a", { skill: "Combat", pinned: false });
+  sim.pinSkill("a", { skill: "Attack", pinned: false });
   sim.pinSkill("a", { skill: "Blocking", pinned: true });
   expect(pins()).toEqual([...STARTING_PINS.slice(1), "Blocking"]);
 });
@@ -81,20 +80,21 @@ test("a seventh pin is ignored", () => {
 });
 
 test("pinning a skill twice or unpinning one that isn't pinned changes nothing", () => {
-  sim.pinSkill("a", { skill: "Combat", pinned: false });
+  sim.pinSkill("a", { skill: "Attack", pinned: false });
   sim.pinSkill("a", { skill: "Defense", pinned: true });
-  sim.pinSkill("a", { skill: "Combat", pinned: false });
+  sim.pinSkill("a", { skill: "Attack", pinned: false });
   expect(pins()).toEqual(STARTING_PINS.slice(1));
 });
 
 test.each([
   [undefined],
   [null],
-  ["Combat"],
+  ["Attack"],
   [{ skill: "Fishing", pinned: true }],
-  [{ skill: "Combat" }],
-  [{ skill: "Combat", pinned: "false" }],
-  [{ skill: ["Combat"], pinned: false }],
+  [{ skill: "Combat", pinned: false }],
+  [{ skill: "Attack" }],
+  [{ skill: "Attack", pinned: "false" }],
+  [{ skill: ["Attack"], pinned: false }],
 ])("an invalid intent is ignored: %j", (intent) => {
   sim.pinSkill("a", intent as never);
   expect(pins()).toEqual(STARTING_PINS);
@@ -102,14 +102,14 @@ test.each([
 
 test("a player who isn't here is ignored", () => {
   expect(() =>
-    sim.pinSkill("nobody", { skill: "Combat", pinned: false }),
+    sim.pinSkill("nobody", { skill: "Attack", pinned: false }),
   ).not.toThrow();
 });
 
 test("pinning replaces no action", () => {
   sim.queueWalk("a", { x: 3, y: 1 });
   sim.tick();
-  sim.pinSkill("a", { skill: "Combat", pinned: false });
+  sim.pinSkill("a", { skill: "Attack", pinned: false });
   sim.tick();
   expect(me().action).toBe("walking");
   sim.tick();

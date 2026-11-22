@@ -41,7 +41,6 @@ function thief(
   sim.addPlayer("a", {
     x: 1,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,

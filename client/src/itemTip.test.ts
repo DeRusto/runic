@@ -7,7 +7,7 @@ const player = (
   smithingLevel = 1,
   craftingLevel = 1,
 ) => ({
-  combatXp: 0,
+  attackXp: 0,
   defenseXp: xpForLevel(defenseLevel),
   miningXp: 0,
   smithingXp: xpForLevel(smithingLevel),
@@ -111,7 +111,7 @@ describe("a smithing recipe's tip (spec §5)", () => {
     expect(recipeTip("copperSword", player(1))).toEqual({
       name: "Copper sword",
       quality: "common",
-      kind: "Weapon, needs Combat 1",
+      kind: "Weapon, needs Attack 1",
       stats: [
         "Adds 100 to your minimum and maximum hit.",
         "3 Copper bar (have 5)",

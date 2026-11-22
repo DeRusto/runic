@@ -20,7 +20,6 @@ function world(rows: string[], ...rolls: number[]) {
 const SAVE: PlayerSave = {
   x: 1,
   y: 1,
-  combatXp: 0,
   defenseXp: 0,
   herblawXp: 0,
   hitpointsXp: 4050,

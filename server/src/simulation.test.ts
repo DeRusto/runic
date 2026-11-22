@@ -325,13 +325,14 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     hitpointsXp: 4050,
     masteryHundredths: 0,
     pinnedSkills: [
-      "Combat",
+      "Attack",
+      "Strength",
       "Defense",
       "Herblaw",
       "Hitpoints",
       "Mining",
-      "Smithing",
     ],
+    stance: "balanced",
     health: 1000,
     inventory: EMPTY_INVENTORY,
     inventoryCounts: EMPTY_COUNTS,
@@ -357,7 +358,8 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
 const SAVED = {
   x: 2,
   y: 2,
-  combatXp: 1,
+  attackXp: 1,
+  strengthXp: 20,
   defenseXp: 2,
   herblawXp: 3,
   hitpointsXp: 4100,
@@ -396,6 +398,7 @@ const SAVED = {
   quests: { odoCopper: { stage: QUEST_DONE, turns: 2 } },
   questPoints: 3,
   identifiesEssence: true,
+  stance: "forceful" as const,
 };
 
 test("a returning player comes back exactly as saved", () => {

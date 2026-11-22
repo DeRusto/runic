@@ -1,6 +1,7 @@
 import {
   GEAR_SLOTS,
   PIN_INTENT,
+  STANCE_INTENT,
   TAKE_OFF_INTENT,
   xpForLevel,
 } from "@runic/shared";
@@ -59,7 +60,8 @@ const press = (key: string, more: object = {}) =>
 
 const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
   ({
-    combatXp: 0,
+    attackXp: 0,
+    strengthXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
@@ -82,12 +84,12 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
   }) as unknown as SyncedPlayer;
 
 const TODAY = [
-  "Combat",
+  "Attack",
+  "Strength",
   "Defense",
   "Herblaw",
   "Hitpoints",
   "Mining",
-  "Smithing",
 ];
 
 let room: { send: ReturnType<typeof vi.fn> };
@@ -263,7 +265,7 @@ describe("the Gear tab's stats", () => {
       stats({
         health: 850,
         maxHealth: 1040,
-        combatXp: xpForLevel(11),
+        attackXp: xpForLevel(11),
         defenseXp: xpForLevel(12),
         blockingXp: xpForLevel(11),
         weapon: "emberiteSword",
@@ -286,9 +288,60 @@ describe("the Gear tab's stats", () => {
 
   test("the rows follow health and experience on each draw", () => {
     stats({});
-    expect(stats({ health: 600, combatXp: xpForLevel(2) }).slice(0, 2)).toEqual(
+    expect(stats({ health: 600, attackXp: xpForLevel(2) }).slice(0, 2)).toEqual(
       ["Health 600 / 1000", "Hit chance 40.5%"],
     );
+  });
+
+  test("Strength raises the max hit and Attack the hit chance", () => {
+    expect(stats({ strengthXp: xpForLevel(20) }).slice(1, 4)).toEqual([
+      "Hit chance 40%",
+      "Min hit 100",
+      "Max hit 300",
+    ]);
+  });
+});
+
+describe("the stance", () => {
+  const buttons = () => el("stance").children;
+  const drawn = (stance: string) =>
+    sheet.drawStance({ stance } as unknown as SyncedPlayer);
+
+  test("offers Balanced, Precise and Forceful, each saying what it trains", () => {
+    drawn("balanced");
+    expect(buttons().map((button: any) => button.textContent)).toEqual([
+      "Balanced",
+      "Precise",
+      "Forceful",
+    ]);
+    expect(el("stance").attributes["aria-label"]).toBe("Stance");
+    expect(
+      buttons().map((button: any) => button.attributes["aria-label"]),
+    ).toEqual([
+      "Balanced: Trains Attack and Strength evenly",
+      "Precise: Trains Attack",
+      "Forceful: Trains Strength",
+    ]);
+    expect(buttons().map(tipOf)).toEqual([
+      "Trains Attack and Strength evenly",
+      "Trains Attack",
+      "Trains Strength",
+    ]);
+  });
+
+  test("shows the player's stance as pressed, and what it trains under the buttons", () => {
+    drawn("precise");
+    expect(
+      buttons().map((button: any) => button.attributes["aria-pressed"]),
+    ).toEqual(["false", "true", "false"]);
+    expect(el("stance-trains").textContent).toBe("Trains Attack");
+    expect(el("stance").attributes["aria-describedby"]).toBe("stance-trains");
+  });
+
+  test("a click sends the stance chosen", () => {
+    drawn("balanced");
+    buttons()[2].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(STANCE_INTENT, "forceful");
   });
 });
 
@@ -391,7 +444,8 @@ describe("the Skills tab", () => {
     sheet.drawPins(me(TODAY));
     sheet.drawSkills(me(TODAY, { miningXp: 75 }));
     expect(rows().map(({ name }) => name.textContent)).toEqual([
-      "Combat 1",
+      "Attack 1",
+      "Strength 1",
       "Defense 1",
       "Herblaw 1",
       "Hitpoints 10",
@@ -421,18 +475,18 @@ describe("the Skills tab", () => {
     const [combat] = el("sheet-skills").children;
     sheet.drawSkills(me(TODAY));
     expect(combat.textContent).toBe("Combat level 3 · Total level 32");
-    sheet.drawSkills(me(TODAY, { combatXp: 50, miningXp: 50 }));
-    expect(combat.textContent).toBe("Combat level 4 · Total level 33");
+    sheet.drawSkills(me(TODAY, { attackXp: 50, strengthXp: 50, miningXp: 50 }));
+    expect(combat.textContent).toBe("Combat level 4 · Total level 35");
   });
 
   test("at six pins the other pins are disabled, and pinned ones still work", () => {
     sheet.drawPins(me(TODAY));
     expect(row("Blocking").pin.attributes["aria-disabled"]).toBe("true");
-    expect(row("Combat").pin.attributes["aria-disabled"]).toBe("false");
-    expect(row("Combat").pin.attributes["aria-pressed"]).toBe("true");
+    expect(row("Attack").pin.attributes["aria-disabled"]).toBe("false");
+    expect(row("Attack").pin.attributes["aria-pressed"]).toBe("true");
     expect(row("Blocking").pin.attributes["aria-pressed"]).toBe("false");
     expect(tipOf(row("Blocking").pin)).toBe("The bar holds 6: unpin one first");
-    expect(tipOf(row("Combat").pin)).toBe("Unpin from the bar");
+    expect(tipOf(row("Attack").pin)).toBe("Unpin from the bar");
   });
 
   test("under six pins every pin works", () => {
@@ -440,14 +494,14 @@ describe("the Skills tab", () => {
     expect(
       rows().every(({ pin }) => pin.attributes["aria-disabled"] === "false"),
     ).toBe(true);
-    expect(tipOf(row("Combat").pin)).toBe("Pin to the bar");
+    expect(tipOf(row("Attack").pin)).toBe("Pin to the bar");
   });
 
   test("a pin sends what it would become", () => {
     sheet.drawPins(me(TODAY.slice(1)));
-    row("Combat").pin.onclick!();
+    row("Attack").pin.onclick!();
     expect(room.send).toHaveBeenLastCalledWith(PIN_INTENT, {
-      skill: "Combat",
+      skill: "Attack",
       pinned: true,
     });
     row("Defense").pin.onclick!();

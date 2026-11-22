@@ -72,16 +72,16 @@ test("experience at the cap earns nothing, and Mastery's own can't pass it", () 
   expect(me().masteryHundredths).toBe(0);
 });
 
-test("one swing pays Combat and Hitpoints, and earns a share of each", () => {
+test("one swing pays Attack, Strength and Hitpoints, and earns a share of each", () => {
   startAt(SPIDER_TILES);
   const hitpointsBefore = me().hitpointsXp;
   // Hits, for the lowest damage.
   rolls = [0, 0];
   sim.queueTarget("a", "0");
   sim.tick();
-  expect(me().combatXp).toBe(6);
+  expect(me()).toMatchObject({ attackXp: 3, strengthXp: 3 });
   expect(me().hitpointsXp).toBe(hitpointsBefore + 6);
-  // 7% of 6, twice.
+  // 7% of 3, twice, and of 6.
   expect(me()).toMatchObject({ masteryXp: 0, masteryHundredths: 84 });
 });
 
@@ -110,7 +110,7 @@ test("Mastery and its fraction are saved and come back at login", () => {
 
 test("Mastery can be pinned", () => {
   startAt(BUSH_TILES, { masteryXp: xpForLevel(2) });
-  sim.pinSkill("a", { skill: "Smithing", pinned: false });
+  sim.pinSkill("a", { skill: "Mining", pinned: false });
   sim.pinSkill("a", { skill: "Mastery", pinned: true });
   expect([...me().pinnedSkills]).toContain("Mastery");
 });

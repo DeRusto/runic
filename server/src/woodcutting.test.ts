@@ -115,7 +115,6 @@ test("a save from before Woodcutting loads with none", () => {
   sim.addPlayer("c", {
     x: 2,
     y: 2,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,

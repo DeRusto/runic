@@ -1,7 +1,9 @@
 import {
   SKILLS,
   STARTING_PINNED_SKILLS,
+  STARTING_STANCE,
   type QuestProgress,
+  type Stance,
 } from "@runic/shared";
 import {
   index,
@@ -25,9 +27,8 @@ export const accounts = sqliteTable("accounts", {
 });
 
 type XpField = (typeof SKILLS)[number][1];
-/** The skills the first save had: their columns came before any default, so they have none. */
+/** The skills the first save had that are still trained: their columns came before any default, so they have none. */
 const FOUNDING_SKILLS = [
-  "combatXp",
   "defenseXp",
   "herblawXp",
   "hitpointsXp",
@@ -100,6 +101,8 @@ export const players = sqliteTable("players", {
   identifiesEssence: integer("identifies_essence", { mode: "boolean" })
     .notNull()
     .default(false),
+  /** Where melee experience goes (melee rework spec §3). */
+  stance: text().notNull().$type<Stance>().default(STARTING_STANCE),
 });
 
 /**

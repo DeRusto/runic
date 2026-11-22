@@ -4,6 +4,7 @@ import {
   enemyHit,
   FIGHT_BACK_DELAY_TICKS,
   GEAR_SLOTS,
+  isStance,
   itemTag,
   MIGHT_POTION_HIT,
   PLAYER_DEAD_TICKS,
@@ -29,6 +30,12 @@ export class Fighting {
     private readonly windows: VillagerWindows,
     private readonly quests: Quests,
   ) {}
+
+  /** Comes straight off the network, so anything but a stance is ignored. Like pins, it skips the queue: the next swing reads it. */
+  setStance(id: string, stance: string) {
+    const player = this.world.state.players.get(id);
+    if (player && isStance(stance)) player.stance = stance;
+  }
 
   /** After the moves, so the first swing lands on the tick the player arrives. */
   advancePlayerSwings() {
@@ -58,6 +65,7 @@ export class Fighting {
         : 0;
     const { damage, critical, xp } = playerHit(
       player,
+      player.stance,
       might,
       enemy.health,
       this.world.random,

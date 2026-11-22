@@ -13,7 +13,7 @@ import {
 import { TIERS } from "./region.ts";
 import { xpForLevel } from "./skills.ts";
 
-const combat = (combatXp: number) => ({ combatXp, defenseXp: 0 });
+const attack = (attackXp: number) => ({ attackXp, defenseXp: 0 });
 
 test("swords add 100, 150, 200, 250 and 300 by tier", () => {
   expect(GEAR.get("copperSword")?.hitBonus).toBe(100);
@@ -23,24 +23,24 @@ test("swords add 100, 150, 200, 250 and 300 by tier", () => {
   expect(GEAR.get("emberiteSword")?.hitBonus).toBe(300);
 });
 
-test("each tier's sword is gated at its Combat level", () => {
-  expect(gearRefusal("copperSword", combat(0))).toBeUndefined();
-  expect(gearRefusal("bronzeSword", combat(xpForLevel(4)))).toBe(
-    "You need Combat 5 to equip this.",
+test("each tier's sword is gated at its Attack level", () => {
+  expect(gearRefusal("copperSword", attack(0))).toBeUndefined();
+  expect(gearRefusal("bronzeSword", attack(xpForLevel(4)))).toBe(
+    "You need Attack 5 to equip this.",
   );
-  expect(gearRefusal("bronzeSword", combat(xpForLevel(5)))).toBeUndefined();
-  expect(gearRefusal("steelSword", combat(xpForLevel(14)))).toBe(
-    "You need Combat 15 to equip this.",
+  expect(gearRefusal("bronzeSword", attack(xpForLevel(5)))).toBeUndefined();
+  expect(gearRefusal("steelSword", attack(xpForLevel(14)))).toBe(
+    "You need Attack 15 to equip this.",
   );
-  expect(gearRefusal("steelSword", combat(xpForLevel(15)))).toBeUndefined();
-  expect(gearRefusal("ironSword", combat(4049))).toBe(
-    "You need Combat 10 to equip this.",
+  expect(gearRefusal("steelSword", attack(xpForLevel(15)))).toBeUndefined();
+  expect(gearRefusal("ironSword", attack(4049))).toBe(
+    "You need Attack 10 to equip this.",
   );
-  expect(gearRefusal("ironSword", combat(4050))).toBeUndefined();
-  expect(gearRefusal("emberiteSword", combat(18049))).toBe(
-    "You need Combat 20 to equip this.",
+  expect(gearRefusal("ironSword", attack(4050))).toBeUndefined();
+  expect(gearRefusal("emberiteSword", attack(18049))).toBe(
+    "You need Attack 20 to equip this.",
   );
-  expect(gearRefusal("emberiteSword", combat(18050))).toBeUndefined();
+  expect(gearRefusal("emberiteSword", attack(18050))).toBeUndefined();
 });
 
 test("shields start at 10%, 15%, 20%, 25% and 30% by tier", () => {
@@ -51,8 +51,8 @@ test("shields start at 10%, 15%, 20%, 25% and 30% by tier", () => {
   expect(GEAR.get("emberiteShield")?.blockChance).toBe(0.3);
 });
 
-test("each tier's shield is gated at its Defense level, whatever the Combat level", () => {
-  const defense = (defenseXp: number) => ({ combatXp: 18050, defenseXp });
+test("each tier's shield is gated at its Defense level, whatever the Attack level", () => {
+  const defense = (defenseXp: number) => ({ attackXp: 18050, defenseXp });
   expect(gearRefusal("copperShield", defense(0))).toBeUndefined();
   expect(gearRefusal("bronzeShield", defense(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
@@ -79,8 +79,8 @@ test("a shield goes in the shield slot and says what it does", () => {
 });
 
 test("what isn't gear is never refused", () => {
-  expect(gearRefusal("berry", combat(0))).toBeUndefined();
-  expect(gearRefusal("", combat(0))).toBeUndefined();
+  expect(gearRefusal("berry", attack(0))).toBeUndefined();
+  expect(gearRefusal("", attack(0))).toBeUndefined();
 });
 
 test("a sword goes in the weapon slot and says what it does", () => {
@@ -98,19 +98,19 @@ test("the bows are the first weapons without a blade, and mirror the sword ladde
     slot: "weapon",
     does: "Adds 100 to your minimum and maximum hit",
   });
-  // The gate is Combat for now, at the levels their woods' gates sit at: Phase 8 re-gates on Ranged and tunes.
-  expect(gearRefusal("birchBow", combat(0))).toBeUndefined();
-  expect(gearRefusal("oakBow", combat(4049))).toBe(
-    "You need Combat 10 to equip this.",
+  // The gate is Attack, as for every weapon, until the Ranged milestone re-gates bows on Ranged and tunes them.
+  expect(gearRefusal("birchBow", attack(0))).toBeUndefined();
+  expect(gearRefusal("oakBow", attack(4049))).toBe(
+    "You need Attack 10 to equip this.",
   );
-  expect(gearRefusal("oakBow", combat(4050))).toBeUndefined();
-  expect(gearRefusal("charwoodBow", combat(18049))).toBe(
-    "You need Combat 20 to equip this.",
+  expect(gearRefusal("oakBow", attack(4050))).toBeUndefined();
+  expect(gearRefusal("charwoodBow", attack(18049))).toBe(
+    "You need Attack 20 to equip this.",
   );
-  expect(gearRefusal("charwoodBow", combat(18050))).toBeUndefined();
+  expect(gearRefusal("charwoodBow", attack(18050))).toBeUndefined();
 });
 
-test("a bow's Virtue sizes like the metal tier its Combat gate matches (#228)", () => {
+test("a bow's Virtue sizes like the metal tier its Attack gate matches (#228)", () => {
   expect(virtueOf({ weapon: "birchBow:uncommon:fortitude" }, "fortitude")).toBe(
     20,
   );
@@ -139,7 +139,7 @@ test("armour takes 2/4/2% up to 6/12/6% by tier, for 8%, 12%, 16%, 20% and 24% a
 });
 
 test("each tier's armour is gated at its Defense level", () => {
-  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
   expect(gearRefusal("copperHelmet", defense(0))).toBeUndefined();
   expect(gearRefusal("bronzeHelmet", defense(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
@@ -163,8 +163,8 @@ test("an improved piece has its common form's base stats and gate", () => {
   expect(gearOf("copperChestplate:rare:fortitude")).toBe(
     GEAR.get("copperChestplate"),
   );
-  expect(gearRefusal("ironSword:uncommon:might", combat(0))).toBe(
-    "You need Combat 10 to equip this.",
+  expect(gearRefusal("ironSword:uncommon:might", attack(0))).toBe(
+    "You need Attack 10 to equip this.",
   );
   expect(
     armourPercentOf({
@@ -221,7 +221,7 @@ test("the Gear tab line gives the Virtue at its size, and nothing for a common p
 });
 
 describe("capes (#217)", () => {
-  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
 
   test("a cape is small armour on the hands' line, in the cape slot, gated at its Defense level", () => {
     expect(GEAR.get("copperMightCape")).toMatchObject({
@@ -289,7 +289,7 @@ describe("capes (#217)", () => {
 });
 
 describe("hands and feet (#238)", () => {
-  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
 
   test("the hands take 1–5% and the feet 2–6% off by tier, on the helmet's line (#217)", () => {
     for (const [tier, hands, feet] of [
@@ -326,7 +326,7 @@ describe("hands and feet (#238)", () => {
 });
 
 describe("necks and rings (#238)", () => {
-  const defense = (defenseXp: number) => ({ combatXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
 
   test("the amulets carry 5/8/10/13/16 tenths of Avoidance by tier", () => {
     for (const [tier, tenths] of [

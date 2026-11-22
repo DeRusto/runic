@@ -41,7 +41,6 @@ function addThief(
     {
       x: 1,
       y: 2,
-      combatXp: 0,
       defenseXp: 0,
       herblawXp: 0,
       // Hitpoints 30: room for every trap's hit with health to spare.

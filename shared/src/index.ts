@@ -61,6 +61,8 @@ export const EQUIP_INTENT = "equip";
 export const TAKE_OFF_INTENT = "takeOff";
 /** The pin intent's message type; its payload is `{ skill, pinned }`, with `pinned` false to unpin. */
 export const PIN_INTENT = "pin";
+/** The stance intent's message type; its payload is the `Stance`. */
+export const STANCE_INTENT = "stance";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
@@ -147,10 +149,10 @@ export const GROUND_ITEM_DESPAWN_TICKS = 600;
 
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
 export const PLAYER_HIT_CHANCE = 0.4;
-export const PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL = 0.005;
+export const PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL = 0.005;
 export const PLAYER_BASE_DAMAGE = 200;
-/** Each this many Combat levels adds 100 to the maximum hit. */
-export const COMBAT_LEVELS_PER_DAMAGE = 20;
+/** Each this many Strength levels adds 100 to the maximum hit. */
+export const STRENGTH_LEVELS_PER_DAMAGE = 20;
 // Experience per 100 damage; each swing's rounds to the nearest whole number.
 export const XP_PER_DAMAGE_DEALT = 6;
 export const DEFENSE_XP_PER_ENEMY_SWING = 6;
@@ -262,6 +264,7 @@ export * from "./skills.ts";
 export * from "./thieving.ts";
 export * from "./stalls.ts";
 export * from "./strongboxes.ts";
+export * from "./stances.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";

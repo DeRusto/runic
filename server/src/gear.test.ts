@@ -32,7 +32,6 @@ const start = ({ held = [], tiles = TILES, ...fields }: Start = {}) => {
   sim.addPlayer("a", {
     x: 1,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: LEVEL_10_XP,
@@ -68,7 +67,7 @@ describe("equipping", () => {
   test("with one worn, the two trade places, even in a full inventory", () => {
     start({
       held: Array<string>(INVENTORY_SLOTS).fill("ironSword"),
-      combatXp: LEVEL_10_XP,
+      attackXp: LEVEL_10_XP,
       weapon: "copperSword",
     });
     sim.equip("a", 4);
@@ -79,17 +78,17 @@ describe("equipping", () => {
   });
 
   test("gear above the player's level is refused with a line", () => {
-    start({ held: ["ironSword"], combatXp: LEVEL_10_XP - 1 });
+    start({ held: ["ironSword"], attackXp: LEVEL_10_XP - 1 });
     sim.equip("a", 0);
     expect(me().weapon).toBe("");
     expect(me().inventory[0]).toBe("ironSword");
     expect(sim.events).toEqual([
-      { type: "told", player: "a", line: "You need Combat 10 to equip this." },
+      { type: "told", player: "a", line: "You need Attack 10 to equip this." },
     ]);
   });
 
   test("gear at the player's level is allowed", () => {
-    start({ held: ["emberiteSword"], combatXp: LEVEL_20_XP });
+    start({ held: ["emberiteSword"], attackXp: LEVEL_20_XP });
     sim.equip("a", 0);
     expect(me().weapon).toBe("emberiteSword");
   });
@@ -97,7 +96,7 @@ describe("equipping", () => {
   test("a drop waiting on that slot doesn't drop the sword traded into it", () => {
     start({
       held: ["ironSword"],
-      combatXp: LEVEL_10_XP,
+      attackXp: LEVEL_10_XP,
       weapon: "copperSword",
     });
     sim.queueDrop("a", 0, 20);
@@ -196,7 +195,7 @@ describe("what lasts", () => {
   });
 });
 
-describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Combat levels + bonus)", () => {
+describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Strength levels + bonus)", () => {
   const LOWEST = 0;
   const HIGHEST = 0.999;
   const swing = (roll: number, fields: Start) => {
@@ -212,9 +211,9 @@ describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Combat levels + bo
     ["copperSword", 0, 200, 300],
     ["ironSword", LEVEL_10_XP, 300, 400],
     ["emberiteSword", LEVEL_20_XP, 400, 600],
-  ])("%j at %i experience", (weapon, combatXp, low, high) => {
-    expect(swing(LOWEST, { weapon, combatXp })).toBe(low);
-    expect(swing(HIGHEST, { weapon, combatXp })).toBe(high);
+  ])("%j at %i experience", (weapon, strengthXp, low, high) => {
+    expect(swing(LOWEST, { weapon, strengthXp })).toBe(low);
+    expect(swing(HIGHEST, { weapon, strengthXp })).toBe(high);
   });
 
   // 1,000 evenly spread damage rolls stand in for many swings.
@@ -225,10 +224,13 @@ describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Combat levels + bo
     ["emberiteSword", LEVEL_20_XP, 500, 30],
   ])(
     "%j at %i experience averages today's hit ×100, and today's experience",
-    (weapon, combatXp, hit, xp) => {
+    (weapon, strengthXp, hit, xp) => {
       const swung = Array.from({ length: 1000 }, (_, i) => {
-        const damage = swing((i + 0.5) / 1000, { weapon, combatXp });
-        return { damage, xp: me().combatXp - combatXp };
+        const damage = swing((i + 0.5) / 1000, { weapon, strengthXp });
+        return {
+          damage,
+          xp: me().attackXp + me().strengthXp - strengthXp,
+        };
       });
       const mean = (of: (one: (typeof swung)[number]) => number) =>
         swung.reduce((total, one) => total + of(one), 0) / swung.length;
@@ -238,7 +240,7 @@ describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Combat levels + bo
   );
 
   test("a crit multiplies the hit with its sword bonus", () => {
-    start({ weapon: "emberiteSword", combatXp: LEVEL_20_XP });
+    start({ weapon: "emberiteSword", strengthXp: LEVEL_20_XP });
     rolls = [0, LOWEST, 0];
     sim.queueTarget("a", "0");
     sim.tick();
@@ -263,7 +265,7 @@ describe("damage on a hit is (100 + bonus)..(200 + 100 per 20 Combat levels + bo
     sim.queueTarget("a", "0");
     sim.tick();
     expect(swings()).toEqual([100]);
-    expect(me().combatXp).toBe(6);
+    expect(me()).toMatchObject({ attackXp: 3, strengthXp: 3 });
   });
 });
 
@@ -544,18 +546,23 @@ describe("anything invalid off the network is ignored", () => {
 
 describe("improved gear", () => {
   test("is equipped at its common form's gate", () => {
-    start({ held: ["ironSword:uncommon:might"], combatXp: LEVEL_10_XP - 1 });
+    start({ held: ["ironSword:uncommon:might"], attackXp: LEVEL_10_XP - 1 });
     sim.equip("a", 0);
     expect(me().weapon).toBe("");
-    expect(told()).toEqual(["You need Combat 10 to equip this."]);
-    start({ held: ["ironSword:uncommon:might"], combatXp: LEVEL_10_XP });
+    expect(told()).toEqual(["You need Attack 10 to equip this."]);
+    start({ held: ["ironSword:uncommon:might"], attackXp: LEVEL_10_XP });
     sim.equip("a", 0);
     expect(me().weapon).toBe("ironSword:uncommon:might");
     expect(me().inventory[0]).toBe(EMPTY_SLOT);
   });
 
   test("swings with its common form's hit bonus", () => {
-    start({ weapon: "emberiteSword:rare:fortitude", combatXp: LEVEL_20_XP });
+    start({
+      weapon: "emberiteSword:rare:fortitude",
+      attackXp: LEVEL_20_XP,
+      strengthXp: LEVEL_20_XP,
+    });
+    // The lowest damage roll: Strength raises only the max hit, so the min is 100 plus the bonus.
     rolls = [0, 0, 0];
     sim.queueTarget("a", "0");
     sim.tick();
@@ -601,7 +608,11 @@ describe("Virtues", () => {
   });
 
   test("a critical multiplies Might with the rest of the hit", () => {
-    start({ weapon: "emberiteSword:rare:might", combatXp: LEVEL_20_XP });
+    start({
+      weapon: "emberiteSword:rare:might",
+      attackXp: LEVEL_20_XP,
+      strengthXp: LEVEL_20_XP,
+    });
     rolls = [0, 0, 0];
     sim.queueTarget("a", "0");
     sim.tick();

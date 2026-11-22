@@ -403,6 +403,11 @@ export class Simulation {
       pins.push(skill);
   }
 
+  /** `stance` comes straight off the network; see `Fighting.setStance`. */
+  setStance(id: string, stance: string) {
+    this.fighting.setStance(id, stance);
+  }
+
   /** `slot` comes straight off the network; see `Gear.equip`. */
   equip(id: string, slot: number) {
     this.gear.equip(id, slot);

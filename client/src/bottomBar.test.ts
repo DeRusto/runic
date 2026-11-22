@@ -97,12 +97,12 @@ function signal<Args extends unknown[]>() {
 }
 
 const TODAY = [
-  "Combat",
+  "Attack",
+  "Strength",
   "Defense",
   "Herblaw",
   "Hitpoints",
   "Mining",
-  "Smithing",
 ];
 
 /** Our player, holding these [item, count] stacks from slot 0. */
@@ -113,7 +113,8 @@ const stateHolding = (...stacks: [string, number][]) => ({
       {
         health: 1000,
         maxHealth: 1000,
-        combatXp: 0,
+        attackXp: 0,
+        strengthXp: 0,
         defenseXp: 0,
         herblawXp: 0,
         hitpointsXp: 0,
@@ -311,14 +312,21 @@ describe("the skills column", () => {
       .map((child) => child.children[0]?.textContent ?? child.textContent);
 
   test("shows pinned skills in the sheet's order, not the order of pinning", () => {
-    room.onStateChange.invoke(statePinning("Smithing", "Blocking", "Combat"));
+    room.onStateChange.invoke(
+      statePinning("Smithing", "Blocking", "Strength", "Attack"),
+    );
     nextFrame();
-    expect(shown()).toEqual(["Combat 1", "Smithing 1", "Blocking 1"]);
+    expect(shown()).toEqual([
+      "Attack 1",
+      "Strength 1",
+      "Smithing 1",
+      "Blocking 1",
+    ]);
   });
 
   test("a skill's bar shows its total experience in the tooltip (spec §5)", () => {
-    const state = statePinning("Combat");
-    state.players.get("me")!.combatXp = 12345;
+    const state = statePinning("Attack");
+    state.players.get("me")!.attackXp = 12345;
     room.onStateChange.invoke(state);
     nextFrame();
     const bar = skillsBox.children[0].children.at(-1);
@@ -425,13 +433,13 @@ describe("gear in the bar", () => {
   test("gear they can't wear yet is greyed with the reason, until they can", () => {
     expect(slot(0).dataset.locked).toBe("true");
     expect(slot(0).ariaLabel).toBe(
-      "Iron sword. You need Combat 10 to equip this.",
+      "Iron sword. You need Attack 10 to equip this.",
     );
     expect(pointAt(0)).toMatch(
-      /\[tip-refusal\]You need Combat 10 to equip this\.$/,
+      /\[tip-refusal\]You need Attack 10 to equip this\.$/,
     );
     const state = stateHolding(["ironSword", 1]);
-    state.players.get("me")!.combatXp = LEVEL_10_XP;
+    state.players.get("me")!.attackXp = LEVEL_10_XP;
     room.onStateChange.invoke(state);
     nextFrame();
     expect(slot(0).dataset.locked).toBe("false");

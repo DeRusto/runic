@@ -167,7 +167,7 @@ A building in the village, drawn from the tiles it stands on. It blocks walking 
 _Avoid_: Building, home
 
 **Enemy**:
-A creature in a field that players fight to train Combat.
+A creature in a field that players fight to train Attack and Strength.
 _Avoid_: Mob, monster, NPC
 
 **Spider**:
@@ -235,18 +235,29 @@ A trainable ability with its own experience and level, raised by doing the match
 _Avoid_: Stat, attribute, profession
 
 **Total level**:
-The sum of a player's levels across the 23 registered skills, at most 2,277. Combat doesn't count: it is replaced when it splits.
+The sum of a player's levels across the 23 registered skills, at most 2,277.
 _Avoid_: Overall level, combat level
 
 **Combat level**:
-How strong a fighter a player is, worked out from their combat skills: a base of Defense, Blocking, Hitpoints and half Prayer, plus the best of melee, Ranged and Magic. A fresh player is 3. Not the level of the Combat skill.
+How strong a fighter a player is, worked out from their combat skills: a base of Defense, Blocking, Hitpoints and half Prayer, plus the best of melee (Attack and Strength), Ranged and Magic. A fresh player is 3.
 
 **Mastery**:
 A skill with no activity of its own: it gains a 7% share of the experience that lands in every other skill, counted separately for each. Quest experience and experience moved by a split earn no share.
 
-**Combat**:
-The skill that raises how often and how hard a player hits; trained by dealing damage to enemies.
-_Avoid_: Melee, fighting, attack
+**Attack**:
+The skill that raises how often a player's melee swing lands, and gates which weapons they can wield; trained by dealing melee damage, as the stance directs.
+_Avoid_: Accuracy (that's gear's points), Combat
+
+**Strength**:
+The skill that raises a player's max hit in melee, by 100 every 20 levels; trained by dealing melee damage, as the stance directs.
+_Avoid_: Power, damage skill, Combat
+
+**Stance**:
+How a player fights in melee, chosen on the character sheet's Gear tab: Balanced splits each hit's melee experience evenly between Attack and Strength, Attack taking the odd point of an odd total, Precise gives it all to Attack, and Forceful all to Strength. It changes only where experience goes, never the hit itself. A new player starts Balanced.
+_Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
+
+**Combat** (retired):
+The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
 
 **Hitpoints**:
 The skill that sets a player's maximum health; trained by dealing damage. Players start at level 10.
@@ -582,7 +593,7 @@ What a player equips to fight better: a weapon, which raises how hard they hit, 
 _Avoid_: Equipment
 
 **Bow**:
-A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot and adds to the hit like a sword, at the Combat level its wood's gate sits at; Phase 8 re-gates it on Ranged and tunes the bonus (#228). It rolls improved versions like all gear.
+A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot and adds to the hit like a sword, gated on Attack at the level its wood's gate sits at; the Ranged milestone of Phase 8 re-gates it on Ranged and tunes the bonus (#228). It rolls improved versions like all gear.
 _Avoid_: Ranged weapon, longbow
 
 **Improved item**:

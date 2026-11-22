@@ -52,7 +52,6 @@ function addShopper(id: string, ...stacks: [string, number][]) {
   });
   sim.addPlayer(id, {
     ...BESIDE_MARTA,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
