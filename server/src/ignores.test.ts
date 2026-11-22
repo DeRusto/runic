@@ -16,7 +16,7 @@ import { startServer } from "./server.ts";
 import { freePort, testToken } from "./testToken.ts";
 import type { WorldRoom } from "./WorldRoom.ts";
 
-const PORT = await freePort();
+let PORT = await freePort();
 let server: Awaited<ReturnType<typeof startServer>>;
 
 /** A logged-in player, every chat-box line they have received, and the last lists sent to them. */
@@ -55,15 +55,26 @@ let me: Player;
 let pest: Player;
 let bystander: Player;
 
+// Leave room for port retries and four logins under full parallel load.
 beforeAll(async () => {
-  server = await startServer(PORT);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      server = await startServer(PORT);
+      break;
+    } catch (error) {
+      if (attempt === 2 || (error as NodeJS.ErrnoException).code !== "EACCES")
+        throw error;
+      // Windows can refuse a port between the probe closing and this bind (see #239).
+      PORT = await freePort();
+    }
+  }
   // An account that exists but is never online.
   await testToken(PORT, "IgAway");
   me = await joinAs("IgMe");
   pest = await joinAs("IgPest");
   bystander = await joinAs("IgBystander");
-});
-afterAll(() => server.gracefullyShutdown(false));
+}, 30_000);
+afterAll(() => server?.gracefullyShutdown(false));
 beforeEach(() => {
   for (const { lines } of [me, pest, bystander]) lines.length = 0;
 });
