@@ -120,6 +120,9 @@ import {
   PICKPOCKETS,
   isPickpocketTarget,
   pickpocketRefusal,
+  isStallKind,
+  stallRefusal,
+  type StallKind,
   type MarkId,
   type PickpocketTarget,
 } from "@runic/shared";
@@ -128,7 +131,8 @@ import { Enemies, Enemy } from "./enemies.ts";
 import { GroundItem, GroundItems } from "./groundItems.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
-import { pickpocket } from "./thieving.ts";
+import { PlayerTimers } from "./playerTimers.ts";
+import { pickpocket, stealFromStall } from "./thieving.ts";
 import {
   findPath,
   legalSteps,
@@ -294,6 +298,8 @@ type UnsyncedAction =
   | { kind: "following"; player: string }
   /** One attempt on arrival, once the attempt interval allows (#250). */
   | { kind: "pickpocketing"; target: PickpocketTarget }
+  /** One theft on arrival, once the attempt interval allows (#252). */
+  | { kind: "stealing"; stall: StallKind }
   /**
    * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
    * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
@@ -323,7 +329,8 @@ type QueuedAction =
   | { kind: "lighting"; slot: number }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
-  | { kind: "pickpocketing"; target: PickpocketTarget };
+  | { kind: "pickpocketing"; target: PickpocketTarget }
+  | { kind: "stealing"; stall: StallKind };
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -376,6 +383,11 @@ export class Simulation {
   private sites = new Map<string, GatheringSite>();
   private villagers = new Map<VillagerId, Tile>();
   private marks = new Map<MarkId, Tile>();
+  /** Each of Marta's stalls by its kind: the region has one of each (#252). */
+  private stalls = new Map<StallKind, Tile>();
+  /** The stalls each player has emptied, and those Marta has closed to them, by username (#252). Not saved: a restart refills and reopens them. */
+  private stallsEmptied = new PlayerTimers();
+  private stallsClosed = new PlayerTimers();
   /**
    * Each player's open villager window, the villager they must stay beside, and for a
    * conversation the node whose choices they can pick from, if any. A player has at most one.
@@ -416,9 +428,10 @@ export class Simulation {
     this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
-        const { villager, mark, station } = kind;
+        const { villager, mark, stall, station } = kind;
         if (villager) this.villagers.set(villager, { x, y });
         if (mark) this.marks.set(mark, { x, y });
+        if (stall) this.stalls.set(stall, { x, y });
         if (station) (this.stations[station] ??= []).push({ x, y });
         for (const skill of GATHERING_SKILLS) {
           const siteKind = kind[GATHERING[skill].site];
@@ -777,6 +790,15 @@ export class Simulation {
     if (!isPickpocketTarget(target) || !this.standingAt(target)) return;
     if (pickpocketRefusal(PICKPOCKETS[target], player.thievingXp)) return;
     this.queuedActions.set(id, { kind: "pickpocketing", target });
+  }
+
+  /** `stall` comes straight off the network, so anything but a stall standing in this region is ignored, as is a click the rules refuse (#252). */
+  queueSteal(id: string, stall: unknown) {
+    const player = this.state.players.get(id);
+    if (!player || !this.canAct(id) || typeof stall !== "string") return;
+    if (!isStallKind(stall) || !this.stalls.has(stall)) return;
+    if (stallRefusal(stall, player.thievingXp)) return;
+    this.queuedActions.set(id, { kind: "stealing", stall });
   }
 
   /** Where a pickpocket target stands in this region, a mark or a villager, if they do. */
@@ -1409,7 +1431,7 @@ export class Simulation {
     this.advanceMaking();
     this.advanceLighting();
     this.advanceVisits();
-    this.advancePickpocketing();
+    this.advanceThieving();
     this.advanceTakes();
     this.advancePlayerSwings();
     this.enemies.advance({
@@ -1487,6 +1509,7 @@ export class Simulation {
         }
         case "visiting":
         case "pickpocketing":
+        case "stealing":
           goNextTo(intent);
           break;
         case "taking": {
@@ -1535,6 +1558,7 @@ export class Simulation {
       return action.at ?? this.stations[stationOf(action.item)];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
     if (action?.kind === "pickpocketing") return this.standingAt(action.target);
+    if (action?.kind === "stealing") return this.stalls.get(action.stall);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
   }
@@ -1843,36 +1867,56 @@ export class Simulation {
     }
   }
 
-  /** After the steps, so the attempt lands on the tick of arrival, or as soon after as the attempt interval allows (#250). */
-  private advancePickpocketing() {
+  /**
+   * After the steps, so a pickpocket or a theft from a stall lands on the tick of arrival, or as
+   * soon after as the attempt interval allows (#250, #252). The two share the interval.
+   */
+  private advanceThieving() {
+    const { tick } = this.state;
+    this.stallsEmptied.forgetEnded(tick);
+    this.stallsClosed.forgetEnded(tick);
     for (const [id, unsynced] of this.unsyncedPlayers) {
       const { action } = unsynced;
-      if (action?.kind !== "pickpocketing" || unsynced.path.length) continue;
-      if (this.state.tick < unsynced.nextAttemptTick) continue;
+      if (action?.kind !== "pickpocketing" && action?.kind !== "stealing")
+        continue;
+      if (unsynced.path.length || tick < unsynced.nextAttemptTick) continue;
       unsynced.action = undefined;
-      unsynced.nextAttemptTick = this.state.tick + PICKPOCKET_INTERVAL_TICKS;
+      unsynced.nextAttemptTick = tick + PICKPOCKET_INTERVAL_TICKS;
       const player = this.state.players.get(id)!;
-      pickpocket(action.target, {
+      const world = {
         random: this.random,
         thievingXp: player.thievingXp,
-        health: player.health,
-        earnXp: (gained) => this.earnXp(player, "thievingXp", gained),
-        give: (item, count) =>
+        earnXp: (gained: number) => this.earnXp(player, "thievingXp", gained),
+        give: (item: ItemId, count: number) =>
           addItems(player.inventory, player.inventoryCounts, item, count),
-        drop: (item, count) =>
-          this.groundItems.spawn(
-            player,
-            item,
-            count,
-            player.username,
-            this.state.tick,
-          ),
-        stun: (ticks, damage) => {
-          player.health -= damage;
-          this.makeBusy(id, ticks, { hittable: true });
-          this.events.push({ type: "stunned", player: id, damage });
+        drop: (item: ItemId, count: number) =>
+          this.groundItems.spawn(player, item, count, player.username, tick),
+        tell: (line: string) =>
+          this.events.push({ type: "told", player: id, line }),
+      };
+      if (action.kind === "pickpocketing") {
+        pickpocket(action.target, {
+          ...world,
+          health: player.health,
+          stun: (ticks, damage) => {
+            player.health -= damage;
+            this.makeBusy(id, ticks, { hittable: true });
+            this.events.push({ type: "stunned", player: id, damage });
+          },
+        });
+        continue;
+      }
+      const { username } = player;
+      const { stall } = action;
+      stealFromStall(stall, {
+        ...world,
+        emptied: this.stallsEmptied.running(username, stall, tick),
+        closed: this.stallsClosed.running(username, stall, tick),
+        empty: (ticks) => {
+          this.stallsEmptied.start(username, stall, tick, ticks);
+          this.events.push({ type: "stallEmptied", player: id, stall, ticks });
         },
-        tell: (line) => this.events.push({ type: "told", player: id, line }),
+        close: (ticks) => this.stallsClosed.start(username, stall, tick, ticks),
       });
     }
   }
@@ -1913,7 +1957,8 @@ export class Simulation {
         action.kind !== "visiting" &&
         action.kind !== "taking" &&
         action.kind !== "following" &&
-        action.kind !== "pickpocketing"
+        action.kind !== "pickpocketing" &&
+        action.kind !== "stealing"
           ? action.kind
           : path.length
             ? "walking"

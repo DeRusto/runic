@@ -1,5 +1,6 @@
 import { VILLAGERS } from "./dialogue.ts";
 import { MARKS } from "./thieving.ts";
+import { STALLS } from "./stalls.ts";
 import { ENEMIES } from "./enemies.ts";
 import { FISHING_SPOTS } from "./fishing.ts";
 import { BUSHES } from "./herblaw.ts";
@@ -61,13 +62,13 @@ const FEATURE_VALUES = {
     appleBarrel: 1,
     carrotCrate: 1,
     fruitBasket: 1,
-    marketStall: 1,
   } satisfies Record<NonNullable<TileKind["prop"]>, 1>,
   bush: BUSHES,
   vein: VEINS,
   tree: TREES,
   fishingSpot: FISHING_SPOTS,
   station: STATIONS,
+  stall: STALLS,
   house: { wall: 1, door: 1 } satisfies Record<
     NonNullable<TileKind["house"]>,
     1

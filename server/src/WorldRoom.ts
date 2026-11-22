@@ -42,6 +42,7 @@ import {
   TICK_MS,
   VISIT_INTENT,
   PICKPOCKET_INTENT,
+  STEAL_INTENT,
   WALK_INTENT,
   type ChatLine,
   type GatheringIntent,
@@ -97,6 +98,8 @@ export class WorldRoom extends Room {
     ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
     [PICKPOCKET_INTENT]: (client: Client, mark: string) =>
       this.sim.queuePickpocket(client.sessionId, mark),
+    [STEAL_INTENT]: (client: Client, stall: unknown) =>
+      this.sim.queueSteal(client.sessionId, stall),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),

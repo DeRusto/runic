@@ -2,6 +2,7 @@ import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
 import type { VillagerId } from "./dialogue.ts";
 import type { ItemId, Virtue } from "./items.ts";
 import type { StationKind } from "./stations.ts";
+import type { StallKind } from "./stalls.ts";
 
 export const SERVER_PORT = 2567;
 export const WORLD_ROOM = "world";
@@ -19,6 +20,8 @@ export const MAKE_INTENT = "make";
 export const VISIT_INTENT = "visit";
 /** The pickpocket intent's message type, for clicking Pickpocket on a mark or villager; its payload is their id, a `PickpocketTarget` (#250, #251). */
 export const PICKPOCKET_INTENT = "pickpocket";
+/** The steal intent's message type, for clicking one of Marta's stalls; its payload is the stall's kind, a `StallKind` (#252). */
+export const STEAL_INTENT = "steal";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
@@ -223,7 +226,9 @@ export type WorldEvent =
   /** The server shut the bank window, on a walk away or a hit. */
   | { type: "bankClosed"; player: string }
   /** A failed pickpocket's hit, in hundredths of a Hitpoints level, and the stun that follows (#250). */
-  | { type: "stunned"; player: string; damage: number };
+  | { type: "stunned"; player: string; damage: number }
+  /** A theft emptied `stall` for `player` alone, for `ticks`: only their client shows it bare (#252). */
+  | { type: "stallEmptied"; player: string; stall: StallKind; ticks: number };
 
 export * from "./bank.ts";
 export * from "./combat.ts";
@@ -243,6 +248,7 @@ export * from "./region.ts";
 export * from "./regionMap.ts";
 export * from "./skills.ts";
 export * from "./thieving.ts";
+export * from "./stalls.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";

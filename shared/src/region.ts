@@ -1,5 +1,6 @@
 import type { VillagerId } from "./dialogue.ts";
 import type { MarkId } from "./thieving.ts";
+import type { StallKind } from "./stalls.ts";
 import type { EnemyKind } from "./enemies.ts";
 import type { FishingSpotKind } from "./fishing.ts";
 import type { FixedStation } from "./stations.ts";
@@ -13,8 +14,7 @@ export type GroundKind =
 export const groundBlocks = (ground: GroundKind) => ground === "water";
 /**
  * `gate` is the locked gate on the south road; `column` and `standingStone` are Runestone Hollow's
- * ruins; `appleBarrel`, `carrotCrate`, `fruitBasket` and `marketStall` are the goods outside the
- * general store.
+ * ruins; `appleBarrel`, `carrotCrate` and `fruitBasket` are the goods outside the general store.
  */
 export type PropKind =
   | "tree"
@@ -29,8 +29,7 @@ export type PropKind =
   | "standingStone"
   | "appleBarrel"
   | "carrotCrate"
-  | "fruitBasket"
-  | "marketStall";
+  | "fruitBasket";
 /** The five metals, lowest first. Each tier's item ids start with it (`bronzeSword`). */
 export const TIERS = ["copper", "bronze", "iron", "steel", "emberite"] as const;
 export type Tier = (typeof TIERS)[number];
@@ -50,6 +49,8 @@ export type TileKind = {
   villager?: VillagerId;
   /** A mark to pickpocket, who blocks like a villager (#250). */
   mark?: MarkId;
+  /** One of Marta's stalls outside the general store, which blocks like a station (#252). */
+  stall?: StallKind;
   house?: "wall" | "door";
   enemy?: EnemyKind;
   respawn?: true;
@@ -101,6 +102,10 @@ export const TILE_KINDS = {
   Y: { ground: "grass", villager: "tamsin", blocks: true },
   U: { ground: "grass", mark: "drunk", blocks: true },
   J: { ground: "grass", mark: "pedlar", blocks: true },
+  // Marta's stalls (#252): food, fish (q, for its catch) and gem (z).
+  s: { ground: "grass", stall: "food", blocks: true },
+  q: { ground: "grass", stall: "fish", blocks: true },
+  z: { ground: "grass", stall: "gem", blocks: true },
   "~": { ground: "water", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },

@@ -1,11 +1,11 @@
-{ "columns":39,
+{ "columns":41,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":624,
+ "imagewidth":656,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":39,
+ "tilecount":41,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -501,9 +501,9 @@
                  "value":true
                 }, 
                 {
-                 "name":"prop",
+                 "name":"stall",
                  "type":"string",
-                 "value":"marketStall"
+                 "value":"food"
                 }]
         }, 
         {
@@ -513,6 +513,34 @@
                  "name":"ground",
                  "type":"string",
                  "value":"cobble"
+                }]
+        },
+        {
+         "id":39,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"stall",
+                 "type":"string",
+                 "value":"fish"
+                }]
+        },
+        {
+         "id":40,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"stall",
+                 "type":"string",
+                 "value":"gem"
                 }]
         }],
  "tilewidth":16,

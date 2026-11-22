@@ -5,6 +5,8 @@ import {
   PICKPOCKET_INTENT,
   PICKPOCKETS,
   pickpocketRefusal,
+  STEAL_INTENT,
+  stallRefusal,
   stationRefusal,
   TAKE_INTENT,
   TARGET_INTENT,
@@ -14,6 +16,7 @@ import {
   type DialogueAction,
   isPickpocketTarget,
   type PickpocketTarget,
+  type StallKind,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -30,11 +33,12 @@ import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
 import type { addMarks } from "./marks.ts";
+import type { addStalls } from "./stalls.ts";
 import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens, and to pickpocket those who can be; on a mark it offers to pickpocket; on another player it opens the player menu. */
+/** A click targets the live enemy, ground item or pile, bush, vein, station, stall, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens, and to pickpocket those who can be; on a mark it offers to pickpocket; on a stall, to steal from it; on another player it opens the player menu. */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -45,6 +49,7 @@ export function walkOnClick(
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   villagerUnder: Awaited<ReturnType<typeof addVillagers>>,
   markUnder: Awaited<ReturnType<typeof addMarks>>,
+  stallUnder: Awaited<ReturnType<typeof addStalls>>["stallUnder"],
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
   otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
@@ -77,6 +82,16 @@ export function walkOnClick(
     if (refusal) return printChatLine(refusal);
     showMarker(x, y);
     room.send(PICKPOCKET_INTENT, target);
+  };
+
+  /** Steals from one of Marta's stalls, unless the rules refuse, which the chat says why (#252). */
+  const steal = (stall: StallKind, x: number, y: number) => {
+    const me = room.state.players.get(room.sessionId);
+    if (!me) return;
+    const refusal = stallRefusal(stall, me.thievingXp);
+    if (refusal) return printChatLine(refusal);
+    showMarker(x, y);
+    room.send(STEAL_INTENT, stall);
   };
 
   const aim = (event: MouseEvent) => {
@@ -115,6 +130,11 @@ export function walkOnClick(
     if (mark)
       return openMenu(event, [
         ["Pickpocket", () => pickpocket(mark.mark, mark.x, mark.y)],
+      ]);
+    const stall = stallUnder(raycaster);
+    if (stall)
+      return openMenu(event, [
+        ["Steal-from", () => steal(stall.stall, stall.x, stall.y)],
       ]);
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
@@ -159,6 +179,8 @@ export function walkOnClick(
       }
       return;
     }
+    const stall = stallUnder(raycaster);
+    if (stall) return steal(stall.stall, stall.x, stall.y);
     const fire = fireUnder(raycaster);
     if (fire && me) {
       showMarker(fire.x, fire.y);
