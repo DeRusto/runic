@@ -7,7 +7,6 @@ import {
   EMPTY_SLOT,
   FIRES,
   gatheringSource,
-  gatherRefusal,
   GATHERING,
   GATHERING_SKILLS,
   ITEMS,
@@ -29,7 +28,6 @@ import {
   mixRefusal,
   removeItems,
   RECIPES,
-  groundBlocks,
   respawnTile,
   rollCatch,
   rollFinds,
@@ -42,7 +40,6 @@ import {
   tilesApart,
   WALK_TICKS_PER_TILE,
   type Deal,
-  type GatheringLeftField,
   type GatheringSkill,
   type FireLog,
   type GearSlot,
@@ -55,7 +52,7 @@ import {
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { Enemies } from "./enemies.ts";
-import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
+import { Fire, Player } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Gear } from "./gear.ts";
@@ -65,6 +62,7 @@ import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
+import { GatheringSites } from "./gatheringSites.ts";
 import {
   findPath,
   legalSteps,
@@ -79,18 +77,6 @@ import {
   maxHealthTotal,
   World,
 } from "./worldContext.ts";
-
-/** A site pool, with the ticks its run-out sites come back on, soonest first. */
-type SitePoolState = SitePool & { comebackTicks: number[] };
-
-/** A gathering site: where it is and what it is, its synced entry, and when it grows back or which pool it comes back in. */
-type GatheringSite = Tile & {
-  skill: GatheringSkill;
-  kind: string;
-  synced: Partial<Record<GatheringLeftField, number>>;
-  regrowTick?: number;
-  pool?: SitePoolState;
-};
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -107,8 +93,7 @@ export class Simulation {
   >();
   /** Every enemy, which fights on its own and tells the world its swings and loot. */
   private enemies: Enemies;
-  /** Every gathering site, by the tile that keys it. */
-  private sites = new Map<string, GatheringSite>();
+  private readonly sites: GatheringSites;
   private readonly quests: Quests;
   private readonly windows: VillagerWindows;
   private readonly bank: Bank;
@@ -120,9 +105,6 @@ export class Simulation {
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
-
-  /** Each site pool, with the ticks its run-out sites come back on, soonest first. Not saved: a restart picks again. */
-  private pools: SitePoolState[];
 
   constructor(
     tiles: TileKind[][],
@@ -139,15 +121,12 @@ export class Simulation {
     this.store = new GeneralStore(this.world, this.windows);
     this.gear = new Gear(this.world);
     this.eating = new Eating(this.world);
+    this.sites = new GatheringSites(this.world);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
         const { villager, station } = kind;
         if (villager) this.world.villagers.set(villager, { x, y });
         if (station) (this.world.stations[station] ??= []).push({ x, y });
-        for (const skill of GATHERING_SKILLS) {
-          const siteKind = kind[GATHERING[skill].site];
-          if (siteKind) this.addSite(skill, siteKind, { x, y });
-        }
       }),
     );
     this.enemies = new Enemies(
@@ -162,59 +141,7 @@ export class Simulation {
       this.quests,
     );
     this.thieving = new ThievingTargets(this.world, this.fighting);
-    this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
-    for (const pool of this.pools)
-      for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
-  }
-
-  /** A full site on `tile`, which blocks while it's there. */
-  private addSite(
-    skill: GatheringSkill,
-    kind: string,
-    { x, y }: Tile,
-    pool?: SitePoolState,
-  ) {
-    const { site, stateField, leftField } = GATHERING[skill];
-    const id = siteId({ x, y });
-    const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
-      [leftField]: gatheringSource(skill, kind).holds,
-    });
-    // The row keeps the schema and its map together, which the types can't follow.
-    this.state[stateField].set(id, synced as never);
-    this.sites.set(id, { x, y, skill, kind, synced, pool });
-    Object.assign(this.world.tiles[y]![x]!, { [site]: kind, blocks: true });
-  }
-
-  /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player, an enemy or a ground item on it. */
-  private placePooledSite(pool: SitePoolState) {
-    const standing = [
-      ...this.state.players.values(),
-      ...this.state.enemies.values(),
-      ...this.state.groundItems.values(),
-    ];
-    const free = pool.spots.filter(
-      (spot) =>
-        !this.sites.has(siteId(spot)) &&
-        !standing.some(({ x, y }) => x === spot.x && y === spot.y),
-    );
-    if (!free.length) return false;
-    const spot = free[Math.floor(this.random() * free.length)]!;
-    this.addSite(pool.skill, pool.kind, spot, pool);
-    return true;
-  }
-
-  /** Takes a run-out pooled site off its spot, to come back somewhere in its pool after its regrow time. */
-  private removePooledSite(site: GatheringSite, pool: SitePoolState) {
-    const { site: field, stateField } = GATHERING[site.skill];
-    const id = siteId(site);
-    this.sites.delete(id);
-    this.state[stateField].delete(id);
-    const tile = this.world.tiles[site.y]![site.x]!;
-    delete tile[field];
-    tile.blocks = groundBlocks(tile.ground);
-    pool.comebackTicks.push(
-      this.state.tick + gatheringSource(site.skill, site.kind).regrowTicks,
-    );
+    this.sites.placePools(pools);
   }
 
   /** `saved` is the account's last save; without one, this is a new account. */
@@ -259,30 +186,9 @@ export class Simulation {
     if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
     const nearest = this.sites.has(siteId(saved))
-      ? this.nearestPastSites(saved)
+      ? this.sites.nearestPastSites(saved)
       : undefined;
     return { ...saved, ...(nearest ?? respawn) };
-  }
-
-  /** The fewest steps from `from` to a walkable tile, walking through sites as if they had run out: undefined if nothing else is in reach. */
-  private nearestPastSites(from: Tile): Tile | undefined {
-    const throughSites = this.world.tiles.map((row, y) =>
-      row.map((tile, x) =>
-        this.sites.has(siteId({ x, y })) ? { ...tile, blocks: false } : tile,
-      ),
-    );
-    const seen = new Set([siteId(from)]);
-    const queue = [from];
-    // Breadth-first, so the first walkable tile found is the fewest steps away.
-    for (const tile of queue) {
-      if (!this.world.tiles[tile.y]![tile.x]!.blocks) return tile;
-      for (const next of legalSteps(throughSites, tile)) {
-        if (seen.has(siteId(next))) continue;
-        seen.add(siteId(next));
-        queue.push(next);
-      }
-    }
-    return undefined;
   }
 
   /** What to write to the database for this player, if they're in the region. */
@@ -386,21 +292,9 @@ export class Simulation {
     this.world.clearAction(id);
   }
 
-  /** `site` comes straight off the network, so anything but the id of this skill's site is ignored, as is a click the rules refuse. */
+  /** `site` comes straight off the network; see `GatheringSites.gatherIntent`. */
   queueGather(id: string, skill: GatheringSkill, site: string) {
-    const player = this.state.players.get(id);
-    const found = this.sites.get(site);
-    if (!player || found?.skill !== skill || !this.world.canAct(id)) return;
-    if (this.siteRefusal(found, player)) return;
-    this.queuedActions.set(id, { kind: "gathering", skill, site });
-  }
-
-  private siteRefusal(
-    { skill, kind, synced }: GatheringSite,
-    player: InstanceType<typeof Player>,
-  ) {
-    const left = synced[GATHERING[skill].leftField]!;
-    return gatherRefusal(skill, kind, left, player);
+    this.queue(id, this.sites.gatherIntent(id, skill, site));
   }
 
   /**
@@ -681,7 +575,7 @@ export class Simulation {
       },
     });
     this.advancePlayerTimers();
-    this.advanceSites();
+    this.sites.advance();
     for (const enemy of this.enemies.returnDead(this.state.tick))
       this.events.push({ type: "enemyReturned", enemy });
     this.world.groundItems.advance(this.state.tick);
@@ -849,7 +743,7 @@ export class Simulation {
       // A site that came back may have left no way to stand next to it.
       if (
         !site ||
-        this.siteRefusal(site, player) ||
+        this.sites.siteRefusal(site, player) ||
         !tilesNextTo(this.world.tiles, site).some(
           ({ x, y }) => x === player.x && y === player.y,
         )
@@ -918,7 +812,7 @@ export class Simulation {
           );
       }
       if (--site.synced[leftField]! === 0) {
-        if (site.pool) this.removePooledSite(site, site.pool);
+        if (site.pool) this.sites.removePooledSite(site, site.pool);
         else site.regrowTick = this.state.tick + source.regrowTicks;
       }
       unsynced.action = undefined;
@@ -1071,22 +965,6 @@ export class Simulation {
       this.world.groundItems.take(action.groundItem, taken);
       takenThisTick.add(action.groundItem);
     }
-  }
-
-  private advanceSites() {
-    for (const site of this.sites.values()) {
-      if (this.state.tick !== site.regrowTick) continue;
-      const { leftField } = GATHERING[site.skill];
-      site.synced[leftField] = gatheringSource(site.skill, site.kind).holds;
-      site.regrowTick = undefined;
-    }
-    // One with no free spot waits, and tries again next tick.
-    for (const pool of this.pools)
-      while (
-        pool.comebackTicks[0]! <= this.state.tick &&
-        this.placePooledSite(pool)
-      )
-        pool.comebackTicks.shift();
   }
 
   /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
