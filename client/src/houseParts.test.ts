@@ -44,6 +44,8 @@ describe("houseParts", () => {
     const roof = houseParts(bank, 2, 2).find((p) => p.part.endsWith("oof"));
     expect(roof!.part).toBe("bankRoof");
     expect(houseParts(bank, 2, 1).map((p) => p.part)).toContain("ornateDoor");
-    expect(named(2, 2, "roof")).toHaveLength(1);
+    expect(
+      houseParts(bank, 2, 2).filter((p) => p.part === "bankRoof"),
+    ).toHaveLength(1);
   });
 });

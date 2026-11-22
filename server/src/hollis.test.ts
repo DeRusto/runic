@@ -124,7 +124,7 @@ describe("on the offering", () => {
     expect(me().inventoryCounts[0]).toBe(2);
   });
 
-  test("a Skeleton Mage's bone sigil drops for a player Hollis asked, and not once they hold one", () => {
+  test("a Skeleton Mage's bone sigil drops for a player Hollis asked, and not for one Hollis didn't", () => {
     sim.addPlayer("b", { ...SAVE, x: 9, ...KNOWS_ESSENCE }, "b");
     const mage = sim.state.enemies.get("0")!;
     const sigils = (owner: string) =>

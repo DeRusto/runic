@@ -438,7 +438,7 @@ describe("the region", () => {
     ]);
   });
 
-  it("stands the workbench between the range and the anvil, two tiles wide for its grindstone (#226)", () => {
+  it("stands the workbench beside the anvil, two tiles wide for its grindstone (#226)", () => {
     const [[x, y]] = tilesOf("furnace") as [[number, number]];
     expect(tilesOf("workbench")).toEqual([
       [x + 3, y + 1],
@@ -503,19 +503,20 @@ describe("the region", () => {
     expect(ways).toEqual([[95, 42]]);
   });
 
+  // Spec §5's reach: home + wander + notice + leash.
+  const reachOf = ([x, y]: readonly [number, number]) => {
+    const {
+      wanderTiles,
+      noticeTiles = 0,
+      leashTiles,
+    } = ENEMIES[region[y]![x]!.enemy!];
+    return wanderTiles + noticeTiles + leashTiles;
+  };
+
   it("homes Runestone Hollow's Skeleton Mages and Imps on its moss, their reach off the Emberite pocket and the gap", () => {
     const hollow = tilesOf("skeletonMage", "imp");
     expect(hollow.filter(([x, y]) => !IS.moss(region[y]![x]!))).toEqual([]);
     expect(hollow.filter(([x, y]) => !reachable.has(key(x, y)))).toEqual([]);
-    // Spec §5's reach: home + wander + notice + leash.
-    const reachOf = ([x, y]: readonly [number, number]) => {
-      const {
-        wanderTiles,
-        noticeTiles = 0,
-        leashTiles,
-      } = ENEMIES[region[y]![x]!.enemy!];
-      return wanderTiles + noticeTiles + leashTiles;
-    };
     const safe = [...spotsOf("emberite"), [95, 42] as const];
     expect(
       hollow.flatMap((home) =>
@@ -530,16 +531,10 @@ describe("the region", () => {
     const [hollis] = tilesOf("runekeeper");
     expect(hollis).toEqual([97, 42]);
     expect(IS.moss(region[42]![97]!)).toBe(true);
-    for (const home of tilesOf("skeletonMage", "imp")) {
-      const {
-        wanderTiles,
-        noticeTiles = 0,
-        leashTiles,
-      } = ENEMIES[region[home[1]]![home[0]]!.enemy!];
+    for (const home of tilesOf("skeletonMage", "imp"))
       expect(tilesApart(asTile(home), asTile(hollis!))).toBeGreaterThan(
-        wanderTiles + noticeTiles + leashTiles,
+        reachOf(home),
       );
-    }
   });
 
   it("puts every essence rock spot on Runestone Hollow's moss", () => {

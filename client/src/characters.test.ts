@@ -79,6 +79,14 @@ test("a Spider dead when first seen is hidden, counts as down, and can come back
   expect(figure.downed).toBe(false);
 });
 
+/** A GLB's JSON chunk alone, as its embedded textures won't decode outside a browser. */
+const glbJson = (file: string) => {
+  const glb = readFileSync(`client/public/models/${file}.glb`);
+  return JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString());
+};
+const clipsOf = (file: string): string[] =>
+  glbJson(file).animations.map((clip: { name: string }) => clip.name);
+
 describe("a player already dead when first seen", () => {
   const deathClip = (figure: Figure) =>
     figure.mixer.clipAction(CLIPS.get("Death_A")!);
@@ -542,11 +550,7 @@ describe("the owner's Meshy villagers", () => {
     ["Marta", "Idle_02"],
     ["Tamsin", "Idle_02"],
   ])("%s.glb carries the clip it idles on", (file, idle) => {
-    const glb = readFileSync(`client/public/models/${file}.glb`);
-    const { animations } = JSON.parse(
-      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
-    ) as { animations: { name: string }[] };
-    expect(animations.map((clip) => clip.name)).toContain(idle);
+    expect(clipsOf(file)).toContain(idle);
   });
 });
 
@@ -554,11 +558,7 @@ describe("the Meshy creatures, rigged on the Bull's skeleton", () => {
   it.each(["Bristleback", "Cinderhorn"])(
     "%s.glb carries the clips its look plays",
     (file) => {
-      const glb = readFileSync(`client/public/models/${file}.glb`);
-      const { animations } = JSON.parse(
-        glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
-      ) as { animations: { name: string }[] };
-      expect(animations.map((clip) => clip.name)).toEqual(
+      expect(clipsOf(file)).toEqual(
         expect.arrayContaining(["Idle", "Walk", "Death", "Idle_HitReact1"]),
       );
     },
@@ -567,12 +567,7 @@ describe("the Meshy creatures, rigged on the Bull's skeleton", () => {
 
 describe("Imp.glb", () => {
   it("carries the Universal Animation Library clips its look plays", async () => {
-    // The GLB's JSON chunk alone: its embedded texture won't decode outside a browser.
-    const glb = readFileSync("client/public/models/Imp.glb");
-    const { animations } = JSON.parse(
-      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
-    ) as { animations: { name: string }[] };
-    expect(animations.map((clip) => clip.name).sort()).toEqual([
+    expect(clipsOf("Imp").sort()).toEqual([
       "Death01",
       "Hit_Chest",
       "Idle_Loop",
@@ -1039,12 +1034,9 @@ describe("paintGear", () => {
 });
 
 describe("the Skeleton", () => {
-  /** The joint names in a GLB's JSON chunk, as its embedded texture won't load outside a browser. */
+  /** The joint names in a GLB. */
   const jointsOf = (file: string) => {
-    const glb = readFileSync(`client/public/models/${file}.glb`);
-    const { nodes, skins } = JSON.parse(
-      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
-    );
+    const { nodes, skins } = glbJson(file);
     return skins[0].joints.map((i: number) => nodes[i].name).sort();
   };
   const STANCE_CLIPS = new Map(

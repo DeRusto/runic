@@ -22,7 +22,7 @@ models/
         Hit_Chest, Death01, rotations only) are baked in from Quaternius's
         Universal Animation Library, which is CC0: see
         models/LICENSE-Quaternius-Universal-Animation-Library.txt.
-    Skeleton_Mage.glb, Skeleton_Staff.gltf
+    Skeleton_Mage.glb, Skeleton_Staff.gltf, Skeleton_Staff.bin
         KayKit Skeletons, by Kay Lousberg (www.kaylousberg.com). CC0: see
         models/LICENSE-KayKit-Skeletons.txt.
     Bush_*, Grass_*, Rock_*, forest_texture.png
@@ -56,8 +56,9 @@ models/
     stall-green.glb
         Kenney Fantasy Town Kit 2.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Fantasy-Town-Kit.txt.
-    Each of the models above was packed into one GLB with only its colour
-    texture, downscaled to 512px (256px for the store's goods).
+    Each of the Kenney, KayKit and Fantasy Props models from workbench.glb to
+    here was packed into one GLB with only its colour texture, downscaled to
+    512px (256px for the store's goods).
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.

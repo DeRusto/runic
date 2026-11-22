@@ -506,7 +506,7 @@ The essence unmasked, once Odo's second quest teaches identification (#232): the
 _Avoid_: Essence (alone), pure essence
 
 **Quest essence**:
-An essence a vein gives only while a quest asks for it, and only until the player holds one. Odo's proof asks for one each of **copper essence**, **iron essence** and **emberite essence**, each from its own tier's veins at a 1 in 5 chance a successful mine. Hollis asks for five **Hollow essence**, from the essence rocks at 1 in 4. It is worth a coin at the store and is no use to anyone but the villager who asked.
+An essence a vein gives only while a quest asks for it, and only until the player holds as many as it asks for. Odo's proof asks for one each of **copper essence**, **iron essence** and **emberite essence**, each from its own tier's veins at a 1 in 5 chance a successful mine. Hollis asks for five **Hollow essence**, from the essence rocks at 1 in 4. It is worth a coin at the store and is no use to anyone but the villager who asked.
 _Avoid_: Proof piece, quest ore
 
 **Rune**:

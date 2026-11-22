@@ -8,7 +8,7 @@ import type { Tool } from "./tools.ts";
 /** What a stage's turn-in asks the player to hand over: the item and how many of it. */
 export type QuestTurnIn = { item: ItemId; count: number };
 
-/** A quest item mining gives while its stage is current: each successful mine on a vein of `vein` has `chance` to give `item`, while the player holds none. */
+/** A quest item mining gives while its stage is current: each successful mine on a vein of `vein` has `chance` to give `item`, while the player holds fewer than the stage asks for. */
 export type QuestVeinFind = { vein: VeinKind; item: ItemId; chance: number };
 
 /** One step of a quest: the node its villager's conversation opens with, what the journal shows while it is current, and the turn-in that finishes it. */

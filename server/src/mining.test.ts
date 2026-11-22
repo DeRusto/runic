@@ -313,6 +313,10 @@ test("an essence rock gives essence as its own item: strange material until the 
   expect(miner.miningXp).toBe(xpForLevel(25) + 20);
   miner.identifiesEssence = true;
   mineRock();
+  expect([miner.inventory[0], miner.inventoryCounts[0]]).toEqual([
+    "strangeMaterial",
+    1,
+  ]);
   expect([miner.inventory[1], miner.inventoryCounts[1]]).toEqual([
     "runeEssence",
     1,
