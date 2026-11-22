@@ -39,6 +39,21 @@ export class Quests {
     this.world.events.push({ type: "told", player: id, line });
   }
 
+  /** Each quest's stage and repeat turn-ins done, for the save beside the xp columns (#231). */
+  progressOf(id: string) {
+    const player = this.world.player(id);
+    return Object.fromEntries(
+      [...player.quests].map((quest, at) => [
+        quest,
+        {
+          stage: player.questStages[at]!,
+          turns:
+            this.world.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
+        },
+      ]),
+    );
+  }
+
   /** Rewrites the player's synced quest arrays from their unsynced progress (#231). */
   private syncQuests(id: string) {
     const player = this.world.state.players.get(id)!;

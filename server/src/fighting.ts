@@ -13,6 +13,7 @@ import {
   type LootWon,
   type Tile,
 } from "@runic/shared";
+import { canBeHit } from "./busy.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import type { Quests } from "./quests.ts";
@@ -118,8 +119,28 @@ export class Fighting {
     });
   }
 
+  /** Every enemy's moves and swings; a busy player who can't be hit is left alone (#236). */
+  advanceEnemies() {
+    const { tick } = this.world.state;
+    this.enemies.advance({
+      tick,
+      players: () =>
+        [...this.world.unsyncedPlayers].map(([id, { dropped, busy }]) => ({
+          id,
+          player: this.world.player(id),
+          dropped: !!dropped,
+          hittable: canBeHit(busy, tick),
+        })),
+      player: (id) => this.world.state.players.get(id),
+      swing: (enemyId, playerId) => {
+        if (canBeHit(this.world.unsyncedPlayers.get(playerId)?.busy, tick))
+          this.enemySwing(enemyId, playerId);
+      },
+    });
+  }
+
   /** A swing an enemy is due, rolled against the player's Avoidance and shield, then applied. */
-  enemySwing(enemyId: string, playerId: string) {
+  private enemySwing(enemyId: string, playerId: string) {
     const enemy = this.world.state.enemies.get(enemyId)!;
     const player = this.world.state.players.get(playerId)!;
     this.world.lock(playerId);

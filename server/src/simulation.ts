@@ -14,32 +14,31 @@ import {
   type TileKind,
   type WorldEvent,
 } from "@runic/shared";
-import { canBeHit } from "./busy.ts";
-import { Enemies } from "./enemies.ts";
-import { Player } from "./worldState.ts";
-import { newSave, saveOf, syncedOf } from "./playerSave.ts";
-import { GeneralStore } from "./generalStore.ts";
-import { Gear } from "./gear.ts";
-import { Eating } from "./eating.ts";
-import { Fighting } from "./fighting.ts";
-import { Quests } from "./quests.ts";
-import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
-import { ThievingTargets } from "./thievingTargets.ts";
-import { Gathering } from "./gathering.ts";
+import { Eating } from "./eating.ts";
+import { Enemies } from "./enemies.ts";
+import { Fighting } from "./fighting.ts";
 import { Firemaking } from "./firemaking.ts";
-import { Making } from "./making.ts";
-import { Walking } from "./walking.ts";
-import { Inventory } from "./inventory.ts";
+import { Gathering } from "./gathering.ts";
 import { GatheringSites } from "./gatheringSites.ts";
-import type { PlayerSave } from "./saves.ts";
+import { Gear } from "./gear.ts";
+import { GeneralStore } from "./generalStore.ts";
+import { Inventory } from "./inventory.ts";
+import { Making } from "./making.ts";
 import type { QueuedAction } from "./playerActions.ts";
+import { newSave, saveOf, syncedOf } from "./playerSave.ts";
+import { Quests } from "./quests.ts";
+import type { PlayerSave } from "./saves.ts";
+import { ThievingTargets } from "./thievingTargets.ts";
+import { VillagerWindows } from "./villagerWindows.ts";
+import { Walking } from "./walking.ts";
 import {
   isAmount,
   isInventorySlot,
   maxHealthTotal,
   World,
 } from "./worldContext.ts";
+import { Player } from "./worldState.ts";
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -94,13 +93,6 @@ export class Simulation {
     this.firemaking = new Firemaking(this.world);
     this.making = new Making(this.world);
     this.gathering = new Gathering(this.world, this.sites, this.quests);
-    tiles.forEach((row, y) =>
-      row.forEach((kind, x) => {
-        const { villager, station } = kind;
-        if (villager) this.world.villagers.set(villager, { x, y });
-        if (station) (this.world.stations[station] ??= []).push({ x, y });
-      }),
-    );
     this.enemies = new Enemies(
       this.world.tiles,
       this.state.enemies,
@@ -175,18 +167,8 @@ export class Simulation {
     if (!player) return undefined;
     return {
       ...saveOf(player),
-      // Each quest's stage and repeat turn-ins done, beside the xp columns (#231). The generic
-      // save writes `quests` as a plain array of ids, so the progress record replaces it.
-      quests: Object.fromEntries(
-        [...player.quests].map((quest, at) => [
-          quest,
-          {
-            stage: player.questStages[at]!,
-            turns:
-              this.world.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
-          },
-        ]),
-      ),
+      // The generic save writes `quests` as a plain array of ids, so the progress record replaces it.
+      quests: this.quests.progressOf(id),
       // Or a save during death could bring someone back with 0 health (D13).
       ...(player.dead && this.fighting.respawned(player)),
     };
@@ -228,6 +210,11 @@ export class Simulation {
 
   lockRunning(id: string) {
     return this.world.lockRunning(id);
+  }
+
+  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
+  lock(id: string) {
+    this.world.lock(id);
   }
 
   queueLogout(id: string) {
@@ -446,26 +433,7 @@ export class Simulation {
     this.inventory.advanceTakes();
     this.fighting.advancePlayerSwings();
     this.walking.syncActions();
-    this.enemies.advance({
-      tick: this.state.tick,
-      players: () =>
-        [...this.world.unsyncedPlayers].map(([id, { dropped, busy }]) => ({
-          id,
-          player: this.state.players.get(id)!,
-          dropped: !!dropped,
-          hittable: canBeHit(busy, this.state.tick),
-        })),
-      player: (id) => this.state.players.get(id),
-      swing: (enemyId, playerId) => {
-        if (
-          canBeHit(
-            this.world.unsyncedPlayers.get(playerId)?.busy,
-            this.state.tick,
-          )
-        )
-          this.fighting.enemySwing(enemyId, playerId);
-      },
-    });
+    this.fighting.advanceEnemies();
     this.advancePlayerTimers();
     this.sites.advance();
     for (const enemy of this.enemies.returnDead(this.state.tick))
@@ -490,11 +458,6 @@ export class Simulation {
       else this.loggedOut.push(id);
     }
     this.queuedLogouts.clear();
-  }
-
-  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
-  lock(id: string) {
-    this.world.lock(id);
   }
 
   /** Each player's respawn once their death is over, or else their healing (spec §6). */

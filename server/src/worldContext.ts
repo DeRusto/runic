@@ -63,6 +63,12 @@ export class World {
     readonly random: () => number,
   ) {
     this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
+    tiles.forEach((row, y) =>
+      row.forEach(({ villager, station }, x) => {
+        if (villager) this.villagers.set(villager, { x, y });
+        if (station) (this.stations[station] ??= []).push({ x, y });
+      }),
+    );
   }
 
   /** A player known to be in the region. */
