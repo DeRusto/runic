@@ -244,5 +244,6 @@ export * from "./quests.ts";
 export * from "./runecrafting.ts";
 export * from "./social.ts";
 export * from "./stations.ts";
+export * from "./thieving.ts";
 export * from "./woodcutting.ts";
 export * from "./fishing.ts";
