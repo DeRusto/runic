@@ -25,12 +25,19 @@ export async function startServer(port: number, builtClient = BUILT_CLIENT) {
   server.router = accountRoutes;
   server.onShutdown(() => database.shutdown());
   server.define(WORLD_ROOM, WorldRoom);
+  // A failed start closes whatever it opened, so a caller can retry cleanly.
   try {
     await server.listen(port);
   } catch (error) {
     await database.shutdown();
     throw error;
   }
-  await matchMaker.createRoom(WORLD_ROOM, {});
+  try {
+    await matchMaker.createRoom(WORLD_ROOM, {});
+  } catch (error) {
+    // Closes the listener and, through onShutdown, the database.
+    await server.gracefullyShutdown(false);
+    throw error;
+  }
   return server;
 }

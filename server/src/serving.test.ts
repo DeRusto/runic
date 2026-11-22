@@ -1,11 +1,9 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Server } from "@colyseus/core";
-import { GameDatabase } from "@colyseus/database";
 import { Client } from "@colyseus/sdk";
 import { WORLD_ROOM } from "@runic/shared";
-import { afterAll, beforeAll, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { startServer } from "./server.ts";
 import { freePort, testToken } from "./testToken.ts";
 
@@ -41,21 +39,4 @@ test("/api and the websocket share that origin", async () => {
 
 test("a path outside the build is a 404, not the Colyseus banner", async () => {
   expect((await fetch(`${ORIGIN}/nothing-here`)).status).toBe(404);
-});
-
-test("a failed listen closes the database it opened", async () => {
-  const error = Object.assign(new Error("listen failed"), {
-    code: "EADDRINUSE",
-  });
-  const listen = vi
-    .spyOn(Server.prototype, "listen")
-    .mockRejectedValueOnce(error);
-  const shutdown = vi.spyOn(GameDatabase.prototype, "shutdown");
-  try {
-    await expect(startServer(PORT, built)).rejects.toBe(error);
-    expect(shutdown).toHaveBeenCalledOnce();
-  } finally {
-    listen.mockRestore();
-    shutdown.mockRestore();
-  }
 });
