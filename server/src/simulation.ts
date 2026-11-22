@@ -1915,8 +1915,9 @@ export class Simulation {
   }
 
   /**
-   * After the steps, so a pickpocket or a theft from a stall lands on the tick of arrival, or as
-   * soon after as the attempt interval allows (#250, #252). The two share the interval.
+   * After the steps, so a pickpocket, a theft from a stall or a strongbox attempt lands on the tick
+   * of arrival, or as soon after as the attempt interval allows (#250, #252, #253). All three share
+   * the interval.
    */
   private advanceThieving() {
     const { tick } = this.state;

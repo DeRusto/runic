@@ -55,13 +55,38 @@ test("opening a strongbox gives coins, a gem and runes, every time", () => {
     }
 });
 
-test("each strongbox's gem and rune rolls pick by weight: a low roll takes the first row, a high one the last", () => {
-  const [, lowGem, lowRunes] = strongboxLoot("boneyard", () => 0);
-  expect(lowGem!.item).toBe(STRONGBOXES.boneyard.gems[0].item);
-  expect(lowRunes!.item).toBe(STRONGBOXES.boneyard.runes[0].item);
-  const [, highGem, highRunes] = strongboxLoot("hollow", () => 0.99);
-  expect(highGem!.item).toBe(STRONGBOXES.hollow.gems.at(-1)!.item);
-  expect(highRunes!.item).toBe(STRONGBOXES.hollow.runes.at(-1)!.item);
+test.each([
+  ["boneyard", 0, { coins: 25, gem: "ashstone", rune: "airRune", runes: 2 }],
+  [
+    "boneyard",
+    0.99,
+    { coins: 60, gem: "heartflame", rune: "fireRune", runes: 5 },
+  ],
+  ["hollow", 0, { coins: 50, gem: "ashstone", rune: "airRune", runes: 4 }],
+  [
+    "hollow",
+    0.99,
+    { coins: 120, gem: "heartflame", rune: "fireRune", runes: 10 },
+  ],
+] as const)(
+  "the %s strongbox rolling %d pays its fewest or most coins, and its first or last gem and rune by weight",
+  (kind, roll, { coins, gem, rune, runes }) => {
+    expect(strongboxLoot(kind, () => roll)).toEqual([
+      { item: "coins", count: coins },
+      { item: gem, count: 1 },
+      { item: rune, count: runes },
+    ]);
+  },
+);
+
+test("the Hollow strongbox weights cinderglass most, where the Boneyard's weights ashstone most", () => {
+  // Boneyard ashstone 6 of 10, cinderglass 3, heartflame 1; Hollow ashstone 2, cinderglass 5, heartflame 3.
+  expect(strongboxLoot("boneyard", () => 0.59)[1]!.item).toBe("ashstone");
+  expect(strongboxLoot("boneyard", () => 0.6)[1]!.item).toBe("cinderglass");
+  expect(strongboxLoot("boneyard", () => 0.9)[1]!.item).toBe("heartflame");
+  expect(strongboxLoot("hollow", () => 0.19)[1]!.item).toBe("ashstone");
+  expect(strongboxLoot("hollow", () => 0.2)[1]!.item).toBe("cinderglass");
+  expect(strongboxLoot("hollow", () => 0.7)[1]!.item).toBe("heartflame");
 });
 
 test("only the two strongbox kinds are strongboxes, whatever string comes off the network", () => {
@@ -70,12 +95,12 @@ test("only the two strongbox kinds are strongboxes, whatever string comes off th
   expect(isStrongboxKind("gem")).toBe(false);
 });
 
-test("a strongbox's trap hits harder than any failed pickpocket", () => {
+test("a strongbox's trap hits at least twice as hard as any failed pickpocket", () => {
   const hardestPickpocket = Math.max(
     ...Object.values(PICKPOCKETS).map(({ failHit }) => failHit),
   );
   for (const { trapHit } of Object.values(STRONGBOXES))
-    expect(trapHit).toBeGreaterThan(hardestPickpocket);
+    expect(trapHit).toBeGreaterThanOrEqual(hardestPickpocket * 2);
 });
 
 test("a strongbox stays empty far longer than any stall", () => {

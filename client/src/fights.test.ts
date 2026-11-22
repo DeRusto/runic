@@ -685,16 +685,16 @@ describe("the mine event", () => {
   });
 });
 
-describe("the stunned event", () => {
+describe("the stunned and trapSprung events", () => {
   const holdBlow = vi.fn();
   const showBlow = vi.fn();
-  const send = (damage: number) => {
+  const send = (damage: number, type: "stunned" | "trapSprung" = "stunned") => {
     const onMessage = vi.fn();
     showFights({
       onReconnect: vi.fn(),
       onMessage,
     } as unknown as WorldConnection);
-    onMessage.mock.calls[0]![1]([{ type: "stunned", player: "a", damage }]);
+    onMessage.mock.calls[0]![1]([{ type, player: "a", damage }]);
   };
 
   beforeEach(() => {
@@ -712,6 +712,13 @@ describe("the stunned event", () => {
     expect(figure.once).toHaveBeenCalledWith("Hit_A");
   });
 
+  test("shows a strongbox trap's hit at once, with Hit_A (#253)", () => {
+    send(800, "trapSprung");
+    vi.advanceTimersByTime(0);
+    expect(showBlow).toHaveBeenCalledWith(800, false);
+    expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+
   test("holds the hit off the bar before showing it, so the bar ends on the true health", () => {
     send(100);
     vi.advanceTimersByTime(0);
@@ -725,27 +732,5 @@ describe("the stunned event", () => {
     send(0);
     vi.advanceTimersByTime(0);
     expect(figure.once).not.toHaveBeenCalled();
-  });
-});
-
-describe("the trapSprung event", () => {
-  test("shows a strongbox trap's hit at once, with Hit_A (#253)", () => {
-    vi.useFakeTimers();
-    vi.clearAllMocks();
-    const showBlow = vi.fn();
-    Object.assign(figure, { playingOnce: false, downed: false });
-    Object.assign(overhead, { holdBlow: vi.fn(), showBlow });
-    const onMessage = vi.fn();
-    showFights({
-      onReconnect: vi.fn(),
-      onMessage,
-    } as unknown as WorldConnection);
-    onMessage.mock.calls[0]![1]([
-      { type: "trapSprung", player: "a", damage: 800 },
-    ]);
-    vi.advanceTimersByTime(0);
-    expect(showBlow).toHaveBeenCalledWith(800, false);
-    expect(figure.once).toHaveBeenCalledWith("Hit_A");
-    vi.useRealTimers();
   });
 });

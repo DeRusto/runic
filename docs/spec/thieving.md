@@ -74,7 +74,7 @@ Two strongboxes stand out where the danger is. The Boneyard strongbox stands at 
 | Boneyard         | 40    | 56         | 25–60  | Ashstone (6), cinderglass (3), heartflame (1)   | 2–5                           | 1000 ticks, 5 minutes  | 800      |
 | Runestone Hollow | 55    | 74         | 50–120 | Ashstone (2), cinderglass (5), heartflame (3)   | 4–10                          | 2000 ticks, 10 minutes | 1200     |
 
-- The experience carries §2's rise of about 1.2 per level on from Hollis.
+- The experience follows §2's rise of about 1.2 per level: the Boneyard's 56 sits between Odo's 45 and Hollis's 62, and the Hollow's 74 carries it on from Hollis.
 - A success always pays all three: coins, an even pick between the fewest and the most; one gem; and a handful of one elemental rune (air, water, earth or fire). Loot that doesn't fit in the inventory goes on the ground, as a pickpocket's does.
 - After a success the strongbox is empty for that player alone until its timer runs out (`emptyTicks`); other players can still open it. Only that player's client shows its lid open. The timer is kept by username in the same `PlayerTimers` as the stalls', so leaving and joining again doesn't end it early, and it isn't saved: a server restart refills every strongbox.
 - A failure gives no loot and leaves the strongbox full. Its trap hits for the trap hit, in hundredths of a Hitpoints level, at least twice as hard as Hollis's 300. The hit shows over the player like an enemy's. A player it leaves alive is stunned as for a failed pickpocket (§4).
