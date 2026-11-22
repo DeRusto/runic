@@ -69,15 +69,10 @@ import {
   bankSlotFor,
   depositRefusal,
   itemParts,
-  VILLAGERS,
   WALK_TICKS_PER_TILE,
-  choicesNodeOf,
   ENEMIES,
   type Deal,
   type DealLine,
-  offers,
-  type DialogueAction,
-  nodesOf,
   type VillagerId,
   type GatheringLeftField,
   type GatheringSkill,
@@ -112,6 +107,7 @@ import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { Shelf } from "./shelf.ts";
 import { Quests } from "./quests.ts";
+import { VillagerWindows } from "./villagerWindows.ts";
 import { PlayerTimers } from "./playerTimers.ts";
 import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
 import {
@@ -130,14 +126,6 @@ import {
   maxHealthTotal,
   World,
 } from "./worldContext.ts";
-
-/** What opens and closes each kind of villager window, and what a hit makes the villager do. */
-const WINDOWS = {
-  talk: { closed: "talkEnded", hit: "stops talking" },
-  store: { opened: "storeOpened", closed: "storeClosed", hit: "stops trading" },
-  bank: { opened: "bankOpened", closed: "bankClosed", hit: "shuts the bank" },
-} as const;
-type VillagerWindow = keyof typeof WINDOWS;
 
 /**
  * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
@@ -192,25 +180,9 @@ export class Simulation {
   private strongboxes = new Map<StrongboxKind, Tile>();
   /** The strongboxes each player has emptied, by username (#253). Not saved: a restart refills them. */
   private strongboxesEmptied = new PlayerTimers();
-  /**
-   * Each player's open villager window, the villager they must stay beside, and for a
-   * conversation the node whose choices they can pick from, if any. A player has at most one.
-   */
-  private windows = new Map<
-    string,
-    { kind: VillagerWindow; villager: VillagerId; node?: string }
-  >();
-  /** What each choice's action but a quest's does, with the villager who offered it; the choice has already been checked. A quest's runs in `choose`, where it decides where the talk moves to (#231). */
-  private readonly dialogueActions: Record<
-    Exclude<DialogueAction, "quest">,
-    (id: string, villager: VillagerId) => void
-  > = {
-    giveTools: (id, villager) => this.quests.giveTools(id, villager),
-    openStore: (id, villager) => this.openWindow(id, "store", villager),
-    openBank: (id, villager) => this.openWindow(id, "bank", villager),
-  };
   private readonly shelf: Shelf;
   private readonly quests: Quests;
+  private readonly windows: VillagerWindows;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -227,6 +199,7 @@ export class Simulation {
     this.state = this.world.state;
     this.events = this.world.events;
     this.quests = new Quests(this.world);
+    this.windows = new VillagerWindows(this.world, this.quests);
     this.shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
     tiles.forEach((row, y) =>
       row.forEach((kind, x) => {
@@ -411,7 +384,7 @@ export class Simulation {
     this.world.queuedEats.delete(id);
     this.world.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
-    this.windows.delete(id);
+    this.windows.forget(id);
     this.world.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     this.enemies.forget(id);
@@ -421,7 +394,7 @@ export class Simulation {
   dropPlayer(id: string) {
     this.world.clearAction(id);
     this.world.unsyncedPlayers.get(id)!.dropped = true;
-    this.windows.delete(id);
+    this.windows.forget(id);
     this.queuedActions.delete(id);
     this.world.queuedEats.delete(id);
     this.world.queuedDrops.delete(id);
@@ -545,26 +518,14 @@ export class Simulation {
     this.queuedActions.set(id, { kind: "lighting", slot });
   }
 
-  /**
-   * Both come straight off the network, so a villager who isn't standing in this region is
-   * ignored, as is a `then` their conversation doesn't offer.
-   */
+  /** Both come straight off the network; see `VillagerWindows.visitIntent`. */
   queueVisit(id: string, villager: string, then?: string) {
-    if (
-      !this.world.canAct(id) ||
-      !this.world.villagers.has(villager as VillagerId)
-    )
-      return;
-    const visit = {
-      kind: "visiting",
-      villager: villager as VillagerId,
-    } as const;
-    if (then === undefined) this.queuedActions.set(id, visit);
-    else if (offers(visit.villager, then))
-      this.queuedActions.set(id, {
-        ...visit,
-        then: then as Exclude<DialogueAction, "quest">,
-      });
+    this.queue(id, this.windows.visitIntent(villager, then));
+  }
+
+  /** Queues a click for the next tick, if it asks for anything and the player can act. */
+  private queue(id: string, action: QueuedAction | undefined) {
+    if (action && this.world.canAct(id)) this.queuedActions.set(id, action);
   }
 
   /** `target` comes straight off the network, so anything but a mark or pickpocketable villager standing in this region is ignored, as is a click the rules refuse (#250, #251). */
@@ -613,94 +574,24 @@ export class Simulation {
     this.world.makeBusy(id, ticks, busy);
   }
 
-  /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
+  /** `choice` comes straight off the network; see `VillagerWindows.choose`. */
   choose(id: string, choice: number) {
-    if (!this.world.canAct(id)) return;
-    const talk = this.windowOf(id, "talk");
-    if (!talk?.node || !Number.isInteger(choice)) return;
-    const picked = nodesOf(talk.villager)[talk.node]!.choices![choice];
-    if (!picked || !this.beside(id, talk.villager)) return;
-    // A quest choice is the server's check: a turn-in it refuses keeps the node, which the box shows again from its first line (#231).
-    if (picked.action === "quest") {
-      if (!this.quests.advanceQuest(id, talk.villager)) {
-        this.moveTalk(id, talk.villager, talk.node);
-        return;
-      }
-      this.moveTalk(id, talk.villager, picked.to);
-      return;
-    }
-    this.moveTalk(id, talk.villager, picked.to);
-    if (picked.action) this.dialogueActions[picked.action](id, talk.villager);
+    this.windows.choose(id, choice);
   }
 
   /** The player closed the conversation, so walking away later says nothing. */
   endTalk(id: string) {
-    this.closeWindow(id, "talk");
-  }
-
-  /**
-   * A conversation with no choices left stays open, with no node, until the box has shown its
-   * last lines and sends endTalk, so walking away or a hit still closes the box.
-   */
-  private moveTalk(id: string, villager: VillagerId, node: string) {
-    this.replaceWindow(id, "talk");
-    this.events.push({ type: "talk", player: id, villager, node });
-    this.windows.set(id, {
-      kind: "talk",
-      villager,
-      node: choicesNodeOf(villager, node),
-    });
-  }
-
-  /** Opens a store or bank window. */
-  private openWindow(id: string, kind: "store" | "bank", villager: VillagerId) {
-    this.replaceWindow(id, kind);
-    this.windows.set(id, { kind, villager });
-    this.events.push({ type: WINDOWS[kind].opened, player: id });
-  }
-
-  /** A window of another kind still open closes quietly, so the client shuts it (village spec §2). */
-  private replaceWindow(id: string, kind: VillagerWindow) {
-    const open = this.windows.get(id);
-    if (open && open.kind !== kind)
-      this.events.push({ type: WINDOWS[open.kind].closed, player: id });
-  }
-
-  /** The player's window, if it is of this kind. */
-  private windowOf(id: string, kind: VillagerWindow) {
-    const open = this.windows.get(id);
-    return open?.kind === kind ? open : undefined;
-  }
-
-  /** The player closed it, so walking away later says nothing. */
-  private closeWindow(id: string, kind: VillagerWindow) {
-    if (this.windowOf(id, kind)) this.windows.delete(id);
-  }
-
-  /** Closes the player's window from the server's side, with the line saying why. */
-  private shutWindow(id: string, line: string) {
-    const open = this.windows.get(id);
-    if (!open) return;
-    this.windows.delete(id);
-    this.events.push({ type: "told", player: id, line });
-    this.events.push({ type: WINDOWS[open.kind].closed, player: id });
-  }
-
-  private beside(id: string, villager: VillagerId) {
-    const player = this.state.players.get(id)!;
-    return tilesNextTo(
-      this.world.tiles,
-      this.world.villagers.get(villager)!,
-    ).some(({ x, y }) => x === player.x && y === player.y);
+    this.windows.close(id, "talk");
   }
 
   closeBank(id: string) {
-    this.closeWindow(id, "bank");
+    this.windows.close(id, "bank");
   }
 
   /** The player, if their bank is open and no combat lock refuses it; the refusal is told. */
   private playerAtBank(id: string) {
-    if (!this.windowOf(id, "bank") || !this.world.canAct(id)) return undefined;
+    if (!this.windows.windowOf(id, "bank") || !this.world.canAct(id))
+      return undefined;
     const refusal = bankRefusal(this.lockRunning(id));
     if (refusal) this.events.push({ type: "told", player: id, line: refusal });
     return refusal ? undefined : this.state.players.get(id)!;
@@ -774,12 +665,13 @@ export class Simulation {
   /** A drag in the bank, under the inventory's rules; both come straight off the network. */
   moveBankItem(id: string, from: number, to: number) {
     if (!this.world.canAct(id) || !isBankSlot(from) || !isBankSlot(to)) return;
-    const player = this.windowOf(id, "bank") && this.state.players.get(id);
+    const player =
+      this.windows.windowOf(id, "bank") && this.state.players.get(id);
     if (player) moveStack(player.bank, player.bankCounts, from, to);
   }
 
   closeStore(id: string) {
-    this.closeWindow(id, "store");
+    this.windows.close(id, "store");
   }
 
   /**
@@ -789,7 +681,11 @@ export class Simulation {
    */
   deal(id: string, intent: Deal) {
     const player = this.state.players.get(id);
-    if (!player || !this.world.canAct(id) || !this.windowOf(id, "store"))
+    if (
+      !player ||
+      !this.world.canAct(id) ||
+      !this.windows.windowOf(id, "store")
+    )
       return;
     const buy = dealLines(intent?.buy, SHELF_SLOTS);
     const sell = dealLines(intent?.sell, INVENTORY_SLOTS);
@@ -1084,7 +980,7 @@ export class Simulation {
     this.advanceFires();
     this.advanceMaking();
     this.advanceLighting();
-    this.advanceVisits();
+    this.windows.advanceVisits();
     this.advanceThieving();
     this.advanceTakes();
     this.advancePlayerSwings();
@@ -1503,26 +1399,6 @@ export class Simulation {
     }
   }
 
-  /** After the steps, so a conversation opens on the tick of arrival, and one walked away from ends on the tick of the step. */
-  private advanceVisits() {
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "visiting" || unsynced.path.length) continue;
-      unsynced.action = undefined;
-      if (action.then) this.dialogueActions[action.then](id, action.villager);
-      else
-        this.moveTalk(
-          id,
-          action.villager,
-          this.quests.openingNode(id, action.villager),
-        );
-    }
-    for (const [id, { villager }] of this.windows) {
-      if (!this.beside(id, villager))
-        this.shutWindow(id, `You walk away from ${VILLAGERS[villager].name}.`);
-    }
-  }
-
   /**
    * After the steps, so a pickpocket, a theft from a stall or a strongbox attempt lands on the tick
    * of arrival, or as soon after as the attempt interval allows (#250, #252, #253). All three share
@@ -1750,15 +1626,7 @@ export class Simulation {
       damage,
       blocked,
     });
-    // A blocked swing still hits; only a miss leaves the window open.
-    const open = this.windows.get(playerId);
-    if (hit && open) {
-      const { name } = VILLAGERS[open.villager];
-      this.shutWindow(
-        playerId,
-        `You're hit, and ${name} ${WINDOWS[open.kind].hit}.`,
-      );
-    }
+    if (hit) this.windows.hit(playerId);
     if (player.health === 0) this.die(playerId, player);
     else if (player.action === "") this.fightBack(playerId, player, enemyId);
   }
