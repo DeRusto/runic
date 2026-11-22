@@ -670,7 +670,12 @@
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 4px;
-        margin: 2px 0 10px;
+        margin: 2px 0 4px;
+      }
+      #stance-trains {
+        margin: 0 0 10px;
+        font-size: 12px;
+        opacity: 0.8;
       }
       #stance button {
         padding: 4px 0;
@@ -1334,6 +1339,7 @@
             <ul id="gear-stats" aria-label="Stats"></ul>
             Stance
             <div id="stance" role="group"></div>
+            <p id="stance-trains"></p>
             Toolbelt
             <div id="toolbelt"></div>
           </div>

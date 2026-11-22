@@ -127,6 +127,9 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   // Toggle buttons, one pressed, so each is a plain button a keyboard reaches.
   const stanceGroup = document.getElementById("stance")!;
   stanceGroup.setAttribute("aria-label", "Stance");
+  // Said in words too, not only in the tooltip, so a keyboard or screen reader learns it.
+  const stanceTrains = document.getElementById("stance-trains")!;
+  stanceGroup.setAttribute("aria-describedby", "stance-trains");
   const stances = (Object.keys(STANCES) as Stance[]).map((stance) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -213,6 +216,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     drawStance(me: SyncedPlayer) {
       for (const { stance, button } of stances)
         button.setAttribute("aria-pressed", String(me.stance === stance));
+      stanceTrains.textContent = STANCES[me.stance]?.trains ?? "";
     },
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {

@@ -322,11 +322,13 @@ describe("the stance", () => {
     ]);
   });
 
-  test("shows the player's stance as pressed", () => {
+  test("shows the player's stance as pressed, and what it trains under the buttons", () => {
     drawn("precise");
     expect(
       buttons().map((button: any) => button.attributes["aria-pressed"]),
     ).toEqual(["false", "true", "false"]);
+    expect(el("stance-trains").textContent).toBe("Trains Attack");
+    expect(el("stance").attributes["aria-describedby"]).toBe("stance-trains");
   });
 
   test("a click sends the stance chosen", () => {
