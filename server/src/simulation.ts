@@ -15,6 +15,7 @@ import {
   type WorldEvent,
 } from "@runic/shared";
 import { Bank } from "./banking.ts";
+import { dropFromSlot } from "./dropping.ts";
 import { Eating } from "./eating.ts";
 import { Enemies } from "./enemies.ts";
 import { Fighting } from "./fighting.ts";
@@ -452,7 +453,7 @@ export class Simulation {
     for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
     this.world.queuedEats.clear();
     for (const [id, { slot, amount }] of this.world.queuedDrops)
-      this.world.dropSlot(id, slot, amount);
+      dropFromSlot(this.world, id, slot, amount);
     this.world.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       const refusal = logoutRefusal(this.lockRunning(id));

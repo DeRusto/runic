@@ -14,6 +14,7 @@ import {
   type Tile,
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
+import { dropFromSlot } from "./dropping.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import type { Quests } from "./quests.ts";
@@ -187,7 +188,7 @@ export class Fighting {
     this.world.clearAction(id);
     this.world.stopFollowersOf(id);
     // Drop on death (#119): the Toolbelt stays.
-    player.inventory.forEach((_, slot) => this.world.dropSlot(id, slot));
+    player.inventory.forEach((_, slot) => dropFromSlot(this.world, id, slot));
     for (const gearSlot of GEAR_SLOTS) {
       const worn = player[gearSlot];
       if (!worn) continue;

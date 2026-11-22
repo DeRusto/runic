@@ -2,7 +2,6 @@ import {
   addXp,
   BANK_SLOTS,
   COMBAT_LOCK_TICKS,
-  EMPTY_SLOT,
   INVENTORY_SLOTS,
   MASTERY_SHARE_PERCENT,
   maxHealthOf,
@@ -160,17 +159,5 @@ export class World {
   /** A drop waiting on this slot meant what was there before, so it no longer stands. */
   forgetDropOn(id: string, slot: number) {
     if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
-  }
-
-  /** A part drop is one ground item, and the rest stays in the slot. */
-  dropSlot(id: string, slot: number, amount = Infinity) {
-    const player = this.state.players.get(id)!;
-    const item = player.inventory[slot]!;
-    if (!item) return;
-    const count = Math.min(amount, player.inventoryCounts[slot]!);
-    const { username } = player;
-    this.groundItems.spawn(player, item, count, username, this.state.tick);
-    player.inventoryCounts[slot]! -= count;
-    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
   }
 }
