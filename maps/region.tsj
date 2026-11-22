@@ -1,11 +1,11 @@
-{ "columns":41,
+{ "columns":43,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":656,
+ "imagewidth":688,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":41,
+ "tilecount":43,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -541,6 +541,34 @@
                  "name":"stall",
                  "type":"string",
                  "value":"gem"
+                }]
+        },
+        {
+         "id":41,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"strongbox",
+                 "type":"string",
+                 "value":"boneyard"
+                }]
+        },
+        {
+         "id":42,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"strongbox",
+                 "type":"string",
+                 "value":"hollow"
                 }]
         }],
  "tilewidth":16,
