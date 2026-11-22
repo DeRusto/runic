@@ -221,6 +221,11 @@ export function itemName(id: string) {
 /** An item as the chat names it: its name in square brackets, which the client styles by its Quality. */
 export const itemTag = (id: string) => `[${itemName(id)}]`;
 
+/** "a" or "an" before `word`. */
+// shortcut: a vowel letter stands for a vowel sound, which holds for every item and tool today; upgrade if one starts otherwise.
+export const articleFor = (word: string) =>
+  /^[aeiou]/i.test(word) ? "an" : "a";
+
 /** The rare finds from Emberite veins, rarest last. Nothing uses them yet (spec §3). */
 export const GEMS = ["ashstone", "cinderglass", "heartflame"];
 

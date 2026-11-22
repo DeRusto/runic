@@ -95,8 +95,8 @@ export class WorldRoom extends Room {
       client: Client,
       visit: { villager: string; then?: string },
     ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
-    [PICKPOCKET_INTENT]: (client: Client, target: string) =>
-      this.sim.queuePickpocket(client.sessionId, target),
+    [PICKPOCKET_INTENT]: (client: Client, person: string) =>
+      this.sim.queuePickpocket(client.sessionId, person),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),

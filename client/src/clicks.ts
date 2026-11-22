@@ -27,7 +27,8 @@ import type { showEnemies } from "./enemies.ts";
 import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
-import type { addMarks, addVillagers } from "./villagers.ts";
+import type { addMarks } from "./marks.ts";
+import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
@@ -74,7 +75,6 @@ export function walkOnClick(
     raycaster.setFromCamera(pointer, camera);
   };
 
-  // The browser's own menu never shows on the canvas, whatever is under the click.
   /** Asks to pickpocket the mark, unless the rules refuse, which the chat says why (#250). */
   const pickpocket = (mark: NonNullable<ReturnType<typeof markUnder>>) => {
     const me = room.state.players.get(room.sessionId);
@@ -84,6 +84,7 @@ export function walkOnClick(
     room.send(PICKPOCKET_INTENT, mark.mark);
   };
 
+  // The browser's own menu never shows on the canvas, whatever is under the click.
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
     aim(event);

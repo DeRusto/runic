@@ -1,12 +1,12 @@
 import { VILLAGERS, type Villager } from "./dialogue.ts";
+import { articleFor } from "./items.ts";
 
 /** Every tool. Tools aren't items: they live in the Toolbelt, not a slot (spec §4). Each villager's `tools` says who gives which. */
 export const TOOLS = ["pickaxe", "hammer", "axe", "rod", "tinderbox"] as const;
 export type Tool = (typeof TOOLS)[number];
 
 /** "a pickaxe", "an axe". */
-export const aTool = (tool: Tool) =>
-  `${/^[aeiou]/.test(tool) ? "an" : "a"} ${tool}`;
+export const aTool = (tool: Tool) => `${articleFor(tool)} ${tool}`;
 
 /** Why a player without `tool` can't do what needs it, naming the villager who gives it, or undefined if they have it. */
 export function toolRefusal(tool: Tool, player: { tools: Iterable<string> }) {

@@ -12,14 +12,14 @@ Later Thieving tickets reuse these two rules instead of setting their own. Both 
 | ------------ | - | - | -- | -- | -- | -- | -- | -- | -- | -- |
 | Experience   | 8 | 13 | 19 | 26 | 32 | 38 | 44 | 57 | 63 | 76 |
 
-**Failure chance.** `pickpocketFailPercent(levelNeeded, level)` is 40% at the level a target needs and falls evenly, 2 points a level, to none at 20 levels above it (`NO_FAIL_LEVELS_ABOVE`). From there an attempt never fails, as with Agility. Stalls and strongboxes use the same curve; what a failure costs differs by kind (#235).
+**Failure chance.** `thievingFailPercent(levelNeeded, level)` is 40% at the level a target needs and falls evenly, 2 points a level, to none at 20 levels above it (`NO_FAIL_LEVELS_ABOVE`). From there an attempt never fails, as with Agility. Stalls and strongboxes use the same curve; what a failure costs differs by kind (#235).
 
 ## 2. Pickpocketing
 
 - A click on a person walks the player next to them, and the try lands on the tick of arrival. One click is one try, and a player can try at most once every 2 ticks (`PICKPOCKET_INTERVAL_TICKS`).
 - A click is refused, with the reason in the chat, below the target's level or with no room for coins.
 - **Success** pays coins in the target's range, the experience above, Mastery's usual 7%, and now and then the target's rare item. A rare item with no room goes on the ground under the player.
-- **Failure** deals a hit of one Hitpoints level (100 hundredths) that never kills: it leaves the player at least the smallest scrap of health. Then the player is stunned for 6 ticks (`STUN_TICKS`).
+- **Failure** deals a hit of one Hitpoints level (100 hundredths) that never kills: it leaves the player at least the smallest scrap of health. Then the player is stunned for 6 ticks (`STUN_TICKS`). It is not a fight: it starts no combat lock, so regeneration carries on.
 
 ## 3. The busy state
 

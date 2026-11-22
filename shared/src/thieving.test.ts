@@ -5,7 +5,7 @@ import {
   MARKS,
   NO_FAIL_LEVELS_ABOVE,
   PICKPOCKETS,
-  pickpocketFailPercent,
+  thievingFailPercent,
   pickpocketRefusal,
   rollPickpocket,
   thievingXpAt,
@@ -43,14 +43,14 @@ describe("thievingXpAt", () => {
   });
 });
 
-describe("pickpocketFailPercent", () => {
+describe("thievingFailPercent", () => {
   test("fails 40% of the time at the level needed, falling to none a set number of levels above it", () => {
-    expect(pickpocketFailPercent(1, 1)).toBe(40);
-    expect(pickpocketFailPercent(1, 11)).toBe(20);
+    expect(thievingFailPercent(1, 1)).toBe(40);
+    expect(thievingFailPercent(1, 11)).toBe(20);
     expect(NO_FAIL_LEVELS_ABOVE).toBe(20);
-    expect(pickpocketFailPercent(1, 20)).toBe(2);
-    expect(pickpocketFailPercent(1, 21)).toBe(0);
-    expect(pickpocketFailPercent(1, 99)).toBe(0);
+    expect(thievingFailPercent(1, 20)).toBe(2);
+    expect(thievingFailPercent(1, 21)).toBe(0);
+    expect(thievingFailPercent(1, 99)).toBe(0);
   });
 });
 

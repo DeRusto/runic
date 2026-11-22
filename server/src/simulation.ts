@@ -2,6 +2,7 @@ import { ArraySchema, schema, t } from "@colyseus/schema";
 import {
   addItems,
   addXp,
+  articleFor,
   AUGMENTATIONS,
   attemptChance,
   COMBAT_LOCK_TICKS,
@@ -292,7 +293,7 @@ type UnsyncedAction =
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
   /** One try at a pocket, on arrival beside the target (#250). */
-  | { kind: "pickpocketing"; target: PickpocketTarget }
+  | { kind: "pickpocketing"; person: PickpocketTarget }
   /**
    * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
    * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
@@ -322,7 +323,7 @@ type QueuedAction =
   | { kind: "lighting"; slot: number }
   | { kind: "taking"; groundItem: string }
   | { kind: "following"; player: string }
-  | { kind: "pickpocketing"; target: PickpocketTarget };
+  | { kind: "pickpocketing"; person: PickpocketTarget };
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -766,22 +767,17 @@ export class Simulation {
   }
 
   /**
-   * `target` comes straight off the network, so anything but a pickpocket target standing in this
-   * region is ignored, as is a click the rules refuse (#250).
+   * `person` comes straight off the network, so anything but a mark standing in this region is
+   * ignored, as is a click the rules refuse (#250).
    */
-  queuePickpocket(id: string, target: string) {
+  queuePickpocket(id: string, person: string) {
     const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || typeof target !== "string") return;
-    if (!Object.hasOwn(PICKPOCKETS, target)) return;
-    const wanted = target as PickpocketTarget;
-    if (!this.pickpocketTile(wanted)) return;
+    if (!player || !this.canAct(id) || typeof person !== "string") return;
+    if (!Object.hasOwn(PICKPOCKETS, person)) return;
+    const wanted = person as PickpocketTarget;
+    if (!this.marks.has(wanted)) return;
     if (pickpocketRefusal(PICKPOCKETS[wanted], player)) return;
-    this.queuedActions.set(id, { kind: "pickpocketing", target: wanted });
-  }
-
-  /** Where a pickpocket target stands, if they stand in this region. */
-  private pickpocketTile(target: PickpocketTarget) {
-    return this.marks.get(target);
+    this.queuedActions.set(id, { kind: "pickpocketing", person: wanted });
   }
 
   /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
@@ -1516,8 +1512,7 @@ export class Simulation {
     if (action?.kind === "making")
       return action.at ?? this.stations[stationOf(action.item)];
     if (action?.kind === "visiting") return this.villagers.get(action.villager);
-    if (action?.kind === "pickpocketing")
-      return this.pickpocketTile(action.target);
+    if (action?.kind === "pickpocketing") return this.marks.get(action.person);
     if (action && "site" in action) return this.sites.get(action.site);
     return undefined;
   }
@@ -1837,7 +1832,7 @@ export class Simulation {
       // With no way there, the path ran out short of them.
       const beside = tilesNextTo(
         this.tiles,
-        this.pickpocketTile(action.target)!,
+        this.marks.get(action.person)!,
       ).some(({ x, y }) => x === player.x && y === player.y);
       if (!beside) continue;
       unsynced.nextAttemptTick = this.state.tick + PICKPOCKET_INTERVAL_TICKS;
@@ -1865,7 +1860,7 @@ export class Simulation {
         },
         id,
         player,
-        action.target,
+        action.person,
       );
     }
   }
@@ -1965,9 +1960,7 @@ export class Simulation {
   private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
     const { username } = this.state.players.get(id)!;
     this.groundItems.spawn(at, item, count, username, this.state.tick);
-    // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
-    const amount =
-      count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
+    const amount = count > 1 ? String(count) : articleFor(item);
     this.events.push({
       type: "told",
       player: id,

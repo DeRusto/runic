@@ -10,6 +10,7 @@ import {
   type WorldEvent,
   itemName,
   itemTag,
+  articleFor,
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
 import { BLOCK_CLIP, ENEMY_LOOKS, swingFor } from "./characters.ts";
@@ -197,12 +198,10 @@ export function showFights(room: WorldConnection) {
         )
           continue;
         const name = itemName(event.item);
-        // shortcut: a vowel letter stands for a vowel sound, which holds for every tier name today; upgrade if one starts otherwise.
         printChatLine(
-          ...chatItems(
-            `You make ${/^[AEIOU]/.test(name) ? "an" : "a"} ${itemTag(event.item)}!`,
-            [event.item],
-          ),
+          ...chatItems(`You make ${articleFor(name)} ${itemTag(event.item)}!`, [
+            event.item,
+          ]),
         );
       } else if (event.type === "stunned") {
         // Caught at once: the hit shows now, then the stun the chat names (#250).

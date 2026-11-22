@@ -1,5 +1,6 @@
 import {
   addItems,
+  articleFor,
   COINS,
   itemTag,
   levelFor,
@@ -32,17 +33,17 @@ export type ThievingWorld = {
 };
 
 /**
- * One attempt at `target`'s pocket, beside them. The inventory may have filled on the walk, so the
+ * One attempt at `person`'s pocket, beside them. The inventory may have filled on the walk, so the
  * refusal is checked again. A catch hits, never fatally, then stuns; a success pays coins,
- * sometimes an item, and Thieving (#235).
+ * sometimes an item, and Thieving (Thieving spec §2).
  */
 export function pickpocket(
   world: ThievingWorld,
   id: string,
   player: Thief,
-  target: PickpocketTarget,
+  person: PickpocketTarget,
 ) {
-  const row = PICKPOCKETS[target];
+  const row = PICKPOCKETS[person];
   const refusal = pickpocketRefusal(row, player);
   if (refusal) {
     world.event({ type: "told", player: id, line: refusal });
@@ -74,14 +75,12 @@ export function pickpocket(
   }
   world.earnThievingXp(outcome.xp);
   const [found] = outcome.items;
-  // shortcut: a vowel letter stands for a vowel sound, as for loot; upgrade if a rare item starts otherwise.
-  const article = found && (/^[aeiou]/i.test(found) ? "an" : "a");
   world.event({
     type: "told",
     player: id,
     ...(found
       ? {
-          line: `You pick ${row.name}'s pocket, and find ${article} ${itemTag(found)}.`,
+          line: `You pick ${row.name}'s pocket, and find ${articleFor(found)} ${itemTag(found)}.`,
           items: [found],
         }
       : { line: `You pick ${row.name}'s pocket.` }),

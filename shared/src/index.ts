@@ -17,7 +17,7 @@ export const MAKE_INTENT = "make";
  * Arriving opens the conversation, or with `then`, a `DialogueAction` the conversation offers, runs that instead.
  */
 export const VISIT_INTENT = "visit";
-/** The pickpocket intent's message type, for clicking Pickpocket on a person; its payload is their mark or villager id (#250). */
+/** The pickpocket intent's message type, for clicking Pickpocket on a person; its payload is a mark's id (#250). */
 export const PICKPOCKET_INTENT = "pickpocket";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
