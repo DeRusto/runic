@@ -5,13 +5,11 @@ import {
   attemptChance,
   DOUBLE_YIELD,
   EMPTY_SLOT,
-  FIGHT_BACK_DELAY_TICKS,
   FIRES,
   gatheringSource,
   gatherRefusal,
   GATHERING,
   GATHERING_SKILLS,
-  GEAR_SLOTS,
   ITEMS,
   levelFor,
   LIGHTING_TICKS,
@@ -28,11 +26,8 @@ import {
   pickIntervalTicks,
   potionFromPlant,
   POTIONS,
-  AVOIDANCE_POTION_POINTS,
-  MIGHT_POTION_HIT,
   mixRefusal,
   removeItems,
-  PLAYER_DEAD_TICKS,
   RECIPES,
   groundBlocks,
   respawnTile,
@@ -45,9 +40,7 @@ import {
   takeRefusal,
   stationRefusal,
   tilesApart,
-  SWING_INTERVAL_TICKS,
   WALK_TICKS_PER_TILE,
-  ENEMIES,
   type Deal,
   type VillagerId,
   type GatheringLeftField,
@@ -59,11 +52,7 @@ import {
   type Tile,
   type TileKind,
   type WorldEvent,
-  enemyHit,
-  itemTag,
   lightTileAt,
-  playerHit,
-  type LootWon,
   PICKPOCKET_INTERVAL_TICKS,
   PICKPOCKETS,
   isPickpocketTarget,
@@ -78,12 +67,13 @@ import {
   type PickpocketTarget,
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
-import { Enemies, Enemy } from "./enemies.ts";
+import { Enemies } from "./enemies.ts";
 import { Fire, Player, SITE_SCHEMAS } from "./worldState.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Gear } from "./gear.ts";
 import { Eating } from "./eating.ts";
+import { Fighting } from "./fighting.ts";
 import { Quests } from "./quests.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Bank } from "./banking.ts";
@@ -92,7 +82,6 @@ import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
 import {
   findPath,
   legalSteps,
-  nextTo,
   pathNextTo,
   tilesNextTo,
 } from "./pathfinding.ts";
@@ -150,6 +139,7 @@ export class Simulation {
   private readonly store: GeneralStore;
   private readonly gear: Gear;
   private readonly eating: Eating;
+  private readonly fighting: Fighting;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
@@ -162,7 +152,8 @@ export class Simulation {
     readonly random: () => number,
     pools: SitePool[] = [],
   ) {
-    this.world = new World(tiles, random);
+    // Through `this.random` at each roll, so a test can stub it after construction.
+    this.world = new World(tiles, () => this.random());
     this.state = this.world.state;
     this.events = this.world.events;
     this.quests = new Quests(this.world);
@@ -189,6 +180,12 @@ export class Simulation {
       this.world.tiles,
       this.state.enemies,
       this.random,
+    );
+    this.fighting = new Fighting(
+      this.world,
+      this.enemies,
+      this.windows,
+      this.quests,
     );
     this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
     for (const pool of this.pools)
@@ -332,13 +329,8 @@ export class Simulation {
         ]),
       ),
       // Or a save during death could bring someone back with 0 health (D13).
-      ...(player.dead && this.respawned(player)),
+      ...(player.dead && this.fighting.respawned(player)),
     };
-  }
-
-  /** What dying changes, once it's over. */
-  private respawned(player: InstanceType<typeof Player>) {
-    return { ...respawnTile(this.world.tiles), health: player.maxHealth };
   }
 
   removePlayer(id: string) {
@@ -686,24 +678,6 @@ export class Simulation {
     return room;
   }
 
-  /** A part drop is one ground item, and the rest stays in the slot. */
-  private drop(id: string, slot: number, amount = Infinity) {
-    const player = this.state.players.get(id)!;
-    const item = player.inventory[slot]!;
-    if (!item) return;
-    const count = Math.min(amount, player.inventoryCounts[slot]!);
-    const { username } = player;
-    this.world.groundItems.spawn(
-      player,
-      item,
-      count,
-      username,
-      this.state.tick,
-    );
-    player.inventoryCounts[slot]! -= count;
-    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
-  }
-
   /** Whether this player can see the ground item with this id; the room sends them only those. */
   canSee(id: string, groundItem: string) {
     const player = this.state.players.get(id);
@@ -749,7 +723,8 @@ export class Simulation {
     this.windows.advanceVisits();
     this.advanceThieving();
     this.advanceTakes();
-    this.advancePlayerSwings();
+    this.fighting.advancePlayerSwings();
+    this.syncActions();
     this.enemies.advance({
       tick: this.state.tick,
       players: () =>
@@ -767,7 +742,7 @@ export class Simulation {
             this.state.tick,
           )
         )
-          this.enemySwing(enemyId, playerId);
+          this.fighting.enemySwing(enemyId, playerId);
       },
     });
     this.advancePlayerTimers();
@@ -869,7 +844,7 @@ export class Simulation {
     for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
     this.world.queuedEats.clear();
     for (const [id, { slot, amount }] of this.world.queuedDrops)
-      this.drop(id, slot, amount);
+      this.world.dropSlot(id, slot, amount);
     this.world.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       const refusal = logoutRefusal(this.lockRunning(id));
@@ -1236,7 +1211,7 @@ export class Simulation {
             const damage = Math.min(hit, player.health);
             player.health -= damage;
             this.events.push({ type: "trapSprung", player: id, damage });
-            if (player.health === 0) this.die(id, player);
+            if (player.health === 0) this.fighting.die(id, player);
             else this.makeBusy(id, ticks, { hittable: true });
           },
         });
@@ -1272,18 +1247,13 @@ export class Simulation {
         pool.comebackTicks.shift();
   }
 
-  /** After the moves, so the first swing lands on the tick the player arrives. */
-  private advancePlayerSwings() {
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "fighting") continue;
-      const player = this.state.players.get(id)!;
-      const enemy = this.state.enemies.get(action.enemy)!;
-      if (this.state.tick < unsynced.nextSwingTick) continue;
-      if (!nextTo(this.world.tiles, player, enemy)) continue;
-      unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
-      this.playerSwing(id, player, action.enemy, enemy);
-    }
+  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
+  lock(id: string) {
+    this.world.lock(id);
+  }
+
+  /** After the swings, so each player's synced target and action show this tick's. */
+  private syncActions() {
     for (const [id, { action, path }] of this.world.unsyncedPlayers) {
       const player = this.state.players.get(id)!;
       player.target = action?.kind === "fighting" ? action.enemy : "";
@@ -1302,164 +1272,11 @@ export class Simulation {
     }
   }
 
-  private playerSwing(
-    id: string,
-    player: InstanceType<typeof Player>,
-    enemyId: string,
-    enemy: InstanceType<typeof Enemy>,
-  ) {
-    this.world.lock(id);
-    // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
-    const might =
-      this.world.unsyncedPlayers.get(id)!.potion?.virtue === "might"
-        ? MIGHT_POTION_HIT
-        : 0;
-    const { damage, critical, xp } = playerHit(
-      player,
-      might,
-      enemy.health,
-      this.random,
-    );
-    for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
-    this.world.fitHealth(id);
-    this.events.push({
-      type: "playerSwing",
-      player: id,
-      enemy: enemyId,
-      damage,
-      critical,
-    });
-    const loot = this.enemies.takeHit(this.state.tick, enemyId, id, damage);
-    if (!loot) return;
-    this.events.push({ type: "enemyDied", enemy: enemyId });
-    // A quest-category drop lands only for a winner whose quest stage still asks for it.
-    const questLoot = new Set(
-      ENEMIES[enemy.kind].loot
-        .filter(({ category }) => category === "quest")
-        .flatMap(({ items }) => items.map(({ item }) => item)),
-    );
-    for (const won of loot)
-      if (
-        !questLoot.has(won.item) ||
-        this.quests.questWants(won.player, won.item)
-      )
-        this.placeLoot(enemy, won);
-    for (const unsynced of this.world.unsyncedPlayers.values()) {
-      const { action } = unsynced;
-      if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
-      unsynced.action = undefined;
-      unsynced.path = [];
-    }
-  }
-
-  /** One winner's loot, on the enemy's tile and theirs for the first minute, with a line saying so. */
-  private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
-    const { username } = this.state.players.get(id)!;
-    this.world.groundItems.spawn(at, item, count, username, this.state.tick);
-    // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
-    const amount =
-      count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
-    this.events.push({
-      type: "told",
-      player: id,
-      line: `You find ${amount} ${itemTag(item)}. It is on the ground.`,
-      items: [item],
-    });
-  }
-
-  /** A swing an enemy is due, rolled against the player's Avoidance and shield, then applied. */
-  private enemySwing(enemyId: string, playerId: string) {
-    const enemy = this.state.enemies.get(enemyId)!;
-    const player = this.state.players.get(playerId)!;
-    this.world.lock(playerId);
-    // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
-    const avoidance =
-      this.world.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
-        ? AVOIDANCE_POTION_POINTS
-        : 0;
-    const { damage, blocked, hit, xp } = enemyHit(
-      enemy.kind,
-      player,
-      avoidance,
-      this.random,
-    );
-    player.health -= damage;
-    for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
-    this.events.push({
-      type: "enemySwing",
-      enemy: enemyId,
-      player: playerId,
-      damage,
-      blocked,
-    });
-    if (hit) this.windows.hit(playerId);
-    if (player.health === 0) this.die(playerId, player);
-    else if (player.action === "") this.fightBack(playerId, player, enemyId);
-  }
-
-  /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
-  private fightBack(
-    id: string,
-    player: InstanceType<typeof Player>,
-    enemyId: string,
-  ) {
-    const unsynced = this.world.unsyncedPlayers.get(id)!;
-    if (unsynced.dropped || this.world.isBusy(id)) return;
-    unsynced.action = { kind: "fighting", enemy: enemyId };
-    unsynced.nextSwingTick = Math.max(
-      unsynced.nextSwingTick,
-      this.state.tick + FIGHT_BACK_DELAY_TICKS,
-    );
-    // Now, as a second enemy swinging this tick must find them busy.
-    Object.assign(player, { target: enemyId, action: "fighting" });
-  }
-
-  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
-  lock(id: string) {
-    this.world.lock(id);
-  }
-
-  private die(id: string, player: InstanceType<typeof Player>) {
-    player.dead = true;
-    this.world.clearAction(id);
-    this.world.stopFollowersOf(id);
-    // Drop on death (#119): the Toolbelt stays.
-    player.inventory.forEach((_, slot) => this.drop(id, slot));
-    for (const gearSlot of GEAR_SLOTS) {
-      const worn = player[gearSlot];
-      if (!worn) continue;
-      this.world.groundItems.spawn(
-        player,
-        worn,
-        1,
-        player.username,
-        this.state.tick,
-      );
-      player[gearSlot] = "";
-    }
-    const unsynced = this.world.unsyncedPlayers.get(id)!;
-    unsynced.healingPool.length = 0;
-    unsynced.delicious = undefined;
-    unsynced.potion = undefined;
-    unsynced.busy = undefined;
-    this.world.fitHealth(id);
-    unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
-    this.events.push({ type: "playerDied", player: id });
-  }
-
   /** Each player's respawn once their death is over, or else their healing (spec §6). */
   private advancePlayerTimers() {
-    const { tick } = this.state;
-    for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const player = this.world.player(id);
-      if (!player.dead) {
-        this.eating.heal(id, tick);
-        continue;
-      }
-      if (tick < unsynced.respawnTick) continue;
-      Object.assign(player, this.respawned(player), { dead: false });
-      unsynced.lockEndTick = 0;
-      this.events.push({ type: "playerRespawned", player: id });
+    for (const id of this.world.unsyncedPlayers.keys()) {
+      if (this.world.player(id).dead) this.fighting.respawnIfDue(id);
+      else this.eating.heal(id, this.state.tick);
     }
   }
 }
