@@ -45,7 +45,10 @@ import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station, stall, strongbox, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens, and to pickpocket those who can be; on a mark it offers to pickpocket; on a stall, to steal from it; on a strongbox, to open it; on another player it opens the player menu. */
+/**
+ * Targets what is under a click or walks to the ground tile. Right-click opens the choices for
+ * villagers, marks, stalls, strongboxes, obstacles and other players.
+ */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],

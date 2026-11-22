@@ -143,6 +143,9 @@ describe("Figure", () => {
     expect(figure.model.position).toMatchObject({ x: 1, z: 0 });
     figure.update(1750, crossing);
     expect(figure.model.position).toMatchObject({ x: 1, z: 1 });
+    tile.y = 2;
+    figure.update(2200);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 2 });
   });
 
   it("stands on its tile playing Idle_A", () => {

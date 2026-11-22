@@ -347,7 +347,7 @@ The skill trained only by crossing obstacles, on a course or a shortcut. It gate
 _Avoid_: Running, stamina
 
 **Obstacle**:
-A marked start and landing a player crosses for Agility experience. The crossing takes a fixed number of ticks. During those ticks the player cannot act or take a hit, and other players can cross the same obstacle. A shortcut can fail near its required level and cost a little health.
+A crossing between a marked start tile and a landing tile that earns Agility experience. The crossing takes a fixed number of ticks. During those ticks the player cannot act or take a hit, and other players can cross the same obstacle. A shortcut can fail near its required level and cost a little health, but it never kills the player.
 _Avoid_: Hurdle
 
 **Course**:

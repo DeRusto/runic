@@ -128,6 +128,7 @@ export class World {
    * Alive and not busy: a busy player's clicks are ignored, not saved for later (#236). Checked as
    * an intent arrives, like `alive`, against the next tick, the one it would apply on: not the
    * current one, or a click sent just after the stun's last tick would be lost too.
+   * A crossing discards clicks until landing, which takes place after queued actions apply.
    */
   canAct(id: string) {
     const busy = this.unsyncedPlayers.get(id)?.busy;
@@ -142,7 +143,7 @@ export class World {
     return this.unsyncedPlayers.get(id)?.crossing !== undefined;
   }
 
-  /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
+  /** Whether the player is busy this tick: stunned or crossing an Agility obstacle (#236). */
   isBusy(id: string) {
     return isBusy(this.unsyncedPlayers.get(id)?.busy, this.state.tick);
   }

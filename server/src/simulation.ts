@@ -320,7 +320,7 @@ export class Simulation {
     this.queue(id, () => this.agility.crossIntent(obstacle));
   }
 
-  /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
+  /** Whether the player is busy this tick: stunned or crossing an Agility obstacle (#236). */
   isBusy(id: string) {
     return this.world.isBusy(id);
   }

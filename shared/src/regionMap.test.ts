@@ -483,4 +483,29 @@ describe("obstacle placements", () => {
       load({ ...map, ...withLayer("features", [0, 3, 4, 0, 0, 5], map) }),
     ).toThrow("balanceBeam needs a clear landing");
   });
+  it.each([
+    [
+      "a landing outside the map",
+      [{ ...beam, ...at(1, 1) }],
+      [0, 3, 4, 0, 0, 0],
+      "balanceBeam needs a clear landing",
+    ],
+    [
+      "a second obstacle with the same name",
+      [beam, { ...beam, ...at(1, 1) }],
+      [0, 3, 4, 0, 0, 0],
+      "two balanceBeam obstacles",
+    ],
+    [
+      "a start on a blocking tile",
+      [beam],
+      [0, 3, 4, 5, 0, 0],
+      '"balanceBeam" stands on a blocking tile',
+    ],
+  ] as const)("refuses %s", (_, obstacles, features, message) => {
+    const map = mapWith({}, [respawn, ...obstacles]);
+    expect(() =>
+      load({ ...map, ...withLayer("features", features, map) }),
+    ).toThrow(message);
+  });
 });

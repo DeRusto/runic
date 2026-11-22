@@ -13,12 +13,12 @@ import type {
 } from "@runic/shared";
 import type { Busy } from "./busy.ts";
 
+type ApproachObstacle = { kind: "approachingObstacle"; obstacle: ObstacleKind };
+
 /**
  * What a player is doing, beyond walking. Fighting, gathering, making and lighting are also
  * their synced `PlayerAction`; the rest show as walking while a path remains, and idle after.
  */
-type ApproachObstacle = { kind: "approachingObstacle"; obstacle: ObstacleKind };
-
 export type UnsyncedAction =
   | ApproachObstacle
   | { kind: "fighting"; enemy: string }
@@ -91,9 +91,11 @@ export type UnsyncedPlayer = {
   potion?: { virtue: Virtue; endTick: number; bonus: number };
   /** The combat lock runs until this tick. */
   lockEndTick: number;
-  /** A stun, or later Agility's crossing (#236). Not saved: leaving ends it. */
+  /** A stun or an Agility crossing (#236). Not saved: leaving ends it. */
   busy?: Busy;
+  /** The obstacle in progress until the busy state ends. Session only. */
   crossing?: ObstacleKind;
+  /** Number of obstacles crossed in order in the current lap. Session only. */
   courseProgress?: number;
   respawnTick: number;
   /** Each started quest's progress, by quest id, kept for the save (#231). */
