@@ -32,4 +32,4 @@ The stun is one use of a general **busy** state: busy for N ticks, with a switch
 
 ## 4. The drunk
 
-**Pell**, the drunk, is a level-1 mark standing outside the inn, by its west corner, at (8, 44). He pays 1 to 5 coins, and one success in ten a cooked perch. A right-click offers Pickpocket, and a left-click pickpockets him at once, since he has nothing else to offer.
+**Pell**, the drunk, is a level-1 mark slumped outside the inn, beside the range, at (12, 46), where the default camera sees him. He pays 1 to 5 coins, and one success in ten a cooked perch. A right-click offers Pickpocket, and a left-click pickpockets him at once, since he has nothing else to offer.

@@ -39,7 +39,7 @@ The village's south-west building, with the range outside its door.
 _Avoid_: Tavern, pub
 
 **Pell**:
-The drunk: a mark who slumps outside the inn, by its west corner. He is the first person a player can pickpocket, at Thieving level 1, for a few coins and now and then a cooked perch (#250).
+The drunk: a mark who slumps outside the inn, beside the range. He is the first person a player can pickpocket, at Thieving level 1, for a few coins and now and then a cooked perch (#250).
 _Avoid_: The drunk (as his name), beggar
 
 **Lake**:
