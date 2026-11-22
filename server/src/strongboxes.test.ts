@@ -254,6 +254,29 @@ describe("strongboxes", () => {
     expect(lines(events)).toEqual(["You open the Runestone Hollow strongbox."]);
   });
 
+  test("a fatal trap drops what the player carries where they fell, as any death does (#119)", () => {
+    // Six rolls open the Boneyard strongbox; every roll after fails, so the Hollow's trap kills.
+    const sim = thief(
+      rolls(FAIL, ...Array<number>(6).fill(SUCCEED)),
+      55,
+      STRONGBOXES.hollow.trapHit,
+    );
+    open(sim, "boneyard");
+    const coins = held(sim, "coins");
+    expect(coins).toBeGreaterThan(0);
+    runTicks(sim, PICKPOCKET_INTERVAL_TICKS);
+    open(sim, "hollow");
+    const { x, y } = player(sim);
+    expect(player(sim).dead).toBe(true);
+    expect(itemsHeld(sim)).toBe(0);
+    expect([...sim.state.groundItems.values()]).toContainEqual(
+      expect.objectContaining({ x, y, item: "coins", count: coins }),
+    );
+    runTicks(sim, PLAYER_DEAD_TICKS);
+    expect(player(sim).dead).toBe(false);
+    expect(itemsHeld(sim)).toBe(0);
+  });
+
   test.each([["constructor"], ["food"], [7], [undefined]])(
     "ignores a click naming %s, which isn't a strongbox",
     (strongbox) => {
