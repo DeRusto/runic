@@ -253,6 +253,7 @@ export class Figure {
   private from: THREE.Vector3;
   private to: THREE.Vector3;
   private slideStart = -Infinity;
+  private slideMs = SLIDE_MS;
   private yaw = 0;
   private lastFrame = 0;
   private running = false;
@@ -434,19 +435,21 @@ export class Figure {
   }
 
   /** Call once a frame, with the frame's timestamp in ms. */
-  update(now: number) {
+  update(now: number, crossing?: { landing: Tile; ms: number }) {
     const { tile, model, from, to, fightTile } = this;
     const faces = fightTile ?? this.work?.tile;
-    const dx = tile.x - to.x;
-    const dz = tile.y - to.z;
+    const destination = crossing?.landing ?? tile;
+    const dx = destination.x - to.x;
+    const dz = destination.y - to.z;
     if (dx || dz) {
       from.copy(model.position);
-      to.set(tile.x, to.y, tile.y);
+      to.set(destination.x, to.y, destination.y);
       this.slideStart = now;
+      this.slideMs = crossing?.ms ?? SLIDE_MS;
       this.yaw = Math.atan2(dx, dz);
     } else if (
       faces &&
-      now - this.slideStart >= SLIDE_MS &&
+      now - this.slideStart >= this.slideMs &&
       (faces.x !== tile.x || faces.y !== tile.y)
     ) {
       this.yaw = Math.atan2(faces.x - tile.x, faces.y - tile.y);
@@ -454,10 +457,11 @@ export class Figure {
     model.position.lerpVectors(
       from,
       to,
-      Math.min((now - this.slideStart) / SLIDE_MS, 1),
+      Math.min((now - this.slideStart) / this.slideMs, 1),
     );
 
-    const running = now - this.slideStart < RUN_HOLD_MS;
+    const running =
+      now - this.slideStart < this.slideMs + RUN_HOLD_MS - SLIDE_MS;
     const walkingOff =
       running &&
       !this.running &&

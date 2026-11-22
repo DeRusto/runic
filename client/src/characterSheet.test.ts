@@ -77,6 +77,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
     leatherworkingXp: 0,
     jewelsmithingXp: 0,
     thievingXp: 0,
+    agilityXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     pinnedSkills,
@@ -258,6 +259,12 @@ describe("the Gear tab's stats", () => {
       "Block 0%",
       "Armour 0%",
     ]);
+  });
+
+  test("the critical chance rises on the sheet as Agility levels up", () => {
+    expect(stats({ agilityXp: xpForLevel(30) })).toContain(
+      "Critical 12.9% ×1.5",
+    );
   });
 
   test("each row splits into skill and gear where both add to it, as in issue #216's examples", () => {
@@ -461,6 +468,7 @@ describe("the Skills tab", () => {
       "Leatherworking 1",
       "Jewelsmithing 1",
       "Thieving 1",
+      "Agility 1",
       "Blocking 1",
       "Mastery 1",
     ]);

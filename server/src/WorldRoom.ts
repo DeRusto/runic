@@ -45,6 +45,7 @@ import {
   PICKPOCKET_INTENT,
   STEAL_INTENT,
   OPEN_INTENT,
+  CROSS_INTENT,
   WALK_INTENT,
   type ChatLine,
   type GatheringIntent,
@@ -102,6 +103,8 @@ export class WorldRoom extends Room {
       this.sim.queuePickpocket(client.sessionId, mark),
     [STEAL_INTENT]: (client: Client, stall: unknown) =>
       this.sim.queueSteal(client.sessionId, stall),
+    [CROSS_INTENT]: (client: Client, obstacle: unknown) =>
+      this.sim.queueCross(client.sessionId, obstacle),
     [OPEN_INTENT]: (client: Client, strongbox: unknown) =>
       this.sim.queueOpen(client.sessionId, strongbox),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>

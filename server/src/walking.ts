@@ -4,6 +4,7 @@ import {
   WALK_TICKS_PER_TILE,
   type Tile,
 } from "@runic/shared";
+import type { Agility } from "./agility.ts";
 import type { Firemaking } from "./firemaking.ts";
 import type { GatheringSites } from "./gatheringSites.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
@@ -18,6 +19,7 @@ export class Walking {
     private readonly sites: GatheringSites,
     private readonly thieving: ThievingTargets,
     private readonly firemaking: Firemaking,
+    private readonly agility: Agility,
   ) {}
 
   /** Starts the action a queued click asks for, and the walk toward its target. */
@@ -54,6 +56,14 @@ export class Walking {
       case "stealing":
       case "opening":
         goNextTo(intent);
+        break;
+      case "approachingObstacle":
+        unsynced.path = findPath(
+          this.world.tiles,
+          player,
+          this.agility.startOf(intent.obstacle),
+        );
+        unsynced.action = intent;
         break;
       case "taking": {
         // Onto its tile, not next to it. It may have gone since the intent arrived.
@@ -131,17 +141,19 @@ export class Walking {
 
   /** After the swings, so each player's synced target and action show this tick's. */
   syncActions() {
-    for (const [id, { action, path }] of this.world.unsyncedPlayers) {
+    for (const [id, { action, path, crossing }] of this.world.unsyncedPlayers) {
       const player = this.world.state.players.get(id)!;
       player.target = action?.kind === "fighting" ? action.enemy : "";
-      player.action =
-        action &&
-        action.kind !== "visiting" &&
-        action.kind !== "taking" &&
-        action.kind !== "following" &&
-        action.kind !== "pickpocketing" &&
-        action.kind !== "stealing" &&
-        action.kind !== "opening"
+      player.action = crossing
+        ? "crossing"
+        : action &&
+            action.kind !== "visiting" &&
+            action.kind !== "taking" &&
+            action.kind !== "following" &&
+            action.kind !== "pickpocketing" &&
+            action.kind !== "stealing" &&
+            action.kind !== "opening" &&
+            action.kind !== "approachingObstacle"
           ? action.kind
           : path.length
             ? "walking"

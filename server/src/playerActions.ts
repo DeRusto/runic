@@ -3,6 +3,7 @@ import type {
   FireLog,
   GatheringSkill,
   MakeItem,
+  ObstacleKind,
   PickpocketTarget,
   StallKind,
   StrongboxKind,
@@ -16,7 +17,10 @@ import type { Busy } from "./busy.ts";
  * What a player is doing, beyond walking. Fighting, gathering, making and lighting are also
  * their synced `PlayerAction`; the rest show as walking while a path remains, and idle after.
  */
+type ApproachObstacle = { kind: "approachingObstacle"; obstacle: ObstacleKind };
+
 export type UnsyncedAction =
+  | ApproachObstacle
   | { kind: "fighting"; enemy: string }
   | { kind: GatheringSkill; site: string }
   | {
@@ -49,6 +53,7 @@ export type UnsyncedAction =
 
 /** A click waiting for the next tick, named for the action it starts. */
 export type QueuedAction =
+  | ApproachObstacle
   | { kind: "walking"; to: Tile }
   | { kind: "fighting"; enemy: string }
   | { kind: "gathering"; skill: GatheringSkill; site: string }
@@ -88,6 +93,8 @@ export type UnsyncedPlayer = {
   lockEndTick: number;
   /** A stun, or later Agility's crossing (#236). Not saved: leaving ends it. */
   busy?: Busy;
+  crossing?: ObstacleKind;
+  courseProgress?: number;
   respawnTick: number;
   /** Each started quest's progress, by quest id, kept for the save (#231). */
   quests: Map<string, { stage: string; turns: number }>;

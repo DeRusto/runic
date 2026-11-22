@@ -10,13 +10,21 @@ import {
   DEFENSE_XP_PER_DAMAGE_TAKEN,
   DEFENSE_XP_PER_ENEMY_SWING,
   HEALTH_PER_HITPOINTS_LEVEL,
-  PLAYER_CRIT_CHANCE,
   PLAYER_CRIT_MULTIPLIER,
   XP_PER_DAMAGE_DEALT,
 } from "./index.ts";
-import type { XpField } from "./skills.ts";
+import { levelFor, type XpField } from "./skills.ts";
 import { meleeXpOf, type Stance } from "./stances.ts";
 import { avoidanceOf, blockOf, enemyHitChance, hitOf } from "./stats.ts";
+
+/** Chance from 0 to 1 that a landed player hit is critical (Agility spec §1). */
+export const playerCritChance = (agilityXp: number) =>
+  (BASE_CRIT_PER_THOUSAND +
+    (levelFor(agilityXp) - 1) * CRIT_PER_THOUSAND_PER_LEVEL) /
+  1000;
+
+const BASE_CRIT_PER_THOUSAND = 100;
+const CRIT_PER_THOUSAND_PER_LEVEL = 1;
 
 type Worn = Partial<Record<GearSlot, string>>;
 
@@ -40,7 +48,7 @@ function rollDamage(
  * amount again.
  */
 export function playerHit(
-  player: { attackXp: number; strengthXp: number } & Worn,
+  player: { attackXp: number; strengthXp: number; agilityXp: number } & Worn,
   stance: Stance,
   mightBonus: number,
   enemyHealth: number,
@@ -50,7 +58,7 @@ export function playerHit(
   const rolled = rollDamage(chance, max, random);
   // Only on a hit, as 0 means a miss.
   const hit = rolled && rolled + gear + mightBonus;
-  const critical = hit > 0 && random() < PLAYER_CRIT_CHANCE;
+  const critical = hit > 0 && random() < playerCritChance(player.agilityXp);
   const damage = Math.min(
     critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
     enemyHealth,

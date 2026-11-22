@@ -131,7 +131,15 @@ export class World {
    */
   canAct(id: string) {
     const busy = this.unsyncedPlayers.get(id)?.busy;
-    return this.alive(id) && !isBusy(busy, this.state.tick + 1);
+    return (
+      this.alive(id) &&
+      !this.isCrossing(id) &&
+      !isBusy(busy, this.state.tick + 1)
+    );
+  }
+
+  isCrossing(id: string) {
+    return this.unsyncedPlayers.get(id)?.crossing !== undefined;
   }
 
   /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */

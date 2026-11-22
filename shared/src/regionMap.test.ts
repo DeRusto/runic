@@ -465,3 +465,22 @@ describe("loadRegion", () => {
     expect(() => load(mapWith(), tileset)).toThrow(message);
   });
 });
+
+describe("obstacle placements", () => {
+  const beam = { type: "obstacle", name: "balanceBeam", ...at(0, 1) };
+  it("loads the start of an obstacle with a clear landing", () => {
+    const map = mapWith({}, [respawn, beam]);
+    const { tiles } = load({
+      ...map,
+      ...withLayer("features", [0, 3, 4, 0, 0, 0], map),
+    });
+    expect(tiles[1]![0]!.obstacle).toBe("balanceBeam");
+    expect(tiles[1]![2]!.blocks).toBe(false);
+  });
+  it("refuses a landing on a blocked tile", () => {
+    const map = mapWith({}, [respawn, beam]);
+    expect(() =>
+      load({ ...map, ...withLayer("features", [0, 3, 4, 0, 0, 5], map) }),
+    ).toThrow("balanceBeam needs a clear landing");
+  });
+});

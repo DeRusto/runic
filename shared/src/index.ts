@@ -25,6 +25,8 @@ export const PICKPOCKET_INTENT = "pickpocket";
 export const STEAL_INTENT = "steal";
 /** The open intent's message type, for clicking a strongbox; its payload is the strongbox's kind, a `StrongboxKind` (#253). */
 export const OPEN_INTENT = "open";
+/** Click an Agility obstacle. The payload is its ObstacleKind. */
+export const CROSS_INTENT = "cross";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
@@ -158,13 +160,18 @@ export const XP_PER_DAMAGE_DEALT = 6;
 export const DEFENSE_XP_PER_ENEMY_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
 export const BLOCKING_XP_PER_BLOCK = 40;
-/** A player's landed hit, sword bonus included, is critical this often, for this many times its damage. Enemies never crit. */
-export const PLAYER_CRIT_CHANCE = 0.1;
+/** A critical multiplies the damage of a landed player hit. */
 export const PLAYER_CRIT_MULTIPLIER = 1.5;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
-  "" | "walking" | GatheringSkill | "making" | "lighting" | "fighting";
+  | ""
+  | "walking"
+  | GatheringSkill
+  | "making"
+  | "lighting"
+  | "crossing"
+  | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
@@ -264,6 +271,7 @@ export * from "./skills.ts";
 export * from "./thieving.ts";
 export * from "./stalls.ts";
 export * from "./strongboxes.ts";
+export * from "./agility.ts";
 export * from "./stances.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
