@@ -674,7 +674,7 @@ The tools a player owns. It has no limit and grows as tools are added, unlike th
 _Avoid_: Tool inventory, bag
 
 **Respawn**:
-Returning to the village with everything kept, after dying.
+Returning to the village with full health after dying. Levels and experience stay; the inventory and worn gear drop where the player fell, and only the Toolbelt is kept (#119).
 _Avoid_: Revive, resurrect
 
 **Combat lock**:
