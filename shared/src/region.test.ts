@@ -438,6 +438,14 @@ describe("the region", () => {
     ]);
   });
 
+  it("stands the drunk outside the inn, by its west corner and a step from its door (#250)", () => {
+    const marks = region.flatMap((row, y) =>
+      row.flatMap(({ mark }, x) => (mark ? [[mark, x, y]] : [])),
+    );
+    expect(marks).toEqual([["drunk", 8, 44]]);
+    expect(region[45]![9]!.house).toBe("wall");
+  });
+
   it("stands the workbench beside the anvil, two tiles wide for its grindstone (#226)", () => {
     const [[x, y]] = tilesOf("furnace") as [[number, number]];
     expect(tilesOf("workbench")).toEqual([

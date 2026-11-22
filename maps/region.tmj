@@ -2419,6 +2419,19 @@
                 }, 
                 {
                  "height":0,
+                 "id":182,
+                 "name":"drunk",
+                 "opacity":1,
+                 "point":true,
+                 "rotation":0,
+                 "type":"mark",
+                 "visible":true,
+                 "width":0,
+                 "x":128,
+                 "y":704
+                }, 
+                {
+                 "height":0,
                  "id":153,
                  "name":"",
                  "opacity":1,
@@ -2924,7 +2937,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":182,
+ "nextobjectid":183,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

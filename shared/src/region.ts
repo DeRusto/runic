@@ -3,6 +3,7 @@ import type { EnemyKind } from "./enemies.ts";
 import type { FishingSpotKind } from "./fishing.ts";
 import type { FixedStation } from "./stations.ts";
 import type { BushKind } from "./herblaw.ts";
+import type { MarkId } from "./thieving.ts";
 import type { TreeKind } from "./woodcutting.ts";
 
 /** `moss` is Runestone Hollow's mossy stone floor; `cobble` is the village's streets. */
@@ -47,6 +48,8 @@ export type TileKind = {
   /** A fire is never a tile's station: no map places one (#224). */
   station?: FixedStation;
   villager?: VillagerId;
+  /** A mark standing here, to be pickpocketed (#250). */
+  mark?: MarkId;
   house?: "wall" | "door";
   enemy?: EnemyKind;
   respawn?: true;
@@ -96,6 +99,7 @@ export const TILE_KINDS = {
   $: { ground: "grass", villager: "aldous", blocks: true },
   f: { ground: "thicket", villager: "bram", blocks: true },
   Y: { ground: "grass", villager: "tamsin", blocks: true },
+  U: { ground: "grass", mark: "drunk", blocks: true },
   "~": { ground: "water", blocks: true },
   H: { ground: "grass", house: "wall", blocks: true },
   D: { ground: "grass", house: "door", blocks: true },

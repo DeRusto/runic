@@ -17,6 +17,8 @@ export const MAKE_INTENT = "make";
  * Arriving opens the conversation, or with `then`, a `DialogueAction` the conversation offers, runs that instead.
  */
 export const VISIT_INTENT = "visit";
+/** The pickpocket intent's message type, for clicking Pickpocket on a person; its payload is their mark or villager id (#250). */
+export const PICKPOCKET_INTENT = "pickpocket";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
@@ -192,6 +194,8 @@ export type WorldEvent =
   /** An item finished at a station, by its id, so the client can name an improved one (spec §5). */
   | { type: "made"; player: string; item: string }
   | { type: "eaten"; player: string }
+  /** A failed pickpocket hit `player` for `damage` and stunned them for `ticks` (#250). */
+  | { type: "stunned"; player: string; damage: number; ticks: number }
   /** A Delicious fish's buff started or was refreshed for `player`, with `ticks` of it left (#221). */
   | { type: "delicious"; player: string; ticks: number }
   /** A Virtue potion's buff started or was refreshed for `player`, with `ticks` of it left (#222). */

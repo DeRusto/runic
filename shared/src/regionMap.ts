@@ -10,6 +10,7 @@ import {
 import { VEINS } from "./mining.ts";
 import { groundBlocks, type Tile, type TileKind } from "./region.ts";
 import { STATIONS } from "./stations.ts";
+import { MARKS } from "./thieving.ts";
 import { TREES } from "./woodcutting.ts";
 
 type TiledProperty = { name: string; value: unknown };
@@ -40,7 +41,7 @@ type TiledMap = {
 type TiledTileset = {
   tiles?: { id: number; properties?: TiledProperty[] }[];
 };
-type TileProperties = Partial<Omit<TileKind, "enemy" | "villager">>;
+type TileProperties = Partial<Omit<TileKind, "enemy" | "villager" | "mark">>;
 
 const LAYERS = ["ground", "features", "placements"];
 
@@ -145,6 +146,11 @@ function place(tile: TileKind, object: TiledObject) {
     if (!Object.hasOwn(VILLAGERS, String(object.name)))
       fail(`unknown NPC "${String(object.name)}"`);
     tile.villager = object.name as TileKind["villager"];
+    tile.blocks = true;
+  } else if (object.type === "mark") {
+    if (!Object.hasOwn(MARKS, String(object.name)))
+      fail(`unknown mark "${String(object.name)}"`);
+    tile.mark = object.name as TileKind["mark"];
     tile.blocks = true;
   } else fail(`unknown placement class "${object.type}"`);
 }

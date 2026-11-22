@@ -32,6 +32,7 @@ import {
   MAKE_INTENT,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
+  PICKPOCKET_INTENT,
   PIN_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
@@ -94,6 +95,8 @@ export class WorldRoom extends Room {
       client: Client,
       visit: { villager: string; then?: string },
     ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
+    [PICKPOCKET_INTENT]: (client: Client, target: string) =>
+      this.sim.queuePickpocket(client.sessionId, target),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),
