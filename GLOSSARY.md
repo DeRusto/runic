@@ -245,7 +245,7 @@ How strong a fighter a player is, worked out from their combat skills: a base of
 A skill with no activity of its own: it gains a 7% share of the experience that lands in every other skill, counted separately for each. Quest experience and experience moved by a split earn no share.
 
 **Attack**:
-The skill that raises how often a player's melee swing lands, and gates which weapons they can wield; trained by dealing melee damage, as the stance directs.
+The skill that raises how often a player's melee swing lands, and gates which swords they can wield; trained by dealing melee damage, as the stance directs.
 _Avoid_: Accuracy (that's gear's points), Combat
 
 **Strength**:
@@ -258,6 +258,10 @@ _Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
 
 **Combat** (retired):
 The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
+
+**Ranged**:
+The skill that gates bows and arrows, and will set how often and how hard a shot lands once shooting comes (#268). A save from before it starts at 0 experience.
+_Avoid_: Archery, Range
 
 **Hitpoints**:
 The skill that sets a player's maximum health; trained by dealing damage. Players start at level 10.
@@ -276,7 +280,7 @@ How many percentage points come off an enemy's chance to hit a player, from Defe
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring adds its Accuracy to the player's side (#238).
+Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring and a bow add their Accuracy to the player's side (#238, #268).
 _Avoid_: Precision, attack bonus
 
 **Blocking**:
@@ -421,7 +425,7 @@ The fixed set of slots a player carries items in. A slot holds one piece of gear
 _Avoid_: Bag, backpack
 
 **Stack**:
-Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
+Up to 20 of the same material, food or arrows in one inventory slot. Arrows are the one gear that stacks, in the inventory and in the ammo slot; all other gear holds one to a slot.
 _Avoid_: Pile, bundle
 
 **Chat command**:
@@ -589,11 +593,11 @@ A small thrown weapon smithed from one bar at the anvil, plus an Emberbone at Em
 _Avoid_: Dagger, knife (alone)
 
 **Gear**:
-What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
+What a player equips to fight better: a weapon (a sword raises how hard they hit, and a bow how often), arrows in the ammo slot, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
 
 **Bow**:
-A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot and adds to the hit like a sword, gated on Attack at the level its wood's gate sits at; the Ranged milestone of Phase 8 re-gates it on Ranged and tunes the bonus (#228). It rolls improved versions like all gear.
+A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot, gated on Ranged at 1, 10 and 20, and adds 5, 10 or 15 points of Accuracy; it carries no hit bonus, since the arrow decides how hard a shot hits (#268). A bow worn before the Ranged gate came stays worn. Bows can still roll improved versions; arrows never do.
 _Avoid_: Ranged weapon, longbow
 
 **Improved item**:
@@ -641,8 +645,12 @@ A reagent worked into a piece of gear at the workbench, owned by Crafting: the g
 _Avoid_: Enchanting, upgrade
 
 **Gear slot**:
-Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
+Where a piece of gear goes when it is equipped, out of the inventory. A player has eleven: weapon, shield, head, body, legs, hands, feet, cape, neck, ring and ammo. Each holds one item, but the weapon slot and the ammo slot keep a count, so a stack moves whole when it goes on, comes off or drops on death.
 _Avoid_: Equipment slot
+
+**Ammo slot**:
+The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, and nothing else. Arrows gate on Ranged by tier and carry the hit bonus a bow shot will add. Equipping more of the worn arrow tops the slot up to 20, and another tier swaps the stacks. It keeps its arrows while a sword is in hand, and drops its whole stack on death (#269).
+_Avoid_: Quiver, ammunition slot
 
 **Panel**:
 A window that opens over the world: the character sheet, the smithing panel, the social panel, the journal or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.

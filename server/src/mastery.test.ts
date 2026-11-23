@@ -7,6 +7,8 @@ import {
 } from "@runic/shared";
 import { beforeEach, expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
+import { World } from "./worldContext.ts";
+import { Player } from "./worldState.ts";
 
 // The berry bush at (5,1) is next to (4,1); the Spider's home at (2,1) is next to the respawn tile.
 const BUSH_TILES = parseRegion(["TTTTTTT", "TR...bT", "TTTTTTT"].join("\n"));
@@ -113,4 +115,15 @@ test("Mastery can be pinned", () => {
   sim.pinSkill("a", { skill: "Mining", pinned: false });
   sim.pinSkill("a", { skill: "Mastery", pinned: true });
   expect([...me().pinnedSkills]).toContain("Mastery");
+});
+
+test("Ranged experience earns Mastery its 7%, as every combat skill does (Ranged spec §1)", () => {
+  const world = new World(SPIDER_TILES, () => 0.99);
+  const player = new Player();
+  world.earnXp(player, "rangedXp", 150);
+  expect(player).toMatchObject({
+    rangedXp: 150,
+    masteryXp: 10,
+    masteryHundredths: 50,
+  });
 });

@@ -2,6 +2,9 @@ import { ArraySchema } from "@colyseus/schema";
 import {
   BANK_SLOTS,
   EMPTY_SLOT,
+  gearCountField,
+  STACKING_GEAR_SLOTS,
+  wornCountOf,
   INVENTORY_SLOTS,
   QUEST_DONE,
   STARTING_HEALTH,
@@ -52,6 +55,13 @@ export function syncedOf(save: PlayerSave) {
   void questProgress;
   return {
     ...fields,
+    // A worn weapon from before slot counts is one; an empty slot holds none (Ranged spec §2).
+    ...Object.fromEntries(
+      STACKING_GEAR_SLOTS.map((slot) => [
+        gearCountField(slot),
+        wornCountOf(fields, slot),
+      ]),
+    ),
     pinnedSkills: new ArraySchema(...pinnedSkills),
     tools: new ArraySchema(...tools),
     riggedShortcuts: new ArraySchema(...riggedShortcuts),

@@ -1,5 +1,6 @@
 import { EMPTY_SLOT } from "./index.ts";
-import { GEAR, gearOf, gossamerItem } from "./gear.ts";
+import { canBeImproved, gearOf } from "./gear.ts";
+import { gossamerItem } from "./virtues.ts";
 import {
   addItems,
   VIRTUES,
@@ -911,13 +912,13 @@ export const BURN_PERCENT_AT_GATE = 25;
 /** Taken off the burn chance, in percent, per Cooking level above the recipe's, floored at 0 (#221). */
 export const BURN_PERCENT_PER_LEVEL = 1;
 
-/** The id of one `item` made at this Smithing level: gear rolls whether it is improved, then rare, then its Virtue (spec §2). Anything else is never improved. */
+/** The id of one `item` made at this Smithing level: gear rolls whether it is improved, then rare, then its Virtue (spec §2). Anything else, ammo included, is never improved. */
 export function madeItem(
   item: RecipeItem,
   level: number,
   random: () => number,
 ): string {
-  if (!GEAR.has(item)) return item;
+  if (!canBeImproved(item)) return item;
   const perMille = Math.min(
     IMPROVED_PER_MILLE_AT_GATE +
       IMPROVED_PER_MILLE_PER_LEVEL * (level - RECIPES[item].level),
@@ -1082,8 +1083,9 @@ export function make(
       if (!inventoryCounts[slot]) inventory[slot] = EMPTY_SLOT;
     });
   }
-  // On the copy, so the last ore in a full inventory leaves room for its bar. Gear never
-  // stacks, so the plain item needs the same room as an improved one, and a refused make rolls nothing.
+  // On the copy, so the last ore in a full inventory leaves room for its bar. Gear that can be
+  // improved never stacks, and ammo never rolls improved (Ranged spec §2), so the plain item
+  // needs the same room as an improved one, and a refused make rolls nothing.
   if (slotFor(recipe, { inventory, inventoryCounts }) < 0) return FULL;
   // The improved chance is the making skill's, so a bow rolls on Fletching (#228).
   const made = cooks

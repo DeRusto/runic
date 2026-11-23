@@ -78,6 +78,12 @@ export const players = sqliteTable("players", {
   cape: text().notNull().default(""),
   neck: text().notNull().default(""),
   ring: text().notNull().default(""),
+  /** The arrows in the ammo slot, or "" (Ranged spec §2). */
+  ammo: text().notNull().default(""),
+  /** How many the weapon slot holds. A worn weapon with no count is 1, as every save from before counts had (Ranged spec §2). */
+  weaponCount: integer("weapon_count").notNull().default(0),
+  /** How many arrows the ammo slot holds (Ranged spec §2). */
+  ammoCount: integer("ammo_count").notNull().default(0),
   tools: text({ mode: "json" }).notNull().$type<string[]>().default([]),
   pinnedSkills: text("pinned_skills", { mode: "json" })
     .notNull()

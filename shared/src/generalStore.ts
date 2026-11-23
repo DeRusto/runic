@@ -8,7 +8,7 @@ import {
   removeItems,
   type Quality,
 } from "./items.ts";
-import { capeOfGossamer } from "./gear.ts";
+import { capeOfGossamer } from "./virtues.ts";
 import { AUGMENTATIONS, costsOf, RECIPES, type RecipeItem } from "./making.ts";
 import { POTIONS, type PotionId } from "./potions.ts";
 

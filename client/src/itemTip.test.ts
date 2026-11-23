@@ -9,6 +9,7 @@ const player = (
 ) => ({
   attackXp: 0,
   defenseXp: xpForLevel(defenseLevel),
+  rangedXp: 0,
   miningXp: 0,
   smithingXp: xpForLevel(smithingLevel),
   cookingXp: 0,
@@ -32,6 +33,23 @@ describe("an item's tip (spec §5)", () => {
       virtue: undefined,
       refusal: undefined,
     });
+  });
+
+  test("a bow gates on Ranged and gives its Accuracy, and arrows are Ammo gated on Ranged (Ranged spec §2)", () => {
+    expect(itemTip("oakBow")).toMatchObject({
+      kind: "Weapon, needs Ranged 10",
+      stats: ["Adds 10 points to your chance to hit."],
+    });
+    expect(itemTip("bronzeArrow")).toMatchObject({
+      kind: "Ammo, needs Ranged 5",
+      stats: ["Adds 150 to a bow shot's minimum and maximum hit."],
+    });
+    expect(itemTip("bronzeArrow", player(1)).refusal).toBe(
+      "You need Ranged 5 to equip this.",
+    );
+    expect(
+      itemTip("bronzeArrow", { ...player(1), rangedXp: xpForLevel(5) }).refusal,
+    ).toBeUndefined();
   });
 
   test("an improved piece adds its Virtue line", () => {

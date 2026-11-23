@@ -41,6 +41,9 @@ describe("player save", () => {
       cape: "",
       neck: "",
       ring: "",
+      ammo: "steelArrow",
+      weaponCount: 1,
+      ammoCount: 13,
       // The quest columns' defaults: a save from before quests holds no progress (#231).
       quests: {},
       questPoints: 0,
@@ -58,6 +61,20 @@ describe("player save", () => {
     expect(save.bank).toHaveLength(BANK_SLOTS);
     expect(save.bankCounts).toHaveLength(BANK_SLOTS);
     expect(save.pinnedSkills).not.toHaveLength(0);
+  });
+
+  it("counts a worn weapon from before slot counts as one, and an empty slot as none (Ranged spec §2)", () => {
+    const old = { ...newSave({ x: 1, y: 2 }), weapon: "copperSword" };
+    expect(syncedOf(old)).toMatchObject({ weaponCount: 1, ammoCount: 0 });
+    expect(
+      syncedOf({ ...old, weaponCount: 0, ammo: "", ammoCount: 0 }),
+    ).toMatchObject({ weaponCount: 1, ammoCount: 0 });
+    expect(
+      syncedOf({ ...old, ammo: "ironArrow", ammoCount: 13 }),
+    ).toMatchObject({ weaponCount: 1, ammoCount: 13 });
+    expect(
+      syncedOf({ ...newSave({ x: 1, y: 2 }), weaponCount: 4 }),
+    ).toMatchObject({ weaponCount: 0 });
   });
 
   it("starts a new account with no experience but its starting Hitpoints", () => {

@@ -58,6 +58,12 @@ export const Player = schema(
     cape: t.string().default(""),
     neck: t.string().default(""),
     ring: t.string().default(""),
+    /** The arrows worn in the ammo slot, or "" (Ranged spec §2). */
+    ammo: t.string().default(""),
+    /** How many the weapon slot holds, 0 when empty: 1 for a sword or bow, a stack for throwing knives (Ranged spec §2). */
+    weaponCount: t.uint8().default(0),
+    /** How many arrows the ammo slot holds, 0 when empty (Ranged spec §2). */
+    ammoCount: t.uint8().default(0),
     /** The id of the enemy this player is after, or "". */
     target: t.string().default(""),
     action: t.string<PlayerAction>().default(""),
