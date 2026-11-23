@@ -63,7 +63,7 @@ const strongboxes = addStrongboxes(tiles);
 const obstacleUnder = addObstacles(tiles);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder, stalls] =
+const [newFigure, newEnemy, regionMeshes, villagerUnder, markUnder, stalls] =
   await Promise.all([
     loadCharacters(),
     loadEnemies(),
@@ -81,10 +81,11 @@ const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder, stalls] =
       loading.textContent = "Could not load the game. Reload to try again.";
       throw error;
     });
-for (const id of spots) setSiteLook(id, "gone");
+for (const id of spots) regionMeshes.setSiteLook(id, "gone");
 // The splash stays behind the login form until the first join settles.
 loading.remove();
-const stationUnder = addStations(tiles);
+const { setSiteLook, siteModel, stationModels } = regionMeshes;
+const stationUnder = addStations(tiles, stationModels);
 watchPanels();
 
 const status = document.getElementById("status")!;
@@ -101,7 +102,7 @@ function enterWorld(room: WorldConnection) {
     room,
     tiles,
     showEnemies(room, newEnemy),
-    showGatheringSites(room, tiles, spots, setSiteLook),
+    showGatheringSites(room, tiles, spots, setSiteLook, siteModel),
     stationUnder,
     showFires(room),
     showSmithingPanel(room),

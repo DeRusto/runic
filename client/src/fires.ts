@@ -2,8 +2,8 @@ import { Callbacks } from "@colyseus/sdk";
 import type { Tile } from "@runic/shared";
 import * as THREE from "three";
 import { flameLook } from "./flame.ts";
-import { tileHitBoxes } from "./hitBoxes.ts";
 import type { WorldConnection } from "./players.ts";
+import { tileSites } from "./propClicks.ts";
 import { loadPart } from "./regionMeshes.ts";
 import { scene } from "./scene.ts";
 import { addFireTile, removeFireTile } from "./stations.ts";
@@ -28,16 +28,16 @@ function flame({ x, y }: Tile) {
  */
 export function showFires(room: WorldConnection) {
   const callbacks = Callbacks.get(room);
-  const sites = tileHitBoxes<{ log: string }>(room);
+  const sites = tileSites<{ log: string }>(room);
   const looks = new Map<string, THREE.Object3D>();
   const tiles = new Map<string, Tile>();
   callbacks.onAdd("fires", (fire, id) => {
     const [x, y] = id.split(",").map(Number) as [number, number];
     const tile = { x, y };
-    sites.add(id, () => ({ log: (fire as { log: string }).log }));
     addFireTile(tile);
     const look = flame(tile);
     look.position.set(x, 0, y);
+    sites.add(id, () => ({ log: (fire as { log: string }).log }), look);
     tiles.set(id, tile);
     looks.set(id, look);
     scene.add(look);

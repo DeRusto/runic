@@ -1,6 +1,6 @@
 import type { StrongboxKind, TileKind } from "@runic/shared";
 import * as THREE from "three";
-import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
+import { propClicks } from "./propClicks.ts";
 import { groundTop } from "./regionMeshes.ts";
 import { scene } from "./scene.ts";
 
@@ -100,16 +100,17 @@ function strongbox(kind: StrongboxKind) {
 }
 
 /**
- * The strongboxes out where the danger is (#253), each with a hit box for clicks. Nothing about
+ * The strongboxes out where the danger is (#253), each clickable on its model and its tile. Nothing about
  * them depends on the room, so they stay across rejoins. Returns what finds the strongbox under a
  * click's ray, and each one's closed look by kind, which an emptied one hides.
  */
 export function addStrongboxes(tiles: TileKind[][]) {
   const closedLooks = new Map<StrongboxKind, { visible: boolean }>();
-  const hitBoxes = new Map<
-    THREE.Object3D,
-    { strongbox: StrongboxKind; x: number; y: number }
-  >();
+  const clicks = propClicks<{
+    strongbox: StrongboxKind;
+    x: number;
+    y: number;
+  }>();
   tiles.forEach((row, y) =>
     row.forEach(({ strongbox: kind, ground }, x) => {
       if (!kind) return;
@@ -118,14 +119,10 @@ export function addStrongboxes(tiles: TileKind[][]) {
       group.rotation.y = STRONGBOX_YAW;
       scene.add(group);
       closedLooks.set(kind, closed);
-      const hitBox = newHitBox();
-      hitBox.position.set(x, HIT_BOX_HEIGHT / 2, y);
-      hitBoxes.set(hitBox, { strongbox: kind, x, y });
+      clicks.add({ strongbox: kind, x, y }, [{ x, y }], group);
     }),
   );
-  const strongboxUnder = (raycaster: THREE.Raycaster) => {
-    const hit = raycaster.intersectObjects([...hitBoxes.keys()])[0];
-    return hit && hitBoxes.get(hit.object);
-  };
+  const strongboxUnder = (raycaster: THREE.Raycaster) =>
+    clicks.under(raycaster)?.target;
   return { strongboxUnder, closedLooks };
 }

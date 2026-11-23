@@ -1,6 +1,6 @@
 import type { StallKind, TileKind } from "@runic/shared";
 import * as THREE from "three";
-import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
+import { propClicks } from "./propClicks.ts";
 import { groundTop, loadPart, loadStation } from "./regionMeshes.ts";
 import { scene } from "./scene.ts";
 import type { StationPart } from "./stationLooks.ts";
@@ -103,7 +103,7 @@ const WARES: Record<StallKind, () => Promise<THREE.Object3D>> = {
 
 /**
  * Marta's stalls outside the general store (#252): Kenney's green stall with each one's wares on
- * its counter, and a hit box for clicks. Nothing about them depends on the room, so they stay
+ * its counter, each clickable on its model and its tile. Nothing about them depends on the room, so they stay
  * across rejoins. Returns what finds the stall under a click's ray, and each stall's wares by kind.
  */
 export async function addStalls(tiles: TileKind[][]) {
@@ -114,10 +114,7 @@ export async function addStalls(tiles: TileKind[][]) {
   );
   const body = await loadPart({ file: "stall-green.glb", width: 1 });
   const wares = new Map<StallKind, THREE.Object3D>();
-  const hitBoxes = new Map<
-    THREE.Object3D,
-    { stall: StallKind; x: number; y: number }
-  >();
+  const clicks = propClicks<{ stall: StallKind; x: number; y: number }>();
   for (const { stall, ground, x, y } of standing) {
     const ware = await WARES[stall]();
     const group = new THREE.Group().add(body.clone(), ware);
@@ -125,13 +122,10 @@ export async function addStalls(tiles: TileKind[][]) {
     group.rotation.y = STALL_YAW;
     scene.add(group);
     wares.set(stall, ware);
-    const hitBox = newHitBox();
-    hitBox.position.set(x, HIT_BOX_HEIGHT / 2, y);
-    hitBoxes.set(hitBox, { stall, x, y });
+    // An emptied stall's wares hide, but its body and tile still catch a click, to say why.
+    clicks.add({ stall, x, y }, [{ x, y }], group);
   }
-  const stallUnder = (raycaster: THREE.Raycaster) => {
-    const hit = raycaster.intersectObjects([...hitBoxes.keys()])[0];
-    return hit && hitBoxes.get(hit.object);
-  };
+  const stallUnder = (raycaster: THREE.Raycaster) =>
+    clicks.under(raycaster)?.target;
   return { stallUnder, wares };
 }

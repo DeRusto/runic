@@ -20,6 +20,7 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { BUILDING_LOOKS, HOUSE_MODELS, houseParts } from "./houseParts.ts";
 import { flameLook } from "./flame.ts";
+import { instancesModel } from "./instancesModel.ts";
 import { STATION_LOOKS, type StationPart } from "./stationLooks.ts";
 
 const STATION_KINDS = Object.keys(STATIONS) as FixedStation[];
@@ -80,6 +81,8 @@ export type SiteLook = "full" | "runOut" | "gone" | "spent";
 /** How long a spent site stays at its run-out look, then how long it takes to fade, in ms. */
 const SPENT_HOLD_MS = 1200;
 const SPENT_FADE_MS = 800;
+/** How long a spent site stays in sight, until its copy has faded out. */
+export const SPENT_MS = SPENT_HOLD_MS + SPENT_FADE_MS;
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 // The ore's rock colour, so a run-out vein reads as plain rock.
@@ -290,7 +293,12 @@ export function oreParts(ore: THREE.Object3D) {
   };
 }
 
-/** A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites: returns how to show one full, run out or gone. A run-out tree is a stump. */
+/**
+ * A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites.
+ * Returns how to show a site full, run out or gone (a run-out tree is a stump), which says whether
+ * a spent one leaves a fading copy in sight, and each site's and
+ * station's model, for clicks to find.
+ */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
     [
@@ -619,11 +627,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     scene.add(model);
   }
   // One model per station, at the middle of the tiles it covers.
+  const placedStations: Partial<Record<FixedStation, THREE.Object3D>> = {};
   for (const [kind, tilesUnder] of Object.entries(footprints)) {
     if (!tilesUnder.length) continue;
     const model = stations[kind as FixedStation];
     new THREE.Box3().setFromPoints(tilesUnder).getCenter(model.position);
     scene.add(model);
+    placedStations[kind as FixedStation] = model;
   }
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
@@ -708,10 +718,19 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       instances.instanceColor!.needsUpdate = true;
     }
     if (copies.length) fadeOut(id, copies);
+    return copies.length > 0;
   };
   // A tree's stump is hidden until it runs out.
   tiles.forEach((row, y) =>
     row.forEach(({ tree }, x) => tree && setLook(siteId({ x, y }), "full")),
   );
-  return setLook;
+  /** A site's parts as drawn now, its fading copies too, for clicks to find. */
+  const siteModel = (id: string) =>
+    instancesModel(
+      runOutSlots
+        .get(id)!
+        .map(({ geometry, slot }) => ({ mesh: meshes.get(geometry)!, slot })),
+      () => fading.get(id) ?? [],
+    );
+  return { setSiteLook: setLook, siteModel, stationModels: placedStations };
 }
