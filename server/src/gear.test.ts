@@ -924,12 +924,18 @@ describe("bows (Ranged spec §2)", () => {
   });
 
   test("add their Accuracy to the chance to hit, and no hit bonus", () => {
-    // 40% bare-handed, 55% with a charwood bow's 15 points: a roll of 0.5 lands only with the bow.
-    start({ weapon: "charwoodBow", rangedXp: LEVEL_20_XP });
+    // 40% bare-handed, over 55% with a charwood bow's 15 points: a roll of 0.5 lands only with the bow.
+    // The landed shot is the bottom of the range plus the copper arrow's 100, and nothing from the bow.
+    start({
+      weapon: "charwoodBow",
+      ammo: "copperArrow",
+      ammoCount: 5,
+      rangedXp: LEVEL_20_XP,
+    });
     rolls = [0.5, 0];
     sim.queueTarget("a", "0");
     sim.tick();
-    expect(swings()).toEqual([100]);
+    expect(swings()).toEqual([200]);
     start();
     rolls = [0.5, 0];
     sim.queueTarget("a", "0");
@@ -938,12 +944,18 @@ describe("bows (Ranged spec §2)", () => {
   });
 
   test("a bow worn before the change stays worn and keeps working, but once off goes back on only at its Ranged gate", () => {
-    start({ weapon: "charwoodBow", attackXp: LEVEL_20_XP, rangedXp: 0 });
+    start({
+      weapon: "charwoodBow",
+      ammo: "copperArrow",
+      ammoCount: 5,
+      attackXp: LEVEL_20_XP,
+      rangedXp: 0,
+    });
     expect(me().weapon).toBe("charwoodBow");
     rolls = [0.5, 0];
     sim.queueTarget("a", "0");
     sim.tick();
-    expect(swings()).toEqual([100]);
+    expect(swings()).toEqual([200]);
     sim.takeOff("a", "weapon");
     const slot = me().inventory.indexOf("charwoodBow");
     sim.equip("a", slot);

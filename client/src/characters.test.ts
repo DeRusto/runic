@@ -24,6 +24,7 @@ CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
 const DEATH_S = 1.5;
 CLIPS.set("Death_A", new THREE.AnimationClip("Death_A", DEATH_S, []));
 CLIPS.set("Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, []));
+CLIPS.set("Fishing_Cast", new THREE.AnimationClip("Fishing_Cast", 1.8, []));
 const PICKAXING_S = 3.733;
 CLIPS.set("Pickaxing", new THREE.AnimationClip("Pickaxing", PICKAXING_S, []));
 
@@ -172,6 +173,33 @@ describe("Figure", () => {
     expect(figure.moving).toBe(true);
     figure.update(2000);
     expect(figure.moving).toBe(false);
+  });
+
+  it("a shot facing an enemy holds once a step that came in the same patch is over", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    // The step east and a shot at an enemy to the south arrive together, with no fight target left.
+    tile.x = 1;
+    figure.face({ x: 1, y: 5 });
+    figure.once("Fishing_Cast");
+    for (let now = 16; now <= 1000; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(0, 2);
+  });
+
+  it("forgets a shot's facing at death, so the respawn faces where it walked last", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    tile.x = 1;
+    for (let now = 16; now <= 1000; now += 16) figure.update(now);
+    figure.face({ x: 1, y: 5 });
+    figure.once("Fishing_Cast");
+    figure.alreadyDown("Death_A");
+    figure.respawn();
+    figure.once("Fishing_Cast");
+    for (let now = 1016; now <= 2000; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(Math.PI / 2, 2);
   });
 
   it("runs at 2x, crossfading over 0.12 s, when its tile changes", () => {
@@ -823,6 +851,20 @@ describe("swingFor", () => {
     );
   });
 
+  test("a bow shoots with the cast clip, its blow landing once the arrow has flown", () => {
+    expect(swingFor("birchBow", "a", 8)).toEqual({
+      clip: "Fishing_Cast",
+      contactMs: 1000,
+    });
+    expect(swingFor("charwoodBow", "b", 9)).toEqual(
+      swingFor("birchBow", "a", 8),
+    );
+  });
+
+  test("the adventurer every player wears has the bow shot's clip among its animations", () => {
+    expect(clipsOf("Adventurer")).toContain(swingFor("birchBow", "a", 8).clip);
+  });
+
   test("no sword punches at 550 ms", () => {
     expect(swingFor("", "a", 8)).toEqual({
       clip: "Melee_Unarmed_Attack_Punch_A",
@@ -853,6 +895,7 @@ describe("gear in hand", () => {
       "Melee_Unarmed_Attack_Punch_A",
       "Melee_1H_Attack_Chop",
       "Melee_Block_Hit",
+      "Fishing_Cast",
       "Pickaxing",
       "Hammering",
       "Death_A",
@@ -939,6 +982,24 @@ describe("gear in hand", () => {
     figure.update(2100);
     figure.update(2116);
     expect(sword.visible).toBe(false);
+  });
+
+  test("a killing bow shot keeps a worn shield up, as a killing swing does", () => {
+    const { figure, shield } = wearer();
+    figure.weapon = "birchBow";
+    figure.shield = "copperShield";
+    figure.face(FOE);
+    figure.once(swingFor("birchBow", "a", 8).clip);
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
+  test("a fishing cast, the bow shot's clip, shows nothing worn", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Fishing_Cast");
+    figure.update(1016);
+    expect(shield.visible).toBe(false);
   });
 
   test("a punch with a shield worn keeps the shield up after the kill", () => {

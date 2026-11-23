@@ -14,6 +14,7 @@ import {
   strongboxRefusal,
   stationRefusal,
   TAKE_INTENT,
+  rangedAttackRefusal,
   TARGET_INTENT,
   TICK_MS,
   VISIT_INTENT,
@@ -217,6 +218,11 @@ export function walkOnClick(
     aim(event);
     const enemy = enemyUnder(raycaster);
     if (enemy) {
+      // The server checks it too, against its own state (Ranged spec §4).
+      const refused = rangedAttackRefusal(
+        room.state.players.get(room.sessionId) ?? {},
+      );
+      if (refused) return printChatLine(refused);
       showMarker(enemy.tile.x, enemy.tile.y);
       room.send(TARGET_INTENT, enemy.id);
       return;

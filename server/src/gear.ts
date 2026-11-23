@@ -28,6 +28,36 @@ export function wear(
     player[gearCountField(gearSlot)] = item ? count : 0;
 }
 
+/** Takes up to `wanted` from an inventory slot's stack, emptying the slot when none are left. Returns how many it took. */
+function takeFromSlot(world: World, id: string, slot: number, wanted: number) {
+  const player = world.player(id);
+  const taken = Math.min(wanted, player.inventoryCounts[slot]!);
+  player.inventoryCounts[slot]! -= taken;
+  if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
+  // A drop waiting on the slot meant the stack as it was, as for any move.
+  world.forgetDropOn(id, slot);
+  return taken;
+}
+
+/**
+ * Spends one arrow from the ammo slot, hit or miss. When the last one goes, the slot refills
+ * with up to a stack of the same arrow from the inventory, taken slot by slot in order (owner,
+ * 2026-11-23). Returns whether any arrows are left to fire.
+ */
+export function spendArrow(world: World, id: string) {
+  const player = world.player(id);
+  const arrow = player.ammo;
+  let count = player.ammoCount - 1;
+  const refilling = count === 0;
+  const stack = ITEMS[itemParts(arrow).base].stack;
+  player.inventory.forEach((item, slot) => {
+    if (!refilling || count === stack || item !== arrow) return;
+    count += takeFromSlot(world, id, slot, stack - count);
+  });
+  wear(player, "ammo", count ? arrow : "", count);
+  return count > 0;
+}
+
 /** Putting gear on and taking it off, which can change max health (spec §2, §4). */
 export class Gear {
   constructor(private readonly world: World) {}
@@ -96,11 +126,7 @@ export class Gear {
       this.world.tell(id, `Your ${gearSlot} slot is full.`);
       return;
     }
-    player[field] += moved;
-    player.inventoryCounts[slot]! -= moved;
-    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
-    // A drop waiting on the slot meant the stack as it was, as for any move.
-    this.world.forgetDropOn(id, slot);
+    player[field] += takeFromSlot(this.world, id, slot, moved);
   }
 
   /** Puts `count` of gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */

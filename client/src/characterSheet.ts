@@ -7,6 +7,8 @@ import {
   GEAR_SLOTS,
   gearCountField,
   hitOf,
+  rangedHitOf,
+  rangedWeaponOf,
   ITEMS,
   itemParts,
   STACKING_GEAR_SLOTS,
@@ -224,7 +226,8 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     },
     /** In raw numbers, as the bottom bar's health is (issue #216). */
     drawStats(me: SyncedPlayer) {
-      const hit = hitOf(me);
+      // A bow's rows are a shot's (Ranged spec §4).
+      const hit = rangedWeaponOf(me) ? rangedHitOf(me) : hitOf(me);
       const avoidance = avoidanceOf(me);
       const block = blockOf(me);
       const health = maxHealthOf(me);

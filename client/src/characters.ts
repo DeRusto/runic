@@ -1,6 +1,7 @@
 import {
   GATHERING,
   GATHERING_SKILLS,
+  rangedWeaponOf,
   TICK_MS,
   WALK_TICKS_PER_TILE,
   type EnemyKind,
@@ -111,6 +112,12 @@ const UNARMED_SWING = {
   clip: "Melee_Unarmed_Attack_Punch_A",
   contactMs: 550,
 };
+/**
+ * A bow shot: the cast's overhand release, as the adventurer every player wears has no bow clip,
+ * with the blow landing at the enemy once the arrow has flown (Ranged spec §4). Not the General
+ * pack's Throw: the adventurer plays only its own clips.
+ */
+const BOW_SHOT = { clip: "Fishing_Cast", contactMs: 1000 };
 /** A blocked hit (spec §7). */
 export const BLOCK_CLIP = "Melee_Block_Hit";
 /** The clips that bring out what's worn, even with no fight going on. */
@@ -137,8 +144,9 @@ export function armedSwing(id: string, tick: number) {
   return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
 }
 
-/** A swing follows the weapon, so a shield with no sword punches (spec §7). */
+/** A swing follows the weapon, so a shield with no sword punches (spec §7), and a bow shoots. */
 export function swingFor(weapon: string, id: string, tick: number) {
+  if (rangedWeaponOf({ weapon })) return BOW_SHOT;
   return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }
 
@@ -272,6 +280,8 @@ export class Figure {
   private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
   fightTile?: Tile;
+  /** What the clip playing now attacks, set by `face`. */
+  private attackAt?: Tile;
   /** The synced action, so a gathering tool stays in hand between attempts. */
   action = "";
   private tools: [GatheringSkill, THREE.Object3D][] = [];
@@ -374,6 +384,7 @@ export class Figure {
 
   private endShot() {
     this.shot = undefined;
+    this.attackAt = undefined;
     this.playBase();
   }
 
@@ -397,6 +408,7 @@ export class Figure {
     this.from.copy(to);
     this.slideStart = -Infinity;
     this.shot = undefined;
+    this.attackAt = undefined;
     this.held = this.sinks = this.sinking = false;
     this.sunk = 0;
   }
@@ -435,10 +447,16 @@ export class Figure {
       .multiplyScalar(NUDGE);
   }
 
+  /** Faces `at` while the attack's clip plays, for an attack whose target the fight may already have cleared. */
+  face(at: Tile) {
+    this.attackAt = { x: at.x, y: at.y };
+  }
+
   /** Call once a frame, with the frame's timestamp in ms. */
   update(now: number, crossing?: { landing: Tile; ms: number }) {
     const { tile, model, from, to, fightTile } = this;
-    const faces = fightTile ?? this.work?.tile;
+    const faces =
+      fightTile ?? this.work?.tile ?? (this.shot ? this.attackAt : undefined);
     const destination = crossing?.landing ?? tile;
     const dx = destination.x - to.x;
     const dz = destination.y - to.z;
@@ -507,7 +525,10 @@ export class Figure {
       !this.held &&
       !this.tools.some(([, tool]) => tool.visible) &&
       !this.hammer?.visible &&
-      (GEAR_CLIPS.has(clip!) || (!!fightTile && !running));
+      // An attack `face` set counts too: a bow's cast is also Fishing's clip, which shows nothing.
+      (GEAR_CLIPS.has(clip!) ||
+        (!!clip && !!this.attackAt) ||
+        (!!fightTile && !running));
     for (const [item, held] of this.gear)
       held.visible = inFight && (item === this.weapon || item === this.shield);
 

@@ -100,6 +100,9 @@ export function showFights(room: WorldConnection) {
           event.player,
           room.state.tick,
         );
+        // The patch may already have cleared their target, when this attack ended the fight.
+        const at = room.state.enemies.get(event.enemy);
+        if (at) attacker?.face(at);
         attacker?.once(clip);
         ownContactAt.set(event.player, Date.now() + contactMs);
         killingContactMs = contactMs;

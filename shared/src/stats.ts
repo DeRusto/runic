@@ -51,22 +51,35 @@ export const enemyHitChance = (kind: EnemyKind, avoidance: number) =>
   );
 
 /**
- * A player's chance (0..1) to land a swing — its base, per Attack level and worn Accuracy
- * (#238's rings), a point each way being a percentage point (spec §5) — the landed hit's min,
- * its max from Strength, and the weapon's hit bonus plus Might, which adds to both (melee
- * rework spec §2).
+ * The hit curves every style shares, from the level that lands hits and the level that sets
+ * the max: a chance (0..1) of 40% plus 0.5 points a level above 1 plus worn Accuracy (#238's
+ * rings, a bow's), a point being a percentage point (spec §5), and a landed hit from 100 to
+ * 200 plus 100 every 20 levels (melee rework spec §2, Ranged spec §4).
  */
+export const hitCurvesOf = (
+  landLevel: number,
+  maxLevel: number,
+  player: Worn,
+) => ({
+  chance:
+    PLAYER_HIT_CHANCE +
+    PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL * (landLevel - 1) +
+    wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
+  min: HEALTH_PER_HITPOINTS_LEVEL,
+  max:
+    PLAYER_BASE_DAMAGE +
+    HEALTH_PER_HITPOINTS_LEVEL *
+      Math.floor(maxLevel / STRENGTH_LEVELS_PER_DAMAGE),
+});
+
+/** A swing's curves, landing on Attack with its max from Strength, and the weapon's hit bonus plus Might, which adds to both ends (melee rework spec §2). */
 export function hitOf(player: { attackXp: number; strengthXp: number } & Worn) {
   return {
-    chance:
-      PLAYER_HIT_CHANCE +
-      PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL * (levelFor(player.attackXp) - 1) +
-      wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
-    min: HEALTH_PER_HITPOINTS_LEVEL,
-    max:
-      PLAYER_BASE_DAMAGE +
-      HEALTH_PER_HITPOINTS_LEVEL *
-        Math.floor(levelFor(player.strengthXp) / STRENGTH_LEVELS_PER_DAMAGE),
+    ...hitCurvesOf(
+      levelFor(player.attackXp),
+      levelFor(player.strengthXp),
+      player,
+    ),
     gear:
       (gearOf(player.weapon ?? "")?.hitBonus ?? 0) + virtueOf(player, "might"),
   };
