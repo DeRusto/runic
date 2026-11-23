@@ -24,6 +24,7 @@ describe("player save", () => {
       tools: ["pickaxe", "tinderbox"],
       pinnedSkills: ["Cooking", "Mining"],
       stance: "forceful",
+      riggedShortcuts: ["tarnLine", "brambleSwing"],
       bank: Array.from({ length: BANK_SLOTS }, (_, slot) =>
         slot === 5 ? "coins" : EMPTY_SLOT,
       ),

@@ -103,6 +103,11 @@ export const players = sqliteTable("players", {
     .default(false),
   /** Where melee experience goes (melee rework spec §3). */
   stance: text().notNull().$type<Stance>().default(STARTING_STANCE),
+  /** The shortcuts this player has rigged with a rope, in the order rigged (Agility spec §3). */
+  riggedShortcuts: text("rigged_shortcuts", { mode: "json" })
+    .notNull()
+    .$type<string[]>()
+    .default([]),
 });
 
 /**

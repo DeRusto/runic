@@ -55,7 +55,10 @@ export type TileKind = {
   stall?: StallKind;
   /** A strongbox out where the danger is, which blocks like a stall (#253). */
   strongbox?: StrongboxKind;
+  /** The placed start of an obstacle. */
   obstacle?: ObstacleKind;
+  /** The far end of a shortcut, crossed back to its start (Agility spec §3). */
+  obstacleEnd?: ObstacleKind;
   house?: "wall" | "door";
   enemy?: EnemyKind;
   respawn?: true;

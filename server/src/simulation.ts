@@ -118,7 +118,6 @@ export class Simulation {
       this.sites,
       this.thieving,
       this.firemaking,
-      this.agility,
     );
     this.sites.placePools(pools);
   }
@@ -317,7 +316,7 @@ export class Simulation {
 
   /** Queues a crossing for an obstacle named by the client. */
   queueCross(id: string, obstacle: unknown) {
-    this.queue(id, () => this.agility.crossIntent(obstacle));
+    this.queue(id, () => this.agility.crossIntent(id, obstacle));
   }
 
   /** Whether the player is busy this tick: stunned or crossing an Agility obstacle (#236). */

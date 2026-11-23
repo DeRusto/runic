@@ -516,3 +516,27 @@ describe("obstacle placements", () => {
     ).toThrow(message);
   });
 });
+
+describe("shortcut placements", () => {
+  const stile = { type: "obstacle", name: "ridgeStile", ...at(0, 1) };
+  const clear = (map: ReturnType<typeof mapWith>) => ({
+    ...map,
+    ...withLayer("features", [0, 3, 4, 0, 0, 0], map),
+  });
+  it("marks a shortcut's far end, so it can be crossed back", () => {
+    const { tiles } = load(clear(mapWith({}, [respawn, stile])));
+    expect(tiles[1]![0]!.obstacle).toBe("ridgeStile");
+    expect(tiles[1]![2]!.obstacleEnd).toBe("ridgeStile");
+  });
+  it("leaves a course obstacle's landing unmarked: it is crossed one way", () => {
+    const beam = { type: "obstacle", name: "balanceBeam", ...at(0, 1) };
+    const { tiles } = load(clear(mapWith({}, [respawn, beam])));
+    expect(tiles[1]![2]!.obstacleEnd).toBeUndefined();
+  });
+  it("refuses a shortcut whose far end is another obstacle's start", () => {
+    const stones = { type: "obstacle", name: "steppingStones", ...at(2, 1) };
+    expect(() => load(clear(mapWith({}, [respawn, stile, stones])))).toThrow(
+      "ridgeStile ends on another obstacle at 2,1",
+    );
+  });
+});

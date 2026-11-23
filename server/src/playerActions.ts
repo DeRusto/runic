@@ -13,7 +13,15 @@ import type {
 } from "@runic/shared";
 import type { Busy } from "./busy.ts";
 
-type ApproachObstacle = { kind: "approachingObstacle"; obstacle: ObstacleKind };
+/** Walking to `from`, the end of the obstacle the crossing starts at. */
+type ApproachObstacle = {
+  kind: "approachingObstacle";
+  obstacle: ObstacleKind;
+  from: Tile;
+};
+
+/** A crossing under way: it lands on `landing`, or back on `from` if it fails. */
+export type Crossing = { obstacle: ObstacleKind; from: Tile; landing: Tile };
 
 /**
  * What a player is doing, beyond walking. Fighting, gathering, making and lighting are also
@@ -93,8 +101,8 @@ export type UnsyncedPlayer = {
   lockEndTick: number;
   /** A stun or an Agility crossing (#236). Not saved: leaving ends it. */
   busy?: Busy;
-  /** The obstacle in progress until the busy state ends. Session only. */
-  crossing?: ObstacleKind;
+  /** The crossing in progress until the busy state ends. Session only. */
+  crossing?: Crossing;
   /** Number of obstacles crossed in order in the current lap. Session only. */
   courseProgress?: number;
   respawnTick: number;

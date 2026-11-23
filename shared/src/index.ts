@@ -249,7 +249,9 @@ export type WorldEvent =
       ticks: number;
     }
   /** A failed strongbox's trap hit `player` for `damage`, in hundredths of a Hitpoints level; it can kill (#253). */
-  | { type: "trapSprung"; player: string; damage: number };
+  | { type: "trapSprung"; player: string; damage: number }
+  /** A failed shortcut crossing hit `player` for `damage`, never fatally, and left them at the start (Agility spec §3). */
+  | { type: "slipped"; player: string; damage: number };
 
 export * from "./bank.ts";
 export * from "./combat.ts";
