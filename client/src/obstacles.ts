@@ -31,10 +31,16 @@ export function addObstacles(tiles: TileKind[][]) {
       group.rotation.y = Math.atan2(landing.x - x, landing.y - y);
       const length = Math.hypot(landing.x - x, landing.y - y);
 
-      // Cover the whole obstacle, including gaps between its pieces.
+      // Cover the whole obstacle, including gaps between its pieces, and both of a
+      // shortcut's end markers, since either end starts a crossing.
       const hitBox = newHitBox();
-      hitBox.position.set(0, HIT_BOX_HEIGHT / 2, length / 2 - 0.25);
-      hitBox.scale.z = length + 0.15;
+      const twoWay = !!OBSTACLES[obstacle].shortcut;
+      hitBox.position.set(
+        0,
+        HIT_BOX_HEIGHT / 2,
+        twoWay ? length / 2 : length / 2 - 0.25,
+      );
+      hitBox.scale.z = twoWay ? length + 0.8 : length + 0.15;
       group.add(hitBox);
       targets.set(hitBox, { obstacle, x, y });
 
