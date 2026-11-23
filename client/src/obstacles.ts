@@ -6,7 +6,6 @@ import {
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
-import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { scene } from "./scene.ts";
 
 const wood = new THREE.MeshStandardMaterial({ color: 0x865333 });
@@ -14,18 +13,21 @@ const rail = new THREE.MeshStandardMaterial({ color: 0xcc9d5a });
 const stone = new THREE.MeshStandardMaterial({ color: 0x828b87 });
 const startMat = new THREE.MeshStandardMaterial({ color: 0xe6c976 });
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-/** How far an obstacle's clickable footprint stands off the ground: just above the markers. */
-const FOOTPRINT_HEIGHT = 0.05;
+/** What a click on an obstacle finds: the obstacle, its placed start, and a shortcut's far end. */
+type ObstacleTarget = { obstacle: ObstacleKind; start: Tile; far?: Tile };
+const tileKey = ({ x, y }: Tile) => `${x},${y}`;
 const charred = new THREE.MeshStandardMaterial({ color: 0x2e2622 });
 const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
 
 /** Draws each obstacle along its crossing direction and makes the whole prop clickable. */
 export function addObstacles(tiles: TileKind[][]) {
-  /** Each prop's hit box: the obstacle, its placed start, and a shortcut's far end. */
-  const targets = new Map<
-    THREE.Object3D,
-    { obstacle: ObstacleKind; start: Tile; far?: Tile }
-  >();
+  /**
+   * A click finds an obstacle exactly when it lands on one of its visible pieces, or when the
+   * ground tile under it, the one a walk would head for, is one of the obstacle's own tiles.
+   * Nothing invisible stands up off the ground, so the grass beside or behind it always walks.
+   */
+  const pieces = new Map<THREE.Object3D, ObstacleTarget>();
+  const ownTiles = new Map<string, ObstacleTarget>();
 
   tiles.forEach((row, y) =>
     row.forEach(({ obstacle }, x) => {
@@ -36,29 +38,21 @@ export function addObstacles(tiles: TileKind[][]) {
       group.rotation.y = Math.atan2(landing.x - x, landing.y - y);
       const length = Math.hypot(landing.x - x, landing.y - y);
 
-      // A flat footprint on the ground covers the whole obstacle, including gaps between its
-      // pieces, and a shortcut's footprint also covers both end markers, since either end starts
-      // a crossing. The visible pieces above it are clicked on themselves: any box standing up
-      // off the ground would catch clicks on the grass behind it.
-      const hitBox = newHitBox();
-      const twoWay = !!OBSTACLES[obstacle].shortcut;
-      hitBox.position.set(
-        0,
-        FOOTPRINT_HEIGHT / 2,
-        twoWay ? length / 2 : length / 2 - 0.25,
-      );
-      hitBox.scale.set(
-        1,
-        FOOTPRINT_HEIGHT / HIT_BOX_HEIGHT,
-        twoWay ? length + 0.8 : length + 0.15,
-      );
-      group.add(hitBox);
-      const target = {
+      // A shortcut is crossed from either end, so a click marks the end nearer it.
+      const target: ObstacleTarget = {
         obstacle,
         start: { x, y },
-        far: twoWay ? landing : undefined,
+        far: OBSTACLES[obstacle].shortcut ? landing : undefined,
       };
-      targets.set(hitBox, target);
+      // Its own tiles: the start, the landing and every tile between, gaps included.
+      for (let step = 0; step <= length; step++)
+        ownTiles.set(
+          tileKey({
+            x: x + ((landing.x - x) / length) * step,
+            y: y + ((landing.y - y) / length) * step,
+          }),
+          target,
+        );
 
       const box = (
         width: number,
@@ -77,7 +71,7 @@ export function addObstacles(tiles: TileKind[][]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);
-        targets.set(mesh, target);
+        pieces.set(mesh, target);
       };
 
       box(0.82, 0.04, 0.65, 0, startMat);
@@ -153,19 +147,20 @@ export function addObstacles(tiles: TileKind[][]) {
     }),
   );
 
-  /**
-   * The obstacle under a click's ray, and the end of it nearer where the ray meets the ground:
-   * the ray can enter a box or a post well above the ground, so its entry point can lean toward
-   * the other end.
-   */
+  /** The obstacle under a click's ray, and the end of it nearer where the ray meets the ground. */
   return (raycaster: THREE.Raycaster) => {
-    const hit = raycaster.intersectObjects([...targets.keys()])[0];
-    const target = hit && targets.get(hit.object);
+    const ground = raycaster.ray.intersectPlane(GROUND, new THREE.Vector3());
+    const hit = raycaster.intersectObjects([...pieces.keys()])[0];
+    const target = hit
+      ? pieces.get(hit.object)
+      : ground &&
+        ownTiles.get(
+          tileKey({ x: Math.round(ground.x), y: Math.round(ground.z) }),
+        );
     if (!target) return undefined;
     const { obstacle, start, far } = target;
-    const ground =
-      raycaster.ray.intersectPlane(GROUND, new THREE.Vector3()) ?? hit.point;
-    const apart = ({ x, y }: Tile) => Math.hypot(ground.x - x, ground.z - y);
+    const at = ground ?? hit!.point;
+    const apart = ({ x, y }: Tile) => Math.hypot(at.x - x, at.z - y);
     const end = far && apart(far) < apart(start) ? far : start;
     return { obstacle, x: end.x, y: end.y };
   };
