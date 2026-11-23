@@ -183,6 +183,8 @@ export type WorldEvent =
       enemy: string;
       damage: number;
       critical: boolean;
+      /** The thrown weapon, which may have left the weapon slot in the preceding patch. */
+      weapon?: string;
     }
   | {
       type: "enemySwing";

@@ -117,6 +117,7 @@ export class Fighting {
       enemy: enemyId,
       damage,
       critical,
+      ...(ranged?.thrown ? { weapon: player.weapon } : {}),
     });
     // With none left, it stops now and says so; the enemy fights on as usual. The last knife
     // leaves the hand empty, and the attack ends rather than turning into a punch (#279).

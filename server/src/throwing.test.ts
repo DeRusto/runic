@@ -230,6 +230,9 @@ describe("running out", () => {
     const events = run(s, 20);
     expect(throwTicks(events)).toEqual([1]);
     expect(told(events)).toEqual([OUT_OF_KNIVES_LINE]);
+    expect(events.find((e) => e.type === "playerSwing")).toMatchObject({
+      weapon: "copperThrowingKnife",
+    });
     expect(me(s)).toMatchObject({
       weapon: "",
       weaponCount: 0,

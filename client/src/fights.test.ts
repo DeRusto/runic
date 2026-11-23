@@ -230,7 +230,9 @@ describe("the playerSwing event", () => {
     } as unknown as WorldConnection);
     onMessage.mock.calls[0]![1](events);
   };
-  const swing = (damage: number): WorldEvent => ({
+  const swing = (
+    damage: number,
+  ): Extract<WorldEvent, { type: "playerSwing" }> => ({
     type: "playerSwing",
     player: "a",
     enemy: "0",
@@ -263,6 +265,15 @@ describe("the playerSwing event", () => {
       x: 7,
       y: 1,
     });
+  });
+
+  test("the last knife plays the throw even after the weapon slot clears", () => {
+    send([{ ...swing(2), weapon: "copperThrowingKnife" }], "");
+    expect(figure.once).toHaveBeenLastCalledWith("Fishing_Cast");
+    vi.advanceTimersByTime(999);
+    expect(enemy.flash).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(enemy.flash).toHaveBeenCalledOnce();
   });
 
   test("a critical hit shows as one at contact", () => {
