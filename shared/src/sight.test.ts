@@ -5,18 +5,15 @@ import { inSight, isTall } from "./sight.ts";
 /** A region from rows of tile characters, so a test reads as the map it draws. */
 const region = (...rows: string[]) => parseRegion(rows.join("\n"));
 
+/** The test map characters for tall tiles: walls, tree props, rocks, veins and Woodcutting trees. */
+const TALL_CHARS = new Set("HTtAociEegkC");
+
 describe("isTall", () => {
   test("house walls, trees, rocks, veins, columns and standing stones are tall", () => {
     const tall: TileKind[] = [
-      TILE_KINDS.H,
-      TILE_KINDS.T,
-      TILE_KINDS.A,
-      TILE_KINDS.o,
-      TILE_KINDS.c,
-      TILE_KINDS.E,
-      TILE_KINDS.g,
-      TILE_KINDS.k,
-      TILE_KINDS.C,
+      ...[...TALL_CHARS].map(
+        (char) => (TILE_KINDS as Record<string, TileKind>)[char]!,
+      ),
       { ground: "moss", prop: "column", blocks: true },
       { ground: "moss", prop: "standingStone", blocks: true },
     ];
@@ -30,9 +27,8 @@ describe("isTall", () => {
   });
 
   test("every other tile lets a shot pass, doors, water, bushes, the gate and villagers included", () => {
-    const tallChars = new Set("HTtAociegkCE");
     for (const [char, tile] of Object.entries(TILE_KINDS))
-      if (!tallChars.has(char)) expect(isTall(tile), char).toBe(false);
+      if (!TALL_CHARS.has(char)) expect(isTall(tile), char).toBe(false);
     expect(isTall({ ground: "path", prop: "gate", blocks: true })).toBe(false);
   });
 });

@@ -653,7 +653,7 @@ The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, a
 _Avoid_: Quiver, ammunition slot
 
 **Reach**:
-How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6. A player who attacks an enemy out of reach or out of sight walks until it is in both, then shoots. A melee swing has no reach; it needs the player next to the enemy (#270).
+How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6. A player who attacks an enemy out of reach or out of sight walks until it is in both, then shoots; with no tile they can walk to that has it in both, the attack is cancelled and the chat says so. A melee swing has no reach; it needs the player next to the enemy (#270).
 _Avoid_: Range (the cooking station), distance
 
 **Sight**:
