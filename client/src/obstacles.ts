@@ -15,6 +15,7 @@ const stone = new THREE.MeshStandardMaterial({ color: 0x828b87 });
 const startMat = new THREE.MeshStandardMaterial({ color: 0xe6c976 });
 /** Tall enough for the highest shortcut prop, the bramble swing's posts. */
 const SHORTCUT_HIT_BOX_HEIGHT = 1.8;
+const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const charred = new THREE.MeshStandardMaterial({ color: 0x2e2622 });
 const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
 
@@ -145,14 +146,19 @@ export function addObstacles(tiles: TileKind[][]) {
     }),
   );
 
-  /** The obstacle under a click's ray, and the end of it nearer the click, for its marker. */
+  /**
+   * The obstacle under a click's ray, and the end of it nearer where the ray meets the ground:
+   * the ray enters the tall box well above the ground, so its entry point can lean toward the
+   * other end.
+   */
   return (raycaster: THREE.Raycaster) => {
     const hit = raycaster.intersectObjects([...targets.keys()])[0];
     const target = hit && targets.get(hit.object);
     if (!target) return undefined;
     const { obstacle, start, far } = target;
-    const apart = ({ x, y }: Tile) =>
-      Math.hypot(hit.point.x - x, hit.point.z - y);
+    const ground =
+      raycaster.ray.intersectPlane(GROUND, new THREE.Vector3()) ?? hit.point;
+    const apart = ({ x, y }: Tile) => Math.hypot(ground.x - x, ground.z - y);
     const end = far && apart(far) < apart(start) ? far : start;
     return { obstacle, x: end.x, y: end.y };
   };
