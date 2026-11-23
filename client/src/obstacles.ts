@@ -2,6 +2,7 @@ import {
   OBSTACLES,
   obstacleLanding,
   type ObstacleKind,
+  type Tile,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -12,14 +13,17 @@ const wood = new THREE.MeshStandardMaterial({ color: 0x865333 });
 const rail = new THREE.MeshStandardMaterial({ color: 0xcc9d5a });
 const stone = new THREE.MeshStandardMaterial({ color: 0x828b87 });
 const startMat = new THREE.MeshStandardMaterial({ color: 0xe6c976 });
+/** Tall enough for the highest shortcut prop, the bramble swing's posts. */
+const SHORTCUT_HIT_BOX_HEIGHT = 1.8;
 const charred = new THREE.MeshStandardMaterial({ color: 0x2e2622 });
 const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
 
 /** Draws each obstacle along its crossing direction and makes the whole prop clickable. */
 export function addObstacles(tiles: TileKind[][]) {
+  /** Each prop's hit box: the obstacle, its placed start, and a shortcut's far end. */
   const targets = new Map<
     THREE.Object3D,
-    { obstacle: ObstacleKind; x: number; y: number }
+    { obstacle: ObstacleKind; start: Tile; far?: Tile }
   >();
 
   tiles.forEach((row, y) =>
@@ -31,18 +35,23 @@ export function addObstacles(tiles: TileKind[][]) {
       group.rotation.y = Math.atan2(landing.x - x, landing.y - y);
       const length = Math.hypot(landing.x - x, landing.y - y);
 
-      // Cover the whole obstacle, including gaps between its pieces, and both of a
-      // shortcut's end markers, since either end starts a crossing.
+      // Cover the whole obstacle, including gaps between its pieces. A shortcut's box also
+      // covers both end markers, since either end starts a crossing, and its tallest prop.
       const hitBox = newHitBox();
       const twoWay = !!OBSTACLES[obstacle].shortcut;
+      const tall = twoWay ? SHORTCUT_HIT_BOX_HEIGHT / HIT_BOX_HEIGHT : 1;
       hitBox.position.set(
         0,
-        HIT_BOX_HEIGHT / 2,
+        (HIT_BOX_HEIGHT * tall) / 2,
         twoWay ? length / 2 : length / 2 - 0.25,
       );
-      hitBox.scale.z = twoWay ? length + 0.8 : length + 0.15;
+      hitBox.scale.set(1, tall, twoWay ? length + 0.8 : length + 0.15);
       group.add(hitBox);
-      targets.set(hitBox, { obstacle, x, y });
+      targets.set(hitBox, {
+        obstacle,
+        start: { x, y },
+        far: twoWay ? landing : undefined,
+      });
 
       const box = (
         width: number,
@@ -136,8 +145,15 @@ export function addObstacles(tiles: TileKind[][]) {
     }),
   );
 
+  /** The obstacle under a click's ray, and the end of it nearer the click, for its marker. */
   return (raycaster: THREE.Raycaster) => {
     const hit = raycaster.intersectObjects([...targets.keys()])[0];
-    return hit && targets.get(hit.object);
+    const target = hit && targets.get(hit.object);
+    if (!target) return undefined;
+    const { obstacle, start, far } = target;
+    const apart = ({ x, y }: Tile) =>
+      Math.hypot(hit.point.x - x, hit.point.z - y);
+    const end = far && apart(far) < apart(start) ? far : start;
+    return { obstacle, x: end.x, y: end.y };
   };
 }

@@ -176,11 +176,11 @@ describe("the region's shortcuts", () => {
   );
 
   test.each(["ridgeStile", "charredFence"])(
-    "%s cuts a walk of more than 40 steps short",
+    "%s cuts a walk of more than 60 steps short",
     (kind) => {
       const { start, far } = ends(kind);
       expect(reaches(start, far)).toBe(true);
-      expect(findPath(tiles, start, far).length).toBeGreaterThan(40);
+      expect(findPath(tiles, start, far).length).toBeGreaterThan(60);
     },
   );
 

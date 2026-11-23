@@ -43,7 +43,7 @@ The experience rises with the level so that crossing a shortcut back and forth t
 
 A shortcut fails 25% of the time at exactly its required level (`SHORTCUT_FAIL_PERCENT_AT_REQUIREMENT`). The chance falls by 2.5 percentage points per level above the requirement and reaches 0% at 10 levels above it (`SURE_FOOTED_LEVELS`), so a player that far above a shortcut never fails it. One roll on the landing tick decides each crossing. Course obstacles never fail.
 
-A failure takes the shortcut's failure hit, in hundredths of a Hitpoints level, but never below 1 health, so it cannot kill. The player stays on the end they started from, earns no experience and reads "You slip on the ridge stile and land back where you started." The hit shows over the player at once, like a failed pickpocket's.
+A failure takes the shortcut's failure hit, in hundredths of a Hitpoints level, but never below 1 health, so it cannot kill. The player stays on the end they started from, earns no experience and reads a line naming the shortcut crossed, such as "You slip on the crag line and land back where you started." The hit shows over the player at once, like a failed pickpocket's.
 
 ## 5. Rigging
 

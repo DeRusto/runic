@@ -17,15 +17,14 @@ const holding = (items: string[] = []) => ({
 });
 
 describe("shortcuts", () => {
-  it("are about five, from level 10 to 60, some rigged from level 20", () => {
-    const levels = SHORTCUTS.map((kind) => OBSTACLES[kind].shortcut!.level);
-    expect(SHORTCUTS.length).toBe(5);
-    expect(Math.min(...levels)).toBe(10);
-    expect(Math.max(...levels)).toBe(60);
-    const rigged = SHORTCUTS.filter((kind) => OBSTACLES[kind].shortcut!.rope);
-    expect(rigged.length).toBeGreaterThan(0);
-    for (const kind of rigged)
-      expect(OBSTACLES[kind].shortcut!.level).toBeGreaterThanOrEqual(20);
+  it("are the five of the spec, from level 10 to 60, two rigged from level 20 (Agility spec §3)", () => {
+    expect(SHORTCUTS.map((kind) => [kind, OBSTACLES[kind].shortcut])).toEqual([
+      ["ridgeStile", { level: 10, failHit: 100, rope: false }],
+      ["brambleSwing", { level: 20, failHit: 150, rope: true }],
+      ["charredFence", { level: 30, failHit: 200, rope: false }],
+      ["ruinLedge", { level: 45, failHit: 250, rope: false }],
+      ["cragLine", { level: 60, failHit: 300, rope: true }],
+    ]);
   });
 });
 
