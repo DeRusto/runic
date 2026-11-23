@@ -290,7 +290,11 @@ export function oreParts(ore: THREE.Object3D) {
   };
 }
 
-/** A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites: returns how to show one full, run out or gone. A run-out tree is a stump. */
+/**
+ * A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites.
+ * Returns how to show a site full, run out or gone (a run-out tree is a stump), and each station's
+ * model by kind, for clicks to find.
+ */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
     [
@@ -619,11 +623,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     scene.add(model);
   }
   // One model per station, at the middle of the tiles it covers.
+  const placedStations: Partial<Record<FixedStation, THREE.Object3D>> = {};
   for (const [kind, tilesUnder] of Object.entries(footprints)) {
     if (!tilesUnder.length) continue;
     const model = stations[kind as FixedStation];
     new THREE.Box3().setFromPoints(tilesUnder).getCenter(model.position);
     scene.add(model);
+    placedStations[kind as FixedStation] = model;
   }
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
@@ -713,5 +719,5 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   tiles.forEach((row, y) =>
     row.forEach(({ tree }, x) => tree && setLook(siteId({ x, y }), "full")),
   );
-  return setLook;
+  return { setSiteLook: setLook, stationModels: placedStations };
 }

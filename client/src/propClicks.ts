@@ -44,14 +44,11 @@ export function propClicks<Target>() {
         .intersectObjects([...models.keys()])
         .find(({ object }) => drawn(object));
       if (hit) return { target: modelOf(hit.object)!, at: ground ?? hit.point };
-      const target =
-        ground &&
-        ownTiles.get(
-          tileKey({ x: Math.round(ground.x), y: Math.round(ground.z) }),
-        );
-      return target === undefined || !ground
-        ? undefined
-        : { target, at: ground };
+      if (!ground) return undefined;
+      const target = ownTiles.get(
+        tileKey({ x: Math.round(ground.x), y: Math.round(ground.z) }),
+      );
+      return target === undefined ? undefined : { target, at: ground };
     },
   };
 }

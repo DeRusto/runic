@@ -1,7 +1,9 @@
 import { parseRegion, type TileKind } from "@runic/shared";
 import * as THREE from "three";
-import { describe, expect, test, vi } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
 import { scene } from "./scene.ts";
+import { addStalls } from "./stalls.ts";
+import { addStations } from "./stations.ts";
 import { addStrongboxes } from "./strongboxes.ts";
 
 // The real scene module starts a WebGL renderer; a bare scene is all these rays need.
@@ -9,6 +11,22 @@ vi.mock("./scene.ts", async () => {
   const { Scene } = await import("three");
   return { scene: new Scene() };
 });
+// Textured models don't load outside a browser, so each loaded model stands in as a box.
+vi.mock("./regionMeshes.ts", async () => ({
+  groundTop: () => 0,
+  loadPart: async () => standIn(),
+  loadStation: async () => standIn(),
+}));
+
+/**
+ * A box that stands in for a loaded model, with its base on the ground: low enough that it hides
+ * none of the grass in the table from even the slanted camera, as a model too tall would.
+ */
+function standIn() {
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.6));
+  box.position.y = 0.2;
+  return new THREE.Group().add(box);
+}
 
 /** A 7×7 open region with `feature` set on the tile at (3,3), the prop's tile in every table. */
 function regionWith(feature: Partial<TileKind>) {
@@ -81,12 +99,14 @@ const OFF_TILE = [-1, 0, 1].flatMap((dy) =>
 function clickTable(
   name: string,
   place: () => (raycaster: THREE.Raycaster) => unknown,
-  found: object,
+  target: object | string,
   modelAt: number,
 ) {
+  const found =
+    typeof target === "string" ? target : expect.objectContaining(target);
   describe.each(VIEWS)(`clicking near ${name}, with %s`, (_, offset) => {
     test.each(ON_TILE)("on %s finds it", (__, x, y) => {
-      expect(place()(clickAt(x, y, offset))).toMatchObject(found);
+      expect(place()(clickAt(x, y, offset))).toEqual(found);
     });
 
     test.each(OFF_TILE)("on %s finds nothing, so it walks", (__, x, y) => {
@@ -95,7 +115,7 @@ function clickTable(
   });
 
   test(`a ray onto ${name}'s model finds it`, () => {
-    expect(place()(across(3, modelAt))).toMatchObject(found);
+    expect(place()(across(3, modelAt))).toEqual(found);
   });
 
   test(`nothing at ${name}'s height above the grass beside it finds it`, () => {
@@ -111,6 +131,17 @@ function placedWith<Under>(add: () => Under) {
     scene.updateMatrixWorld(true);
     return under;
   };
+}
+
+/** Like `placedWith`, for props whose models load first: places them all before any test runs. */
+function loadedWith<Under>(add: () => Promise<Under>) {
+  let under: Under;
+  beforeAll(async () => {
+    scene.clear();
+    under = await add();
+    scene.updateMatrixWorld(true);
+  });
+  return () => under;
 }
 
 const BONEYARD = { strongbox: "boneyard", x: 3, y: 3 } as const;
@@ -132,5 +163,39 @@ clickTable(
     return strongboxUnder;
   }),
   BONEYARD,
+  0.2,
+);
+
+const FISH_STALL = { stall: "fish", x: 3, y: 3 } as const;
+clickTable(
+  "a stall",
+  loadedWith(
+    async () => (await addStalls(regionWith({ stall: "fish" }))).stallUnder,
+  ),
+  FISH_STALL,
+  0.2,
+);
+clickTable(
+  "an emptied stall",
+  loadedWith(async () => {
+    const { stallUnder, wares } = await addStalls(
+      regionWith({ stall: "fish" }),
+    );
+    wares.get("fish")!.visible = false;
+    return stallUnder;
+  }),
+  FISH_STALL,
+  0.2,
+);
+
+clickTable(
+  "a station",
+  placedWith(() => {
+    const anvil = standIn();
+    anvil.position.set(3, 0, 3);
+    scene.add(anvil);
+    return addStations(regionWith({ station: "anvil" }), { anvil });
+  }),
+  "anvil",
   0.2,
 );
