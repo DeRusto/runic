@@ -260,7 +260,7 @@ _Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
 The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
 
 **Ranged**:
-The skill that gates bows and arrows and sets how often and how hard a bow shot lands (#268). A shot pays Ranged 6 experience per 100 damage dealt, and Hitpoints the same again. A save from before it starts at 0 experience.
+The skill that gates bows and arrows and sets how often and how hard a bow shot lands (#268). A shot pays Ranged 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, and Hitpoints the same again. A save from before it starts at 0 experience.
 _Avoid_: Archery, Range
 
 **Hitpoints**:

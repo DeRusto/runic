@@ -307,13 +307,13 @@ describe("the Gear tab's stats", () => {
         attackXp: xpForLevel(20),
         rangedXp: xpForLevel(3),
         weapon: "birchBow",
-        ammo: "ironArrow",
+        ammo: "copperArrow",
         ammoCount: 10,
       }).slice(1, 4),
     ).toEqual([
       "Hit chance 46%",
-      "Min hit 300 (+100/+200)",
-      "Max hit 400 (+200/+200)",
+      "Min hit 200 (+100/+100)",
+      "Max hit 300 (+200/+100)",
     ]);
   });
 

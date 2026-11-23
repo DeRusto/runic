@@ -86,7 +86,7 @@ Stances come in a later ticket, so all of a shot's experience goes to Ranged, as
 
 Each shot spends one arrow from the ammo slot, hit or miss. When a shot spends the slot's last arrow, the slot refills with up to 20 more of the same arrow from the inventory, taken from its slots in order, so the fight carries on (owner, 2026-11-23). Other tiers in the inventory are left alone.
 
-When neither the slot nor the inventory holds any more of that arrow, the attack stops at once and the chat says "You have no arrows left to fire." The enemy keeps fighting as usual. A bow with an empty ammo slot cannot start an attack, with the same line, and a player in that state who is hit while idle does not fight back, since the line has already said why.
+When neither the slot nor the inventory holds any more of that arrow, the attack stops at once and the chat says "You have no arrows left to fire." The enemy keeps fighting as usual. A bow with an empty ammo slot cannot start an attack, with the same line, and a player in that state who is hit while idle does not fight back. Nothing is said then: the line comes when the arrows run out or when the player tries to attack.
 
 ### The check before each shot
 

@@ -242,12 +242,13 @@ describe("walking into reach", () => {
     expect(shotTicks(events)).toEqual([1]);
   });
 
-  test("an archer walled off from the enemy walks to a tile in reach on the diagonal, even when that tile isn't the nearest by straight line", () => {
+  test("an archer walled off from the enemy walks to the one tile in reach, six tiles off on the diagonal, and shoots from there", () => {
     const s = archer({ rows: DIAGONAL, x: 8, y: 1 });
     s.queueTarget("a", "0");
     const events = run(s, 20);
-    expect(me(s)).toMatchObject({ x: 7, y: 7 });
     expect(shotTicks(events).length).toBeGreaterThan(0);
+    // (7,7) is the only tile in reach, so every shot came from it.
+    expect(me(s)).toMatchObject({ x: 7, y: 7 });
   });
 
   test("a target that moves out of reach mid-fight is walked back into reach before the next shot, spending nothing on the way", () => {

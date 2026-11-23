@@ -64,6 +64,12 @@ describe("rangedHit", () => {
     expect(rangedHit(archer, 100, 900, rolls(0, 0, 0.99)).damage).toBe(300);
   });
 
+  test("worn Might adds to a landed shot, as it does to a swing", () => {
+    // A rare iron piece carries Might 3 × tier 3 × 2 = 18.
+    const mighty = { ...archer, head: "ironHelmet:rare:might" };
+    expect(rangedHit(mighty, 0, 900, rolls(0, 0, 0.99)).damage).toBe(218);
+  });
+
   test("Agility's crit chance applies at 1.5 times", () => {
     expect(rangedHit(archer, 0, 900, rolls(0, 0, 0.0999))).toMatchObject({
       damage: 300,

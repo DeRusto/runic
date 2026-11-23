@@ -187,6 +187,21 @@ describe("Figure", () => {
     expect(figure.model.rotation.y).toBeCloseTo(0, 2);
   });
 
+  it("forgets a shot's facing at death, so the respawn faces where it walked last", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    tile.x = 1;
+    for (let now = 16; now <= 1000; now += 16) figure.update(now);
+    figure.face({ x: 1, y: 5 });
+    figure.once("Fishing_Cast");
+    figure.alreadyDown("Death_A");
+    figure.respawn();
+    figure.once("Fishing_Cast");
+    for (let now = 1016; now <= 2000; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(Math.PI / 2, 2);
+  });
+
   it("runs at 2x, crossfading over 0.12 s, when its tile changes", () => {
     const tile = { x: 0, y: 0 };
     const figure = figureAt(tile);
@@ -847,13 +862,7 @@ describe("swingFor", () => {
   });
 
   test("the adventurer every player wears has the bow shot's clip among its animations", () => {
-    const glb = readFileSync("client/public/models/Adventurer.glb");
-    const json = JSON.parse(
-      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
-    ) as { animations: { name: string }[] };
-    expect(json.animations.map(({ name }) => name)).toContain(
-      swingFor("birchBow", "a", 8).clip,
-    );
+    expect(clipsOf("Adventurer")).toContain(swingFor("birchBow", "a", 8).clip);
   });
 
   test("no sword punches at 550 ms", () => {
@@ -886,6 +895,7 @@ describe("gear in hand", () => {
       "Melee_Unarmed_Attack_Punch_A",
       "Melee_1H_Attack_Chop",
       "Melee_Block_Hit",
+      "Fishing_Cast",
       "Pickaxing",
       "Hammering",
       "Death_A",
@@ -972,6 +982,24 @@ describe("gear in hand", () => {
     figure.update(2100);
     figure.update(2116);
     expect(sword.visible).toBe(false);
+  });
+
+  test("a killing bow shot keeps a worn shield up, as a killing swing does", () => {
+    const { figure, shield } = wearer();
+    figure.weapon = "birchBow";
+    figure.shield = "copperShield";
+    figure.face(FOE);
+    figure.once(swingFor("birchBow", "a", 8).clip);
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
+  test("a fishing cast, the bow shot's clip, shows nothing worn", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Fishing_Cast");
+    figure.update(1016);
+    expect(shield.visible).toBe(false);
   });
 
   test("a punch with a shield worn keeps the shield up after the kill", () => {

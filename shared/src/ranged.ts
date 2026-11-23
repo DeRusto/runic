@@ -1,15 +1,8 @@
 import { rollPlayerHit } from "./combat.ts";
-import { gearOf, wornAccuracyOf, type GearSlot } from "./gear.ts";
-import {
-  HEALTH_PER_HITPOINTS_LEVEL,
-  PLAYER_BASE_DAMAGE,
-  PLAYER_HIT_CHANCE,
-  PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL,
-  STRENGTH_LEVELS_PER_DAMAGE,
-} from "./index.ts";
+import { gearOf, type GearSlot } from "./gear.ts";
 import { tilesApart, type Tile } from "./region.ts";
 import { levelFor, type XpField } from "./skills.ts";
-import { POINTS_PER_HIT_CHANCE } from "./stats.ts";
+import { hitCurvesOf } from "./stats.ts";
 import { virtueOf } from "./virtues.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
@@ -41,15 +34,7 @@ export const inReach = (from: Tile, to: Tile, reachTiles: number) =>
 export function rangedHitOf(player: { rangedXp: number } & Worn) {
   const level = levelFor(player.rangedXp);
   return {
-    chance:
-      PLAYER_HIT_CHANCE +
-      PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL * (level - 1) +
-      wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
-    min: HEALTH_PER_HITPOINTS_LEVEL,
-    max:
-      PLAYER_BASE_DAMAGE +
-      HEALTH_PER_HITPOINTS_LEVEL *
-        Math.floor(level / STRENGTH_LEVELS_PER_DAMAGE),
+    ...hitCurvesOf(level, level, player),
     gear:
       (gearOf(player.ammo ?? "")?.hitBonus ?? 0) + virtueOf(player, "might"),
   };

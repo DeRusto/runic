@@ -112,6 +112,12 @@ const UNARMED_SWING = {
   clip: "Melee_Unarmed_Attack_Punch_A",
   contactMs: 550,
 };
+/**
+ * A bow shot: the cast's overhand release, as the adventurer every player wears has no bow clip,
+ * with the blow landing at the enemy once the arrow has flown (Ranged spec §4). Not the General
+ * pack's Throw: the adventurer plays only its own clips.
+ */
+const BOW_SHOT = { clip: "Fishing_Cast", contactMs: 1000 };
 /** A blocked hit (spec §7). */
 export const BLOCK_CLIP = "Melee_Block_Hit";
 /** The clips that bring out what's worn, even with no fight going on. */
@@ -137,13 +143,6 @@ export function characterFor(name: string) {
 export function armedSwing(id: string, tick: number) {
   return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
 }
-
-/**
- * A bow shot: the cast's overhand release, as the adventurer every player wears has no bow clip,
- * with the blow landing at the enemy once the arrow has flown (Ranged spec §4). Not the General
- * pack's Throw: the adventurer plays only its own clips.
- */
-const BOW_SHOT = { clip: "Fishing_Cast", contactMs: 1000 };
 
 /** A swing follows the weapon, so a shield with no sword punches (spec §7), and a bow shoots. */
 export function swingFor(weapon: string, id: string, tick: number) {
@@ -409,6 +408,7 @@ export class Figure {
     this.from.copy(to);
     this.slideStart = -Infinity;
     this.shot = undefined;
+    this.attackAt = undefined;
     this.held = this.sinks = this.sinking = false;
     this.sunk = 0;
   }
@@ -525,7 +525,10 @@ export class Figure {
       !this.held &&
       !this.tools.some(([, tool]) => tool.visible) &&
       !this.hammer?.visible &&
-      (GEAR_CLIPS.has(clip!) || (!!fightTile && !running));
+      // An attack `face` set counts too: a bow's cast is also Fishing's clip, which shows nothing.
+      (GEAR_CLIPS.has(clip!) ||
+        (!!clip && !!this.attackAt) ||
+        (!!fightTile && !running));
     for (const [item, held] of this.gear)
       held.visible = inFight && (item === this.weapon || item === this.shield);
 
