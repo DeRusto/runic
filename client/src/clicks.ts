@@ -257,14 +257,15 @@ export function walkOnClick(
     const strongbox = strongboxUnder(raycaster);
     if (strongbox)
       return openStrongbox(strongbox.strongbox, strongbox.x, strongbox.y);
-    const obstacle = obstacleUnder(raycaster);
-    if (obstacle) return cross(obstacle);
+    // Before the obstacle: a fire can burn on an obstacle's tile, which the obstacle also claims.
     const fire = fireUnder(raycaster);
     if (fire && me) {
       showMarker(fire.x, fire.y);
       openSmithingPanel("fire", { x: fire.x, y: fire.y });
       return;
     }
+    const obstacle = obstacleUnder(raycaster);
+    if (obstacle) return cross(obstacle);
     const villager = villagerUnder(raycaster);
     if (villager) {
       showMarker(villager.x, villager.y);
