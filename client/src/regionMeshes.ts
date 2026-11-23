@@ -81,6 +81,8 @@ export type SiteLook = "full" | "runOut" | "gone" | "spent";
 /** How long a spent site stays at its run-out look, then how long it takes to fade, in ms. */
 const SPENT_HOLD_MS = 1200;
 const SPENT_FADE_MS = 800;
+/** How long a spent site stays in sight, until its copy has faded out. */
+export const SPENT_MS = SPENT_HOLD_MS + SPENT_FADE_MS;
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 // The ore's rock colour, so a run-out vein reads as plain rock.

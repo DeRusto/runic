@@ -77,11 +77,20 @@ export function tileSites<Site>(room: WorldConnection) {
       byId.set(id, site);
       clicks.add(site, [{ x, y }], model);
     },
-    /** Takes the site off its tile, for one gone from its spot in a site pool. */
-    remove(id: string) {
+    /**
+     * Takes the site off its tile, for one gone from its spot in a site pool, after `afterMs`
+     * while it stays in sight. A site added on that tile meanwhile stays.
+     */
+    remove(id: string, afterMs = 0) {
       const site = byId.get(id);
-      if (site) clicks.remove(site);
-      byId.delete(id);
+      if (!site) return;
+      const takeOff = () => {
+        if (byId.get(id) !== site) return;
+        clicks.remove(site);
+        byId.delete(id);
+      };
+      if (afterMs) setTimeout(takeOff, afterMs);
+      else takeOff();
     },
     /** What finds the site under a click's ray. */
     under: (raycaster: THREE.Raycaster) => clicks.under(raycaster)?.target,

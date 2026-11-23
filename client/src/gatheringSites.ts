@@ -9,7 +9,7 @@ import {
 import type * as THREE from "three";
 import type { WorldConnection } from "./players.ts";
 import { tileSites } from "./propClicks.ts";
-import type { SiteLook } from "./regionMeshes.ts";
+import { SPENT_MS, type SiteLook } from "./regionMeshes.ts";
 
 /**
  * Keeps each site's look to what the server says is left, shows a pooled site only while the
@@ -34,14 +34,18 @@ export function showGatheringSites(
       kind: string;
       left: () => number;
     }>(room);
+    // What makes each site on a spot read as run out, once it leaves.
+    const runOuts = new Map<string, () => void>();
     callbacks.onAdd(stateField, (site, id) => {
+      let left = () =>
+        (site as Partial<Record<GatheringLeftField, number>>)[leftField]!;
+      runOuts.set(id, () => (left = () => 0));
       sites.add(
         id,
         (x, y) => ({
           skill,
           kind: tiles[y]![x]![siteField]!,
-          left: () =>
-            (site as Partial<Record<GatheringLeftField, number>>)[leftField]!,
+          left: () => left(),
         }),
         modelOf(id),
       );
@@ -50,8 +54,12 @@ export function showGatheringSites(
         setLook(id, left === 0 ? "runOut" : "full"),
       );
     });
+    // A pooled site leaves its spot as it runs out, though its last change can come in the same
+    // patch as its leaving. While its spent copy fades, its tile still says it has run out.
     callbacks.onRemove(stateField, (_, id) => {
-      sites.remove(id);
+      runOuts.get(id)?.();
+      runOuts.delete(id);
+      sites.remove(id, SPENT_MS);
       setLook(id, "spent");
     });
     return sites.under;

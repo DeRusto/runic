@@ -17,6 +17,7 @@ vi.mock("./scene.ts", async () => {
 });
 // Textured models don't load outside a browser, so each loaded model stands in as a box.
 vi.mock("./regionMeshes.ts", async () => ({
+  SPENT_MS: 2000,
   groundTop: () => 0,
   loadPart: async () => standIn(),
   loadStation: async () => standIn(),
@@ -24,12 +25,14 @@ vi.mock("./regionMeshes.ts", async () => ({
 
 /** What the client hears from the room's state: each field's add and remove handlers, run by hand. */
 const added = new Map<string, (item: object, id: string) => void>();
+const removed = new Map<string, (item: object, id: string) => void>();
 vi.mock("@colyseus/sdk", () => ({
   Callbacks: {
     get: () => ({
       onAdd: (field: string, handler: (item: object, id: string) => void) =>
         added.set(field, handler),
-      onRemove: () => {},
+      onRemove: (field: string, handler: (item: object, id: string) => void) =>
+        removed.set(field, handler),
       listen: () => {},
     }),
   },
@@ -312,4 +315,43 @@ describe("a station over two tiles, like the range", () => {
       expect(rangeUnder()(clickAt(5.25, 3, offset))).toBeUndefined();
     },
   );
+});
+
+describe("a pooled vein that runs out and leaves its spot", () => {
+  /** An iron vein on (3,3) with one ore left, which the server then takes off its spot. */
+  const mineOut = () => {
+    scene.clear();
+    const veinUnder = showGatheringSites(
+      room,
+      regionWith({ vein: "iron" }),
+      ["3,3"],
+      () => {},
+      () => new THREE.Object3D(),
+    );
+    // Its last ore and its leaving can come in one patch, so it may never show none left.
+    const vein = { minesLeft: 1 };
+    added.get("veins")!(vein, "3,3");
+    removed.get("veins")!(vein, "3,3");
+    return veinUnder;
+  };
+  const onItsTile = clickAt(3, 3, VIEWS[0][1]);
+
+  test("still catches a click on its tile while it fades, as run out", () => {
+    vi.useFakeTimers();
+    const veinUnder = mineOut();
+    vi.advanceTimersByTime(1999);
+    const found = veinUnder(onItsTile);
+    vi.useRealTimers();
+    expect(found).toMatchObject({ skill: "mining", kind: "iron", x: 3, y: 3 });
+    expect(found!.left()).toBe(0);
+  });
+
+  test("lets its tile walk once it has faded", () => {
+    vi.useFakeTimers();
+    const veinUnder = mineOut();
+    vi.advanceTimersByTime(2000);
+    const found = veinUnder(onItsTile);
+    vi.useRealTimers();
+    expect(found).toBeUndefined();
+  });
 });
