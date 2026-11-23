@@ -33,7 +33,7 @@ Five shortcuts lead somewhere. Three open pockets of the region that nobody can 
 | Ruin ledge    | 45    | No   | (119, 31)  | (121, 31)  | 5              | 75                 | 250         | A walled nook in Runestone Hollow's corner     |
 | Crag line     | 60    | Yes  | (9, 35)    | (9, 32)    | 6              | 100                | 300         | The shelf on top of the west field's crag      |
 
-A shortcut crosses both ways. Clicking it walks the player to the nearer end they can reach, and the crossing lands on the other end. Both ends carry a marked start. A shortcut crossing works like a course crossing (§2): the same uninterruptible busy state, the same immunity to hits, and experience on the landing tick. A shortcut crossing never counts toward a Southfield lap and never resets one.
+A shortcut crosses both ways. Clicking it walks the player to the nearer end they can reach, and the crossing lands on the other end. Both ends carry a marked start. A shortcut crossing works like a course crossing (§2): the same uninterruptible busy state, the same immunity to hits, and experience on the landing tick. A shortcut crossing never counts toward a Southfield lap and never resets one. While a crossing that can still fail is under way, the client moves the figure only halfway along the obstacle; the landing tick then carries it on to the far end or back to the start, so the client never shows an outcome before the server decides it.
 
 The Ridge stile saves a 63-step walk round the ridge by the road, and the Charred fence a 62-step walk into the Boneyard's east strip. Each pocket holds a small pool of its own, one active at a time unless stated: the Tangle has three nightbloom spots, the nook has three essence spots with two active, and the crag's shelf has two emberbloom spots. The open pools elsewhere in the region keep their spots and active counts.
 
@@ -48,6 +48,8 @@ A failure takes the shortcut's failure hit, in hundredths of a Hitpoints level, 
 ## 5. Rigging
 
 The Bramble swing and the Crag line need a rope (Crafting, at the workbench) the first time a player crosses them. The server checks the rope when the crossing starts, takes one rope from the inventory, and records the shortcut as rigged for that player. The shortcut then stays open for them for good, in both directions, with no more rope. A failed first crossing still spends the rope and leaves the shortcut rigged. Each player rigs their own: another player's rope does nothing for them.
+
+A save that loads inside a pocket whose shortcuts the player can't cross back out of, such as one made on the crag's top or in the Hollow's corner before those were walled in, loads at that shortcut's outer end instead. A player who can cross back out loads where they saved.
 
 The rigged shortcuts are saved per player in the `rigged_shortcuts` column, added by its own migration with an empty list as its default, so every earlier save loads with nothing rigged and keeps the rest of its progress.
 

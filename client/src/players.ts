@@ -1,11 +1,5 @@
 import { Callbacks, type Room } from "@colyseus/sdk";
-import {
-  itemParts,
-  OBSTACLES,
-  crossingFrom,
-  TICK_MS,
-  type TileKind,
-} from "@runic/shared";
+import { itemParts, type TileKind } from "@runic/shared";
 import type { WorldRoom } from "../../server/src/WorldRoom.ts";
 import {
   addSeeThroughOutline,
@@ -13,6 +7,7 @@ import {
   type loadCharacters,
 } from "./characters.ts";
 import type * as THREE from "three";
+import { crossingShown } from "./crossings.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
 import { camera, focusOn, scene } from "./scene.ts";
@@ -63,15 +58,11 @@ export function showPlayers(
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;
       const tile = player && tiles[player.y]?.[player.x];
-      // A shortcut crosses back from its far end too (Agility spec §3).
-      const crossing =
-        action === "crossing" && tile ? crossingFrom(tile, player) : undefined;
       figure.update(
         now,
-        crossing && {
-          landing: crossing.landing,
-          ms: OBSTACLES[crossing.obstacle].ticks * TICK_MS,
-        },
+        action === "crossing" && tile
+          ? crossingShown(tile, player, player.agilityXp)
+          : undefined,
       );
       hitBoxes
         .get(id)!
