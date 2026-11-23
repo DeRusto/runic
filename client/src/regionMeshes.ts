@@ -20,6 +20,7 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { BUILDING_LOOKS, HOUSE_MODELS, houseParts } from "./houseParts.ts";
 import { flameLook } from "./flame.ts";
+import { instancesModel } from "./instancesModel.ts";
 import { STATION_LOOKS, type StationPart } from "./stationLooks.ts";
 
 const STATION_KINDS = Object.keys(STATIONS) as FixedStation[];
@@ -292,8 +293,8 @@ export function oreParts(ore: THREE.Object3D) {
 
 /**
  * A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites.
- * Returns how to show a site full, run out or gone (a run-out tree is a stump), and each station's
- * model by kind, for clicks to find.
+ * Returns how to show a site full, run out or gone (a run-out tree is a stump), and each site's and
+ * station's model, for clicks to find.
  */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
@@ -719,5 +720,12 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   tiles.forEach((row, y) =>
     row.forEach(({ tree }, x) => tree && setLook(siteId({ x, y }), "full")),
   );
-  return { setSiteLook: setLook, stationModels: placedStations };
+  /** A site's parts as drawn now, for clicks to find. */
+  const siteModel = (id: string) =>
+    instancesModel(
+      runOutSlots
+        .get(id)!
+        .map(({ geometry, slot }) => ({ mesh: meshes.get(geometry)!, slot })),
+    );
+  return { setSiteLook: setLook, siteModel, stationModels: placedStations };
 }

@@ -1,5 +1,6 @@
 import type { Tile } from "@runic/shared";
 import * as THREE from "three";
+import type { WorldConnection } from "./players.ts";
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const tileKey = ({ x, y }: Tile) => `${x},${y}`;
@@ -50,5 +51,39 @@ export function propClicks<Target>() {
       );
       return target === undefined ? undefined : { target, at: ground };
     },
+  };
+}
+
+/**
+ * Clicks for what the server puts on a tile and keys in state by that tile (fires and gathering
+ * sites), each clickable on its own tile and its model, until it is gone from its spot.
+ */
+export function tileSites<Site>(room: WorldConnection) {
+  const clicks = propClicks<Site & { id: string; x: number; y: number }>();
+  const byId = new Map<string, Site & { id: string; x: number; y: number }>();
+  room.onLeave(() => {
+    for (const site of byId.values()) clicks.remove(site);
+    byId.clear();
+  });
+  return {
+    /** Makes the site on tile `id` clickable on that tile and on `model`. */
+    add(
+      id: string,
+      siteAt: (x: number, y: number) => Site,
+      model: THREE.Object3D,
+    ) {
+      const [x, y] = id.split(",").map(Number) as [number, number];
+      const site = { ...siteAt(x, y), id, x, y };
+      byId.set(id, site);
+      clicks.add(site, [{ x, y }], model);
+    },
+    /** Takes the site off its tile, for one gone from its spot in a site pool. */
+    remove(id: string) {
+      const site = byId.get(id);
+      if (site) clicks.remove(site);
+      byId.delete(id);
+    },
+    /** What finds the site under a click's ray. */
+    under: (raycaster: THREE.Raycaster) => clicks.under(raycaster)?.target,
   };
 }

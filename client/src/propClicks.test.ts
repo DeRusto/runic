@@ -1,6 +1,10 @@
 import { parseRegion, type TileKind } from "@runic/shared";
 import * as THREE from "three";
 import { beforeAll, describe, expect, test, vi } from "vitest";
+import { showFires } from "./fires.ts";
+import { showGatheringSites } from "./gatheringSites.ts";
+import { instancesModel } from "./instancesModel.ts";
+import type { WorldConnection } from "./players.ts";
 import { scene } from "./scene.ts";
 import { addStalls } from "./stalls.ts";
 import { addStations } from "./stations.ts";
@@ -17,6 +21,20 @@ vi.mock("./regionMeshes.ts", async () => ({
   loadPart: async () => standIn(),
   loadStation: async () => standIn(),
 }));
+
+/** What the client hears from the room's state: each field's add and remove handlers, run by hand. */
+const added = new Map<string, (item: object, id: string) => void>();
+vi.mock("@colyseus/sdk", () => ({
+  Callbacks: {
+    get: () => ({
+      onAdd: (field: string, handler: (item: object, id: string) => void) =>
+        added.set(field, handler),
+      onRemove: () => {},
+      listen: () => {},
+    }),
+  },
+}));
+const room = { onLeave: () => {} } as unknown as WorldConnection;
 
 /**
  * A box that stands in for a loaded model, with its base on the ground: low enough that it hides
@@ -199,3 +217,72 @@ clickTable(
   "anvil",
   0.2,
 );
+
+clickTable(
+  "a fire",
+  loadedWith(async () => {
+    const fireUnder = showFires(room);
+    added.get("fires")!({ log: "pineLog" }, "3,3");
+    // The pit's model loads after the fire appears.
+    await new Promise((resolve) => setTimeout(resolve));
+    return fireUnder;
+  }),
+  { log: "pineLog", x: 3, y: 3 },
+  0.3,
+);
+
+/**
+ * A berry bush on (3,3) drawn as the region draws its sites, as one instance among others of a
+ * stand-in geometry, at `scale` of its full size: 0.6 for one that has run out.
+ */
+function bushAt(scale: number) {
+  return placedWith(() => {
+    const bushes = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.7, 0.4, 0.6).translate(0, 0.2, 0),
+      new THREE.MeshBasicMaterial(),
+      2,
+    );
+    bushes.setMatrixAt(0, new THREE.Matrix4().makeTranslation(0, 0, 0));
+    bushes.setMatrixAt(
+      1,
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(3, 0, 3),
+        new THREE.Quaternion(),
+        new THREE.Vector3().setScalar(scale),
+      ),
+    );
+    scene.add(bushes);
+    const tiles = regionWith({ bush: "berryBush" });
+    const siteUnder = showGatheringSites(
+      room,
+      tiles,
+      ["3,3"],
+      () => {},
+      () => instancesModel([{ mesh: bushes, slot: 1 }]),
+    );
+    added.get("bushes")!({ picksLeft: scale < 1 ? 0 : 5 }, "3,3");
+    return siteUnder;
+  });
+}
+const BERRY_BUSH = { skill: "herblaw", kind: "berryBush", x: 3, y: 3 };
+clickTable("a gathering site", bushAt(1), BERRY_BUSH, 0.2);
+clickTable("a gathering site that has run out", bushAt(0.6), BERRY_BUSH, 0.1);
+
+test("a site scaled to nothing, gone from its spot, has no model for a ray to meet", () => {
+  const bushes = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.7, 0.4, 0.6).translate(0, 0.2, 0),
+    new THREE.MeshBasicMaterial(),
+    1,
+  );
+  bushes.setMatrixAt(
+    0,
+    new THREE.Matrix4().compose(
+      new THREE.Vector3(3, 0, 3),
+      new THREE.Quaternion(),
+      new THREE.Vector3(),
+    ),
+  );
+  bushes.updateMatrixWorld();
+  const model = instancesModel([{ mesh: bushes, slot: 0 }]);
+  expect(across(3, 0.01).intersectObject(model)).toEqual([]);
+});

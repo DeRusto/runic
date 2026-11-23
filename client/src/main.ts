@@ -84,7 +84,7 @@ const [newFigure, newEnemy, regionMeshes, villagerUnder, markUnder, stalls] =
 for (const id of spots) regionMeshes.setSiteLook(id, "gone");
 // The splash stays behind the login form until the first join settles.
 loading.remove();
-const { setSiteLook, stationModels } = regionMeshes;
+const { setSiteLook, siteModel, stationModels } = regionMeshes;
 const stationUnder = addStations(tiles, stationModels);
 watchPanels();
 
@@ -102,7 +102,7 @@ function enterWorld(room: WorldConnection) {
     room,
     tiles,
     showEnemies(room, newEnemy),
-    showGatheringSites(room, tiles, spots, setSiteLook),
+    showGatheringSites(room, tiles, spots, setSiteLook, siteModel),
     stationUnder,
     showFires(room),
     showSmithingPanel(room),
