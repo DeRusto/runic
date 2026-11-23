@@ -63,6 +63,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
     attackXp: 0,
     strengthXp: 0,
     defenseXp: 0,
+    rangedXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
     miningXp: 0,
@@ -146,7 +147,7 @@ describe("the Gear tab", () => {
     return el("tooltip").hidden ? undefined : shown(el("tooltip").children);
   };
 
-  test("lays out all ten slots as a body", () => {
+  test("lays out all eleven slots as a body, the ammo slot among them", () => {
     expect(el("gear-slots").children.map((b: any) => b.style.gridArea)).toEqual(
       GEAR_SLOTS,
     );
@@ -227,6 +228,45 @@ describe("the Gear tab", () => {
     expect(choices.map(([label]: [string]) => label)).toEqual(["Take off"]);
     choices[0][1]();
     expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "legs");
+  });
+
+  test("the ammo slot shows its arrows and how many, and says the count too (Ranged spec §2)", () => {
+    wearing("", "", { ammo: "copperArrow", ammoCount: 17 });
+    expect(box("ammo").dataset.item).toBe("copperArrow");
+    expect(box("ammo").dataset.count).toBe("17");
+    expect(box("ammo").style.backgroundImage).toBe(
+      'url("/icons/copperArrow.png")',
+    );
+    expect(box("ammo").attributes["aria-label"]).toBe(
+      "Ammo: 17 Copper arrow. Adds 100 to a bow shot's minimum and maximum hit",
+    );
+    expect(pointAt("ammo")).toMatch(
+      /^\[tip-name common\]Copper arrow\[tip-kind\]Ammo, needs Ranged 1/,
+    );
+  });
+
+  test("an empty ammo slot says Empty and shows no count", () => {
+    wearing("");
+    expect(box("ammo").textContent).toBe("Ammo");
+    expect(box("ammo").dataset.count).toBe("");
+    expect(box("ammo").attributes["aria-label"]).toBe("Ammo: Empty");
+  });
+
+  test("a sword shows no count, as one item never does", () => {
+    wearing("ironSword", "", { weaponCount: 1 });
+    expect(box().dataset.count).toBe("");
+  });
+
+  test("a change in the ammo count alone redraws it", () => {
+    wearing("", "", { ammo: "copperArrow", ammoCount: 17 });
+    wearing("", "", { ammo: "copperArrow", ammoCount: 16 });
+    expect(box("ammo").dataset.count).toBe("16");
+  });
+
+  test("a left-click on the ammo slot takes the stack off", () => {
+    wearing("", "", { ammo: "copperArrow", ammoCount: 3 });
+    box("ammo").onclick();
+    expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "ammo");
   });
 
   test("patches with no change to the gear don't redraw", () => {
@@ -454,6 +494,7 @@ describe("the Skills tab", () => {
       "Attack 1",
       "Strength 1",
       "Defense 1",
+      "Ranged 1",
       "Herblaw 1",
       "Hitpoints 10",
       "Mining 2",

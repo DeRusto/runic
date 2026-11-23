@@ -41,6 +41,9 @@ describe("player save", () => {
       cape: "",
       neck: "",
       ring: "",
+      ammo: "steelArrow",
+      weaponCount: 1,
+      ammoCount: 13,
       // The quest columns' defaults: a save from before quests holds no progress (#231).
       quests: {},
       questPoints: 0,

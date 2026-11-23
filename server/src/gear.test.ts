@@ -690,3 +690,219 @@ describe("Virtues", () => {
     expect(me()).toMatchObject({ maxHealth: 1020, health: 500 });
   });
 });
+
+describe("the ammo slot (Ranged spec §2)", () => {
+  const LEVEL_5_XP = 800;
+
+  test("arrows equip into it with their whole stack, freeing the slot", () => {
+    start({ held: ["copperArrow"], inventoryCounts: [17] });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ ammo: "copperArrow", ammoCount: 17 });
+    expect(me().inventory[0]).toBe(EMPTY_SLOT);
+    expect(me().inventoryCounts[0]).toBe(0);
+    expect(me().weapon).toBe("");
+  });
+
+  test("arrows below their Ranged gate are refused with a line, and stay put", () => {
+    start({
+      held: ["bronzeArrow"],
+      inventoryCounts: [20],
+      rangedXp: LEVEL_5_XP - 1,
+      attackXp: MAX_XP,
+    });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ ammo: "", ammoCount: 0 });
+    expect(me().inventoryCounts[0]).toBe(20);
+    expect(told()).toEqual(["You need Ranged 5 to equip this."]);
+    start({
+      held: ["bronzeArrow"],
+      inventoryCounts: [20],
+      rangedXp: LEVEL_5_XP,
+    });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ ammo: "bronzeArrow", ammoCount: 20 });
+  });
+
+  test("more of the same arrow tops the slot up to 20, and the rest stays in the inventory", () => {
+    start({
+      held: ["copperArrow"],
+      inventoryCounts: [15],
+      ammo: "copperArrow",
+      ammoCount: 12,
+    });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ ammo: "copperArrow", ammoCount: 20 });
+    expect(me().inventory[0]).toBe("copperArrow");
+    expect(me().inventoryCounts[0]).toBe(7);
+  });
+
+  test("topping up with all of a small stack empties its slot", () => {
+    start({
+      held: ["copperArrow"],
+      inventoryCounts: [5],
+      ammo: "copperArrow",
+      ammoCount: 10,
+    });
+    sim.equip("a", 0);
+    expect(me().ammoCount).toBe(15);
+    expect(me().inventory[0]).toBe(EMPTY_SLOT);
+    expect(me().inventoryCounts[0]).toBe(0);
+  });
+
+  test("a full slot takes no more of the same arrow, and says so", () => {
+    start({
+      held: ["copperArrow"],
+      inventoryCounts: [5],
+      ammo: "copperArrow",
+      ammoCount: 20,
+    });
+    sim.equip("a", 0);
+    expect(me().ammoCount).toBe(20);
+    expect(me().inventoryCounts[0]).toBe(5);
+    expect(told()).toEqual(["Your ammo slot is full."]);
+  });
+
+  test("another tier swaps the stacks, each with its own count, even in a full inventory", () => {
+    start({
+      held: Array<string>(INVENTORY_SLOTS).fill("ironArrow"),
+      inventoryCounts: Array<number>(INVENTORY_SLOTS).fill(9),
+      rangedXp: LEVEL_10_XP,
+      ammo: "copperArrow",
+      ammoCount: 14,
+    });
+    sim.equip("a", 3);
+    expect(me()).toMatchObject({ ammo: "ironArrow", ammoCount: 9 });
+    expect(me().inventory[3]).toBe("copperArrow");
+    expect(me().inventoryCounts[3]).toBe(14);
+    expect(told()).toEqual([]);
+  });
+
+  test("taking arrows off returns the whole stack to the first empty slot", () => {
+    start({ held: ["berry"], ammo: "steelArrow", ammoCount: 18 });
+    sim.takeOff("a", "ammo");
+    expect(me()).toMatchObject({ ammo: "", ammoCount: 0 });
+    expect(me().inventory[1]).toBe("steelArrow");
+    expect(me().inventoryCounts[1]).toBe(18);
+  });
+
+  test("taking arrows off with no empty slot is refused, and the stack stays", () => {
+    start({
+      held: Array<string>(INVENTORY_SLOTS).fill("berry"),
+      ammo: "copperArrow",
+      ammoCount: 18,
+    });
+    sim.takeOff("a", "ammo");
+    expect(me()).toMatchObject({ ammo: "copperArrow", ammoCount: 18 });
+    expect(told()).toEqual(["You have no empty slot to take that off into."]);
+  });
+
+  test("arrows stay in the ammo slot while a sword goes into the hand, and a sword never goes in the ammo slot", () => {
+    start({ held: ["copperSword"], ammo: "copperArrow", ammoCount: 20 });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({
+      weapon: "copperSword",
+      weaponCount: 1,
+      ammo: "copperArrow",
+      ammoCount: 20,
+    });
+  });
+
+  test("arrows add nothing to a sword's swing", () => {
+    start({ weapon: "copperSword", ammo: "emberiteArrow", ammoCount: 20 });
+    rolls = [0, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([200]);
+    expect(me().ammoCount).toBe(20);
+  });
+
+  test("the ammo slot and its count are saved and loaded", () => {
+    start({ ammo: "ironArrow", ammoCount: 11 });
+    expect(sim.saveOf("a")).toMatchObject({ ammo: "ironArrow", ammoCount: 11 });
+  });
+
+  test("a save from before the ammo slot loads with it empty, and a worn weapon counts as one", () => {
+    start({ weapon: "copperSword" });
+    expect(me()).toMatchObject({ ammo: "", ammoCount: 0, weaponCount: 1 });
+    sim.addPlayer("b");
+    expect(sim.state.players.get("b")).toMatchObject({
+      ammo: "",
+      ammoCount: 0,
+      weapon: "",
+      weaponCount: 0,
+      rangedXp: 0,
+    });
+  });
+
+  test("a dead player's arrows drop as one ground stack with the full count", () => {
+    start({
+      weapon: "copperSword",
+      ammo: "bronzeArrow",
+      ammoCount: 19,
+      health: 100,
+    });
+    rolls = [MISS, 0, 0]; // The Spider's first swing hits for 100.
+    sim.queueTarget("a", "0");
+    ticks(5);
+    expect(me().dead).toBe(true);
+    const dropped = [...sim.state.groundItems.values()].map(
+      ({ item, count }) => ({ item, count }),
+    );
+    expect(dropped).toEqual([
+      { item: "copperSword", count: 1 },
+      { item: "bronzeArrow", count: 19 },
+    ]);
+    expect(me()).toMatchObject({
+      weapon: "",
+      weaponCount: 0,
+      ammo: "",
+      ammoCount: 0,
+    });
+  });
+});
+
+describe("bows (Ranged spec §2)", () => {
+  test("equip at their Ranged gate, and are refused below it whatever the Attack level", () => {
+    start({ held: ["oakBow"], attackXp: MAX_XP, rangedXp: LEVEL_10_XP - 1 });
+    sim.equip("a", 0);
+    expect(me().weapon).toBe("");
+    expect(told()).toEqual(["You need Ranged 10 to equip this."]);
+    start({ held: ["oakBow"], rangedXp: LEVEL_10_XP });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ weapon: "oakBow", weaponCount: 1 });
+  });
+
+  test("add their Accuracy to the chance to hit, and no hit bonus", () => {
+    // 40% bare-handed, 55% with a charwood bow's 15 points: a roll of 0.5 lands only with the bow.
+    start({ weapon: "charwoodBow", rangedXp: LEVEL_20_XP });
+    rolls = [0.5, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([100]);
+    start();
+    rolls = [0.5, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([0]);
+  });
+
+  test("a bow worn before the change stays worn and keeps working, but once off goes back on only at its Ranged gate", () => {
+    start({ weapon: "charwoodBow", attackXp: LEVEL_20_XP, rangedXp: 0 });
+    expect(me().weapon).toBe("charwoodBow");
+    rolls = [0.5, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([100]);
+    sim.takeOff("a", "weapon");
+    const slot = me().inventory.indexOf("charwoodBow");
+    sim.equip("a", slot);
+    expect(me().weapon).toBe("");
+    expect(told()).toEqual(["You need Ranged 20 to equip this."]);
+  });
+
+  test("Ranged experience is saved and loaded", () => {
+    start({ rangedXp: 1234 });
+    expect(me().rangedXp).toBe(1234);
+    expect(sim.saveOf("a")).toMatchObject({ rangedXp: 1234 });
+  });
+});

@@ -4,6 +4,7 @@ import {
   enemyHit,
   FIGHT_BACK_DELAY_TICKS,
   GEAR_SLOTS,
+  wornCountOf,
   isStance,
   itemTag,
   MIGHT_POTION_HIT,
@@ -16,6 +17,7 @@ import {
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { dropFromSlot } from "./dropping.ts";
+import { wear } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import type { Quests } from "./quests.ts";
@@ -201,14 +203,15 @@ export class Fighting {
     for (const gearSlot of GEAR_SLOTS) {
       const worn = player[gearSlot];
       if (!worn) continue;
+      // A stacking slot drops its whole stack as one ground item (Ranged spec §2).
       this.world.groundItems.spawn(
         player,
         worn,
-        1,
+        wornCountOf(player, gearSlot),
         player.username,
         this.world.state.tick,
       );
-      player[gearSlot] = "";
+      wear(player, gearSlot, "", 0);
     }
     const unsynced = this.world.unsyncedPlayers.get(id)!;
     unsynced.healingPool.length = 0;

@@ -5,6 +5,7 @@ export const SKILLS = [
   ["Attack", "attackXp"],
   ["Strength", "strengthXp"],
   ["Defense", "defenseXp"],
+  ["Ranged", "rangedXp"],
   ["Herblaw", "herblawXp"],
   ["Hitpoints", "hitpointsXp"],
   ["Mining", "miningXp"],
@@ -31,7 +32,6 @@ export const MASTERY_SHARE_PERCENT = 7;
 
 /** Moves up to `SKILLS` when its content lands, which builds its synced field and save column; then run `npm run db:generate -w server`. Until then its experience is 0. */
 const UPCOMING_SKILLS = [
-  ["Ranged", "rangedXp"],
   ["Prayer", "prayerXp"],
   ["Magic", "magicXp"],
 ] as const;

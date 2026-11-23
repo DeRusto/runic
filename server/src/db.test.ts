@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234) and its rigged shortcuts.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, and Ranged's experience with the ammo slot and gear counts (#276).
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -44,8 +44,20 @@ const LATEST_COLUMNS = [
   "thieving_xp",
   "agility_xp",
   "rigged_shortcuts",
+  "ranged_xp",
+  "weapon_count",
+  "ammo_count",
 ];
-const LATEST_MIGRATIONS = 20;
+const LATEST_MIGRATIONS = 21;
+
+/** Makes the Ranged migration pending again: its columns gone, and its row in the journal. */
+function unapplyRanged(sqlite: DatabaseSync) {
+  for (const column of ["ranged_xp", "ammo", "weapon_count", "ammo_count"])
+    sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+  );
+}
 
 /** Makes the melee split pending again: Combat's column back, and Attack's, Strength's and the stance gone. */
 function unapplySplit(sqlite: DatabaseSync) {
@@ -178,6 +190,9 @@ describe("a save from the first slice, written before the stacks migration", () 
       cape: "",
       neck: "",
       ring: "",
+      ammo: "",
+      weaponCount: 0,
+      ammoCount: 0,
       tools: [],
       // A full bar has no room for Strength, so Attack alone takes Combat's place.
       pinnedSkills: [
@@ -259,7 +274,8 @@ describe("a save from just before the melee split", () => {
   async function splitFrom(pinnedSkills: string[]) {
     await boot();
     const sqlite = new DatabaseSync(path);
-    // Agility's columns came after the split, so they go first.
+    // Ranged's and Agility's columns came after the split, so they go first.
+    unapplyRanged(sqlite);
     sqlite.exec("ALTER TABLE players DROP COLUMN rigged_shortcuts");
     sqlite.exec("ALTER TABLE players DROP COLUMN agility_xp");
     unapplySplit(sqlite);
@@ -354,6 +370,7 @@ describe("a save from just before rigged shortcuts", () => {
   test("it keeps its Agility and everything else, and starts with no shortcut rigged", async () => {
     await boot();
     const sqlite = new DatabaseSync(path);
+    unapplyRanged(sqlite);
     sqlite.exec("ALTER TABLE players DROP COLUMN rigged_shortcuts");
     sqlite.exec(
       "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
@@ -373,6 +390,63 @@ describe("a save from just before rigged shortcuts", () => {
       inventory: ["rope"],
       riggedShortcuts: [],
     });
+    await database.shutdown();
+  });
+});
+
+describe("a save from just before Ranged (#276)", () => {
+  /** A row as the last build wrote it: a bow worn on its old Attack gate, Ranged never trained, and arrows carried. */
+  async function rangedFrom() {
+    await boot();
+    const sqlite = new DatabaseSync(path);
+    unapplyRanged(sqlite);
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (10, 'Archer', 'archer', 'x', 0)`);
+    sqlite.exec(`INSERT INTO players (account_id, attack_xp, strength_xp, defense_xp, herblaw_xp, hitpoints_xp, fletching_xp, mastery_xp, mastery_hundredths, x, y, health, inventory, inventory_counts, weapon, shield, stance)
+      VALUES (10, 18050, 900, 200, 0, 20000, 4050, 700, 30, 4, 1, 900, '["copperArrow",""]', '[20,0]', 'charwoodBow', 'copperShield', 'forceful')`);
+    sqlite.close();
+    return openDatabase();
+  }
+
+  test("it loads with 0 Ranged experience, an empty ammo slot, and nothing else lost", async () => {
+    const database = await rangedFrom();
+    expect(readSave(10)).toMatchObject({
+      rangedXp: 0,
+      ammo: "",
+      ammoCount: 0,
+      attackXp: 18050,
+      strengthXp: 900,
+      defenseXp: 200,
+      hitpointsXp: 20000,
+      fletchingXp: 4050,
+      masteryXp: 700,
+      masteryHundredths: 30,
+      health: 900,
+      inventory: ["copperArrow", ""],
+      inventoryCounts: [20, 0],
+      weapon: "charwoodBow",
+      shield: "copperShield",
+      stance: "forceful",
+    });
+    await database.shutdown();
+  });
+
+  test("the bow it wore stays worn as one, and saving keeps the counts", async () => {
+    const database = await rangedFrom();
+    const sim = new Simulation(
+      parseRegion(["TTTTTTT", "TR....T", "TTTTTTT"].join("\n")),
+      () => 0,
+    );
+    sim.addPlayer("a", readSave(10)!, "Archer");
+    expect(sim.state.players.get("a")).toMatchObject({
+      weapon: "charwoodBow",
+      weaponCount: 1,
+      ammo: "",
+      ammoCount: 0,
+      rangedXp: 0,
+    });
+    writeSave(10, sim.saveOf("a")!);
+    expect(readSave(10)).toMatchObject({ weaponCount: 1, ammoCount: 0 });
     await database.shutdown();
   });
 });

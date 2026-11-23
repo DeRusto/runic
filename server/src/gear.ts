@@ -1,11 +1,32 @@
 import {
   EMPTY_SLOT,
   GEAR_SLOTS,
+  gearCountField,
   gearOf,
   gearRefusal,
+  isStackingGearSlot,
+  ITEMS,
+  itemParts,
+  wornCountOf,
   type GearSlot,
 } from "@runic/shared";
-import { isInventorySlot, type World } from "./worldContext.ts";
+import {
+  isInventorySlot,
+  type SyncedPlayer,
+  type World,
+} from "./worldContext.ts";
+
+/** Puts `count` of `item`, or "" and 0, in a gear slot, with its count for a stacking slot (Ranged spec §2). */
+export function wear(
+  player: SyncedPlayer,
+  gearSlot: GearSlot,
+  item: string,
+  count: number,
+) {
+  player[gearSlot] = item;
+  if (isStackingGearSlot(gearSlot))
+    player[gearCountField(gearSlot)] = item ? count : 0;
+}
 
 /** Putting gear on and taking it off, which can change max health (spec §2, §4). */
 export class Gear {
@@ -25,12 +46,19 @@ export class Gear {
     if (!gear) return;
     const refusal = gearRefusal(item, player);
     if (refusal) {
-      this.world.events.push({ type: "told", player: id, line: refusal });
+      this.world.tell(id, refusal);
       return;
     }
-    // Whatever was worn lands where this came from, so swapping always works (spec §4).
-    this.placeGear(id, slot, player[gear.slot]);
-    player[gear.slot] = item;
+    if (player[gear.slot] === item && ITEMS[itemParts(item).base].stack > 1) {
+      this.topUp(id, slot, gear.slot);
+      return;
+    }
+    // Whatever was worn lands where this came from, with its count, so swapping always works (spec §4).
+    const worn = player[gear.slot];
+    const wornCount = wornCountOf(player, gear.slot);
+    const count = player.inventoryCounts[slot]!;
+    this.placeGear(id, slot, worn, wornCount);
+    wear(player, gear.slot, item, count);
     this.world.fitHealth(id);
   }
 
@@ -42,20 +70,42 @@ export class Gear {
     if (!worn) return;
     const slot = player.inventory.indexOf(EMPTY_SLOT);
     if (slot < 0) {
-      const line = "You have no empty slot to take that off into.";
-      this.world.events.push({ type: "told", player: id, line });
+      this.world.tell(id, "You have no empty slot to take that off into.");
       return;
     }
-    this.placeGear(id, slot, worn);
-    player[gearSlot] = "";
+    // The whole stack comes off together (Ranged spec §2).
+    this.placeGear(id, slot, worn, wornCountOf(player, gearSlot));
+    wear(player, gearSlot, "", 0);
     this.world.fitHealth(id);
   }
 
-  /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
-  private placeGear(id: string, slot: number, item: string) {
+  /**
+   * More of the stack already worn fills the slot up to the item's stack size, and the rest
+   * stays where it was. This build's choice for a partial slot (Ranged spec §2).
+   */
+  private topUp(id: string, slot: number, gearSlot: GearSlot) {
+    if (!isStackingGearSlot(gearSlot)) return;
+    const player = this.world.player(id);
+    const item = player[gearSlot];
+    const field = gearCountField(gearSlot);
+    const moved = Math.min(
+      ITEMS[itemParts(item).base].stack - player[field],
+      player.inventoryCounts[slot]!,
+    );
+    if (moved <= 0) {
+      this.world.tell(id, `Your ${gearSlot} slot is full.`);
+      return;
+    }
+    player[field] += moved;
+    player.inventoryCounts[slot]! -= moved;
+    if (!player.inventoryCounts[slot]) this.placeGear(id, slot, EMPTY_SLOT, 0);
+  }
+
+  /** Puts `count` of gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
+  private placeGear(id: string, slot: number, item: string, count: number) {
     const player = this.world.state.players.get(id)!;
     player.inventory[slot] = item;
-    player.inventoryCounts[slot] = item ? 1 : 0;
+    player.inventoryCounts[slot] = item ? count : 0;
     this.world.forgetDropOn(id, slot);
   }
 }

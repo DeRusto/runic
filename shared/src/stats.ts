@@ -4,11 +4,10 @@ import {
   baseAvoidanceTenthsOf,
   BLOCK_CHANCE_PER_BLOCKING_LEVEL,
   gearOf,
-  variantAvoidanceOf,
-  virtueOf,
   wornAccuracyOf,
   type GearSlot,
 } from "./gear.ts";
+import { variantAvoidanceOf, virtueOf } from "./virtues.ts";
 import {
   HEALTH_PER_HITPOINTS_LEVEL,
   PLAYER_BASE_DAMAGE,

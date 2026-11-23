@@ -5,7 +5,13 @@ import {
   combatLevel,
   gearOf,
   GEAR_SLOTS,
+  gearCountField,
   hitOf,
+  ITEMS,
+  itemParts,
+  STACKING_GEAR_SLOTS,
+  wornCountOf,
+  type WornGear,
   levelFor,
   maxHealthOf,
   levelProgress,
@@ -91,12 +97,20 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   let toolsDrawn = "";
 
   // Laid out as a body by the grid's areas; each box is only an icon, and its tooltip and name say what it holds.
-  let worn: Partial<Record<GearSlot, string>> = {};
+  let worn: WornGear = {};
+  /** What a slot shows over its icon: a stack's count, as the inventory does, and nothing for one item (Ranged spec §2). */
+  const countShown = (gearSlot: GearSlot) => {
+    const item = worn[gearSlot] ?? "";
+    return item && ITEMS[itemParts(item).base].stack > 1
+      ? String(wornCountOf(worn, gearSlot))
+      : "";
+  };
   const describe = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
     const does = gearOf(item)?.does;
     const virtue = virtueDoes(item);
-    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
+    const count = countShown(gearSlot);
+    return `${itemName(gearSlot)}: ${item ? `${count && `${count} `}${itemName(item)}` : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
   };
   const gearSlots = GEAR_SLOTS.map((gearSlot) => {
     // Not disabled when empty, or it couldn't be pointed at to read "Empty".
@@ -185,9 +199,19 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     /** Only redraws when the gear changes, as with the tools. */
     drawGear(me: SyncedPlayer) {
       const items = GEAR_SLOTS.map((gearSlot) => me[gearSlot]);
-      if (items.join() === gearDrawn) return;
-      gearDrawn = items.join();
-      worn = Object.fromEntries(GEAR_SLOTS.map((slot, i) => [slot, items[i]]));
+      const counts = STACKING_GEAR_SLOTS.map(
+        (slot) => me[gearCountField(slot)],
+      );
+      const drawn = [...items, ...counts].join();
+      if (drawn === gearDrawn) return;
+      gearDrawn = drawn;
+      worn = Object.fromEntries([
+        ...GEAR_SLOTS.map((slot, i) => [slot, items[i]]),
+        ...STACKING_GEAR_SLOTS.map((slot, i) => [
+          gearCountField(slot),
+          counts[i],
+        ]),
+      ]);
       for (const { gearSlot, box } of gearSlots) {
         const item = me[gearSlot];
         box.dataset.item = item;
@@ -195,6 +219,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         box.setAttribute("aria-label", describe(gearSlot));
         box.style.backgroundImage = item && `url("${iconUrl(item)}")`;
         box.textContent = item ? "" : itemName(gearSlot);
+        box.dataset.count = countShown(gearSlot);
       }
     },
     /** In raw numbers, as the bottom bar's health is (issue #216). */

@@ -1,19 +1,26 @@
 import { describe, expect, test } from "vitest";
 import {
   armourPercentOf,
-  capeOfGossamer,
   GEAR,
   gearOf,
+  gateOf,
+  GEAR_SLOTS,
   gearRefusal,
+  STACKING_GEAR_SLOTS,
+  wornAccuracyOf,
+} from "./gear.ts";
+import {
+  capeOfGossamer,
   variantAvoidanceOf,
   variantDoes,
   virtueDoes,
   virtueOf,
-} from "./gear.ts";
+} from "./virtues.ts";
 import { TIERS } from "./region.ts";
-import { xpForLevel } from "./skills.ts";
+import { MAX_XP, xpForLevel } from "./skills.ts";
 
-const attack = (attackXp: number) => ({ attackXp, defenseXp: 0 });
+const attack = (attackXp: number) => ({ attackXp, defenseXp: 0, rangedXp: 0 });
+const ranged = (rangedXp: number) => ({ attackXp: 0, defenseXp: 0, rangedXp });
 
 test("swords add 100, 150, 200, 250 and 300 by tier", () => {
   expect(GEAR.get("copperSword")?.hitBonus).toBe(100);
@@ -52,7 +59,11 @@ test("shields start at 10%, 15%, 20%, 25% and 30% by tier", () => {
 });
 
 test("each tier's shield is gated at its Defense level, whatever the Attack level", () => {
-  const defense = (defenseXp: number) => ({ attackXp: 18050, defenseXp });
+  const defense = (defenseXp: number) => ({
+    attackXp: 18050,
+    defenseXp,
+    rangedXp: 0,
+  });
   expect(gearRefusal("copperShield", defense(0))).toBeUndefined();
   expect(gearRefusal("bronzeShield", defense(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
@@ -90,27 +101,78 @@ test("a sword goes in the weapon slot and says what it does", () => {
   });
 });
 
-test("the bows are the first weapons without a blade, and mirror the sword ladder's hit bonuses (#228)", () => {
-  expect(GEAR.get("birchBow")?.hitBonus).toBe(100);
-  expect(GEAR.get("oakBow")?.hitBonus).toBe(200);
-  expect(GEAR.get("charwoodBow")?.hitBonus).toBe(300);
+test("bows gate on Ranged at 1, 10 and 20 and add 5, 10 and 15 points of Accuracy, with no hit bonus (Ranged spec §2)", () => {
   expect(GEAR.get("birchBow")).toMatchObject({
     slot: "weapon",
-    does: "Adds 100 to your minimum and maximum hit",
+    accuracy: 5,
+    does: "Adds 5 points to your chance to hit",
   });
-  // The gate is Attack, as for every weapon, until the Ranged milestone re-gates bows on Ranged and tunes them.
-  expect(gearRefusal("birchBow", attack(0))).toBeUndefined();
-  expect(gearRefusal("oakBow", attack(4049))).toBe(
-    "You need Attack 10 to equip this.",
+  expect(GEAR.get("oakBow")?.accuracy).toBe(10);
+  expect(GEAR.get("charwoodBow")?.accuracy).toBe(15);
+  for (const bow of ["birchBow", "oakBow", "charwoodBow"])
+    expect(GEAR.get(bow)?.hitBonus).toBeUndefined();
+  expect(gearRefusal("birchBow", ranged(0))).toBeUndefined();
+  expect(gearRefusal("oakBow", ranged(xpForLevel(9)))).toBe(
+    "You need Ranged 10 to equip this.",
   );
-  expect(gearRefusal("oakBow", attack(4050))).toBeUndefined();
-  expect(gearRefusal("charwoodBow", attack(18049))).toBe(
+  expect(gearRefusal("oakBow", ranged(xpForLevel(10)))).toBeUndefined();
+  expect(gearRefusal("charwoodBow", ranged(xpForLevel(19)))).toBe(
+    "You need Ranged 20 to equip this.",
+  );
+  expect(gearRefusal("charwoodBow", ranged(xpForLevel(20)))).toBeUndefined();
+  // Attack no longer opens a bow, and Ranged doesn't open a sword: the weapon slot gates per item.
+  expect(gearRefusal("charwoodBow", attack(MAX_XP))).toBe(
+    "You need Ranged 20 to equip this.",
+  );
+  expect(gearRefusal("emberiteSword", ranged(MAX_XP))).toBe(
     "You need Attack 20 to equip this.",
   );
-  expect(gearRefusal("charwoodBow", attack(18050))).toBeUndefined();
+  expect(gateOf("oakBow")).toEqual({
+    skill: "Ranged",
+    xp: "rangedXp",
+    level: 10,
+  });
 });
 
-test("a bow's Virtue sizes like the metal tier its Attack gate matches (#228)", () => {
+test("arrows go in the ammo slot, gate on Ranged 1, 5, 10, 15 and 20, and add 100 to 300 to a hit (Ranged spec §2)", () => {
+  const arrows = [
+    ["copperArrow", 1, 100],
+    ["bronzeArrow", 5, 150],
+    ["ironArrow", 10, 200],
+    ["steelArrow", 15, 250],
+    ["emberiteArrow", 20, 300],
+  ] as const;
+  for (const [arrow, level, hitBonus] of arrows) {
+    expect(GEAR.get(arrow)).toMatchObject({ slot: "ammo", level, hitBonus });
+    expect(gateOf(arrow)).toMatchObject({ skill: "Ranged", level });
+    expect(gearRefusal(arrow, ranged(xpForLevel(level)))).toBeUndefined();
+  }
+  expect(gearRefusal("bronzeArrow", ranged(xpForLevel(4)))).toBe(
+    "You need Ranged 5 to equip this.",
+  );
+  expect(gearRefusal("emberiteArrow", attack(MAX_XP))).toBe(
+    "You need Ranged 20 to equip this.",
+  );
+  expect(GEAR.get("ironArrow")?.does).toBe(
+    "Adds 200 to a bow shot's minimum and maximum hit",
+  );
+});
+
+test("the gear set has eleven slots, the ammo slot last, and only the weapon and ammo slots hold a stack (Ranged spec §2)", () => {
+  expect(GEAR_SLOTS).toHaveLength(11);
+  expect(GEAR_SLOTS.at(-1)).toBe("ammo");
+  expect(STACKING_GEAR_SLOTS).toEqual(["weapon", "ammo"]);
+});
+
+test("arrows in the ammo slot add nothing to Accuracy or armour", () => {
+  expect(wornAccuracyOf({ ammo: "emberiteArrow" })).toBe(0);
+  expect(armourPercentOf({ ammo: "emberiteArrow" })).toBe(0);
+  expect(wornAccuracyOf({ weapon: "charwoodBow", ring: "copperRing" })).toBe(
+    20,
+  );
+});
+
+test("a bow's Virtue sizes like the metal tier its wood's gate matches (#228)", () => {
   expect(virtueOf({ weapon: "birchBow:uncommon:fortitude" }, "fortitude")).toBe(
     20,
   );
@@ -139,7 +201,11 @@ test("armour takes 2/4/2% up to 6/12/6% by tier, for 8%, 12%, 16%, 20% and 24% a
 });
 
 test("each tier's armour is gated at its Defense level", () => {
-  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({
+    attackXp: 0,
+    defenseXp,
+    rangedXp: 0,
+  });
   expect(gearRefusal("copperHelmet", defense(0))).toBeUndefined();
   expect(gearRefusal("bronzeHelmet", defense(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
@@ -221,7 +287,11 @@ test("the Gear tab line gives the Virtue at its size, and nothing for a common p
 });
 
 describe("capes (#217)", () => {
-  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({
+    attackXp: 0,
+    defenseXp,
+    rangedXp: 0,
+  });
 
   test("a cape is small armour on the hands' line, in the cape slot, gated at its Defense level", () => {
     expect(GEAR.get("copperMightCape")).toMatchObject({
@@ -289,7 +359,11 @@ describe("capes (#217)", () => {
 });
 
 describe("hands and feet (#238)", () => {
-  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({
+    attackXp: 0,
+    defenseXp,
+    rangedXp: 0,
+  });
 
   test("the hands take 1–5% and the feet 2–6% off by tier, on the helmet's line (#217)", () => {
     for (const [tier, hands, feet] of [
@@ -326,7 +400,11 @@ describe("hands and feet (#238)", () => {
 });
 
 describe("necks and rings (#238)", () => {
-  const defense = (defenseXp: number) => ({ attackXp: 0, defenseXp });
+  const defense = (defenseXp: number) => ({
+    attackXp: 0,
+    defenseXp,
+    rangedXp: 0,
+  });
 
   test("the amulets carry 5/8/10/13/16 tenths of Avoidance by tier", () => {
     for (const [tier, tenths] of [
