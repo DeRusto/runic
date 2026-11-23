@@ -82,6 +82,21 @@ describe("clicking a shortcut", () => {
     },
   );
 
+  test.each([0, 1, 2, 3])(
+    "on grass two tiles behind the Charred fence, with the camera at %i quarter turns, finds no shortcut",
+    (quarters) => {
+      const obstacleUnder = fence();
+      // Two tiles beyond the fence's start, away from the camera, where the view looks past it.
+      const toward = new THREE.Vector3(1, 0, 1).applyAxisAngle(
+        UP,
+        (quarters * Math.PI) / 2,
+      );
+      expect(
+        obstacleUnder(cameraRay(2 - 2 * toward.x, 1 - 2 * toward.z, quarters)),
+      ).toBeUndefined();
+    },
+  );
+
   test("on the swing's rope, high above the ground, still finds the shortcut", () => {
     const obstacleUnder = swing();
     expect(

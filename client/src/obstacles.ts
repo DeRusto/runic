@@ -13,8 +13,6 @@ const wood = new THREE.MeshStandardMaterial({ color: 0x865333 });
 const rail = new THREE.MeshStandardMaterial({ color: 0xcc9d5a });
 const stone = new THREE.MeshStandardMaterial({ color: 0x828b87 });
 const startMat = new THREE.MeshStandardMaterial({ color: 0xe6c976 });
-/** Tall enough for the highest shortcut prop, the bramble swing's posts. */
-const SHORTCUT_HIT_BOX_HEIGHT = 1.8;
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const charred = new THREE.MeshStandardMaterial({ color: 0x2e2622 });
 const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
@@ -36,23 +34,25 @@ export function addObstacles(tiles: TileKind[][]) {
       group.rotation.y = Math.atan2(landing.x - x, landing.y - y);
       const length = Math.hypot(landing.x - x, landing.y - y);
 
-      // Cover the whole obstacle, including gaps between its pieces. A shortcut's box also
-      // covers both end markers, since either end starts a crossing, and its tallest prop.
+      // Cover the whole obstacle low down, including gaps between its pieces. A shortcut's box
+      // also covers both end markers, since either end starts a crossing. Anything taller is
+      // clicked on its own visible pieces below: a taller box would catch clicks on the ground
+      // behind it.
       const hitBox = newHitBox();
       const twoWay = !!OBSTACLES[obstacle].shortcut;
-      const tall = twoWay ? SHORTCUT_HIT_BOX_HEIGHT / HIT_BOX_HEIGHT : 1;
       hitBox.position.set(
         0,
-        (HIT_BOX_HEIGHT * tall) / 2,
+        HIT_BOX_HEIGHT / 2,
         twoWay ? length / 2 : length / 2 - 0.25,
       );
-      hitBox.scale.set(1, tall, twoWay ? length + 0.8 : length + 0.15);
+      hitBox.scale.z = twoWay ? length + 0.8 : length + 0.15;
       group.add(hitBox);
-      targets.set(hitBox, {
+      const target = {
         obstacle,
         start: { x, y },
         far: twoWay ? landing : undefined,
-      });
+      };
+      targets.set(hitBox, target);
 
       const box = (
         width: number,
@@ -71,6 +71,7 @@ export function addObstacles(tiles: TileKind[][]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);
+        targets.set(mesh, target);
       };
 
       box(0.82, 0.04, 0.65, 0, startMat);
@@ -148,8 +149,8 @@ export function addObstacles(tiles: TileKind[][]) {
 
   /**
    * The obstacle under a click's ray, and the end of it nearer where the ray meets the ground:
-   * the ray enters the tall box well above the ground, so its entry point can lean toward the
-   * other end.
+   * the ray can enter a box or a post well above the ground, so its entry point can lean toward
+   * the other end.
    */
   return (raycaster: THREE.Raycaster) => {
     const hit = raycaster.intersectObjects([...targets.keys()])[0];
