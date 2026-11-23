@@ -1,5 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
-import { inReach, rangedHit, rangedWeaponOf } from "./ranged.ts";
+import {
+  inReach,
+  OUT_OF_ARROWS_LINE,
+  rangedAttackRefusal,
+  rangedHit,
+  rangedWeaponOf,
+} from "./ranged.ts";
 import { MAX_XP } from "./skills.ts";
 
 /** Hands out these rolls in order, then fails the test if asked for more. */
@@ -106,13 +112,61 @@ describe("rangedWeaponOf", () => {
     expect(rangedWeaponOf({ weapon: "birchBow" })).toEqual({
       reachTiles: 6,
       intervalTicks: 8,
+      thrown: false,
     });
     expect(rangedWeaponOf({ weapon: "charwoodBow" })).toEqual({
       reachTiles: 6,
       intervalTicks: 8,
+      thrown: false,
     });
     expect(rangedWeaponOf({ weapon: "copperSword" })).toBeUndefined();
     expect(rangedWeaponOf({ weapon: "" })).toBeUndefined();
+  });
+});
+
+describe("throwing knives", () => {
+  /** A fresh thrower with copper knives in hand and, to show they play no part, emberite arrows worn. */
+  const thrower = {
+    ...archer,
+    weapon: "copperThrowingKnife",
+    weaponCount: 20,
+    ammo: "emberiteArrow",
+  };
+
+  test("a stack of knives reaches 4 tiles and throws every 6 ticks, at any tier", () => {
+    for (const weapon of ["copperThrowingKnife", "emberiteThrowingKnife"])
+      expect(rangedWeaponOf({ weapon })).toEqual({
+        reachTiles: 4,
+        intervalTicks: 6,
+        thrown: true,
+      });
+  });
+
+  test("a throw lands at 40% at Ranged 1, as knives add no Accuracy", () => {
+    expect(rangedHit(thrower, 0, 800, rolls(0.3999, 0, 0.99)).damage).toBe(200);
+    expect(rangedHit(thrower, 0, 800, rolls(0.4)).damage).toBe(0);
+  });
+
+  test("the knife's own hit bonus adds to a throw, and the arrows in the ammo slot add nothing", () => {
+    expect(rangedHit(thrower, 0, 900, rolls(0, 0, 0.99)).damage).toBe(200);
+    const steel = { ...thrower, weapon: "steelThrowingKnife" };
+    expect(rangedHit(steel, 0, 900, rolls(0, 0, 0.99)).damage).toBe(350);
+  });
+
+  test("a throw trains Ranged and Hitpoints", () => {
+    expect(rangedHit(thrower, 0, 900, rolls(0, 0.5, 0.99)).xp).toEqual([
+      ["rangedXp", 15],
+      ["hitpointsXp", 15],
+    ]);
+  });
+
+  test("a stack of knives can always attack, with or without arrows", () => {
+    expect(
+      rangedAttackRefusal({ weapon: "ironThrowingKnife" }),
+    ).toBeUndefined();
+    expect(rangedAttackRefusal({ weapon: "birchBow" })).toBe(
+      OUT_OF_ARROWS_LINE,
+    );
   });
 });
 

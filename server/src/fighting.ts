@@ -11,6 +11,7 @@ import {
   MIGHT_POTION_HIT,
   PLAYER_DEAD_TICKS,
   playerHit,
+  OUT_OF_KNIVES_LINE,
   rangedAttackRefusal,
   rangedHit,
   rangedWeaponOf,
@@ -21,7 +22,7 @@ import {
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { dropFromSlot } from "./dropping.ts";
-import { spendArrow, wear } from "./gear.ts";
+import { spendShot, wear } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import type { Quests } from "./quests.ts";
@@ -68,7 +69,7 @@ export class Fighting {
         continue;
       unsynced.nextSwingTick =
         this.world.state.tick + (ranged?.intervalTicks ?? SWING_INTERVAL_TICKS);
-      this.playerSwing(id, player, action.enemy, enemy, !!ranged);
+      this.playerSwing(id, player, action.enemy, enemy, ranged);
     }
   }
 
@@ -76,18 +77,22 @@ export class Fighting {
   private stopForRefusal(id: string, player: SyncedPlayer) {
     const refusal = rangedAttackRefusal(player);
     if (!refusal) return false;
-    this.world.clearAction(id);
-    this.world.tell(id, refusal);
+    this.stop(id, refusal);
     return true;
   }
 
-  /** One swing, or one bow shot when `ranged`, which spends an arrow hit or miss (Ranged spec §4). */
+  private stop(id: string, line: string) {
+    this.world.clearAction(id);
+    this.world.tell(id, line);
+  }
+
+  /** One swing, or one ranged attack, which spends an arrow or a knife hit or miss (Ranged spec §4, §5). */
   private playerSwing(
     id: string,
     player: SyncedPlayer,
     enemyId: string,
     enemy: InstanceType<typeof Enemy>,
-    ranged: boolean,
+    ranged: ReturnType<typeof rangedWeaponOf>,
   ) {
     this.world.lock(id);
     // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
@@ -113,8 +118,14 @@ export class Fighting {
       damage,
       critical,
     });
-    // With none left, it stops now and says so; the enemy fights on as usual.
-    if (ranged && !spendArrow(this.world, id)) this.stopForRefusal(id, player);
+    // With none left, it stops now and says so; the enemy fights on as usual. The last knife
+    // leaves the hand empty, and the attack ends rather than turning into a punch (#279).
+    if (ranged && !spendShot(this.world, id, ranged.thrown)) {
+      if (ranged.thrown) {
+        this.stop(id, OUT_OF_KNIVES_LINE);
+        this.world.unsyncedPlayers.get(id)!.ranDryAgainst = enemyId;
+      } else this.stopForRefusal(id, player);
+    }
     const loot = this.enemies.takeHit(
       this.world.state.tick,
       enemyId,
@@ -218,8 +229,10 @@ export class Fighting {
   private fightBack(id: string, player: SyncedPlayer, enemyId: string) {
     const unsynced = this.world.unsyncedPlayers.get(id)!;
     if (unsynced.dropped || this.world.isBusy(id)) return;
-    // A bow with nothing to fire stays idle; the chat said so when the arrows ran out.
-    if (rangedAttackRefusal(player)) return;
+    // A bow with nothing to fire stays idle, as does a hand its last knife left, against that
+    // enemy until the player's next order; the chat said so when they ran out (#279).
+    if (rangedAttackRefusal(player) || unsynced.ranDryAgainst === enemyId)
+      return;
     unsynced.action = {
       kind: "fighting",
       enemy: enemyId,

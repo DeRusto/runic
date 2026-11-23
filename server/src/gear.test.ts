@@ -877,7 +877,7 @@ describe("the ammo slot (Ranged spec §2)", () => {
 });
 
 describe("a stack in the weapon slot (Ranged spec §2)", () => {
-  // No weapon stacks yet; throwing knives will (#269). A saved stack checks the count the two slots share.
+  // Throwing knives stack in the weapon slot (#279); `throwing.test.ts` covers throwing them.
   const KNIVES = { weapon: "copperThrowingKnife", weaponCount: 7 };
 
   test("comes off whole into the first empty slot", () => {
@@ -907,7 +907,7 @@ describe("a stack in the weapon slot (Ranged spec §2)", () => {
         item,
         count,
       })),
-    ).toEqual([{ item: "copperThrowingKnife", count: 7 }]);
+    ).toEqual([{ item: "copperThrowingKnife", count: 6 }]); // 7 less the one thrown.
     expect(me()).toMatchObject({ weapon: "", weaponCount: 0 });
   });
 });

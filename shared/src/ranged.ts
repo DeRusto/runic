@@ -11,17 +11,30 @@ type Worn = Partial<Record<GearSlot, string>>;
 /** What the chat says when a bow has no arrows to fire, at the click or mid-fight (Ranged spec §4). */
 export const OUT_OF_ARROWS_LINE = "You have no arrows left to fire.";
 
-/** The reach and fire rate of the ranged weapon in hand, or undefined for a sword or bare hands, which fight in melee (#271). */
+/** What the chat says when the last throwing knife in hand is thrown (Ranged spec §5). */
+export const OUT_OF_KNIVES_LINE = "You have no throwing knives left to throw.";
+
+/**
+ * The reach and fire rate of the ranged weapon in hand, and whether it is `thrown`, spending
+ * itself as throwing knives do; undefined for a sword or bare hands, which fight in melee (#271).
+ */
 export function rangedWeaponOf(player: Worn) {
-  const { reachTiles, intervalTicks } = gearOf(player.weapon ?? "") ?? {};
+  const { reachTiles, intervalTicks, thrown } =
+    gearOf(player.weapon ?? "") ?? {};
   return reachTiles === undefined || intervalTicks === undefined
     ? undefined
-    : { reachTiles, intervalTicks };
+    : { reachTiles, intervalTicks, thrown: !!thrown };
 }
 
-/** Why the weapon in hand can't attack: a bow with an empty ammo slot (Ranged spec §4). Undefined when it can, melee included. */
+/** The slot a ranged weapon's shot spends from: the weapon slot for knives, the ammo slot for a bow (Ranged spec §4, §5). */
+export const missileSlotOf = (player: Worn): GearSlot =>
+  rangedWeaponOf(player)?.thrown ? "weapon" : "ammo";
+
+/** Why the weapon in hand can't attack: a bow with an empty ammo slot (Ranged spec §4). Undefined when it can, melee and knives included, as knives in hand are their own ammo. */
 export const rangedAttackRefusal = (player: Worn) =>
-  rangedWeaponOf(player) && !player.ammo ? OUT_OF_ARROWS_LINE : undefined;
+  rangedWeaponOf(player) && !player[missileSlotOf(player)]
+    ? OUT_OF_ARROWS_LINE
+    : undefined;
 
 /** What the chat says when no tile the player can walk to has `to` both in reach and in sight (#278). */
 export const NO_CLEAR_SHOT_LINE = "You can't get a clear shot at that.";
@@ -40,20 +53,21 @@ export const canShootAt = (
 
 /**
  * A ranged shot's chance (0..1) to land, a landed shot's min and max, and its bonus: melee's curves read from Ranged
- * (#268, Ranged spec §4). Worn Accuracy is the bow's and the ring's; the bonus is the arrow's
- * hit bonus plus worn Might.
+ * (#268, Ranged spec §4). Worn Accuracy is the bow's and the ring's; the bonus is the hit bonus
+ * of what flies, the arrow or the knife (§5), plus worn Might.
  */
 export function rangedHitOf(player: { rangedXp: number } & Worn) {
   const level = levelFor(player.rangedXp);
   return {
     ...hitCurvesOf(level, level, player),
     gear:
-      (gearOf(player.ammo ?? "")?.hitBonus ?? 0) + virtueOf(player, "might"),
+      (gearOf(player[missileSlotOf(player)] ?? "")?.hitBonus ?? 0) +
+      virtueOf(player, "might"),
   };
 }
 
 /**
- * One bow shot at an enemy with `enemyHealth` left, rolled as a swing is (see `rollPlayerHit`).
+ * One bow shot or knife throw at an enemy with `enemyHealth` left, rolled as a swing is (see `rollPlayerHit`).
  * All its experience goes to Ranged, as Steady sends it until stances come, and Hitpoints gets
  * the same amount again (#268).
  */

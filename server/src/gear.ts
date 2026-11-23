@@ -40,11 +40,24 @@ function takeFromSlot(world: World, id: string, slot: number, wanted: number) {
 }
 
 /**
+ * Spends what one ranged attack throws or shoots, hit or miss: a knife from the weapon slot's
+ * stack, which never refills (Ranged spec §5), or an arrow (see `spendArrow`). Returns whether
+ * any are left to throw or fire.
+ */
+export function spendShot(world: World, id: string, thrown: boolean) {
+  if (!thrown) return spendArrow(world, id);
+  const player = world.player(id);
+  const count = player.weaponCount - 1;
+  wear(player, "weapon", count ? player.weapon : "", count);
+  return count > 0;
+}
+
+/**
  * Spends one arrow from the ammo slot, hit or miss. When the last one goes, the slot refills
  * with up to a stack of the same arrow from the inventory, taken slot by slot in order (owner,
  * 2026-11-23). Returns whether any arrows are left to fire.
  */
-export function spendArrow(world: World, id: string) {
+function spendArrow(world: World, id: string) {
   const player = world.player(id);
   const arrow = player.ammo;
   let count = player.ammoCount - 1;

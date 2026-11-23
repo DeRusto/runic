@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   armourPercentOf,
+  canBeImproved,
   GEAR,
   gearOf,
   gateOf,
@@ -162,6 +163,41 @@ test("arrows go in the ammo slot, gate on Ranged 1, 5, 10, 15 and 20, and add 10
   expect(GEAR.get("ironArrow")?.does).toBe(
     "Adds 200 to a bow shot's minimum and maximum hit",
   );
+});
+
+test("throwing knives go in the weapon slot, gate on Ranged 1, 5, 10, 15 and 20, add 100 to 300 to a hit and no Accuracy, and reach 4 tiles every 6 ticks (#279)", () => {
+  const knives = [
+    ["copperThrowingKnife", 1, 100],
+    ["bronzeThrowingKnife", 5, 150],
+    ["ironThrowingKnife", 10, 200],
+    ["steelThrowingKnife", 15, 250],
+    ["emberiteThrowingKnife", 20, 300],
+  ] as const;
+  for (const [knife, level, hitBonus] of knives) {
+    expect(GEAR.get(knife)).toMatchObject({
+      slot: "weapon",
+      level,
+      hitBonus,
+      reachTiles: 4,
+      intervalTicks: 6,
+    });
+    expect(gateOf(knife)).toMatchObject({ skill: "Ranged", level });
+    expect(gearRefusal(knife, ranged(xpForLevel(level)))).toBeUndefined();
+    expect(wornAccuracyOf({ weapon: knife })).toBe(0);
+    expect(canBeImproved(knife)).toBe(false);
+  }
+  expect(gearRefusal("steelThrowingKnife", ranged(xpForLevel(14)))).toBe(
+    "You need Ranged 15 to equip this.",
+  );
+  expect(gearRefusal("emberiteThrowingKnife", attack(MAX_XP))).toBe(
+    "You need Ranged 20 to equip this.",
+  );
+  expect(GEAR.get("ironThrowingKnife")?.does).toBe(
+    "Adds 200 to a throw's minimum and maximum hit",
+  );
+  // Bows and swords still roll improved.
+  expect(canBeImproved("birchBow")).toBe(true);
+  expect(canBeImproved("ironSword")).toBe(true);
 });
 
 test("the gear set has eleven slots, the ammo slot last, and only the weapon and ammo slots hold a stack (Ranged spec §2)", () => {

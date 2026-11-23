@@ -1,6 +1,6 @@
 # Runic: Ranged
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. Throwing knives, stances, recovery, the combat triangle and chasing come in later tickets and extend this page.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives. Stances, recovery, the combat triangle and chasing come in later tickets and extend this page.
 
 The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate) and `shared/src/ranged.ts` (the ranged hit) and `shared/src/sight.ts` (the tall tiles and the line of sight); where this page and those files disagree, the files win and this page is fixed.
 
@@ -14,7 +14,7 @@ A bow shot pays Ranged experience (§4). A sword or bare hands still fight in me
 
 The gear set gains an eleventh slot, the ammo slot (#269). It holds one stack of arrows and nothing else, up to 20, the inventory's stack size (owner, 2026-11-23). A save from before this build loads with it empty. The ammo slot can hold arrows while a sword is in hand; arrows do nothing unless a bow is wielded (§4).
 
-The weapon slot and the ammo slot each carry a count, synced and saved beside the item, because throwing knives will stack in the weapon slot (#269). Equipping, taking off and drop on death move the whole count:
+The weapon slot and the ammo slot each carry a count, synced and saved beside the item, because throwing knives stack in the weapon slot (#269). Equipping, taking off and drop on death move the whole count:
 
 | Action | Ammo slot |
 | --- | --- |
@@ -120,3 +120,19 @@ A player with a bow and arrows who is hit while idle fights back with the bow, u
 ### On the client
 
 A bow shot plays the character's overhand cast clip, and its damage number, flash and nudge show at the enemy 1000 ms later, once the arrow would have flown. The shooter turns to face the enemy on each shot, even one that ends the fight. This is this build's choice of shot art, which #275 left open.
+
+## 5. Throwing knives
+
+Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks. Each knife supplies its tier's hit bonus and adds no Accuracy.
+
+| Throwing knife | Hit bonus | Ranged gate |
+| --- | --- | --- |
+| Copper | 100 | 1 |
+| Bronze | 150 | 5 |
+| Iron | 200 | 10 |
+| Steel | 250 | 15 |
+| Emberite | 300 | 20 |
+
+Smithing uses the existing anvil recipes and produces common knives. A player equips up to 20 of one tier in the weapon slot, and the Gear tab shows the count. Equipping more of the same tier by hand tops up the stack to 20. Swapping puts the entire worn stack into the inventory slot freed by the incoming weapon. Taking the stack off requires an empty inventory slot. On death the remaining knives drop together under the ground item rules (#71).
+
+A throw spends one knife whether it hits or misses. The last throw empties the weapon slot, ends the attack and shows “You have no throwing knives left to throw.” Any knives in the inventory remain there. The enemy can keep attacking, and the player stays idle against it until they give another order.

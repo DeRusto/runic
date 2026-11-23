@@ -589,7 +589,7 @@ A feather the general store sells from day one, for an arrow's flight. Phase 8 w
 _Avoid_: Plume, quill
 
 **Throwing knife**:
-A small thrown weapon smithed from one bar at the anvil, plus an Emberbone at Emberite, one tier of five. It stacks like a material for now: Phase 8 decides what a throw spends and gives it combat meaning (#228).
+A ranged weapon smithed from one bar at the anvil, plus an Emberbone at Emberite. Up to 20 of the same tier fit in the weapon slot. Each attack spends one from that stack (#228, #279).
 _Avoid_: Dagger, knife (alone)
 
 **Gear**:
