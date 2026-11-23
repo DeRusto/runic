@@ -653,8 +653,16 @@ The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, a
 _Avoid_: Quiver, ammunition slot
 
 **Reach**:
-How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6. A player who attacks an enemy out of reach walks until it is in reach, then shoots. A melee swing has no reach; it needs the player next to the enemy (#270).
+How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6. A player who attacks an enemy out of reach or out of sight walks until it is in both, then shoots. A melee swing has no reach; it needs the player next to the enemy (#270).
 _Avoid_: Range (the cooking station), distance
+
+**Sight**:
+Whether a shot can fly from the shooter to the target: the straight line between their tiles crosses no tall tile, even at a corner. Water, bushes, doors and every other low tile let it pass (#270, #278).
+_Avoid_: Line of fire, LOS
+
+**Tall tile**:
+A tile a shot cannot pass: a house wall, a tree (a prop or a Woodcutting tree), a rock (a prop, an ore vein or an essence vein), or one of Runestone Hollow's columns and standing stones (owner, 2026-11-23).
+_Avoid_: Wall (alone), obstacle (that's Agility's)
 
 **Panel**:
 A window that opens over the world: the character sheet, the smithing panel, the social panel, the journal or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.

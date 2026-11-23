@@ -1,6 +1,7 @@
 import { rollPlayerHit } from "./combat.ts";
 import { gearOf, type GearSlot } from "./gear.ts";
-import { tilesApart, type Tile } from "./region.ts";
+import { tilesApart, type Tile, type TileKind } from "./region.ts";
+import { inSight } from "./sight.ts";
 import { levelFor, type XpField } from "./skills.ts";
 import { hitCurvesOf } from "./stats.ts";
 import { virtueOf } from "./virtues.ts";
@@ -22,9 +23,20 @@ export function rangedWeaponOf(player: Worn) {
 export const rangedAttackRefusal = (player: Worn) =>
   rangedWeaponOf(player) && !player.ammo ? OUT_OF_ARROWS_LINE : undefined;
 
-/** Whether `to` is within `reachTiles` of `from`, a diagonal step counting as one tile (#270). Sight comes later. */
+/** What the chat says when no tile the player can walk to has `to` both in reach and in sight (#278). */
+export const NO_CLEAR_SHOT_LINE = "You can't get a clear shot at that.";
+
+/** Whether `to` is within `reachTiles` of `from`, a diagonal step counting as one tile (#270). */
 export const inReach = (from: Tile, to: Tile, reachTiles: number) =>
   tilesApart(from, to) <= reachTiles;
+
+/** Whether a shot from `from` can fly to `to`: in reach, with no tall tile on the line between (#270, Ranged spec §4). */
+export const canShootAt = (
+  tiles: TileKind[][],
+  from: Tile,
+  to: Tile,
+  reachTiles: number,
+) => inReach(from, to, reachTiles) && inSight(tiles, from, to);
 
 /**
  * A ranged shot's chance (0..1) to land, a landed shot's min and max, and its bonus: melee's curves read from Ranged

@@ -4,7 +4,7 @@ import {
   enemyHit,
   FIGHT_BACK_DELAY_TICKS,
   GEAR_SLOTS,
-  inReach,
+  canShootAt,
   wornCountOf,
   isStance,
   itemTag,
@@ -58,11 +58,11 @@ export class Fighting {
         this.world.clearAction(id);
         continue;
       }
-      // Before reach, so arrows taken off on the way stop the attack once a shot falls due.
+      // Before reach and sight, so arrows taken off on the way stop the attack once a shot falls due.
       if (this.stopForRefusal(id, player)) continue;
       if (
         ranged
-          ? !inReach(player, enemy, ranged.reachTiles)
+          ? !canShootAt(this.world.tiles, player, enemy, ranged.reachTiles)
           : !nextTo(this.world.tiles, player, enemy)
       )
         continue;
