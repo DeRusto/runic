@@ -13,12 +13,11 @@ import type {
 } from "@runic/shared";
 import type { Busy } from "./busy.ts";
 
+/** A click on an obstacle, to walk to whichever end of it is nearer once it applies. */
+type CrossObstacle = { kind: "approachingObstacle"; obstacle: ObstacleKind };
+
 /** Walking to `from`, the end of the obstacle the crossing starts at. */
-type ApproachObstacle = {
-  kind: "approachingObstacle";
-  obstacle: ObstacleKind;
-  from: Tile;
-};
+type ApproachObstacle = CrossObstacle & { from: Tile };
 
 /** A crossing under way: it lands on `landing`, or back on `from` if it fails. */
 export type Crossing = { obstacle: ObstacleKind; from: Tile; landing: Tile };
@@ -61,7 +60,7 @@ export type UnsyncedAction =
 
 /** A click waiting for the next tick, named for the action it starts. */
 export type QueuedAction =
-  | ApproachObstacle
+  | CrossObstacle
   | { kind: "walking"; to: Tile }
   | { kind: "fighting"; enemy: string }
   | { kind: "gathering"; skill: GatheringSkill; site: string }

@@ -208,3 +208,29 @@ describe("the region's shortcuts", () => {
     expect(sim.saveOf("a")).toMatchObject(start);
   });
 });
+
+test.each([
+  [
+    { x: 9, y: 32 },
+    { x: 9, y: 35 },
+  ],
+  [
+    { x: 121, y: 31 },
+    { x: 119, y: 31 },
+  ],
+])(
+  "a level-1 save from before the shortcuts on %o, now in a pocket, loads at %o outside it",
+  (saved, loaded) => {
+    const { tiles, pools } = loadWorldRegion();
+    const sim = new Simulation(tiles, () => 0.5, pools);
+    sim.addPlayer("a", {
+      ...saved,
+      defenseXp: 0,
+      herblawXp: 0,
+      hitpointsXp: 4050,
+      health: 1000,
+      inventory: Array<string>(INVENTORY_SLOTS).fill(""),
+    });
+    expect(sim.saveOf("a")).toMatchObject(loaded);
+  },
+);

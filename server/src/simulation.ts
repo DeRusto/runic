@@ -118,6 +118,7 @@ export class Simulation {
       this.sites,
       this.thieving,
       this.firemaking,
+      this.agility,
     );
     this.sites.placePools(pools);
   }
@@ -141,6 +142,7 @@ export class Simulation {
     player.questStages = new ArraySchema(
       ...Object.values(questProgress).map(({ stage }) => stage),
     );
+    Object.assign(player, this.agility.strandedExit(player));
     this.state.players.set(id, player);
     this.world.unsyncedPlayers.set(id, {
       path: [],

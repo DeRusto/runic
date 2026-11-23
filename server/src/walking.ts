@@ -4,6 +4,7 @@ import {
   WALK_TICKS_PER_TILE,
   type Tile,
 } from "@runic/shared";
+import type { Agility } from "./agility.ts";
 import type { Firemaking } from "./firemaking.ts";
 import type { GatheringSites } from "./gatheringSites.ts";
 import { findPath, legalSteps, pathNextTo } from "./pathfinding.ts";
@@ -18,6 +19,7 @@ export class Walking {
     private readonly sites: GatheringSites,
     private readonly thieving: ThievingTargets,
     private readonly firemaking: Firemaking,
+    private readonly agility: Agility,
   ) {}
 
   /** Starts the action a queued click asks for, and the walk toward its target. */
@@ -55,10 +57,12 @@ export class Walking {
       case "opening":
         goNextTo(intent);
         break;
-      case "approachingObstacle":
-        unsynced.path = findPath(this.world.tiles, player, intent.from);
-        unsynced.action = intent;
+      case "approachingObstacle": {
+        const approach = this.agility.approach(intent.obstacle, player);
+        unsynced.path = approach?.path ?? [];
+        unsynced.action = approach && { ...intent, from: approach.from };
         break;
+      }
       case "taking": {
         // Onto its tile, not next to it. It may have gone since the intent arrived.
         const groundItem = this.world.state.groundItems.get(intent.groundItem);

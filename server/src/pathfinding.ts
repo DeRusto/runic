@@ -60,10 +60,18 @@ export function findPath(tiles: TileKind[][], from: Tile, to: Tile): Tile[] {
     }
   }
 
+  return pathBack(cameFrom, key, from, nearest);
+}
+
+/** The steps from `from` to `to`, read back through where each tile of a search came from. */
+function pathBack(
+  cameFrom: Map<number, Tile>,
+  key: (tile: Tile) => number,
+  from: Tile,
+  to: Tile,
+) {
   const path: Tile[] = [];
-  for (let at = nearest; at !== from; at = cameFrom.get(key(at))!) {
-    path.unshift(at);
-  }
+  for (let at = to; at !== from; at = cameFrom.get(key(at))!) path.unshift(at);
   return path;
 }
 
@@ -71,3 +79,29 @@ export function findPath(tiles: TileKind[][], from: Tile, to: Tile): Tile[] {
 export const nextTo = (tiles: TileKind[][], a: Tile, b: Tile) =>
   (a.x === b.x && a.y === b.y) ||
   legalSteps(tiles, a).some(({ x, y }) => x === b.x && y === b.y);
+
+/**
+ * The fewest steps onto whichever of `goals` is nearest, searching once and stopping at the
+ * first one found, or undefined if none can be reached. An empty path when standing on one.
+ */
+export function pathToNearest(
+  tiles: TileKind[][],
+  from: Tile,
+  goals: Tile[],
+): Tile[] | undefined {
+  const key = ({ x, y }: Tile) => y * tiles[0]!.length + x;
+  const wanted = new Set(goals.map(key));
+  const cameFrom = new Map<number, Tile>();
+  const seen = new Set([key(from)]);
+  const queue = [from];
+  for (const tile of queue) {
+    if (wanted.has(key(tile))) return pathBack(cameFrom, key, from, tile);
+    for (const next of legalSteps(tiles, tile)) {
+      if (seen.has(key(next))) continue;
+      seen.add(key(next));
+      cameFrom.set(key(next), tile);
+      queue.push(next);
+    }
+  }
+  return undefined;
+}

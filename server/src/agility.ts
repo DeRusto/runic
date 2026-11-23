@@ -6,23 +6,51 @@ import {
   isObstacleKind,
   OBSTACLES,
   removeItems,
+  respawnTile,
   RIGGING_ITEM,
   shortcutFailPercent,
+  type Crosser,
   type ObstacleKind,
   type Tile,
+  type TileKind,
 } from "@runic/shared";
-import { findPath } from "./pathfinding.ts";
+import { legalSteps, pathToNearest } from "./pathfinding.ts";
 import type { Crossing, QueuedAction } from "./playerActions.ts";
 import type { World } from "./worldContext.ts";
 
 const sameTile = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
+
+/** Numbers each walkable area of the region: tiles a player can walk between share a number. */
+function areasOf(tiles: TileKind[][]) {
+  const areas = tiles.map((row) => row.map(() => -1));
+  let next = 0;
+  tiles.forEach((row, y) =>
+    row.forEach((tile, x) => {
+      if (tile.blocks || areas[y]![x] !== -1) return;
+      areas[y]![x] = next;
+      const queue: Tile[] = [{ x, y }];
+      for (const at of queue)
+        for (const step of legalSteps(tiles, at)) {
+          if (areas[step.y]![step.x] !== -1) continue;
+          areas[step.y]![step.x] = next;
+          queue.push(step);
+        }
+      next++;
+    }),
+  );
+  return areas;
+}
 
 /** Starts and finishes authoritative crossings, rigs shortcuts and tracks each player's course lap. */
 export class Agility {
   /** Where each obstacle can be crossed from: its start, and a shortcut's far end too. */
   private readonly ends = new Map<ObstacleKind, Tile[]>();
 
+  /** Each walkable tile's area: tiles a player can walk between share a number (Agility spec §3). */
+  private readonly areas: number[][];
+
   constructor(private readonly world: World) {
+    this.areas = areasOf(world.tiles);
     world.tiles.forEach((row, y) =>
       row.forEach(({ obstacle, obstacleEnd }, x) => {
         const kind = obstacle ?? obstacleEnd;
@@ -32,27 +60,43 @@ export class Agility {
     );
   }
 
-  /**
-   * A click on an obstacle, straight off the network. It walks to the nearer end the player can
-   * reach, unless the client should already have refused it.
-   */
+  /** A click on an obstacle, straight off the network, unless the client should already have refused it. */
   crossIntent(id: string, obstacle: unknown): QueuedAction | undefined {
     if (!isObstacleKind(obstacle) || !this.ends.has(obstacle)) return;
-    const player = this.world.player(id);
-    if (crossRefusal(obstacle, player)) return;
-    const from = this.nearestEnd(obstacle, player);
-    if (from) return { kind: "approachingObstacle", obstacle, from };
+    if (crossRefusal(obstacle, this.world.player(id))) return;
+    return { kind: "approachingObstacle", obstacle };
   }
 
-  /** The end of the obstacle the player stands on or reaches in the fewest steps, if any. */
-  private nearestEnd(obstacle: ObstacleKind, player: Tile) {
-    let best: { end: Tile; steps: number } | undefined;
-    for (const end of this.ends.get(obstacle)!) {
-      const path = findPath(this.world.tiles, player, end);
-      if (!sameTile(path.at(-1) ?? player, end)) continue;
-      if (!best || path.length < best.steps) best = { end, steps: path.length };
-    }
-    return best?.end;
+  /** The way to the end of the obstacle the player reaches in the fewest steps, if any. */
+  approach(obstacle: ObstacleKind, player: Tile) {
+    const path = pathToNearest(
+      this.world.tiles,
+      player,
+      this.ends.get(obstacle)!,
+    );
+    return path && { from: path.at(-1) ?? { x: player.x, y: player.y }, path };
+  }
+
+  /**
+   * Where a player loaded inside a pocket must stand instead: the outer end of its shortcut, when
+   * they can't cross any shortcut back out. A save from before the pocket was walled in can leave
+   * a player there (Agility spec §3). Undefined when they can stay.
+   */
+  strandedExit(player: Crosser & Tile): Tile | undefined {
+    const areaAt = ({ x, y }: Tile) => this.areas[y]?.[x];
+    const area = areaAt(player);
+    if (area === undefined || area === areaAt(respawnTile(this.world.tiles)))
+      return undefined;
+    const exits = [...this.ends].flatMap(([kind, ends]) =>
+      ends
+        .filter((end) => areaAt(end) === area)
+        .map((end) => ({
+          kind,
+          outside: crossingFrom(this.world.tiles[end.y]![end.x]!, end)!.landing,
+        })),
+    );
+    if (exits.some(({ kind }) => !crossRefusal(kind, player))) return undefined;
+    return exits[0]?.outside;
   }
 
   /** Starts the crossing on arrival, and finishes it on the landing tick once the busy state ends. */

@@ -212,3 +212,47 @@ describe("rigging a shortcut", () => {
     expect([...player(sim).riggedShortcuts]).toEqual(["brambleSwing"]);
   });
 });
+
+describe("a save inside a pocket", () => {
+  /** A save at `tile` for a player at this Agility level, with these shortcuts rigged. */
+  const loadAt = (
+    tile: { x: number; y: number },
+    level: number,
+    obstacle: "ridgeStile" | "brambleSwing",
+    riggedShortcuts: string[] = [],
+  ) => {
+    const sim = new Simulation(region(obstacle), SUCCEED);
+    sim.addPlayer("a", {
+      ...tile,
+      defenseXp: 0,
+      herblawXp: 0,
+      hitpointsXp: 4050,
+      agilityXp: xpForLevel(level),
+      health: 1000,
+      inventory: Array<string>(INVENTORY_SLOTS).fill(""),
+      riggedShortcuts,
+    });
+    return player(sim);
+  };
+
+  test("loads at the shortcut's outer end when the player can't cross back out", () => {
+    expect(loadAt({ x: 5, y: 1 }, 1, "ridgeStile")).toMatchObject({
+      x: 2,
+      y: 1,
+    });
+    expect(loadAt({ x: 4, y: 1 }, 20, "brambleSwing")).toMatchObject({
+      x: 2,
+      y: 1,
+    });
+  });
+
+  test("stays put when the player can cross back out", () => {
+    expect(loadAt({ x: 5, y: 1 }, 10, "ridgeStile")).toMatchObject({
+      x: 5,
+      y: 1,
+    });
+    expect(
+      loadAt({ x: 4, y: 1 }, 20, "brambleSwing", ["brambleSwing"]),
+    ).toMatchObject({ x: 4, y: 1 });
+  });
+});
