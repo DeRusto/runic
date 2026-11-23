@@ -22,7 +22,7 @@ type Worn = Partial<Record<GearSlot, string>>;
 /** Avoidance points per Defense level above 1; a point is one percentage point off an enemy's chance to hit (spec §5). */
 export const AVOIDANCE_POINTS_PER_DEFENSE_LEVEL = 0.25;
 /** The Accuracy and Avoidance points in a whole chance to hit (1). */
-const POINTS_PER_HIT_CHANCE = 100;
+export const POINTS_PER_HIT_CHANCE = 100;
 /** No enemy's chance to hit goes below this, so nothing is unhittable (spec §5). */
 export const MIN_ENEMY_HIT_CHANCE = 0.05;
 

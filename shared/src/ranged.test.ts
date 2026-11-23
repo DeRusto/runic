@@ -1,0 +1,120 @@
+import { describe, expect, test, vi } from "vitest";
+import { inReach, rangedHit, rangedWeaponOf } from "./ranged.ts";
+import { MAX_XP } from "./skills.ts";
+
+/** Hands out these rolls in order, then fails the test if asked for more. */
+const rolls = (...values: number[]) =>
+  vi.fn(() => {
+    if (!values.length) throw new Error("rolled too often");
+    return values.shift()!;
+  });
+
+/** A fresh archer with a birch bow (+5 Accuracy) and copper arrows (+100 hit). */
+const archer = {
+  agilityXp: 0,
+  rangedXp: 0,
+  attackXp: 0,
+  strengthXp: 0,
+  weapon: "birchBow",
+  ammo: "copperArrow",
+};
+
+describe("rangedHit", () => {
+  test("a miss rolls once and pays nothing", () => {
+    expect(rangedHit(archer, 0, 800, rolls(0.99))).toEqual({
+      damage: 0,
+      critical: false,
+      xp: [
+        ["rangedXp", 0],
+        ["hitpointsXp", 0],
+      ],
+    });
+  });
+
+  test("the chance to land is 40% plus the bow's Accuracy at Ranged 1, and 0.5 points per Ranged level above it", () => {
+    // 45% at Ranged 1 with the birch bow's +5.
+    expect(rangedHit(archer, 0, 800, rolls(0.4499, 0, 0.99)).damage).toBe(200);
+    expect(rangedHit(archer, 0, 800, rolls(0.45)).damage).toBe(0);
+    // 94% at Ranged 99.
+    const trained = { ...archer, rangedXp: MAX_XP };
+    expect(rangedHit(trained, 0, 800, rolls(0.9399, 0, 0.99)).damage).toBe(200);
+    // Attack doesn't help a shot land.
+    const fighter = { ...archer, attackXp: MAX_XP };
+    expect(rangedHit(fighter, 0, 800, rolls(0.5)).damage).toBe(0);
+  });
+
+  test("a ring's Accuracy adds to the bow's", () => {
+    const ringed = { ...archer, ring: "copperRing" };
+    expect(rangedHit(ringed, 0, 800, rolls(0.4999, 0, 0.99)).damage).toBe(200);
+    expect(rangedHit(ringed, 0, 800, rolls(0.5)).damage).toBe(0);
+  });
+
+  test("the max hit is 200 plus 100 per 20 Ranged levels, before the arrow's hit bonus", () => {
+    expect(rangedHit(archer, 0, 900, rolls(0, 0.999, 0.99)).damage).toBe(300);
+    const trained = { ...archer, rangedXp: MAX_XP };
+    expect(rangedHit(trained, 0, 900, rolls(0, 0.999, 0.99)).damage).toBe(700);
+    // Strength doesn't raise it.
+    const striker = { ...archer, strengthXp: MAX_XP };
+    expect(rangedHit(striker, 0, 900, rolls(0, 0.999, 0.99)).damage).toBe(300);
+  });
+
+  test("the arrow's hit bonus and Might add to a landed shot", () => {
+    const emberite = { ...archer, ammo: "emberiteArrow" };
+    expect(rangedHit(emberite, 0, 900, rolls(0, 0, 0.99)).damage).toBe(400);
+    expect(rangedHit(archer, 100, 900, rolls(0, 0, 0.99)).damage).toBe(300);
+  });
+
+  test("Agility's crit chance applies at 1.5 times", () => {
+    expect(rangedHit(archer, 0, 900, rolls(0, 0, 0.0999))).toMatchObject({
+      damage: 300,
+      critical: true,
+    });
+    const agile = { ...archer, agilityXp: MAX_XP };
+    expect(rangedHit(agile, 0, 900, rolls(0, 0, 0.1979))).toMatchObject({
+      critical: true,
+    });
+  });
+
+  test("a hit pays 6 Ranged experience per 100 damage, rounded once, and Hitpoints the same; overkill pays none", () => {
+    expect(rangedHit(archer, 0, 900, rolls(0, 0.5, 0.99))).toEqual({
+      damage: 250,
+      critical: false,
+      xp: [
+        ["rangedXp", 15],
+        ["hitpointsXp", 15],
+      ],
+    });
+    expect(rangedHit(archer, 0, 50, rolls(0, 0, 0.99))).toEqual({
+      damage: 50,
+      critical: false,
+      xp: [
+        ["rangedXp", 3],
+        ["hitpointsXp", 3],
+      ],
+    });
+  });
+});
+
+describe("rangedWeaponOf", () => {
+  test("a bow reaches 6 tiles and fires every 8 ticks; a sword and bare hands are melee", () => {
+    expect(rangedWeaponOf({ weapon: "birchBow" })).toEqual({
+      reachTiles: 6,
+      intervalTicks: 8,
+    });
+    expect(rangedWeaponOf({ weapon: "charwoodBow" })).toEqual({
+      reachTiles: 6,
+      intervalTicks: 8,
+    });
+    expect(rangedWeaponOf({ weapon: "copperSword" })).toBeUndefined();
+    expect(rangedWeaponOf({ weapon: "" })).toBeUndefined();
+  });
+});
+
+describe("inReach", () => {
+  test("counts a diagonal step as one tile", () => {
+    const from = { x: 0, y: 0 };
+    expect(inReach(from, { x: 6, y: 6 }, 6)).toBe(true);
+    expect(inReach(from, { x: 6, y: 0 }, 6)).toBe(true);
+    expect(inReach(from, { x: 7, y: 3 }, 6)).toBe(false);
+  });
+});

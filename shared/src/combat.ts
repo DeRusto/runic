@@ -42,11 +42,37 @@ function rollDamage(
 }
 
 /**
- * One player swing at an enemy with `enemyHealth` left. Rolls the hit, its damage, then a
- * critical. `mightBonus` is a Might potion's, added to the hit like the weapon's while its buff
- * lasts (#222). No experience for overkill: the damage is capped at the enemy's health. The
- * melee experience goes to Attack and Strength as `stance` splits it; Hitpoints gets the same
- * amount again.
+ * One player attack with these hit stats at an enemy with `enemyHealth` left, melee or ranged.
+ * Rolls the hit, its damage, then a critical. `mightBonus` is a Might potion's, added to the hit
+ * like the gear's while its buff lasts (#222). `xp` is the attack's experience before any split:
+ * 6 per 100 damage, rounded once, and none for overkill, as the damage is capped at the enemy's
+ * health.
+ */
+export function rollPlayerHit(
+  { chance, max, gear }: { chance: number; max: number; gear: number },
+  agilityXp: number,
+  mightBonus: number,
+  enemyHealth: number,
+  random: () => number,
+) {
+  const rolled = rollDamage(chance, max, random);
+  // Only on a hit, as 0 means a miss.
+  const hit = rolled && rolled + gear + mightBonus;
+  const critical = hit > 0 && random() < playerCritChance(agilityXp);
+  const damage = Math.min(
+    critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
+    enemyHealth,
+  );
+  const xp = Math.round(
+    (damage * XP_PER_DAMAGE_DEALT) / HEALTH_PER_HITPOINTS_LEVEL,
+  );
+  return { damage, critical, xp };
+}
+
+/**
+ * One player swing at an enemy with `enemyHealth` left (see `rollPlayerHit`). The melee
+ * experience goes to Attack and Strength as `stance` splits it; Hitpoints gets the same amount
+ * again.
  */
 export function playerHit(
   player: { attackXp: number; strengthXp: number; agilityXp: number } & Worn,
@@ -55,17 +81,12 @@ export function playerHit(
   enemyHealth: number,
   random: () => number,
 ) {
-  const { chance, max, gear } = hitOf(player);
-  const rolled = rollDamage(chance, max, random);
-  // Only on a hit, as 0 means a miss.
-  const hit = rolled && rolled + gear + mightBonus;
-  const critical = hit > 0 && random() < playerCritChance(player.agilityXp);
-  const damage = Math.min(
-    critical ? Math.round(hit * PLAYER_CRIT_MULTIPLIER) : hit,
+  const { damage, critical, xp } = rollPlayerHit(
+    hitOf(player),
+    player.agilityXp,
+    mightBonus,
     enemyHealth,
-  );
-  const xp = Math.round(
-    (damage * XP_PER_DAMAGE_DEALT) / HEALTH_PER_HITPOINTS_LEVEL,
+    random,
   );
   const { attackXp, strengthXp } = meleeXpOf(stance, xp);
   return {
