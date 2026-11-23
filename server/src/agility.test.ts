@@ -1,5 +1,13 @@
-import { parseRegion } from "@runic/shared";
-import { expect, test } from "vitest";
+import {
+  INVENTORY_SLOTS,
+  parseRegion,
+  respawnTile,
+  SHORTCUTS,
+  xpForLevel,
+  type Tile,
+} from "@runic/shared";
+import { describe, expect, test } from "vitest";
+import { findPath } from "./pathfinding.ts";
 import { Simulation } from "./simulation.ts";
 import { loadWorldRegion } from "./worldRegion.ts";
 
@@ -129,4 +137,74 @@ test("invalid and absent obstacles leave the current crossing intent in place", 
   for (let tick = 0; tick < 5; tick++) sim.tick();
 
   expect(sim.saveOf("a")).toMatchObject({ x: 3, y: 1, agilityXp: 30 });
+});
+
+describe("the region's shortcuts", () => {
+  const { tiles, pools } = loadWorldRegion();
+  const respawn = respawnTile(tiles);
+  /** Each shortcut's placed start and far end, read off the map. */
+  const ends = (kind: string) => {
+    const found: { start?: Tile; far?: Tile } = {};
+    tiles.forEach((row, y) =>
+      row.forEach((tile, x) => {
+        if (tile.obstacle === kind) found.start = { x, y };
+        if (tile.obstacleEnd === kind) found.far = { x, y };
+      }),
+    );
+    return found as { start: Tile; far: Tile };
+  };
+  const reaches = (from: Tile, to: Tile) => {
+    const end = findPath(tiles, from, to).at(-1) ?? from;
+    return end.x === to.x && end.y === to.y;
+  };
+
+  test.each(SHORTCUTS.map((kind) => [kind]))(
+    "%s is placed with its start reachable from the respawn tile",
+    (kind) => {
+      const { start, far } = ends(kind);
+      expect(start).toBeDefined();
+      expect(far).toBeDefined();
+      expect(reaches(respawn, start)).toBe(true);
+    },
+  );
+
+  test.each(["brambleSwing", "ruinLedge", "cragLine"])(
+    "%s opens a pocket nobody can walk into",
+    (kind) => {
+      expect(reaches(respawn, ends(kind).far)).toBe(false);
+    },
+  );
+
+  test.each(["ridgeStile", "charredFence"])(
+    "%s cuts a walk of more than 40 steps short",
+    (kind) => {
+      const { start, far } = ends(kind);
+      expect(reaches(start, far)).toBe(true);
+      expect(findPath(tiles, start, far).length).toBeGreaterThan(40);
+    },
+  );
+
+  test("a player can cross into a rigged pocket and back out", () => {
+    const sim = new Simulation(tiles, () => 0.99, pools);
+    const { start, far } = ends("cragLine");
+    sim.addPlayer("a", {
+      ...start,
+      defenseXp: 0,
+      herblawXp: 0,
+      hitpointsXp: 4050,
+      agilityXp: xpForLevel(60),
+      health: 1000,
+      inventory: ["rope", ...Array<string>(INVENTORY_SLOTS - 1).fill("")],
+      inventoryCounts: [1],
+    });
+    sim.queueCross("a", "cragLine");
+    for (let tick = 0; tick < 10; tick++) sim.tick();
+    expect(sim.saveOf("a")).toMatchObject({
+      ...far,
+      riggedShortcuts: ["cragLine"],
+    });
+    sim.queueCross("a", "cragLine");
+    for (let tick = 0; tick < 10; tick++) sim.tick();
+    expect(sim.saveOf("a")).toMatchObject(start);
+  });
 });

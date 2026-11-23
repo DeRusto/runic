@@ -62,8 +62,8 @@ const OBSTACLE_ROWS = {
     dy: 0,
     shortcut: { level: 45, failHit: 250, rope: false },
   },
-  tarnLine: {
-    name: "Tarn line",
+  cragLine: {
+    name: "Crag line",
     ticks: 6,
     xp: 100,
     dx: 0,

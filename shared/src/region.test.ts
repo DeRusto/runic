@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  crossingFrom,
   ENEMIES,
+  OBSTACLES,
   loadRegion,
   TREES as TREES_TABLE,
   neighbours,
@@ -142,6 +144,28 @@ const TREES = ["birch", "oak", "charwood"] as const;
 describe("the region", () => {
   const respawn = tilesOf("respawn")[0]!;
   const reachable = stepsFrom(respawn);
+  /** Every tile reachable on foot or by crossing a shortcut from either end (Agility spec §3). */
+  const reachableByShortcut = new Set(reachable.keys());
+  for (let grew = true; grew;) {
+    grew = false;
+    region.forEach((row, y) =>
+      row.forEach((tile, x) => {
+        const crossing = crossingFrom(tile, { x, y });
+        if (!crossing || !OBSTACLES[crossing.obstacle].shortcut) return;
+        const { landing } = crossing;
+        if (!reachableByShortcut.has(key(x, y))) return;
+        if (reachableByShortcut.has(key(landing.x, landing.y))) return;
+        for (const at of stepsFrom([landing.x, landing.y]).keys())
+          reachableByShortcut.add(at);
+        grew = true;
+      }),
+    );
+  }
+  /** A pool is open when a player can walk next to one of its spots, and a pocket's when only a shortcut leads there. */
+  const isOpen = ({ spots }: (typeof pools)[number]) =>
+    spots.some(({ x, y }) =>
+      tilesNextTo([x, y]).some(([nx, ny]) => reachable.has(key(nx, ny))),
+    );
   /** Every tile a player can walk to from the respawn tile without setting foot on ashen ground. */
   const withoutAshen = stepsFrom(
     respawn,
@@ -186,16 +210,28 @@ describe("the region", () => {
     ["nightbloomBush", "herblaw", 4, 8],
     ["emberbloomBush", "herblaw", 3, 8],
   ] as const)(
-    "keeps %s in one %s pool, %i active of %i spots, and none fixed",
+    "keeps %s in one open %s pool, %i active of %i spots, and none fixed",
     (kind, skill, active, spots) => {
       expect(
         pools
-          .filter((pool) => pool.kind === kind)
+          .filter((pool) => pool.kind === kind && isOpen(pool))
           .map((pool) => [pool.skill, pool.active, pool.spots.length]),
       ).toEqual([[skill, active, spots]]);
       expect(tilesOf(kind)).toEqual([]);
     },
   );
+
+  it("puts one small pool in each pocket a shortcut opens", () => {
+    expect(
+      pools
+        .filter((pool) => !isOpen(pool))
+        .map((pool) => [pool.kind, pool.active, pool.spots.length]),
+    ).toEqual([
+      ["essence", 2, 3],
+      ["nightbloomBush", 1, 3],
+      ["emberbloomBush", 1, 2],
+    ]);
+  });
 
   it("has an outer ring of blocks", () => {
     for (let x = 0; x < 128; x++) {
@@ -214,7 +250,7 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
-  it("lets a player walk next to every spot, station and villager", () => {
+  it("lets a player walk, or cross a shortcut, next to every spot, station and villager", () => {
     expect(
       [
         ...tilesOf(
@@ -226,7 +262,10 @@ describe("the region", () => {
         ),
         ...spotsOf(...VEINS, "essence", ...BUSHES, "shore"),
       ].filter(
-        (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
+        (tile) =>
+          !tilesNextTo(tile).some(([x, y]) =>
+            reachableByShortcut.has(key(x, y)),
+          ),
       ),
     ).toEqual([]);
     // A walk to a station ends next to any of its tiles, so the altar's walled-in obelisk tile is fine.
