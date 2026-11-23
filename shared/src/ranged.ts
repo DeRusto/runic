@@ -27,12 +27,12 @@ export function rangedWeaponOf(player: Worn) {
 }
 
 /** The slot a ranged weapon's shot spends from: the weapon slot for knives, the ammo slot for a bow (Ranged spec §4, §5). */
-export const missileSlotOf = (player: Worn): GearSlot =>
+const spentSlotOf = (player: Worn): GearSlot =>
   rangedWeaponOf(player)?.thrown ? "weapon" : "ammo";
 
 /** Why the weapon in hand can't attack: a bow with an empty ammo slot (Ranged spec §4). Undefined when it can, melee and knives included, as knives in hand are their own ammo. */
 export const rangedAttackRefusal = (player: Worn) =>
-  rangedWeaponOf(player) && !player[missileSlotOf(player)]
+  rangedWeaponOf(player) && !player[spentSlotOf(player)]
     ? OUT_OF_ARROWS_LINE
     : undefined;
 
@@ -61,7 +61,7 @@ export function rangedHitOf(player: { rangedXp: number } & Worn) {
   return {
     ...hitCurvesOf(level, level, player),
     gear:
-      (gearOf(player[missileSlotOf(player)] ?? "")?.hitBonus ?? 0) +
+      (gearOf(player[spentSlotOf(player)] ?? "")?.hitBonus ?? 0) +
       virtueOf(player, "might"),
   };
 }

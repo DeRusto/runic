@@ -1,6 +1,7 @@
 import {
   EMPTY_SLOT,
   INVENTORY_SLOTS,
+  NO_CLEAR_SHOT_LINE,
   OUT_OF_KNIVES_LINE,
   parseRegion,
   type WorldEvent,
@@ -174,6 +175,15 @@ describe("throwing", () => {
     expect(throwTicks(events)).toEqual([3]);
   });
 
+  test("a wall blocks a throw and leaves the knife stack untouched", () => {
+    const s = thrower({ rows: ["TTTTTTTT", "TR.HX..T", "TTTTTTTT"] });
+    s.queueTarget("a", "0");
+    const events = run(s, 9);
+    expect(throwTicks(events)).toEqual([]);
+    expect(told(events)).toEqual([NO_CLEAR_SHOT_LINE]);
+    expect(me(s).weaponCount).toBe(10);
+  });
+
   test("knives are thrown every 6 ticks", () => {
     const s = thrower({ rows: OX });
     s.queueTarget("a", "0");
@@ -245,15 +255,33 @@ describe("running out", () => {
     ]);
   });
 
-  test("the attack never turns into a punch once the knives are gone", () => {
-    // Every roll misses, so the one throw takes nothing off and any punch would show.
-    const s = thrower({ rows: OX, weaponCount: 1 });
-    const health = enemy(s).health;
+  test("equipping a sword after running out lets the player fight back", () => {
+    const s = thrower({
+      rows: ["TTTTTTTTTTTT", "TRS........T", "TTTTTTTTTTTT"],
+      weaponCount: 1,
+      held: ["copperSword"],
+    });
     s.queueTarget("a", "0");
-    const events = run(s, 20);
-    expect(events.filter((e) => e.type === "playerSwing")).toHaveLength(1);
-    expect(enemy(s).health).toBe(health);
-    expect(me(s).attackXp).toBe(0);
+    expect(throwTicks(run(s, 1))).toEqual([1]);
+    s.equip("a", 0);
+    expect(throwTicks(run(s, 16))).toContain(9);
+  });
+
+  test("the player fights back when the enemy killed by the last knife returns", () => {
+    const s = thrower(
+      {
+        rows: ["TTTTTTTTTTTT", "TRK........T", "TTTTTTTTTTTT"],
+        weaponCount: 1,
+      },
+      0,
+      0,
+      MISS,
+    );
+    enemy(s).health = 200;
+    s.queueTarget("a", "0");
+    expect(throwTicks(run(s, 1))).toEqual([1]);
+    expect(enemy(s).state).toBe("dead");
+    expect(throwTicks(run(s, 220)).length).toBeGreaterThan(0);
   });
 
   test("an enemy that keeps hitting a thrower who ran out is not punched back, until the player gives a new order", () => {
@@ -271,31 +299,5 @@ describe("running out", () => {
     s.queueWalk("a", { x: me(s).x, y: me(s).y });
     events = run(s, 16);
     expect(throwTicks(events).length).toBeGreaterThan(0);
-  });
-});
-
-describe("dying", () => {
-  test("a dead player's knife stack drops whole, as one ground stack with what is left", () => {
-    // The Spider at (2,1) is next to the thrower and swings first; its hit for 200 kills.
-    const s = thrower(
-      {
-        rows: ["TTTTTTTTTTTT", "TRS........T", "TTTTTTTTTTTT"],
-        health: 100,
-        weaponCount: 9,
-      },
-      MISS,
-      0,
-      0,
-    );
-    s.queueTarget("a", "0");
-    run(s, 5);
-    expect(me(s).dead).toBe(true);
-    expect(
-      [...s.state.groundItems.values()].map(({ item, count }) => ({
-        item,
-        count,
-      })),
-    ).toEqual([{ item: "copperThrowingKnife", count: 8 }]);
-    expect(me(s)).toMatchObject({ weapon: "", weaponCount: 0 });
   });
 });

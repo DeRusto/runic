@@ -22,7 +22,7 @@ import {
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { dropFromSlot } from "./dropping.ts";
-import { spendShot, wear } from "./gear.ts";
+import { spendArrow, spendKnife, wear } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import type { Quests } from "./quests.ts";
@@ -121,11 +121,13 @@ export class Fighting {
     });
     // With none left, it stops now and says so; the enemy fights on as usual. The last knife
     // leaves the hand empty, and the attack ends rather than turning into a punch (#279).
-    if (ranged && !spendShot(this.world, id, ranged.thrown)) {
-      if (ranged.thrown) {
+    if (ranged?.thrown) {
+      if (!spendKnife(this.world, id)) {
         this.stop(id, OUT_OF_KNIVES_LINE);
-        this.world.unsyncedPlayers.get(id)!.ranDryAgainst = enemyId;
-      } else this.stopForRefusal(id, player);
+        this.world.unsynced(id).ranDryAgainst = enemyId;
+      }
+    } else if (ranged && !spendArrow(this.world, id)) {
+      this.stopForRefusal(id, player);
     }
     const loot = this.enemies.takeHit(
       this.world.state.tick,
@@ -148,6 +150,8 @@ export class Fighting {
       )
         this.placeLoot(enemy, won);
     for (const unsynced of this.world.unsyncedPlayers.values()) {
+      if (unsynced.ranDryAgainst === enemyId)
+        unsynced.ranDryAgainst = undefined;
       const { action } = unsynced;
       if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
       unsynced.action = undefined;
@@ -267,6 +271,7 @@ export class Fighting {
       wear(player, gearSlot, "", 0);
     }
     const unsynced = this.world.unsyncedPlayers.get(id)!;
+    unsynced.ranDryAgainst = undefined;
     unsynced.healingPool.length = 0;
     unsynced.delicious = undefined;
     unsynced.potion = undefined;
