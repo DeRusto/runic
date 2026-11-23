@@ -24,7 +24,7 @@ The weapon slot and the ammo slot each carry a count, synced and saved beside th
 | Take off | The whole stack goes to the first empty inventory slot, or is refused with no empty slot |
 | Die | The whole stack drops as one ground item, under the ground item rules (#71) |
 
-The top-up is this build's choice, since #275 left it open: it never splits a click's arrows across two places, and it keeps the stack the player already chose.
+The top-up is this build's choice, since #275 left it open: it fills the slot as far as one click's stack allows and keeps the tier the player already chose, so a click never swaps a partial slot for a different count of the same arrow.
 
 A worn weapon from before this build counts as one. Every other slot still holds one item.
 
