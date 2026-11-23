@@ -861,6 +861,42 @@ describe("the ammo slot (Ranged spec §2)", () => {
   });
 });
 
+describe("a stack in the weapon slot (Ranged spec §2)", () => {
+  // No weapon stacks yet; throwing knives will (#269). A saved stack checks the count the two slots share.
+  const KNIVES = { weapon: "copperThrowingKnife", weaponCount: 7 };
+
+  test("comes off whole into the first empty slot", () => {
+    start(KNIVES);
+    sim.takeOff("a", "weapon");
+    expect(me()).toMatchObject({ weapon: "", weaponCount: 0 });
+    expect(me().inventory[0]).toBe("copperThrowingKnife");
+    expect(me().inventoryCounts[0]).toBe(7);
+  });
+
+  test("swaps out whole for a sword, landing where the sword came from", () => {
+    start({ ...KNIVES, held: ["berry", "copperSword"] });
+    sim.equip("a", 1);
+    expect(me()).toMatchObject({ weapon: "copperSword", weaponCount: 1 });
+    expect(me().inventory[1]).toBe("copperThrowingKnife");
+    expect(me().inventoryCounts[1]).toBe(7);
+  });
+
+  test("drops whole on death, as one ground stack", () => {
+    start({ ...KNIVES, health: 100 });
+    rolls = [MISS, 0, 0]; // The Spider's first swing hits for 100.
+    sim.queueTarget("a", "0");
+    ticks(5);
+    expect(me().dead).toBe(true);
+    expect(
+      [...sim.state.groundItems.values()].map(({ item, count }) => ({
+        item,
+        count,
+      })),
+    ).toEqual([{ item: "copperThrowingKnife", count: 7 }]);
+    expect(me()).toMatchObject({ weapon: "", weaponCount: 0 });
+  });
+});
+
 describe("bows (Ranged spec §2)", () => {
   test("equip at their Ranged gate, and are refused below it whatever the Attack level", () => {
     start({ held: ["oakBow"], attackXp: MAX_XP, rangedXp: LEVEL_10_XP - 1 });
