@@ -74,6 +74,9 @@ export function tileSites<Site>(room: WorldConnection) {
     ) {
       const [x, y] = id.split(",").map(Number) as [number, number];
       const site = { ...siteAt(x, y), id, x, y };
+      // A spent one still fading on this tile gives way to the new one.
+      const before = byId.get(id);
+      if (before) clicks.remove(before);
       byId.set(id, site);
       clicks.add(site, [{ x, y }], model);
     },

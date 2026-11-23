@@ -341,7 +341,12 @@ describe("a pooled vein that runs out and leaves its spot", () => {
       ["3,3"],
       // Spent, it leaves a fading copy in sight.
       () => true,
-      () => new THREE.Object3D(),
+      () => {
+        const vein = standIn();
+        vein.position.set(3, 0, 3);
+        vein.updateMatrixWorld(true);
+        return vein;
+      },
     );
     // Its last ore and its leaving can come in one patch, so it may never show none left.
     const vein = { minesLeft: 1 };
@@ -376,6 +381,20 @@ describe("a pooled vein that runs out and leaves its spot", () => {
     const found = spotUnder(onItsTile);
     vi.useRealTimers();
     expect(found).toBeUndefined();
+  });
+
+  test("gives way to a full one the server puts on its spot while it fades", () => {
+    vi.useFakeTimers();
+    const veinUnder = mineOut();
+    added.get("veins")!({ minesLeft: 3 }, "3,3");
+    // Across both veins' models: each spot's model is drawn from the same instances.
+    const onTheModels = across(3, 0.2);
+    const whileFading = veinUnder(onTheModels);
+    vi.advanceTimersByTime(2000);
+    const afterFading = veinUnder(onTheModels);
+    vi.useRealTimers();
+    expect(whileFading!.left()).toBe(3);
+    expect(afterFading!.left()).toBe(3);
   });
 
   test("lets its tile walk once it has faded", () => {
