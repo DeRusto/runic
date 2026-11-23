@@ -14,6 +14,8 @@ const rail = new THREE.MeshStandardMaterial({ color: 0xcc9d5a });
 const stone = new THREE.MeshStandardMaterial({ color: 0x828b87 });
 const startMat = new THREE.MeshStandardMaterial({ color: 0xe6c976 });
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+/** How far an obstacle's clickable footprint stands off the ground: just above the markers. */
+const FOOTPRINT_HEIGHT = 0.05;
 const charred = new THREE.MeshStandardMaterial({ color: 0x2e2622 });
 const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
 
@@ -34,18 +36,22 @@ export function addObstacles(tiles: TileKind[][]) {
       group.rotation.y = Math.atan2(landing.x - x, landing.y - y);
       const length = Math.hypot(landing.x - x, landing.y - y);
 
-      // Cover the whole obstacle low down, including gaps between its pieces. A shortcut's box
-      // also covers both end markers, since either end starts a crossing. Anything taller is
-      // clicked on its own visible pieces below: a taller box would catch clicks on the ground
-      // behind it.
+      // A flat footprint on the ground covers the whole obstacle, including gaps between its
+      // pieces, and a shortcut's footprint also covers both end markers, since either end starts
+      // a crossing. The visible pieces above it are clicked on themselves: any box standing up
+      // off the ground would catch clicks on the grass behind it.
       const hitBox = newHitBox();
       const twoWay = !!OBSTACLES[obstacle].shortcut;
       hitBox.position.set(
         0,
-        HIT_BOX_HEIGHT / 2,
+        FOOTPRINT_HEIGHT / 2,
         twoWay ? length / 2 : length / 2 - 0.25,
       );
-      hitBox.scale.z = twoWay ? length + 0.8 : length + 0.15;
+      hitBox.scale.set(
+        1,
+        FOOTPRINT_HEIGHT / HIT_BOX_HEIGHT,
+        twoWay ? length + 0.8 : length + 0.15,
+      );
       group.add(hitBox);
       const target = {
         obstacle,

@@ -93,10 +93,10 @@ export const SHORTCUTS = (Object.keys(OBSTACLES) as ObstacleKind[]).filter(
 /** Extra Agility experience for crossing every course obstacle in order. */
 export const COURSE_LAP_XP = 80;
 
-/** The chance a shortcut crossing fails at exactly its required level (Agility spec §3). */
+/** The chance a shortcut crossing fails at exactly its required level (Agility spec §4). */
 export const SHORTCUT_FAIL_PERCENT_AT_REQUIREMENT = 25;
 
-/** Levels above a shortcut's requirement at which it stops failing (Agility spec §3). */
+/** Levels above a shortcut's requirement at which it stops failing (Agility spec §4). */
 export const SURE_FOOTED_LEVELS = 10;
 
 /** The rope item that rigs a shortcut. */

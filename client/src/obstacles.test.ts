@@ -83,17 +83,27 @@ describe("clicking a shortcut", () => {
   );
 
   test.each([0, 1, 2, 3])(
-    "on grass two tiles behind the Charred fence, with the camera at %i quarter turns, finds no shortcut",
+    "on any grass around the Charred fence, with the camera at %i quarter turns, finds no shortcut",
     (quarters) => {
       const obstacleUnder = fence();
-      // Two tiles beyond the fence's start, away from the camera, where the view looks past it.
-      const toward = new THREE.Vector3(1, 0, 1).applyAxisAngle(
-        UP,
-        (quarters * Math.PI) / 2,
-      );
-      expect(
-        obstacleUnder(cameraRay(2 - 2 * toward.x, 1 - 2 * toward.z, quarters)),
-      ).toBeUndefined();
+      // The fence runs from (2,1) to (2,3): every tile beside it or one or two tiles past it.
+      const around = [
+        ...[0, 1, 2, 3, 4].flatMap((y) => [
+          { x: 1, y },
+          { x: 3, y },
+        ]),
+        { x: 2, y: 0 },
+        { x: 2, y: 4 },
+        { x: 0, y: -1 },
+        { x: 4, y: 5 },
+        { x: 0, y: 5 },
+        { x: 4, y: -1 },
+      ];
+      for (const { x, y } of around)
+        expect(
+          obstacleUnder(cameraRay(x, y, quarters)),
+          `grass at ${x},${y}`,
+        ).toBeUndefined();
     },
   );
 
