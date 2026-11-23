@@ -138,8 +138,12 @@ export function armedSwing(id: string, tick: number) {
   return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
 }
 
-/** A bow shot: the release, with the blow landing at the enemy once the arrow has flown (Ranged spec §3 leaves shot art to the build). */
-const BOW_SHOT = { clip: "Throw", contactMs: 700 };
+/**
+ * A bow shot: the cast's overhand release, as the adventurer every player wears has no bow clip,
+ * with the blow landing at the enemy once the arrow has flown (Ranged spec §4). Not the General
+ * pack's Throw: the adventurer plays only its own clips.
+ */
+const BOW_SHOT = { clip: "Fishing_Cast", contactMs: 1000 };
 
 /** A swing follows the weapon, so a shield with no sword punches (spec §7), and a bow shoots. */
 export function swingFor(weapon: string, id: string, tick: number) {

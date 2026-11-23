@@ -823,19 +823,24 @@ describe("swingFor", () => {
     );
   });
 
-  test("a bow shoots with the throw clip, its blow landing once the arrow has flown", () => {
+  test("a bow shoots with the cast clip, its blow landing once the arrow has flown", () => {
     expect(swingFor("birchBow", "a", 8)).toEqual({
-      clip: "Throw",
-      contactMs: 700,
+      clip: "Fishing_Cast",
+      contactMs: 1000,
     });
     expect(swingFor("charwoodBow", "b", 9)).toEqual(
       swingFor("birchBow", "a", 8),
     );
   });
 
-  test("the committed clip pack has Throw", () => {
-    const glb = readFileSync("client/public/models/Rig_Medium_General.glb");
-    expect(glb.toString("latin1")).toContain('"name":"Throw"');
+  test("the adventurer every player wears has the bow shot's clip among its animations", () => {
+    const glb = readFileSync("client/public/models/Adventurer.glb");
+    const json = JSON.parse(
+      glb.subarray(20, 20 + glb.readUInt32LE(12)).toString(),
+    ) as { animations: { name: string }[] };
+    expect(json.animations.map(({ name }) => name)).toContain(
+      swingFor("birchBow", "a", 8).clip,
+    );
   });
 
   test("no sword punches at 550 ms", () => {

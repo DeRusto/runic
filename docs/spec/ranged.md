@@ -94,4 +94,4 @@ A player with a bow and arrows who is hit while idle fights back with the bow, u
 
 ### On the client
 
-A bow shot plays the character's throw clip, and its damage number, flash and nudge show at the enemy 700 ms later, once the arrow would have flown. This is this build's choice of shot art, which #275 left open.
+A bow shot plays the character's overhand cast clip, and its damage number, flash and nudge show at the enemy 1000 ms later, once the arrow would have flown. This is this build's choice of shot art, which #275 left open.
