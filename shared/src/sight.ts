@@ -9,13 +9,13 @@ const TALL_PROPS: ReadonlySet<PropKind> = new Set([
 ]);
 
 /**
- * Whether a tile stops a shot: a house wall, a tree (prop or Woodcutting tree), a rock (prop, ore
+ * Whether a tile stops a shot: a house wall, a tree (prop, or a Woodcutting tree that is not a stump), a rock (prop, ore
  * vein or essence vein), a column or a standing stone. Every other tile lets it pass, doors,
  * water and bushes included (Ranged spec §4).
  */
 export const isTall = (tile: TileKind) =>
   tile.house === "wall" ||
-  !!tile.tree ||
+  (!!tile.tree && !tile.runOut) ||
   !!tile.vein ||
   (tile.prop !== undefined && TALL_PROPS.has(tile.prop));
 

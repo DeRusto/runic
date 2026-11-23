@@ -24,6 +24,11 @@ describe("isTall", () => {
       expect(isTall(tile), JSON.stringify(tile)).toBe(true);
   });
 
+  test("a run-out Woodcutting tree, a stump, lets a shot pass, but a run-out vein still blocks", () => {
+    expect(isTall({ ...TILE_KINDS.g, runOut: true })).toBe(false);
+    expect(isTall({ ...TILE_KINDS.c, runOut: true })).toBe(true);
+  });
+
   test("every other tile lets a shot pass, doors, water, bushes, the gate and villagers included", () => {
     const tallChars = new Set("HTtAociegkCE");
     for (const [char, tile] of Object.entries(TILE_KINDS))

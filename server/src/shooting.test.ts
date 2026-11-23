@@ -443,4 +443,45 @@ describe("sight", () => {
       target: "",
     });
   });
+
+  describe("a Woodcutting tree in the way", () => {
+    /** An archer behind the Birch at (4,1), and a woodcutter "b" beside it at (4,2) who chops it to a stump. */
+    function stumped() {
+      const s = archer({ rows: behind("g") }, ...Array<number>(400).fill(0.4));
+      s.addPlayer("b", {
+        x: 4,
+        y: 2,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 1000,
+        tools: ["axe"],
+        inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
+      });
+      // Each click chops once; every roll of 0.4 lands.
+      for (let i = 0; i < 4; i++) {
+        s.queueGather("b", "woodcutting", "4,1");
+        run(s, 8);
+      }
+      expect(s.state.trees.get("4,1")!.chopsLeft).toBe(0);
+      return s;
+    }
+
+    test("once chopped to a stump, a shot passes over it", () => {
+      const s = stumped();
+      s.queueTarget("a", "0");
+      expect(shotTicks(run(s, 1))).toHaveLength(1);
+      expect(me(s)).toMatchObject({ x: 1, y: 1 });
+    });
+
+    test("once grown back, it blocks again", () => {
+      const s = stumped();
+      // A Birch grows back 100 ticks after it runs out.
+      run(s, 101);
+      expect(s.state.trees.get("4,1")!.chopsLeft).toBe(4);
+      s.queueTarget("a", "0");
+      expect(shotTicks(run(s, 1))).toEqual([]);
+      expect(me(s)).not.toMatchObject({ x: 1, y: 1 });
+    });
+  });
 });

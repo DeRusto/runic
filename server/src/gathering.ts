@@ -110,7 +110,10 @@ export class Gathering {
       }
       if (--site.synced[leftField]! === 0) {
         if (site.pool) this.sites.removePooledSite(site, site.pool);
-        else site.regrowTick = this.world.state.tick + source.regrowTicks;
+        else {
+          site.regrowTick = this.world.state.tick + source.regrowTicks;
+          this.world.tiles[site.y]![site.x]!.runOut = true;
+        }
       }
       unsynced.action = undefined;
     }

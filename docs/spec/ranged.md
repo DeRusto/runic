@@ -80,7 +80,7 @@ A shot needs a straight line from the centre of the shooter's tile to the centre
 | Rocks | Rock props, ore veins and essence veins |
 | Runestone Hollow's ruins | Its columns and standing stones |
 
-Every other tile lets a shot pass: doors, water, bushes, the gate, stations, stalls, strongboxes, barrels, crates, lamps, the well, villagers, marks, enemies and players (owner, #278). So a player can shoot across the Lake but not through a house. A Woodcutting tree or a vein that has run out and left its spot no longer blocks until it comes back.
+Every other tile lets a shot pass: doors, water, bushes, the gate, stations, stalls, strongboxes, barrels, crates, lamps, the well, villagers, marks, enemies and players (owner, #278). So a player can shoot across the Lake but not through a house. A Woodcutting tree that has run out shows as a stump, which a shot passes over until the tree grows back, though the stump still blocks walking (owner, #286). A run-out vein still blocks a shot. A pooled tree or vein that has left its spot blocks nothing until it comes back.
 
 The line counts every tile it touches, even at a single corner, so a diagonal that squeezes past the corner of a wall is blocked; this build took the suggestion in #278. The shooter's and the target's own tiles never block. The check reads only the line between the two tiles, so it gives the same answer with shooter and target swapped. It lives in `shared` as `inSight`, for the ranged enemies of a later milestone to use too.
 

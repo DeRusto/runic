@@ -661,7 +661,7 @@ Whether a shot can fly from the shooter to the target: the straight line between
 _Avoid_: Line of fire, LOS
 
 **Tall tile**:
-A tile a shot cannot pass: a house wall, a tree (a prop or a Woodcutting tree), a rock (a prop, an ore vein or an essence vein), or one of Runestone Hollow's columns and standing stones (owner, 2026-11-23).
+A tile a shot cannot pass: a house wall, a tree (a prop, or a Woodcutting tree that is not a stump), a rock (a prop, an ore vein or an essence vein), or one of Runestone Hollow's columns and standing stones (owner, 2026-11-23).
 _Avoid_: Wall (alone), obstacle (that's Agility's)
 
 **Panel**:
