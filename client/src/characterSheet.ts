@@ -98,7 +98,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
 
   // Laid out as a body by the grid's areas; each box is only an icon, and its tooltip and name say what it holds.
   let worn: WornGear = {};
-  /** What a slot shows over its icon: a stack's count, as the inventory does, and nothing for one item (Ranged spec §2). */
+  /** What a slot shows over its icon: the count of anything that stacks, even a stack of 1, so a player sees their last arrow, and nothing for gear that never stacks (Ranged spec §2). */
   const countShown = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
     return item && ITEMS[itemParts(item).base].stack > 1

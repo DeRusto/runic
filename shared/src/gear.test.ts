@@ -21,6 +21,11 @@ import { MAX_XP, xpForLevel } from "./skills.ts";
 
 const attack = (attackXp: number) => ({ attackXp, defenseXp: 0, rangedXp: 0 });
 const ranged = (rangedXp: number) => ({ attackXp: 0, defenseXp: 0, rangedXp });
+const defense = (defenseXp: number, attackXp = 0) => ({
+  attackXp,
+  defenseXp,
+  rangedXp: 0,
+});
 
 test("swords add 100, 150, 200, 250 and 300 by tier", () => {
   expect(GEAR.get("copperSword")?.hitBonus).toBe(100);
@@ -59,27 +64,28 @@ test("shields start at 10%, 15%, 20%, 25% and 30% by tier", () => {
 });
 
 test("each tier's shield is gated at its Defense level, whatever the Attack level", () => {
-  const defense = (defenseXp: number) => ({
-    attackXp: 18050,
-    defenseXp,
-    rangedXp: 0,
-  });
-  expect(gearRefusal("copperShield", defense(0))).toBeUndefined();
-  expect(gearRefusal("bronzeShield", defense(xpForLevel(4)))).toBe(
+  // Attack 20 opens every sword, and still no shield.
+  const defenseWithAttack = (defenseXp: number) => defense(defenseXp, 18050);
+  expect(gearRefusal("copperShield", defenseWithAttack(0))).toBeUndefined();
+  expect(gearRefusal("bronzeShield", defenseWithAttack(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
   );
-  expect(gearRefusal("steelShield", defense(xpForLevel(14)))).toBe(
+  expect(gearRefusal("steelShield", defenseWithAttack(xpForLevel(14)))).toBe(
     "You need Defense 15 to equip this.",
   );
-  expect(gearRefusal("steelShield", defense(xpForLevel(15)))).toBeUndefined();
-  expect(gearRefusal("ironShield", defense(4049))).toBe(
+  expect(
+    gearRefusal("steelShield", defenseWithAttack(xpForLevel(15))),
+  ).toBeUndefined();
+  expect(gearRefusal("ironShield", defenseWithAttack(4049))).toBe(
     "You need Defense 10 to equip this.",
   );
-  expect(gearRefusal("ironShield", defense(4050))).toBeUndefined();
-  expect(gearRefusal("emberiteShield", defense(18049))).toBe(
+  expect(gearRefusal("ironShield", defenseWithAttack(4050))).toBeUndefined();
+  expect(gearRefusal("emberiteShield", defenseWithAttack(18049))).toBe(
     "You need Defense 20 to equip this.",
   );
-  expect(gearRefusal("emberiteShield", defense(18050))).toBeUndefined();
+  expect(
+    gearRefusal("emberiteShield", defenseWithAttack(18050)),
+  ).toBeUndefined();
 });
 
 test("a shield goes in the shield slot and says what it does", () => {
@@ -201,11 +207,6 @@ test("armour takes 2/4/2% up to 6/12/6% by tier, for 8%, 12%, 16%, 20% and 24% a
 });
 
 test("each tier's armour is gated at its Defense level", () => {
-  const defense = (defenseXp: number) => ({
-    attackXp: 0,
-    defenseXp,
-    rangedXp: 0,
-  });
   expect(gearRefusal("copperHelmet", defense(0))).toBeUndefined();
   expect(gearRefusal("bronzeHelmet", defense(xpForLevel(4)))).toBe(
     "You need Defense 5 to equip this.",
@@ -287,12 +288,6 @@ test("the Gear tab line gives the Virtue at its size, and nothing for a common p
 });
 
 describe("capes (#217)", () => {
-  const defense = (defenseXp: number) => ({
-    attackXp: 0,
-    defenseXp,
-    rangedXp: 0,
-  });
-
   test("a cape is small armour on the hands' line, in the cape slot, gated at its Defense level", () => {
     expect(GEAR.get("copperMightCape")).toMatchObject({
       slot: "cape",
@@ -359,12 +354,6 @@ describe("capes (#217)", () => {
 });
 
 describe("hands and feet (#238)", () => {
-  const defense = (defenseXp: number) => ({
-    attackXp: 0,
-    defenseXp,
-    rangedXp: 0,
-  });
-
   test("the hands take 1–5% and the feet 2–6% off by tier, on the helmet's line (#217)", () => {
     for (const [tier, hands, feet] of [
       ["copper", 1, 2],
@@ -400,12 +389,6 @@ describe("hands and feet (#238)", () => {
 });
 
 describe("necks and rings (#238)", () => {
-  const defense = (defenseXp: number) => ({
-    attackXp: 0,
-    defenseXp,
-    rangedXp: 0,
-  });
-
   test("the amulets carry 5/8/10/13/16 tenths of Avoidance by tier", () => {
     for (const [tier, tenths] of [
       ["copper", 5],

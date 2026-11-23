@@ -425,7 +425,7 @@ The fixed set of slots a player carries items in. A slot holds one piece of gear
 _Avoid_: Bag, backpack
 
 **Stack**:
-Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
+Up to 20 of the same material, food or arrows in one inventory slot. Arrows are the one gear that stacks, in the inventory and in the ammo slot; all other gear holds one to a slot.
 _Avoid_: Pile, bundle
 
 **Chat command**:
@@ -593,11 +593,11 @@ A small thrown weapon smithed from one bar at the anvil, plus an Emberbone at Em
 _Avoid_: Dagger, knife (alone)
 
 **Gear**:
-What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
+What a player equips to fight better: a weapon (a sword raises how hard they hit, and a bow how often), arrows in the ammo slot, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
 
 **Bow**:
-A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot, gated on Ranged at 1, 10 and 20, and adds 5, 10 or 15 points of Accuracy; it carries no hit bonus, since the arrow decides how hard a shot hits (#268). A bow worn before the Ranged gate came stays worn. It rolls improved versions like all gear.
+A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot, gated on Ranged at 1, 10 and 20, and adds 5, 10 or 15 points of Accuracy; it carries no hit bonus, since the arrow decides how hard a shot hits (#268). A bow worn before the Ranged gate came stays worn. Bows can still roll improved versions; arrows never do.
 _Avoid_: Ranged weapon, longbow
 
 **Improved item**:

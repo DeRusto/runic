@@ -98,7 +98,9 @@ export class Gear {
     }
     player[field] += moved;
     player.inventoryCounts[slot]! -= moved;
-    if (!player.inventoryCounts[slot]) this.placeGear(id, slot, EMPTY_SLOT, 0);
+    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
+    // A drop waiting on the slot meant the stack as it was, as for any move.
+    this.world.forgetDropOn(id, slot);
   }
 
   /** Puts `count` of gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */

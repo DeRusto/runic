@@ -736,6 +736,21 @@ describe("the ammo slot (Ranged spec §2)", () => {
     expect(me().inventoryCounts[0]).toBe(7);
   });
 
+  test("a drop waiting on a slot that tops up the ammo slot no longer stands, as for any move", () => {
+    start({
+      held: ["copperArrow"],
+      inventoryCounts: [15],
+      ammo: "copperArrow",
+      ammoCount: 12,
+    });
+    sim.queueDrop("a", 0, 20);
+    sim.equip("a", 0);
+    sim.tick();
+    expect(me().inventory[0]).toBe("copperArrow");
+    expect(me().inventoryCounts[0]).toBe(7);
+    expect(sim.state.groundItems.size).toBe(0);
+  });
+
   test("topping up with all of a small stack empties its slot", () => {
     start({
       held: ["copperArrow"],
