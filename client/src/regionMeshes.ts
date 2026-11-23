@@ -295,7 +295,8 @@ export function oreParts(ore: THREE.Object3D) {
 
 /**
  * A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites.
- * Returns how to show a site full, run out or gone (a run-out tree is a stump), and each site's and
+ * Returns how to show a site full, run out or gone (a run-out tree is a stump), which says whether
+ * a spent one leaves a fading copy in sight, and each site's and
  * station's model, for clicks to find.
  */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
@@ -717,17 +718,19 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       instances.instanceColor!.needsUpdate = true;
     }
     if (copies.length) fadeOut(id, copies);
+    return copies.length > 0;
   };
   // A tree's stump is hidden until it runs out.
   tiles.forEach((row, y) =>
     row.forEach(({ tree }, x) => tree && setLook(siteId({ x, y }), "full")),
   );
-  /** A site's parts as drawn now, for clicks to find. */
+  /** A site's parts as drawn now, its fading copies too, for clicks to find. */
   const siteModel = (id: string) =>
     instancesModel(
       runOutSlots
         .get(id)!
         .map(({ geometry, slot }) => ({ mesh: meshes.get(geometry)!, slot })),
+      () => fading.get(id) ?? [],
     );
   return { setSiteLook: setLook, siteModel, stationModels: placedStations };
 }

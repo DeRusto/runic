@@ -21,7 +21,7 @@ export function showGatheringSites(
   room: WorldConnection,
   tiles: TileKind[][],
   spots: string[],
-  setLook: (id: string, look: SiteLook) => void,
+  setLook: (id: string, look: SiteLook) => boolean,
   modelOf: (id: string) => THREE.Object3D,
 ) {
   const callbacks = Callbacks.get(room);
@@ -55,12 +55,13 @@ export function showGatheringSites(
       );
     });
     // A pooled site leaves its spot as it runs out, though its last change can come in the same
-    // patch as its leaving. While its spent copy fades, its tile still says it has run out.
+    // patch as its leaving. While its spent copy fades, it still says it has run out; a fishing
+    // spot leaves no copy, only water, which walks at once.
     callbacks.onRemove(stateField, (_, id) => {
       runOuts.get(id)?.();
       runOuts.delete(id);
-      sites.remove(id, SPENT_MS);
-      setLook(id, "spent");
+      const fades = setLook(id, "spent");
+      sites.remove(id, fades ? SPENT_MS : 0);
     });
     return sites.under;
   });

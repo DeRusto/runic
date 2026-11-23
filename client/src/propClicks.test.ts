@@ -260,7 +260,7 @@ function bushAt(scale: number) {
       room,
       tiles,
       ["3,3"],
-      () => {},
+      () => true,
       () => instancesModel([{ mesh: bushes, slot: 1 }]),
     );
     added.get("bushes")!({ picksLeft: scale < 1 ? 0 : 5 }, "3,3");
@@ -270,6 +270,20 @@ function bushAt(scale: number) {
 const BERRY_BUSH = { skill: "herblaw", kind: "berryBush", x: 3, y: 3 };
 clickTable("a gathering site", bushAt(1), BERRY_BUSH, 0.2);
 clickTable("a gathering site that has run out", bushAt(0.6), BERRY_BUSH, 0.1);
+
+test("a site's fading copy, drawn apart from its instances, is part of its model", () => {
+  const bushes = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.7, 0.4, 0.6).translate(0, 0.2, 0),
+    new THREE.MeshBasicMaterial(),
+    1,
+  );
+  bushes.setMatrixAt(0, new THREE.Matrix4().makeScale(0, 0, 0));
+  const copy = standIn();
+  copy.position.set(3, 0, 3);
+  copy.updateMatrixWorld(true);
+  const model = instancesModel([{ mesh: bushes, slot: 0 }], () => [copy]);
+  expect(across(3, 0.2).intersectObject(model)[0]?.object).toBe(model);
+});
 
 test("a site scaled to nothing, gone from its spot, has no model for a ray to meet", () => {
   const bushes = new THREE.InstancedMesh(
@@ -325,7 +339,8 @@ describe("a pooled vein that runs out and leaves its spot", () => {
       room,
       regionWith({ vein: "iron" }),
       ["3,3"],
-      () => {},
+      // Spent, it leaves a fading copy in sight.
+      () => true,
       () => new THREE.Object3D(),
     );
     // Its last ore and its leaving can come in one patch, so it may never show none left.
@@ -344,6 +359,23 @@ describe("a pooled vein that runs out and leaves its spot", () => {
     vi.useRealTimers();
     expect(found).toMatchObject({ skill: "mining", kind: "iron", x: 3, y: 3 });
     expect(found!.left()).toBe(0);
+  });
+
+  test("lets its tile walk at once when it leaves nothing fading, as a fishing spot's water", () => {
+    vi.useFakeTimers();
+    const spotUnder = showGatheringSites(
+      room,
+      regionWith({ fishingSpot: "shore" }),
+      ["3,3"],
+      () => false,
+      () => new THREE.Object3D(),
+    );
+    const spot = { catchesLeft: 1 };
+    added.get("fishingSpots")!(spot, "3,3");
+    removed.get("fishingSpots")!(spot, "3,3");
+    const found = spotUnder(onItsTile);
+    vi.useRealTimers();
+    expect(found).toBeUndefined();
   });
 
   test("lets its tile walk once it has faded", () => {
