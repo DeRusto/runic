@@ -2,7 +2,7 @@ import { Callbacks, type Room } from "@colyseus/sdk";
 import {
   itemParts,
   OBSTACLES,
-  obstacleLanding,
+  crossingFrom,
   TICK_MS,
   type TileKind,
 } from "@runic/shared";
@@ -62,18 +62,16 @@ export function showPlayers(
       const action = player?.action;
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;
-      const obstacle =
-        action === "crossing" && player
-          ? tiles[player.y]?.[player.x]?.obstacle
-          : undefined;
+      const tile = player && tiles[player.y]?.[player.x];
+      // A shortcut crosses back from its far end too (Agility spec §3).
+      const crossing =
+        action === "crossing" && tile ? crossingFrom(tile, player) : undefined;
       figure.update(
         now,
-        obstacle && player
-          ? {
-              landing: obstacleLanding(obstacle, player),
-              ms: OBSTACLES[obstacle].ticks * TICK_MS,
-            }
-          : undefined,
+        crossing && {
+          landing: crossing.landing,
+          ms: OBSTACLES[crossing.obstacle].ticks * TICK_MS,
+        },
       );
       hitBoxes
         .get(id)!

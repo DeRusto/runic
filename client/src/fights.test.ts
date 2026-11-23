@@ -685,10 +685,13 @@ describe("the mine event", () => {
   });
 });
 
-describe("the stunned and trapSprung events", () => {
+describe("the stunned, trapSprung and slipped events", () => {
   const holdBlow = vi.fn();
   const showBlow = vi.fn();
-  const send = (damage: number, type: "stunned" | "trapSprung" = "stunned") => {
+  const send = (
+    damage: number,
+    type: "stunned" | "trapSprung" | "slipped" = "stunned",
+  ) => {
     const onMessage = vi.fn();
     showFights({
       onReconnect: vi.fn(),
@@ -716,6 +719,13 @@ describe("the stunned and trapSprung events", () => {
     send(800, "trapSprung");
     vi.advanceTimersByTime(0);
     expect(showBlow).toHaveBeenCalledWith(800, false);
+    expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+
+  test("shows a failed shortcut crossing's hit at once, with Hit_A (Agility spec §3)", () => {
+    send(150, "slipped");
+    vi.advanceTimersByTime(0);
+    expect(showBlow).toHaveBeenCalledWith(150, false);
     expect(figure.once).toHaveBeenCalledWith("Hit_A");
   });
 

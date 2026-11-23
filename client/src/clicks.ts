@@ -1,5 +1,6 @@
 import {
   CROSS_INTENT,
+  crossRefusal,
   OBSTACLES,
   GATHERING,
   offers,
@@ -140,6 +141,10 @@ export function walkOnClick(
     y,
   }: NonNullable<ReturnType<typeof obstacleUnder>>) => {
     if (crossing()) return;
+    const me = room.state.players.get(room.sessionId);
+    if (!me) return;
+    const refused = crossRefusal(obstacle, me);
+    if (refused) return printChatLine(refused);
     showMarker(x, y);
     room.send(CROSS_INTENT, obstacle);
   };
