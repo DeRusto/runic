@@ -409,11 +409,16 @@ describe("sight", () => {
     expect(shotTicks(run(s, 1))).toEqual([1]);
     // Now 6 tiles off at (8,1), in reach but behind the wall at (7,1).
     spider(s).x = 8;
-    const events = run(s, 16);
-    const [shot] = events.filter((e) => e.type === "playerSwing");
-    expect(shot).toBeDefined();
-    expect(me(s)).not.toMatchObject({ x: 2, y: 1 });
-    expect(inSight(parseRegion(rows.join("\n")), me(s), spider(s))).toBe(true);
+    // Every shot, checked on its own tick, comes from a tile with a clear line.
+    const tiles = parseRegion(rows.join("\n"));
+    const shotsFrom = [];
+    for (let tick = 0; tick < 16; tick++)
+      if (shotTicks(run(s, 1)).length) {
+        expect(inSight(tiles, me(s), spider(s))).toBe(true);
+        shotsFrom.push({ x: me(s).x, y: me(s).y });
+      }
+    expect(shotsFrom.length).toBeGreaterThan(0);
+    expect(shotsFrom).not.toContainEqual({ x: 2, y: 1 });
   });
 
   test("with no tile in reach and in sight to walk to, the attack is cancelled and the chat says so", () => {
