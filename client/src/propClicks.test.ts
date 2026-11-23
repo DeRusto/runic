@@ -286,3 +286,30 @@ test("a site scaled to nothing, gone from its spot, has no model for a ray to me
   const model = instancesModel([{ mesh: bushes, slot: 0 }]);
   expect(across(3, 0.01).intersectObject(model)).toEqual([]);
 });
+
+describe("a station over two tiles, like the range", () => {
+  const rangeUnder = placedWith(() => {
+    const tiles = regionWith({ station: "range" });
+    tiles[3]![4] = { ...tiles[3]![4]!, station: "range" };
+    const range = standIn();
+    range.position.set(3.5, 0, 3);
+    scene.add(range);
+    return addStations(tiles, { range });
+  });
+
+  test.each(VIEWS)(
+    "is found from either of its tiles, with %s",
+    (_, offset) => {
+      expect(rangeUnder()(clickAt(3, 3, offset))).toBe("range");
+      expect(rangeUnder()(clickAt(4, 3, offset))).toBe("range");
+    },
+  );
+
+  test.each(VIEWS)(
+    "lets the grass past either end walk, with %s",
+    (_, offset) => {
+      expect(rangeUnder()(clickAt(1.75, 3, offset))).toBeUndefined();
+      expect(rangeUnder()(clickAt(5.25, 3, offset))).toBeUndefined();
+    },
+  );
+});
