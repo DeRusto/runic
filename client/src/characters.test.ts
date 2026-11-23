@@ -24,6 +24,7 @@ CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
 const DEATH_S = 1.5;
 CLIPS.set("Death_A", new THREE.AnimationClip("Death_A", DEATH_S, []));
 CLIPS.set("Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, []));
+CLIPS.set("Fishing_Cast", new THREE.AnimationClip("Fishing_Cast", 1.8, []));
 const PICKAXING_S = 3.733;
 CLIPS.set("Pickaxing", new THREE.AnimationClip("Pickaxing", PICKAXING_S, []));
 
@@ -172,6 +173,18 @@ describe("Figure", () => {
     expect(figure.moving).toBe(true);
     figure.update(2000);
     expect(figure.moving).toBe(false);
+  });
+
+  it("a shot facing an enemy holds once a step that came in the same patch is over", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    // The step east and a shot at an enemy to the south arrive together, with no fight target left.
+    tile.x = 1;
+    figure.face({ x: 1, y: 5 });
+    figure.once("Fishing_Cast");
+    for (let now = 16; now <= 1000; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(0, 2);
   });
 
   it("runs at 2x, crossfading over 0.12 s, when its tile changes", () => {

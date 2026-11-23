@@ -218,6 +218,18 @@ describe("fighting back", () => {
 
 // A tree at (3,1) walls the archer off from the Spider at (8,1), 7 tiles away: one step to (2,1) puts it in reach.
 const WALLED_OFF = ["TTTTTTTTTTTT", "TR.T....S..T", "TTTTTTTTTTTT"];
+// The Spider at (1,1) is walled in; the archer at (8,1) can only reach (7,7), six tiles off on the diagonal.
+const DIAGONAL = [
+  "TTTTTTTTTT",
+  "TSTTTTTTRT",
+  "TTTTTTTT.T",
+  "TTTTTTTT.T",
+  "TTTTTTTT.T",
+  "TTTTTTTT.T",
+  "TTTTTTTT.T",
+  "TTTTTTT..T",
+  "TTTTTTTTTT",
+];
 // A Tarn Ox, which never moves or fights back, 6 tiles off at (7,1), in a long corridor.
 const OX = ["TTTTTTTTTTTTTTTTT", "TR.....X........T", "TTTTTTTTTTTTTTTTT"];
 
@@ -228,6 +240,14 @@ describe("walking into reach", () => {
     const events = run(s, 3);
     expect(me(s).x).toBe(2);
     expect(shotTicks(events)).toEqual([1]);
+  });
+
+  test("an archer walled off from the enemy walks to a tile in reach on the diagonal, even when that tile isn't the nearest by straight line", () => {
+    const s = archer({ rows: DIAGONAL, x: 8, y: 1 });
+    s.queueTarget("a", "0");
+    const events = run(s, 20);
+    expect(me(s)).toMatchObject({ x: 7, y: 7 });
+    expect(shotTicks(events).length).toBeGreaterThan(0);
   });
 
   test("a target that moves out of reach mid-fight is walked back into reach before the next shot, spending nothing on the way", () => {
@@ -269,6 +289,28 @@ describe("the check before each shot", () => {
       { player: "b", tick: 9 },
     ]);
     expect(me(s)).toMatchObject({ ammoCount: 9, rangedXp: 0, action: "" });
+  });
+
+  test("a target found dead when the shot falls due ends the attack, with no arrow spent and no experience", () => {
+    const s = archer({});
+    s.queueTarget("a", "0");
+    run(s, 8);
+    spider(s).state = "dead";
+    const events = run(s, 1);
+    expect(shotTicks(events)).toEqual([]);
+    expect(me(s)).toMatchObject({ ammoCount: 9, rangedXp: 0, action: "" });
+  });
+
+  test("arrows taken off while walking back into reach stop the attack once the shot falls due", () => {
+    const s = archer({ rows: OX });
+    s.queueTarget("a", "0");
+    run(s, 1);
+    spider(s).x = 14;
+    s.takeOff("a", "ammo");
+    const events = run(s, 8);
+    expect(shotTicks(events)).toEqual([]);
+    expect(told(events)).toEqual([OUT_OF_ARROWS_LINE]);
+    expect(me(s).action).toBe("");
   });
 
   test("a bow taken off mid-fight stops the attack rather than swinging bare-handed", () => {

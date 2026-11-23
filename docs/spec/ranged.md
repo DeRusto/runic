@@ -67,7 +67,7 @@ A player's style is the weapon in hand: a bow shoots, and a sword or bare hands 
 | Reach | 6 tiles, a diagonal step counting as one (#270) | Next to the enemy |
 | Ticks between attacks | 8 (#270) | 8 |
 
-A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk stops on the first tile in reach even when the enemy itself cannot be reached on foot, such as across a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). Sight is the next ticket: until then, any enemy within reach can be shot, across walls included.
+A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk goes to the nearest tile in reach, counted in steps, even when the enemy itself cannot be reached on foot, such as behind a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). Sight is the next ticket: until then, any enemy within reach can be shot, across walls included.
 
 ### The hit
 
@@ -90,7 +90,7 @@ When neither the slot nor the inventory holds any more of that arrow, the attack
 
 ### The check before each shot
 
-Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the bow's 8 ticks, as the timer between shots outlives each click.
+Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above once the next shot falls due, even while walking back into reach; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the bow's 8 ticks, as the timer between shots outlives each click.
 
 The client checks the empty-ammo refusal too and shows the line without sending the click, while the server's check stays the one that decides.
 

@@ -94,9 +94,19 @@ export function pathToNearest(
   from: Tile,
   goals: Tile[],
 ): Tile[] | undefined {
-  const { key, tilesInOrder, pathTo } = searchFrom(tiles, from);
-  const wanted = new Set(goals.map(key));
-  for (const tile of tilesInOrder())
-    if (wanted.has(key(tile))) return pathTo(tile);
+  const wanted = new Set(goals.map(({ x, y }) => y * tiles[0]!.length + x));
+  return pathToFirst(tiles, from, ({ x, y }) =>
+    wanted.has(y * tiles[0]!.length + x),
+  );
+}
+
+/** The fewest steps onto the nearest reachable tile `isGoal` accepts, or undefined if none; empty when standing on one. */
+export function pathToFirst(
+  tiles: TileKind[][],
+  from: Tile,
+  isGoal: (tile: Tile) => boolean,
+): Tile[] | undefined {
+  const { tilesInOrder, pathTo } = searchFrom(tiles, from);
+  for (const tile of tilesInOrder()) if (isGoal(tile)) return pathTo(tile);
   return undefined;
 }

@@ -281,6 +281,8 @@ export class Figure {
   private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
   fightTile?: Tile;
+  /** What the clip playing now attacks, set by `face`. */
+  private attackAt?: Tile;
   /** The synced action, so a gathering tool stays in hand between attempts. */
   action = "";
   private tools: [GatheringSkill, THREE.Object3D][] = [];
@@ -383,6 +385,7 @@ export class Figure {
 
   private endShot() {
     this.shot = undefined;
+    this.attackAt = undefined;
     this.playBase();
   }
 
@@ -444,16 +447,16 @@ export class Figure {
       .multiplyScalar(NUDGE);
   }
 
-  /** Turns toward `at` now, for an attack whose target the fight may already have cleared. */
+  /** Faces `at` while the attack's clip plays, for an attack whose target the fight may already have cleared. */
   face(at: Tile) {
-    if (at.x !== this.tile.x || at.y !== this.tile.y)
-      this.yaw = Math.atan2(at.x - this.tile.x, at.y - this.tile.y);
+    this.attackAt = { x: at.x, y: at.y };
   }
 
   /** Call once a frame, with the frame's timestamp in ms. */
   update(now: number, crossing?: { landing: Tile; ms: number }) {
     const { tile, model, from, to, fightTile } = this;
-    const faces = fightTile ?? this.work?.tile;
+    const faces =
+      fightTile ?? this.work?.tile ?? (this.shot ? this.attackAt : undefined);
     const destination = crossing?.landing ?? tile;
     const dx = destination.x - to.x;
     const dz = destination.y - to.z;

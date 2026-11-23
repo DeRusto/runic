@@ -58,13 +58,14 @@ export class Fighting {
         this.world.clearAction(id);
         continue;
       }
+      // Before reach, so arrows taken off on the way stop the attack once a shot falls due.
+      if (this.stopForRefusal(id, player)) continue;
       if (
         ranged
           ? !inReach(player, enemy, ranged.reachTiles)
           : !nextTo(this.world.tiles, player, enemy)
       )
         continue;
-      if (this.stopForRefusal(id, player)) continue;
       unsynced.nextSwingTick =
         this.world.state.tick + (ranged?.intervalTicks ?? SWING_INTERVAL_TICKS);
       this.playerSwing(id, player, action.enemy, enemy, !!ranged);
