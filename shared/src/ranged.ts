@@ -34,7 +34,7 @@ export const inReach = (from: Tile, to: Tile, reachTiles: number) =>
   tilesApart(from, to) <= reachTiles;
 
 /**
- * A ranged shot's chance (0..1) to land, its max and its bonus: melee's curves read from Ranged
+ * A ranged shot's chance (0..1) to land, a landed shot's min and max, and its bonus: melee's curves read from Ranged
  * (#268, Ranged spec §3). Worn Accuracy is the bow's and the ring's; the bonus is the arrow's
  * hit bonus plus worn Might.
  */
@@ -45,6 +45,7 @@ export function rangedHitOf(player: { rangedXp: number } & Worn) {
       PLAYER_HIT_CHANCE +
       PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL * (level - 1) +
       wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
+    min: HEALTH_PER_HITPOINTS_LEVEL,
     max:
       PLAYER_BASE_DAMAGE +
       HEALTH_PER_HITPOINTS_LEVEL *

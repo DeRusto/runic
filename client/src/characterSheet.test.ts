@@ -301,6 +301,22 @@ describe("the Gear tab's stats", () => {
     ]);
   });
 
+  test("with a bow, the hit rows are a shot's: Ranged and the bow's Accuracy, and the arrow's hit bonus", () => {
+    expect(
+      stats({
+        attackXp: xpForLevel(20),
+        rangedXp: xpForLevel(3),
+        weapon: "birchBow",
+        ammo: "ironArrow",
+        ammoCount: 10,
+      }).slice(1, 4),
+    ).toEqual([
+      "Hit chance 46%",
+      "Min hit 300 (+100/+200)",
+      "Max hit 400 (+200/+200)",
+    ]);
+  });
+
   test("the critical chance rises on the sheet as Agility levels up", () => {
     expect(stats({ agilityXp: xpForLevel(30) })).toContain(
       "Critical 12.9% ×1.5",
