@@ -43,6 +43,7 @@ export function syncedOf(save: PlayerSave) {
     inventoryCounts = [],
     pinnedSkills = STARTING_PINNED_SKILLS,
     tools = [],
+    riggedShortcuts = [],
     bank = [],
     bankCounts = [],
     quests: questProgress = {},
@@ -53,6 +54,7 @@ export function syncedOf(save: PlayerSave) {
     ...fields,
     pinnedSkills: new ArraySchema(...pinnedSkills),
     tools: new ArraySchema(...tools),
+    riggedShortcuts: new ArraySchema(...riggedShortcuts),
     inventory: new ArraySchema(...inventory),
     // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
     inventoryCounts: new ArraySchema(

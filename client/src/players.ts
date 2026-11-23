@@ -1,11 +1,5 @@
 import { Callbacks, type Room } from "@colyseus/sdk";
-import {
-  itemParts,
-  OBSTACLES,
-  obstacleLanding,
-  TICK_MS,
-  type TileKind,
-} from "@runic/shared";
+import { itemParts, type TileKind } from "@runic/shared";
 import type { WorldRoom } from "../../server/src/WorldRoom.ts";
 import {
   addSeeThroughOutline,
@@ -13,6 +7,7 @@ import {
   type loadCharacters,
 } from "./characters.ts";
 import type * as THREE from "three";
+import { crossingShown } from "./crossings.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
 import { camera, focusOn, scene } from "./scene.ts";
@@ -62,17 +57,11 @@ export function showPlayers(
       const action = player?.action;
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;
-      const obstacle =
-        action === "crossing" && player
-          ? tiles[player.y]?.[player.x]?.obstacle
-          : undefined;
+      const tile = player && tiles[player.y]?.[player.x];
       figure.update(
         now,
-        obstacle && player
-          ? {
-              landing: obstacleLanding(obstacle, player),
-              ms: OBSTACLES[obstacle].ticks * TICK_MS,
-            }
+        action === "crossing" && tile
+          ? crossingShown(tile, player, player.agilityXp)
           : undefined,
       );
       hitBoxes

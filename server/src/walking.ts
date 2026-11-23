@@ -57,14 +57,12 @@ export class Walking {
       case "opening":
         goNextTo(intent);
         break;
-      case "approachingObstacle":
-        unsynced.path = findPath(
-          this.world.tiles,
-          player,
-          this.agility.startOf(intent.obstacle),
-        );
-        unsynced.action = intent;
+      case "approachingObstacle": {
+        const approach = this.agility.approach(intent.obstacle, player);
+        unsynced.path = approach?.path ?? [];
+        unsynced.action = approach && { ...intent, from: approach.from };
         break;
+      }
       case "taking": {
         // Onto its tile, not next to it. It may have gone since the intent arrived.
         const groundItem = this.world.state.groundItems.get(intent.groundItem);

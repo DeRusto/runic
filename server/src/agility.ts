@@ -1,65 +1,182 @@
 import {
   COURSE_LAP_XP,
   COURSE_ORDER,
+  crossingFrom,
+  crossRefusal,
   isObstacleKind,
   OBSTACLES,
-  obstacleLanding,
+  removeItems,
+  respawnTile,
+  RIGGING_ITEM,
+  shortcutFailPercent,
+  type Crosser,
   type ObstacleKind,
   type Tile,
+  type TileKind,
 } from "@runic/shared";
-import type { QueuedAction } from "./playerActions.ts";
+import { legalSteps, pathToNearest } from "./pathfinding.ts";
+import type { Crossing, QueuedAction } from "./playerActions.ts";
 import type { World } from "./worldContext.ts";
 
-/** Starts and finishes authoritative crossings and tracks each player's course lap. */
+const sameTile = (a: Tile, b: Tile) => a.x === b.x && a.y === b.y;
+
+/** Numbers each walkable area of the region: tiles a player can walk between share a number. */
+function areasOf(tiles: TileKind[][]) {
+  const areas = tiles.map((row) => row.map(() => -1));
+  let next = 0;
+  tiles.forEach((row, y) =>
+    row.forEach((tile, x) => {
+      if (tile.blocks || areas[y]![x] !== -1) return;
+      areas[y]![x] = next;
+      const queue: Tile[] = [{ x, y }];
+      for (const at of queue)
+        for (const step of legalSteps(tiles, at)) {
+          if (areas[step.y]![step.x] !== -1) continue;
+          areas[step.y]![step.x] = next;
+          queue.push(step);
+        }
+      next++;
+    }),
+  );
+  return areas;
+}
+
+/** Starts and finishes authoritative crossings, rigs shortcuts and tracks each player's course lap. */
 export class Agility {
-  private readonly starts = new Map<ObstacleKind, Tile>();
+  /** Where each obstacle can be crossed from: its start, and a shortcut's far end too. */
+  private readonly ends = new Map<ObstacleKind, Tile[]>();
+
+  /** Each walkable tile's area: tiles a player can walk between share a number (Agility spec §3). */
+  private readonly areas: number[][];
 
   constructor(private readonly world: World) {
+    this.areas = areasOf(world.tiles);
     world.tiles.forEach((row, y) =>
-      row.forEach(({ obstacle }, x) => {
-        if (obstacle) this.starts.set(obstacle, { x, y });
+      row.forEach(({ obstacle, obstacleEnd }, x) => {
+        const kind = obstacle ?? obstacleEnd;
+        if (kind)
+          this.ends.set(kind, [...(this.ends.get(kind) ?? []), { x, y }]);
       }),
     );
   }
 
-  crossIntent(obstacle: unknown): QueuedAction | undefined {
-    if (isObstacleKind(obstacle) && this.starts.has(obstacle))
-      return { kind: "approachingObstacle", obstacle };
+  /** A click on an obstacle, straight off the network, unless the client should already have refused it. */
+  crossIntent(id: string, obstacle: unknown): QueuedAction | undefined {
+    if (!isObstacleKind(obstacle) || !this.ends.has(obstacle)) return;
+    if (crossRefusal(obstacle, this.world.player(id))) return;
+    return { kind: "approachingObstacle", obstacle };
   }
 
-  /** The start of an obstacle already validated by the crossing intent. */
-  startOf(obstacle: ObstacleKind) {
-    return this.starts.get(obstacle)!;
+  /** The way to the end of the obstacle the player reaches in the fewest steps, if any. */
+  approach(obstacle: ObstacleKind, player: Tile) {
+    const path = pathToNearest(
+      this.world.tiles,
+      player,
+      this.ends.get(obstacle)!,
+    );
+    return path && { from: path.at(-1) ?? { x: player.x, y: player.y }, path };
   }
 
-  /** Starts the crossing on arrival. The busy state holds the player until the landing tick. */
+  /**
+   * Where a player loaded inside a pocket must stand instead: the outer end of its shortcut, when
+   * they can't cross any shortcut back out. A save from before the pocket was walled in can leave
+   * a player there (Agility spec §3). Undefined when they can stay.
+   */
+  strandedExit(player: Crosser & Tile): Tile | undefined {
+    const areaAt = ({ x, y }: Tile) => this.areas[y]?.[x];
+    const area = areaAt(player);
+    if (area === undefined || area === areaAt(respawnTile(this.world.tiles)))
+      return undefined;
+    const exits = [...this.ends].flatMap(([kind, ends]) =>
+      ends
+        .filter((end) => areaAt(end) === area)
+        .map((end) => ({
+          kind,
+          outside: crossingFrom(this.world.tiles[end.y]![end.x]!, end)!.landing,
+        })),
+    );
+    if (exits.some(({ kind }) => !crossRefusal(kind, player))) return undefined;
+    return exits[0]?.outside;
+  }
+
+  /** Starts the crossing on arrival, and finishes it on the landing tick once the busy state ends. */
   advance() {
     for (const [id, unsynced] of this.world.unsyncedPlayers) {
-      const player = this.world.player(id);
       const { crossing, action } = unsynced;
       if (crossing) {
         if (this.world.isBusy(id)) continue;
         unsynced.crossing = undefined;
-        Object.assign(player, obstacleLanding(crossing, player));
-        this.awardExperience(id, crossing);
+        this.land(id, crossing);
       } else if (
         action?.kind === "approachingObstacle" &&
         !unsynced.path.length
       ) {
-        const start = this.startOf(action.obstacle);
-        if (player.x !== start.x || player.y !== start.y) {
-          this.world.clearAction(id);
-          continue;
-        }
-        this.world.makeBusy(id, OBSTACLES[action.obstacle].ticks, {
-          hittable: false,
-        });
-        unsynced.crossing = action.obstacle;
+        this.begin(id, action.obstacle, action.from);
       }
     }
   }
 
-  private awardExperience(id: string, obstacle: ObstacleKind) {
+  private begin(id: string, obstacle: ObstacleKind, from: Tile) {
+    const player = this.world.player(id);
+    const crossing = crossingFrom(this.world.tiles[from.y]![from.x]!, from);
+    if (!sameTile(player, from) || crossing?.obstacle !== obstacle) {
+      this.world.clearAction(id);
+      return;
+    }
+    // A rope dropped on the way, say: the client's check came too early.
+    const refusal = crossRefusal(obstacle, player);
+    if (refusal) {
+      this.world.clearAction(id);
+      this.world.tell(id, refusal);
+      return;
+    }
+    this.rigIfNeeded(id, obstacle);
+    this.world.makeBusy(id, OBSTACLES[obstacle].ticks, { hittable: false });
+    this.world.unsynced(id).crossing = { ...crossing, from: { ...from } };
+  }
+
+  /** The first crossing of a rope shortcut ties a rope there for this player, for good. */
+  private rigIfNeeded(id: string, obstacle: ObstacleKind) {
+    const player = this.world.player(id);
+    if (
+      !OBSTACLES[obstacle].shortcut?.rope ||
+      player.riggedShortcuts.includes(obstacle)
+    )
+      return;
+    removeItems(player.inventory, player.inventoryCounts, RIGGING_ITEM, 1);
+    player.riggedShortcuts.push(obstacle);
+    this.world.tell(
+      id,
+      `You tie a rope to the ${OBSTACLES[obstacle].name.toLowerCase()}. It stays rigged for you.`,
+    );
+  }
+
+  private land(id: string, { obstacle, from, landing }: Crossing) {
+    const player = this.world.player(id);
+    const { name, shortcut } = OBSTACLES[obstacle];
+    if (
+      shortcut &&
+      this.world.random() * 100 <
+        shortcutFailPercent(obstacle, player.agilityXp)
+    ) {
+      // Never fatal (#234): the hit stops at 1 health.
+      const damage = Math.max(0, Math.min(shortcut.failHit, player.health - 1));
+      player.health -= damage;
+      Object.assign(player, from);
+      this.world.events.push({ type: "slipped", player: id, damage });
+      this.world.tell(
+        id,
+        `You slip on the ${name.toLowerCase()} and land back where you started.`,
+      );
+      return;
+    }
+    Object.assign(player, landing);
+    if (shortcut)
+      this.world.earnXp(player, "agilityXp", OBSTACLES[obstacle].xp);
+    else this.awardCourseExperience(id, obstacle);
+  }
+
+  private awardCourseExperience(id: string, obstacle: ObstacleKind) {
     const unsynced = this.world.unsynced(id);
     const progress = unsynced.courseProgress ?? 0;
     const next =

@@ -1,4 +1,9 @@
-import { isObstacleKind, obstacleLanding } from "./agility.ts";
+import {
+  isObstacleKind,
+  OBSTACLES,
+  obstacleLanding,
+  type ObstacleKind,
+} from "./agility.ts";
 import { VILLAGERS } from "./dialogue.ts";
 import { MARKS } from "./thieving.ts";
 import { STALLS } from "./stalls.ts";
@@ -239,7 +244,7 @@ export function loadRegion(
   const rectangles = placements.objects.filter((o) => o.type === "sitePool");
   const pools = rectangles.map(readPool);
   const taken = new Set<string>();
-  const obstacles = new Map<string, Tile>();
+  const obstacles = new Map<ObstacleKind, Tile>();
   for (const object of placements.objects) {
     if (object.type === "sitePool") continue;
     const x = object.x / map.tilewidth;
@@ -302,8 +307,14 @@ export function loadRegion(
     pools.flatMap(({ spots }) => spots.map(({ x, y }) => `${x},${y}`)),
   );
   for (const [name, { x, y }] of obstacles) {
-    if (tiles[y]?.[x]?.blocks !== false || poolSpots.has(`${x},${y}`))
+    const landing = tiles[y]?.[x];
+    if (landing?.blocks !== false || poolSpots.has(`${x},${y}`))
       fail(`${name} needs a clear landing at ${x},${y}`);
+    // A shortcut is crossed back from its far end, so that end must belong to it alone.
+    if (!OBSTACLES[name].shortcut) continue;
+    if (landing.obstacle || landing.obstacleEnd)
+      fail(`${name} ends on another obstacle at ${x},${y}`);
+    landing.obstacleEnd = name;
   }
   if (placements.objects.filter((o) => o.type === "respawn").length !== 1)
     fail("needs exactly one respawn");

@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, and Agility's (#234).
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234) and its rigged shortcuts.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -43,8 +43,9 @@ const LATEST_COLUMNS = [
   "jewelsmithing_xp",
   "thieving_xp",
   "agility_xp",
+  "rigged_shortcuts",
 ];
-const LATEST_MIGRATIONS = 19;
+const LATEST_MIGRATIONS = 20;
 
 /** Makes the melee split pending again: Combat's column back, and Attack's, Strength's and the stance gone. */
 function unapplySplit(sqlite: DatabaseSync) {
@@ -193,6 +194,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       questPoints: 0,
       identifiesEssence: false,
       stance: "balanced",
+      riggedShortcuts: [],
     });
     await database.shutdown();
   });
@@ -257,11 +259,12 @@ describe("a save from just before the melee split", () => {
   async function splitFrom(pinnedSkills: string[]) {
     await boot();
     const sqlite = new DatabaseSync(path);
-    // Agility's column came after the split, so it goes first.
+    // Agility's columns came after the split, so they go first.
+    sqlite.exec("ALTER TABLE players DROP COLUMN rigged_shortcuts");
     sqlite.exec("ALTER TABLE players DROP COLUMN agility_xp");
     unapplySplit(sqlite);
     sqlite.exec(
-      "DELETE FROM __drizzle_migrations WHERE id IN (SELECT id FROM __drizzle_migrations ORDER BY id DESC LIMIT 2)",
+      "DELETE FROM __drizzle_migrations WHERE id IN (SELECT id FROM __drizzle_migrations ORDER BY id DESC LIMIT 3)",
     );
     sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
       VALUES (8, 'Fighter', 'fighter', 'x', 0)`);
@@ -343,6 +346,33 @@ describe("a save from just before the melee split", () => {
     sim.addPlayer("a", readSave(8)!, "Fighter");
     // 0.25 × (5 + 1 + 21) + 0.325 × (20 + 20) = 19.75
     expect(combatLevel(sim.state.players.get("a")!)).toBe(19);
+    await database.shutdown();
+  });
+});
+
+describe("a save from just before rigged shortcuts", () => {
+  test("it keeps its Agility and everything else, and starts with no shortcut rigged", async () => {
+    await boot();
+    const sqlite = new DatabaseSync(path);
+    sqlite.exec("ALTER TABLE players DROP COLUMN rigged_shortcuts");
+    sqlite.exec(
+      "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+    );
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (9, 'Climber', 'climber', 'x', 0)`);
+    sqlite.exec(`INSERT INTO players (account_id, attack_xp, defense_xp, herblaw_xp, hitpoints_xp, agility_xp, x, y, health, inventory)
+      VALUES (9, 100, 200, 0, 20000, 18050, 36, 46, 900, '["rope"]')`);
+    sqlite.close();
+    const database = await openDatabase();
+    expect(readSave(9)).toMatchObject({
+      agilityXp: 18050,
+      attackXp: 100,
+      x: 36,
+      y: 46,
+      health: 900,
+      inventory: ["rope"],
+      riggedShortcuts: [],
+    });
     await database.shutdown();
   });
 });

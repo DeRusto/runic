@@ -569,7 +569,7 @@ A thread a Spider sometimes leaves behind, needed to make rope and to augment ca
 _Avoid_: Web, thread
 
 **Rope**:
-A length spun from two spider silk at the workbench. Nothing uses it yet: it waits for Agility's shortcuts, and sells at the general store until then.
+A length spun from two spider silk at the workbench. It rigs the Bramble swing and the Crag line, two of Agility's shortcuts: the first crossing spends one, and that shortcut stays rigged for that player for good. It also goes into torches, bows and capes, and sells at the general store.
 _Avoid_: Cord, line
 
 **Torch**:

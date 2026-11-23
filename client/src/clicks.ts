@@ -1,5 +1,6 @@
 import {
   CROSS_INTENT,
+  crossRefusal,
   OBSTACLES,
   GATHERING,
   offers,
@@ -140,6 +141,10 @@ export function walkOnClick(
     y,
   }: NonNullable<ReturnType<typeof obstacleUnder>>) => {
     if (crossing()) return;
+    const me = room.state.players.get(room.sessionId);
+    if (!me) return;
+    const refused = crossRefusal(obstacle, me);
+    if (refused) return printChatLine(refused);
     showMarker(x, y);
     room.send(CROSS_INTENT, obstacle);
   };
@@ -252,14 +257,15 @@ export function walkOnClick(
     const strongbox = strongboxUnder(raycaster);
     if (strongbox)
       return openStrongbox(strongbox.strongbox, strongbox.x, strongbox.y);
-    const obstacle = obstacleUnder(raycaster);
-    if (obstacle) return cross(obstacle);
+    // Before the obstacle: a fire can burn on an obstacle's tile, which the obstacle also claims.
     const fire = fireUnder(raycaster);
     if (fire && me) {
       showMarker(fire.x, fire.y);
       openSmithingPanel("fire", { x: fire.x, y: fire.y });
       return;
     }
+    const obstacle = obstacleUnder(raycaster);
+    if (obstacle) return cross(obstacle);
     const villager = villagerUnder(raycaster);
     if (villager) {
       showMarker(villager.x, villager.y);

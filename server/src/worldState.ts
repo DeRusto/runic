@@ -33,6 +33,8 @@ export const Player = schema(
     identifiesEssence: t.boolean().default(false),
     /** In any order; the sheet's order decides how they show. */
     pinnedSkills: t.array("string"),
+    /** The shortcuts this player has rigged with a rope, which stay open for them for good (Agility spec §3). */
+    riggedShortcuts: t.array("string"),
     /** Where melee experience goes (melee rework spec §3). */
     stance: t.string<Stance>().default(STARTING_STANCE),
     health: t.uint16(),
