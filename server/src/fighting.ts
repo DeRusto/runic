@@ -4,12 +4,16 @@ import {
   enemyHit,
   FIGHT_BACK_DELAY_TICKS,
   GEAR_SLOTS,
+  inReach,
   wornCountOf,
   isStance,
   itemTag,
   MIGHT_POTION_HIT,
   PLAYER_DEAD_TICKS,
   playerHit,
+  rangedAttackRefusal,
+  rangedHit,
+  rangedWeaponOf,
   respawnTile,
   SWING_INTERVAL_TICKS,
   type LootWon,
@@ -17,7 +21,7 @@ import {
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { dropFromSlot } from "./dropping.ts";
-import { wear } from "./gear.ts";
+import { spendArrow, wear } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import type { Quests } from "./quests.ts";
@@ -40,7 +44,7 @@ export class Fighting {
     if (player && isStance(stance)) player.stance = stance;
   }
 
-  /** After the moves, so the first swing lands on the tick the player arrives. */
+  /** After the moves, so the first swing or shot lands on the tick the player arrives. */
   advancePlayerSwings() {
     for (const [id, unsynced] of this.world.unsyncedPlayers) {
       const { action } = unsynced;
@@ -48,17 +52,36 @@ export class Fighting {
       const player = this.world.state.players.get(id)!;
       const enemy = this.world.state.enemies.get(action.enemy)!;
       if (this.world.state.tick < unsynced.nextSwingTick) continue;
-      if (!nextTo(this.world.tiles, player, enemy)) continue;
-      unsynced.nextSwingTick = this.world.state.tick + SWING_INTERVAL_TICKS;
-      this.playerSwing(id, player, action.enemy, enemy);
+      const ranged = rangedWeaponOf(player);
+      if (
+        ranged
+          ? !inReach(player, enemy, ranged.reachTiles)
+          : !nextTo(this.world.tiles, player, enemy)
+      )
+        continue;
+      if (this.stopForRefusal(id, player)) continue;
+      unsynced.nextSwingTick =
+        this.world.state.tick + (ranged?.intervalTicks ?? SWING_INTERVAL_TICKS);
+      this.playerSwing(id, player, action.enemy, enemy, !!ranged);
     }
   }
 
+  /** Ends the attack and tells the player why, if the weapon in hand can't attack: a bow with no arrows (Ranged spec §3). */
+  private stopForRefusal(id: string, player: SyncedPlayer) {
+    const refusal = rangedAttackRefusal(player);
+    if (!refusal) return false;
+    this.world.clearAction(id);
+    this.world.tell(id, refusal);
+    return true;
+  }
+
+  /** One swing, or one bow shot when `ranged`, which spends an arrow hit or miss (Ranged spec §3). */
   private playerSwing(
     id: string,
     player: SyncedPlayer,
     enemyId: string,
     enemy: InstanceType<typeof Enemy>,
+    ranged: boolean,
   ) {
     this.world.lock(id);
     // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
@@ -66,13 +89,15 @@ export class Fighting {
       this.world.unsyncedPlayers.get(id)!.potion?.virtue === "might"
         ? MIGHT_POTION_HIT
         : 0;
-    const { damage, critical, xp } = playerHit(
-      player,
-      player.stance,
-      might,
-      enemy.health,
-      this.world.random,
-    );
+    const { damage, critical, xp } = ranged
+      ? rangedHit(player, might, enemy.health, this.world.random)
+      : playerHit(
+          player,
+          player.stance,
+          might,
+          enemy.health,
+          this.world.random,
+        );
     for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
     this.world.fitHealth(id);
     this.world.events.push({
@@ -82,6 +107,8 @@ export class Fighting {
       damage,
       critical,
     });
+    // With none left, it stops now and says so; the enemy fights on as usual.
+    if (ranged && !spendArrow(this.world, id)) this.stopForRefusal(id, player);
     const loot = this.enemies.takeHit(
       this.world.state.tick,
       enemyId,
@@ -185,6 +212,8 @@ export class Fighting {
   private fightBack(id: string, player: SyncedPlayer, enemyId: string) {
     const unsynced = this.world.unsyncedPlayers.get(id)!;
     if (unsynced.dropped || this.world.isBusy(id)) return;
+    // A bow with nothing to fire stays idle; the chat said so when the arrows ran out.
+    if (rangedAttackRefusal(player)) return;
     unsynced.action = { kind: "fighting", enemy: enemyId };
     unsynced.nextSwingTick = Math.max(
       unsynced.nextSwingTick,

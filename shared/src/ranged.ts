@@ -25,6 +25,10 @@ export function rangedWeaponOf(player: Worn) {
     : { reachTiles, intervalTicks };
 }
 
+/** Why the weapon in hand can't attack: a bow with an empty ammo slot (Ranged spec §3). Undefined when it can, melee included. */
+export const rangedAttackRefusal = (player: Worn) =>
+  rangedWeaponOf(player) && !player.ammo ? OUT_OF_ARROWS_LINE : undefined;
+
 /** Whether `to` is within `reachTiles` of `from`, a diagonal step counting as one tile (#270). Sight comes later. */
 export const inReach = (from: Tile, to: Tile, reachTiles: number) =>
   tilesApart(from, to) <= reachTiles;

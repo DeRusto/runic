@@ -28,6 +28,30 @@ export function wear(
     player[gearCountField(gearSlot)] = item ? count : 0;
 }
 
+/**
+ * Spends one arrow from the ammo slot, hit or miss. When the last one goes, the slot refills
+ * with up to a stack of the same arrow from the inventory, taken slot by slot in order (owner,
+ * 2026-11-23). Returns whether any arrows are left to fire.
+ */
+export function spendArrow(world: World, id: string) {
+  const player = world.player(id);
+  const arrow = player.ammo;
+  let count = player.ammoCount - 1;
+  const refilling = count === 0;
+  const stack = ITEMS[itemParts(arrow).base].stack;
+  player.inventory.forEach((item, slot) => {
+    if (!refilling || count === stack || item !== arrow) return;
+    const moved = Math.min(stack - count, player.inventoryCounts[slot]!);
+    count += moved;
+    player.inventoryCounts[slot]! -= moved;
+    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
+    // A drop waiting on the slot meant the stack as it was, as for any move.
+    world.forgetDropOn(id, slot);
+  });
+  wear(player, "ammo", count ? arrow : "", count);
+  return count > 0;
+}
+
 /** Putting gear on and taking it off, which can change max health (spec §2, §4). */
 export class Gear {
   constructor(private readonly world: World) {}
