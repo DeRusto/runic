@@ -69,9 +69,9 @@ type Gear = {
   armourPercent?: number;
   /** The tenths of a point of Avoidance the piece itself gives, an amulet's (#217). */
   avoidanceTenths?: number;
-  /** A ranged weapon's reach, in 8-way tiles; a weapon without one fights in melee (Ranged spec §3). */
+  /** A ranged weapon's reach, in 8-way tiles; a weapon without one fights in melee (Ranged spec §4). */
   reachTiles?: number;
-  /** A ranged weapon's ticks between shots (Ranged spec §3). */
+  /** A ranged weapon's ticks between shots (Ranged spec §4). */
   intervalTicks?: number;
 };
 
@@ -83,12 +83,12 @@ const sword = (level: number, hitBonus: number): Gear => ({
   hitBonus,
 });
 
-/** How far a bow shoots, in 8-way tiles (#270, Ranged spec §3). */
+/** How far a bow shoots, in 8-way tiles (#270, Ranged spec §4). */
 export const BOW_REACH_TILES = 6;
-/** How often a bow fires, a melee swing's pace (#270, Ranged spec §3). */
+/** How often a bow fires, a melee swing's pace (#270, Ranged spec §4). */
 export const BOW_INTERVAL_TICKS = 8;
 
-/** A bow gates on Ranged and carries Accuracy, never a hit bonus: the arrow decides how hard a shot hits (Ranged spec §2). It shoots from its reach (§3). */
+/** A bow gates on Ranged and carries Accuracy, never a hit bonus: the arrow decides how hard a shot hits (Ranged spec §2). It shoots from its reach (§4). */
 const bow = (level: number, accuracy: number): Gear => ({
   slot: "weapon",
   gate: "Ranged",

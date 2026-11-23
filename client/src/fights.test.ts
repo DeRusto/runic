@@ -18,6 +18,7 @@ const {
     tile: { x: 3, y: 2 },
     moving: false,
     once: vi.fn(),
+    face: vi.fn(),
     onceWithin: vi.fn(() => 2400),
     work: undefined as unknown,
   },
@@ -224,7 +225,7 @@ describe("the playerSwing event", () => {
       state: {
         tick,
         players: new Map([["a", { weapon, x: 1, y: 1 }]]),
-        enemies: new Map([["0", { kind: "spider" }]]),
+        enemies: new Map([["0", { kind: "spider", x: 7, y: 1 }]]),
       },
     } as unknown as WorldConnection);
     onMessage.mock.calls[0]![1](events);
@@ -253,6 +254,15 @@ describe("the playerSwing event", () => {
     expect(enemy.flash).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(enemy.flash).toHaveBeenCalledOnce();
+  });
+
+  test("turns the attacker to face the enemy, as a shot that ends the fight has already cleared their target", () => {
+    send([swing(2)], "birchBow");
+    expect(figure.face).toHaveBeenLastCalledWith({
+      kind: "spider",
+      x: 7,
+      y: 1,
+    });
   });
 
   test("a critical hit shows as one at contact", () => {

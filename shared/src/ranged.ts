@@ -14,7 +14,7 @@ import { virtueOf } from "./virtues.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
 
-/** What the chat says when a bow has no arrows to fire, at the click or mid-fight (Ranged spec §3). */
+/** What the chat says when a bow has no arrows to fire, at the click or mid-fight (Ranged spec §4). */
 export const OUT_OF_ARROWS_LINE = "You have no arrows left to fire.";
 
 /** The reach and fire rate of the ranged weapon in hand, or undefined for a sword or bare hands, which fight in melee (#271). */
@@ -25,7 +25,7 @@ export function rangedWeaponOf(player: Worn) {
     : { reachTiles, intervalTicks };
 }
 
-/** Why the weapon in hand can't attack: a bow with an empty ammo slot (Ranged spec §3). Undefined when it can, melee included. */
+/** Why the weapon in hand can't attack: a bow with an empty ammo slot (Ranged spec §4). Undefined when it can, melee included. */
 export const rangedAttackRefusal = (player: Worn) =>
   rangedWeaponOf(player) && !player.ammo ? OUT_OF_ARROWS_LINE : undefined;
 
@@ -35,7 +35,7 @@ export const inReach = (from: Tile, to: Tile, reachTiles: number) =>
 
 /**
  * A ranged shot's chance (0..1) to land, a landed shot's min and max, and its bonus: melee's curves read from Ranged
- * (#268, Ranged spec §3). Worn Accuracy is the bow's and the ring's; the bonus is the arrow's
+ * (#268, Ranged spec §4). Worn Accuracy is the bow's and the ring's; the bonus is the arrow's
  * hit bonus plus worn Might.
  */
 export function rangedHitOf(player: { rangedXp: number } & Worn) {

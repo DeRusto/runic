@@ -28,7 +28,8 @@ export type Crossing = { obstacle: ObstacleKind; from: Tile; landing: Tile };
  */
 export type UnsyncedAction =
   | ApproachObstacle
-  | { kind: "fighting"; enemy: string }
+  /** `ranged` when it began with a bow, so taking the bow off ends it rather than turning it to melee (#277). */
+  | { kind: "fighting"; enemy: string; ranged: boolean }
   | { kind: GatheringSkill; site: string }
   | {
       kind: "visiting";

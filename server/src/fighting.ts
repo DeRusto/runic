@@ -53,6 +53,11 @@ export class Fighting {
       const enemy = this.world.state.enemies.get(action.enemy)!;
       if (this.world.state.tick < unsynced.nextSwingTick) continue;
       const ranged = rangedWeaponOf(player);
+      // Rechecked before every attack, so nothing is spent on a gone target or a bow taken off (#277).
+      if (enemy.state === "dead" || (action.ranged && !ranged)) {
+        this.world.clearAction(id);
+        continue;
+      }
       if (
         ranged
           ? !inReach(player, enemy, ranged.reachTiles)
@@ -66,7 +71,7 @@ export class Fighting {
     }
   }
 
-  /** Ends the attack and tells the player why, if the weapon in hand can't attack: a bow with no arrows (Ranged spec §3). */
+  /** Ends the attack and tells the player why, if the weapon in hand can't attack: a bow with no arrows (Ranged spec §4). */
   private stopForRefusal(id: string, player: SyncedPlayer) {
     const refusal = rangedAttackRefusal(player);
     if (!refusal) return false;
@@ -75,7 +80,7 @@ export class Fighting {
     return true;
   }
 
-  /** One swing, or one bow shot when `ranged`, which spends an arrow hit or miss (Ranged spec §3). */
+  /** One swing, or one bow shot when `ranged`, which spends an arrow hit or miss (Ranged spec §4). */
   private playerSwing(
     id: string,
     player: SyncedPlayer,
@@ -214,7 +219,11 @@ export class Fighting {
     if (unsynced.dropped || this.world.isBusy(id)) return;
     // A bow with nothing to fire stays idle; the chat said so when the arrows ran out.
     if (rangedAttackRefusal(player)) return;
-    unsynced.action = { kind: "fighting", enemy: enemyId };
+    unsynced.action = {
+      kind: "fighting",
+      enemy: enemyId,
+      ranged: !!rangedWeaponOf(player),
+    };
     unsynced.nextSwingTick = Math.max(
       unsynced.nextSwingTick,
       this.world.state.tick + FIGHT_BACK_DELAY_TICKS,

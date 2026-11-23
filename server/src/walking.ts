@@ -37,12 +37,17 @@ export class Walking {
     };
     switch (intent.kind) {
       case "fighting": {
-        // A bow with no arrows can't start an attack (Ranged spec §3).
+        // A bow with no arrows can't start an attack (Ranged spec §4).
         const refusal = rangedAttackRefusal(player);
         if (refusal) {
           this.world.clearAction(id);
           this.world.tell(id, refusal);
-        } else unsynced.action = { kind: "fighting", enemy: intent.enemy };
+        } else
+          unsynced.action = {
+            kind: "fighting",
+            enemy: intent.enemy,
+            ranged: !!rangedWeaponOf(player),
+          };
         break;
       }
       case "making": {
@@ -120,11 +125,16 @@ export class Walking {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
         // stopping short of that is exactly "next to" (spec D1). A bow stops once in reach (#270).
         const enemy = this.world.state.enemies.get(unsynced.action.enemy)!;
+        const path = findPath(this.world.tiles, player, enemy);
         const ranged = rangedWeaponOf(player);
+        // Up to the first tile in reach, which may come before the enemy's way is clear.
+        const reached = ranged
+          ? [player, ...path].findIndex((tile) =>
+              inReach(tile, enemy, ranged.reachTiles),
+            )
+          : -1;
         unsynced.path =
-          ranged && inReach(player, enemy, ranged.reachTiles)
-            ? []
-            : findPath(this.world.tiles, player, enemy).slice(0, -1);
+          reached >= 0 ? path.slice(0, reached) : path.slice(0, -1);
       } else if (unsynced.action?.kind === "following") {
         // Next to, never on, the target's tile: so a follower on it steps off.
         const target = this.world.state.players.get(unsynced.action.player)!;

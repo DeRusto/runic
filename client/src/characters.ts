@@ -444,6 +444,12 @@ export class Figure {
       .multiplyScalar(NUDGE);
   }
 
+  /** Turns toward `at` now, for an attack whose target the fight may already have cleared. */
+  face(at: Tile) {
+    if (at.x !== this.tile.x || at.y !== this.tile.y)
+      this.yaw = Math.atan2(at.x - this.tile.x, at.y - this.tile.y);
+  }
+
   /** Call once a frame, with the frame's timestamp in ms. */
   update(now: number, crossing?: { landing: Tile; ms: number }) {
     const { tile, model, from, to, fightTile } = this;

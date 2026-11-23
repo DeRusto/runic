@@ -215,3 +215,102 @@ describe("fighting back", () => {
     expect(me(s).ammoCount).toBe(7);
   });
 });
+
+// A tree at (3,1) walls the archer off from the Spider at (8,1), 7 tiles away: one step to (2,1) puts it in reach.
+const WALLED_OFF = ["TTTTTTTTTTTT", "TR.T....S..T", "TTTTTTTTTTTT"];
+// A Tarn Ox, which never moves or fights back, 6 tiles off at (7,1), in a long corridor.
+const OX = ["TTTTTTTTTTTTTTTTT", "TR.....X........T", "TTTTTTTTTTTTTTTTT"];
+
+describe("walking into reach", () => {
+  test("an archer walled off from the enemy steps to the nearest tile in reach and shoots", () => {
+    const s = archer({ rows: WALLED_OFF });
+    s.queueTarget("a", "0");
+    const events = run(s, 3);
+    expect(me(s).x).toBe(2);
+    expect(shotTicks(events)).toEqual([1]);
+  });
+
+  test("a target that moves out of reach mid-fight is walked back into reach before the next shot, spending nothing on the way", () => {
+    const s = archer({ rows: OX });
+    s.queueTarget("a", "0");
+    run(s, 1);
+    expect(me(s).ammoCount).toBe(9);
+    // It is now 13 tiles off: 7 steps, a tile per 2 ticks, puts it back in reach on tick 14.
+    spider(s).x = 14;
+    const walking = run(s, 12);
+    expect(shotTicks(walking)).toEqual([]);
+    expect(me(s)).toMatchObject({ ammoCount: 9, rangedXp: 0, x: 7 });
+    expect(shotTicks(run(s, 1))).toEqual([14]);
+    expect(me(s)).toMatchObject({ ammoCount: 8, x: 8 });
+  });
+});
+
+describe("the check before each shot", () => {
+  test("a target killed by someone else before the shot ends the attack, with no arrow spent and no experience", () => {
+    // "b" swings a copper sword beside the Tarn Ox: a miss on tick 1, then 200 on tick 9, which kills it.
+    const s = archer({ rows: OX }, MISS, MISS, 0, 0, MISS);
+    s.addPlayer("b", {
+      x: 6,
+      y: 1,
+      defenseXp: 0,
+      herblawXp: 0,
+      hitpointsXp: 4050,
+      health: 1000,
+      weapon: "copperSword",
+      inventory: [],
+    });
+    s.queueTarget("b", "0");
+    run(s, 1);
+    // The archer's shots fall on ticks 2 and 10; the Tarn Ox dies on tick 9.
+    s.queueTarget("a", "0");
+    const events = run(s, 12);
+    expect(events.filter((e) => e.type === "playerSwing")).toMatchObject([
+      { player: "a", tick: 2 },
+      { player: "b", tick: 9 },
+    ]);
+    expect(me(s)).toMatchObject({ ammoCount: 9, rangedXp: 0, action: "" });
+  });
+
+  test("a bow taken off mid-fight stops the attack rather than swinging bare-handed", () => {
+    const s = archer({}, MISS, 0, 0, MISS);
+    s.queueTarget("a", "0");
+    run(s, 1);
+    s.takeOff("a", "weapon");
+    const events = run(s, 9);
+    expect(shotTicks(events)).toEqual([]);
+    expect(me(s)).toMatchObject({
+      ammoCount: 9,
+      attackXp: 0,
+      strengthXp: 0,
+      action: "",
+    });
+  });
+
+  test("arrows taken off mid-fight stop the attack with nothing spent, and the chat says why", () => {
+    const s = archer({});
+    s.queueTarget("a", "0");
+    run(s, 1);
+    s.takeOff("a", "ammo");
+    const events = run(s, 9);
+    expect(shotTicks(events)).toEqual([]);
+    expect(told(events)).toEqual([OUT_OF_ARROWS_LINE]);
+    expect(me(s).inventoryCounts[0]).toBe(9);
+    expect(me(s).action).toBe("");
+  });
+});
+
+describe("repeated attack intents", () => {
+  test("never shoot, spend or pay more than once a tick, nor faster than the bow fires", () => {
+    // Every roll is 0.2: each shot lands for 220 with no crit, paying 13 Ranged.
+    const s = archer({}, ...Array<number>(200).fill(0.2));
+    const events: ReturnType<typeof run> = [];
+    for (let tick = 0; tick < 9; tick++) {
+      s.queueTarget("a", "0");
+      s.queueTarget("a", "0");
+      s.queueTarget("a", "0");
+      events.push(...run(s, 1));
+    }
+    expect(shotTicks(events)).toEqual([1, 9]);
+    expect(me(s)).toMatchObject({ ammoCount: 8, rangedXp: 26 });
+  });
+});

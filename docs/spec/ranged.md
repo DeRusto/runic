@@ -67,7 +67,7 @@ A player's style is the weapon in hand: a bow shoots, and a sword or bare hands 
 | Reach | 6 tiles, a diagonal step counting as one (#270) | Next to the enemy |
 | Ticks between attacks | 8 (#270) | 8 |
 
-A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. Sight is the next ticket: until then, any enemy within reach can be shot, across walls included.
+A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk stops on the first tile in reach even when the enemy itself cannot be reached on foot, such as across a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). Sight is the next ticket: until then, any enemy within reach can be shot, across walls included.
 
 ### The hit
 
@@ -88,10 +88,16 @@ Each shot spends one arrow from the ammo slot, hit or miss. When a shot spends t
 
 When neither the slot nor the inventory holds any more of that arrow, the attack stops at once and the chat says "You have no arrows left to fire." The enemy keeps fighting as usual. A bow with an empty ammo slot cannot start an attack, with the same line, and a player in that state who is hit while idle does not fight back, since the line has already said why.
 
+### The check before each shot
+
+Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the bow's 8 ticks, as the timer between shots outlives each click.
+
+The client checks the empty-ammo refusal too and shows the line without sending the click, while the server's check stays the one that decides.
+
 ### Fighting back
 
 A player with a bow and arrows who is hit while idle fights back with the bow, under the same reach, fire rate and spending rules, 4 ticks after the enemy's swing, as a melee player does.
 
 ### On the client
 
-A bow shot plays the character's overhand cast clip, and its damage number, flash and nudge show at the enemy 1000 ms later, once the arrow would have flown. This is this build's choice of shot art, which #275 left open.
+A bow shot plays the character's overhand cast clip, and its damage number, flash and nudge show at the enemy 1000 ms later, once the arrow would have flown. The shooter turns to face the enemy on each shot, even one that ends the fight. This is this build's choice of shot art, which #275 left open.
