@@ -1,8 +1,8 @@
 # Runic: Ranged
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow. Sight, throwing knives, stances, recovery, the combat triangle and chasing come in later tickets and extend this page.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. Throwing knives, stances, recovery, the combat triangle and chasing come in later tickets and extend this page.
 
-The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate) and `shared/src/ranged.ts` (the ranged hit); where this page and those files disagree, the files win and this page is fixed.
+The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate) and `shared/src/ranged.ts` (the ranged hit) and `shared/src/sight.ts` (the tall tiles and the line of sight); where this page and those files disagree, the files win and this page is fixed.
 
 ## 1. The Ranged skill
 
@@ -67,7 +67,26 @@ A player's style is the weapon in hand: a bow shoots, and a sword or bare hands 
 | Reach | 6 tiles, a diagonal step counting as one (#270) | Next to the enemy |
 | Ticks between attacks | 8 (#270) | 8 |
 
-A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk goes to the nearest tile in reach, counted in steps, even when the enemy itself cannot be reached on foot, such as behind a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). Sight is the next ticket: until then, any enemy within reach can be shot, across walls included.
+A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk goes to the nearest tile in reach, counted in steps, even when the enemy itself cannot be reached on foot, such as behind a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). "In reach" here always means in reach and in sight, as the next section sets out.
+
+### Sight
+
+A shot needs a straight line from the centre of the shooter's tile to the centre of the target's that crosses no tall tile (#270, #278). The tall tiles are (owner, 2026-11-23):
+
+| Tall | On the map |
+| --- | --- |
+| House walls | Every wall tile of a house |
+| Trees | Tree props, and the trees Woodcutting fells |
+| Rocks | Rock props, ore veins and essence veins |
+| Runestone Hollow's ruins | Its columns and standing stones |
+
+Every other tile lets a shot pass: doors, water, bushes, the gate, stations, stalls, strongboxes, barrels, crates, lamps, the well, villagers, marks, enemies and players (owner, #278). So a player can shoot across the Lake but not through a house. A Woodcutting tree that has run out shows as a stump, which a shot passes over until the tree grows back, though the stump still blocks walking (owner, #286). A run-out vein still blocks a shot. A pooled tree or vein that has left its spot blocks nothing until it comes back.
+
+The line counts every tile it touches, even at a single corner, so a diagonal that squeezes past the corner of a wall is blocked; this build took the suggestion in #278. The shooter's and the target's own tiles never block. The check reads only the line between the two tiles, so it gives the same answer with shooter and target swapped. It lives in `shared` as `inSight`, for the ranged enemies of a later milestone to use too.
+
+A player who attacks a target in reach but out of sight walks to the nearest tile, counted in steps, from which the target is both in reach and in sight, then fires on the tick they arrive. A target that moves out of sight mid-fight is walked to again the same way, with the same check made fresh on every step. When no tile the player can walk to has the target in both, the attack is cancelled and the chat says "You can't get a clear shot at that." No shot fires, no arrow is spent and no experience is paid, and the player never walks forever.
+
+Sight is for shots only. A melee swing still needs the player next to the enemy, and enemies, which all fight in melee, check no sight.
 
 ### The hit
 

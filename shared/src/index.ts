@@ -280,6 +280,7 @@ export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";
 export * from "./ranged.ts";
+export * from "./sight.ts";
 export * from "./runecrafting.ts";
 export * from "./social.ts";
 export * from "./stations.ts";

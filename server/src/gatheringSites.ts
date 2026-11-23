@@ -158,6 +158,7 @@ export class GatheringSites {
       const { leftField } = GATHERING[site.skill];
       site.synced[leftField] = gatheringSource(site.skill, site.kind).holds;
       site.regrowTick = undefined;
+      delete this.world.tiles[site.y]![site.x]!.runOut;
     }
     // One with no free spot waits, and tries again next tick.
     for (const pool of this.pools)

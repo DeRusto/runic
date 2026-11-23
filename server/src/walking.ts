@@ -1,5 +1,6 @@
 import {
-  inReach,
+  canShootAt,
+  NO_CLEAR_SHOT_LINE,
   rangedAttackRefusal,
   rangedWeaponOf,
   stationOf,
@@ -128,16 +129,15 @@ export class Walking {
       const player = this.world.state.players.get(id)!;
       if (unsynced.action?.kind === "fighting") {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
-        // stopping short of that is exactly "next to" (spec D1). A bow walks to the nearest tile
-        // in reach, which a walk toward the enemy's own tile may never cross (#270).
+        // stopping short of that is exactly "next to" (spec D1).
         const enemy = this.world.state.enemies.get(unsynced.action.enemy)!;
         const ranged = rangedWeaponOf(player);
-        unsynced.path =
-          (ranged &&
-            pathToFirst(this.world.tiles, player, (tile) =>
-              inReach(tile, enemy, ranged.reachTiles),
-            )) ||
-          findPath(this.world.tiles, player, enemy).slice(0, -1);
+        if (ranged) {
+          if (!this.walkIntoShot(id, enemy, ranged.reachTiles)) continue;
+        } else {
+          const path = findPath(this.world.tiles, player, enemy);
+          unsynced.path = path.slice(0, -1);
+        }
       } else if (unsynced.action?.kind === "following") {
         // Next to, never on, the target's tile: so a follower on it steps off.
         const target = this.world.state.players.get(unsynced.action.player)!;
@@ -161,6 +161,25 @@ export class Walking {
       Object.assign(player, unsynced.path.shift());
       unsynced.nextStepTick = this.world.state.tick + WALK_TICKS_PER_TILE;
     }
+  }
+
+  /**
+   * Paths a bow to the nearest tile with the enemy in reach and in sight, which a walk toward the
+   * enemy's own tile may never cross (#270). With none to walk to, the attack is cancelled and
+   * the chat says why, so the player never walks forever (#278); false then.
+   */
+  private walkIntoShot(id: string, enemy: Tile, reachTiles: number) {
+    const unsynced = this.world.unsynced(id);
+    const path = pathToFirst(this.world.tiles, this.world.player(id), (tile) =>
+      canShootAt(this.world.tiles, tile, enemy, reachTiles),
+    );
+    if (path) {
+      unsynced.path = path;
+      return true;
+    }
+    this.world.clearAction(id);
+    this.world.tell(id, NO_CLEAR_SHOT_LINE);
+    return false;
   }
 
   /** After the swings, so each player's synced target and action show this tick's. */

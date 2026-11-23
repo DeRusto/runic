@@ -1,6 +1,8 @@
 import {
   EMPTY_SLOT,
   INVENTORY_SLOTS,
+  inSight,
+  NO_CLEAR_SHOT_LINE,
   OUT_OF_ARROWS_LINE,
   parseRegion,
   type WorldEvent,
@@ -216,18 +218,18 @@ describe("fighting back", () => {
   });
 });
 
-// A tree at (3,1) walls the archer off from the Spider at (8,1), 7 tiles away: one step to (2,1) puts it in reach.
-const WALLED_OFF = ["TTTTTTTTTTTT", "TR.T....S..T", "TTTTTTTTTTTT"];
-// The Spider at (1,1) is walled in; the archer at (8,1) can only reach (7,7), six tiles off on the diagonal.
+// Water at (3,1) walls the archer off from the Spider at (8,1), 7 tiles away, but not its arrows: one step to (2,1) puts it in reach.
+const WALLED_OFF = ["TTTTTTTTTTTT", "TR.~....S..T", "TTTTTTTTTTTT"];
+// The Spider at (1,1) is walled in by water; the archer at (8,1) can only reach (7,7), six tiles off on the diagonal.
 const DIAGONAL = [
   "TTTTTTTTTT",
-  "TSTTTTTTRT",
-  "TTTTTTTT.T",
-  "TTTTTTTT.T",
-  "TTTTTTTT.T",
-  "TTTTTTTT.T",
-  "TTTTTTTT.T",
-  "TTTTTTT..T",
+  "TS~~~~~~RT",
+  "T~~~~~~~.T",
+  "T~~~~~~~.T",
+  "T~~~~~~~.T",
+  "T~~~~~~~.T",
+  "T~~~~~~~.T",
+  "T~~~~~~..T",
   "TTTTTTTTTT",
 ];
 // A Tarn Ox, which never moves or fights back, 6 tiles off at (7,1), in a long corridor.
@@ -355,5 +357,131 @@ describe("repeated attack intents", () => {
     }
     expect(shotTicks(events)).toEqual([1, 9]);
     expect(me(s)).toMatchObject({ ammoCount: 8, rangedXp: 26 });
+  });
+});
+
+// A Tarn Ox, which never moves or fights back, 6 tiles off at (7,1) with `between` at (4,1).
+const behind = (between: string) => [
+  "TTTTTTTTTTTT",
+  `TR..${between}..X...T`,
+  "T..........T",
+  "TTTTTTTTTTTT",
+];
+
+describe("sight", () => {
+  test("a shot across water or bushes fires from where the archer stands", () => {
+    for (const between of "~b") {
+      const s = archer({ rows: behind(between) });
+      s.queueTarget("a", "0");
+      expect(shotTicks(run(s, 1)), between).toEqual([1]);
+      expect(me(s)).toMatchObject({ x: 1, y: 1 });
+    }
+  });
+
+  test("a shot through a house wall, tree, rock, vein or Woodcutting tree does not; the archer walks until the line is clear, then fires", () => {
+    for (const between of "HToceEg") {
+      const s = archer({ rows: behind(between) });
+      s.queueTarget("a", "0");
+      const events = run(s, 3);
+      // Two steps to (3,2), the nearest tile with a clear line past (4,1); the shot comes on arrival.
+      expect(shotTicks(events), between).toEqual([3]);
+      expect(me(s), between).toMatchObject({ x: 3, y: 2, ammoCount: 9 });
+    }
+  });
+
+  test("nothing is spent or paid while walking to a clear line", () => {
+    const s = archer({ rows: behind("H") });
+    s.queueTarget("a", "0");
+    run(s, 2);
+    expect(me(s)).toMatchObject({ ammoCount: 10, rangedXp: 0 });
+  });
+
+  test("a target that moves out of sight mid-fight is walked to again before the next shot", () => {
+    const rows = [
+      "TTTTTTTTTTTT",
+      "TR...X.H...T",
+      "T..........T",
+      "T..........T",
+      "TTTTTTTTTTTT",
+    ];
+    const s = archer({ rows, x: 2 });
+    s.queueTarget("a", "0");
+    expect(shotTicks(run(s, 1))).toEqual([1]);
+    // Now 6 tiles off at (8,1), in reach but behind the wall at (7,1).
+    spider(s).x = 8;
+    // Every shot, checked on its own tick, comes from a tile with a clear line.
+    const tiles = parseRegion(rows.join("\n"));
+    const shotsFrom = [];
+    for (let tick = 0; tick < 16; tick++)
+      if (shotTicks(run(s, 1)).length) {
+        expect(inSight(tiles, me(s), spider(s))).toBe(true);
+        shotsFrom.push({ x: me(s).x, y: me(s).y });
+      }
+    expect(shotsFrom.length).toBeGreaterThan(0);
+    expect(shotsFrom).not.toContainEqual({ x: 2, y: 1 });
+  });
+
+  test("with no tile in reach and in sight to walk to, the attack is cancelled and the chat says so", () => {
+    const rows = [
+      "TTTTTTTTTTTT",
+      "TR....HHH..T",
+      "T.....HXH..T",
+      "T.....HHH..T",
+      "TTTTTTTTTTTT",
+    ];
+    const s = archer({ rows });
+    s.queueTarget("a", "0");
+    const events = run(s, 9);
+    expect(shotTicks(events)).toEqual([]);
+    expect(told(events)).toEqual([NO_CLEAR_SHOT_LINE]);
+    expect(me(s)).toMatchObject({
+      x: 1,
+      y: 1,
+      ammoCount: 10,
+      rangedXp: 0,
+      action: "",
+      target: "",
+    });
+  });
+
+  describe("a Woodcutting tree in the way", () => {
+    /** An archer behind the Birch at (4,1), and a woodcutter "b" beside it at (4,2) who chops it to a stump. */
+    function stumped() {
+      const s = archer({ rows: behind("g") }, ...Array<number>(400).fill(0.4));
+      s.addPlayer("b", {
+        x: 4,
+        y: 2,
+        defenseXp: 0,
+        herblawXp: 0,
+        hitpointsXp: 4050,
+        health: 1000,
+        tools: ["axe"],
+        inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
+      });
+      // Each click chops once; every roll of 0.4 lands.
+      for (let i = 0; i < 4; i++) {
+        s.queueGather("b", "woodcutting", "4,1");
+        run(s, 8);
+      }
+      expect(s.state.trees.get("4,1")!.chopsLeft).toBe(0);
+      return s;
+    }
+
+    test("once chopped to a stump, a shot passes over it", () => {
+      const s = stumped();
+      s.queueTarget("a", "0");
+      expect(shotTicks(run(s, 1))).toHaveLength(1);
+      expect(me(s)).toMatchObject({ x: 1, y: 1 });
+    });
+
+    test("once grown back, it blocks again", () => {
+      const s = stumped();
+      // A Birch grows back 100 ticks after it runs out.
+      run(s, 101);
+      expect(s.state.trees.get("4,1")!.chopsLeft).toBe(4);
+      s.queueTarget("a", "0");
+      expect(shotTicks(run(s, 1))).toEqual([]);
+      expect(me(s)).not.toMatchObject({ x: 1, y: 1 });
+    });
   });
 });

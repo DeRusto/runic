@@ -45,6 +45,8 @@ export type TileKind = {
   bush?: BushKind;
   vein?: VeinKind;
   tree?: TreeKind;
+  /** A fixed site that has run out until it grows back: a tree shows as a stump, which a shot passes over (owner, #286). */
+  runOut?: true;
   fishingSpot?: FishingSpotKind;
   /** A fire is never a tile's station: no map places one (#224). */
   station?: FixedStation;
