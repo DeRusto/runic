@@ -425,7 +425,7 @@ The fixed set of slots a player carries items in. A slot holds one piece of gear
 _Avoid_: Bag, backpack
 
 **Stack**:
-Up to 20 of the same material, food or arrows in one inventory slot. Arrows are the one gear that stacks, in the inventory and in the ammo slot; all other gear holds one to a slot.
+Up to 20 of the same material, food, arrows or throwing knives in one inventory slot. Arrows and throwing knives are the only gear that stacks: arrows in the inventory and the ammo slot, and knives in the inventory and the weapon slot. All other gear holds one to a slot.
 _Avoid_: Pile, bundle
 
 **Chat command**:

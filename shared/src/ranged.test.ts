@@ -134,7 +134,13 @@ describe("throwing knives", () => {
   };
 
   test("a stack of knives reaches 4 tiles and throws every 6 ticks, at any tier", () => {
-    for (const weapon of ["copperThrowingKnife", "emberiteThrowingKnife"])
+    for (const weapon of [
+      "copperThrowingKnife",
+      "bronzeThrowingKnife",
+      "ironThrowingKnife",
+      "steelThrowingKnife",
+      "emberiteThrowingKnife",
+    ])
       expect(rangedWeaponOf({ weapon })).toEqual({
         reachTiles: 4,
         intervalTicks: 6,

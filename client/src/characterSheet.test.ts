@@ -265,6 +265,11 @@ describe("the Gear tab", () => {
     );
     wearing("ironThrowingKnife", "", { weaponCount: 11 });
     expect(box().dataset.count).toBe("11");
+    wearing("ironThrowingKnife", "", { weaponCount: 1 });
+    expect(box().dataset.count).toBe("1");
+    expect(box().attributes["aria-label"]).toMatch(
+      /^Weapon: 1 Iron throwing knife\./,
+    );
   });
 
   test("a change in the ammo count alone redraws it", () => {
