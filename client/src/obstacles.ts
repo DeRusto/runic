@@ -6,28 +6,21 @@ import {
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
+import { propClicks } from "./propClicks.ts";
 import { scene } from "./scene.ts";
 
 const wood = new THREE.MeshStandardMaterial({ color: 0x865333 });
 const rail = new THREE.MeshStandardMaterial({ color: 0xcc9d5a });
 const stone = new THREE.MeshStandardMaterial({ color: 0x828b87 });
 const startMat = new THREE.MeshStandardMaterial({ color: 0xe6c976 });
-const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 /** What a click on an obstacle finds: the obstacle, its placed start, and a shortcut's far end. */
 type ObstacleTarget = { obstacle: ObstacleKind; start: Tile; far?: Tile };
-const tileKey = ({ x, y }: Tile) => `${x},${y}`;
 const charred = new THREE.MeshStandardMaterial({ color: 0x2e2622 });
 const rope = new THREE.MeshStandardMaterial({ color: 0xd8c08a });
 
 /** Draws each obstacle along its crossing direction and makes the whole prop clickable. */
 export function addObstacles(tiles: TileKind[][]) {
-  /**
-   * A click finds an obstacle exactly when it lands on one of its visible pieces, or when the
-   * ground tile under it, the one a walk would head for, is one of the obstacle's own tiles.
-   * Nothing invisible stands up off the ground, so the grass beside or behind it always walks.
-   */
-  const pieces = new Map<THREE.Object3D, ObstacleTarget>();
-  const ownTiles = new Map<string, ObstacleTarget>();
+  const clicks = propClicks<ObstacleTarget>();
 
   tiles.forEach((row, y) =>
     row.forEach(({ obstacle }, x) => {
@@ -45,14 +38,11 @@ export function addObstacles(tiles: TileKind[][]) {
         far: OBSTACLES[obstacle].shortcut ? landing : undefined,
       };
       // Its own tiles: the start, the landing and every tile between, gaps included.
-      for (let step = 0; step <= length; step++)
-        ownTiles.set(
-          tileKey({
-            x: x + ((landing.x - x) / length) * step,
-            y: y + ((landing.y - y) / length) * step,
-          }),
-          target,
-        );
+      const ownTiles = Array.from({ length: length + 1 }, (_, step) => ({
+        x: x + ((landing.x - x) / length) * step,
+        y: y + ((landing.y - y) / length) * step,
+      }));
+      clicks.add(target, ownTiles, group);
 
       const box = (
         width: number,
@@ -71,7 +61,6 @@ export function addObstacles(tiles: TileKind[][]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         group.add(mesh);
-        pieces.set(mesh, target);
       };
 
       box(0.82, 0.04, 0.65, 0, startMat);
@@ -149,17 +138,10 @@ export function addObstacles(tiles: TileKind[][]) {
 
   /** The obstacle under a click's ray, and the end of it nearer where the ray meets the ground. */
   return (raycaster: THREE.Raycaster) => {
-    const ground = raycaster.ray.intersectPlane(GROUND, new THREE.Vector3());
-    const hit = raycaster.intersectObjects([...pieces.keys()])[0];
-    const target = hit
-      ? pieces.get(hit.object)
-      : ground &&
-        ownTiles.get(
-          tileKey({ x: Math.round(ground.x), y: Math.round(ground.z) }),
-        );
-    if (!target) return undefined;
-    const { obstacle, start, far } = target;
-    const at = ground ?? hit!.point;
+    const found = clicks.under(raycaster);
+    if (!found) return undefined;
+    const { obstacle, start, far } = found.target;
+    const { at } = found;
     const apart = ({ x, y }: Tile) => Math.hypot(at.x - x, at.z - y);
     const end = far && apart(far) < apart(start) ? far : start;
     return { obstacle, x: end.x, y: end.y };
