@@ -823,6 +823,21 @@ describe("swingFor", () => {
     );
   });
 
+  test("a bow shoots with the throw clip, its blow landing once the arrow has flown", () => {
+    expect(swingFor("birchBow", "a", 8)).toEqual({
+      clip: "Throw",
+      contactMs: 700,
+    });
+    expect(swingFor("charwoodBow", "b", 9)).toEqual(
+      swingFor("birchBow", "a", 8),
+    );
+  });
+
+  test("the committed clip pack has Throw", () => {
+    const glb = readFileSync("client/public/models/Rig_Medium_General.glb");
+    expect(glb.toString("latin1")).toContain('"name":"Throw"');
+  });
+
   test("no sword punches at 550 ms", () => {
     expect(swingFor("", "a", 8)).toEqual({
       clip: "Melee_Unarmed_Attack_Punch_A",

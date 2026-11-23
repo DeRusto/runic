@@ -1,6 +1,7 @@
 import {
   GATHERING,
   GATHERING_SKILLS,
+  rangedWeaponOf,
   TICK_MS,
   WALK_TICKS_PER_TILE,
   type EnemyKind,
@@ -137,8 +138,12 @@ export function armedSwing(id: string, tick: number) {
   return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
 }
 
-/** A swing follows the weapon, so a shield with no sword punches (spec §7). */
+/** A bow shot: the release, with the blow landing at the enemy once the arrow has flown (Ranged spec §3 leaves shot art to the build). */
+const BOW_SHOT = { clip: "Throw", contactMs: 700 };
+
+/** A swing follows the weapon, so a shield with no sword punches (spec §7), and a bow shoots. */
 export function swingFor(weapon: string, id: string, tick: number) {
+  if (rangedWeaponOf({ weapon })) return BOW_SHOT;
   return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }
 

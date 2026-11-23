@@ -260,7 +260,7 @@ _Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
 The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
 
 **Ranged**:
-The skill that gates bows and arrows, and will set how often and how hard a shot lands once shooting comes (#268). A save from before it starts at 0 experience.
+The skill that gates bows and arrows and sets how often and how hard a bow shot lands (#268). A shot pays Ranged 6 experience per 100 damage dealt, and Hitpoints the same again. A save from before it starts at 0 experience.
 _Avoid_: Archery, Range
 
 **Hitpoints**:
@@ -649,8 +649,12 @@ Where a piece of gear goes when it is equipped, out of the inventory. A player h
 _Avoid_: Equipment slot
 
 **Ammo slot**:
-The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, and nothing else. Arrows gate on Ranged by tier and carry the hit bonus a bow shot will add. Equipping more of the worn arrow tops the slot up to 20, and another tier swaps the stacks. It keeps its arrows while a sword is in hand, and drops its whole stack on death (#269).
+The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, and nothing else. Arrows gate on Ranged by tier and carry the hit bonus a bow shot adds. Each shot spends one, hit or miss, and when the last goes the slot refills with up to 20 more of the same arrow from the inventory. Equipping more of the worn arrow tops the slot up to 20, and another tier swaps the stacks. It keeps its arrows while a sword is in hand, and drops its whole stack on death (#269).
 _Avoid_: Quiver, ammunition slot
+
+**Reach**:
+How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6. A player who attacks an enemy out of reach walks until it is in reach, then shoots. A melee swing has no reach; it needs the player next to the enemy (#270).
+_Avoid_: Range (the cooking station), distance
 
 **Panel**:
 A window that opens over the world: the character sheet, the smithing panel, the social panel, the journal or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.
