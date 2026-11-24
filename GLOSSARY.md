@@ -497,7 +497,7 @@ What an enemy leaves when it dies: a ground item on the enemy's tile for each pl
 _Avoid_: Drop, reward
 
 **Loot table**:
-An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range. Each player rolls for the enemy’s bone separately after rolling its loot table.
+An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range. If the enemy can leave bones, each player who damaged it rolls for them separately after rolling its loot table.
 _Avoid_: Drop table
 
 **Pile**:

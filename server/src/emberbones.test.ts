@@ -10,6 +10,9 @@ const LOSE = 0.25;
 /** The hit roll, the damage roll and the crit roll of a swing doing 100 damage. */
 const SWING = [HIT, HIT, MISS];
 
+/** One damager's Emberbone roll followed by a losing roll for the Skeleton's bones. */
+const skeletonLootRolls = (emberboneRoll: number) => [emberboneRoll, MISS];
+
 // The Skeleton's home is (8,1), with players either side of it.
 const CORRIDOR = [
   "TTTTTTTTTTTTTTTTTTTT",
@@ -66,11 +69,7 @@ function killedByTwo(
   s.addPlayer("a", SAVE, "a");
   s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 200;
-  rolls.push(
-    ...SWING,
-    ...SWING,
-    ...emberboneRolls.flatMap((roll) => [roll, MISS]),
-  );
+  rolls.push(...SWING, ...SWING, ...emberboneRolls.flatMap(skeletonLootRolls));
   s.queueTarget("a", "0");
   s.queueTarget("b", "0");
 }
@@ -114,8 +113,8 @@ test("a swing that missed doesn't count", () => {
   s.addPlayer("a", SAVE, "a");
   s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 1;
-  // "a" misses, "b" kills, and the only roll left would win for anyone.
-  rolls.push(MISS, ...SWING, WIN, WIN);
+  // "a" misses, "b" kills, and the only Emberbone roll is a win.
+  rolls.push(MISS, ...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("a", "0");
   s.queueTarget("b", "0");
   run(s);
@@ -134,7 +133,7 @@ test("a dead player still rolls", () => {
   run(s);
   // "a" is dead by the time "b" lands the killing blow.
   Object.assign(s.state.players.get("a")!, { dead: true, health: 0 });
-  rolls.push(...SWING, WIN, MISS, LOSE, MISS);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN), ...skeletonLootRolls(LOSE));
   s.queueTarget("b", "0");
   run(s);
   expect(enemy(s).state).toBe("dead");
@@ -152,7 +151,7 @@ test("a player who has left doesn't roll", () => {
   run(s);
   s.removePlayer("a");
   // Only "b" rolls, so only they can win the Emberbone.
-  rolls.push(...SWING, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("b", "0");
   const events = run(s, 8);
   expect(enemy(s).state).toBe("dead");
@@ -168,7 +167,7 @@ test("a full inventory still gets it on the ground, with the same line", () => {
     "a",
   );
   enemy(s).health = 1;
-  rolls.push(...SWING, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("a", "0");
   const events = run(s);
   expect(bones(s, "a")).toBe(1);
@@ -193,7 +192,7 @@ test("recovering forgets who damaged it", () => {
   // "b" comes back and kills it alone, so "a"'s old hit gets no roll.
   enemy(s).health = 1;
   Object.assign(s.state.players.get("b")!, { x: 9 });
-  rolls.push(...SWING, WIN, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("b", "0");
   run(s, 8);
   expect(enemy(s).state).toBe("dead");
@@ -205,7 +204,7 @@ test("returning forgets who damaged it", () => {
   const { s, rolls } = world(CORRIDOR);
   s.addPlayer("a", SAVE, "a");
   enemy(s).health = 1;
-  rolls.push(...SWING, LOSE);
+  rolls.push(...SWING, ...skeletonLootRolls(LOSE));
   s.queueTarget("a", "0");
   run(s);
   expect(enemy(s).state).toBe("dead");
@@ -215,7 +214,7 @@ test("returning forgets who damaged it", () => {
   // "a" stands next to it, but only "b" hits it this time.
   Object.assign(s.state.players.get("a")!, { x: 1 });
   enemy(s).health = 1;
-  rolls.push(...SWING, WIN, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("b", "0");
   run(s, 8);
   expect(enemy(s).state).toBe("dead");
