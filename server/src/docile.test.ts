@@ -72,33 +72,78 @@ test("the region's shore, field and Boneyard's edge start a Tarn Ox, Bristleback
   expect(kinds("bristleback")).toHaveLength(4);
   expect(kinds("cinderhorn")).toHaveLength(3);
   expect(kinds("tarnOx").every(({ health }) => health === 200)).toBe(true);
-  expect(kinds("cinderhorn").every(({ health }) => health === 1000)).toBe(true);
+  expect(kinds("bristleback").every(({ health }) => health === 1400)).toBe(
+    true,
+  );
+  expect(kinds("cinderhorn").every(({ health }) => health === 2600)).toBe(true);
 });
 
-describe("a Bristleback", () => {
-  test("never starts a fight with a player standing beside it", () => {
+// #297: each fights back at its hide band's strength, but still starts nothing and chases little.
+// The Bristleback is enemy "1" at (5,1); the Cinderhorn is "2" at (8,1).
+describe.each([
+  { name: "Bristleback", id: "1", x: 5, health: 1400, minXp: 84 },
+  { name: "Cinderhorn", id: "2", x: 8, health: 2600, minXp: 156 },
+])("a $name", ({ id, x, health, minXp }) => {
+  test("never starts a fight with a player standing beside it, and never wanders", () => {
     const s = world(CORRIDOR);
-    placed(s, "a", 4);
-    const seen = run(s, 30);
-    expect(s.state.enemies.get("1")).toMatchObject({ state: "idle", x: 5 });
+    placed(s, "a", x - 1);
+    const seen = run(s, 60);
+    expect(s.state.enemies.get(id)).toMatchObject({ state: "idle", x });
     expect(events(seen, "enemySwing")).toEqual([]);
   });
 
-  test("hit, it fights back for 100 at most", () => {
+  test("hit, it fights back", () => {
     // Every roll lands, and an enemy's damage roll of 0 is its least: 100.
     const s = new Simulation(parseRegion(CORRIDOR.join("\n")), () => 0);
-    placed(s, "a", 4);
-    s.queueTarget("a", "1");
+    placed(s, "a", x - 1);
+    s.queueTarget("a", id);
     const seen = run(s, 8);
-    expect(s.state.enemies.get("1")).toMatchObject({
+    expect(s.state.enemies.get(id)).toMatchObject({
       state: "fighting",
       target: "a",
     });
-    const swings = events(seen, "enemySwing");
-    expect(swings.length).toBeGreaterThan(0);
+    expect(events(seen, "enemySwing").length).toBeGreaterThan(0);
     expect(s.state.players.get("a")!.health).toBe(900);
-    // A damage roll of 0 gives the least, so the ceiling is checked on the stat.
-    expect(ENEMIES.bristleback.maxDamage).toBe(100);
+  });
+
+  test("gives up once its attacker stands more than 2 tiles from where they swung", () => {
+    const s = world(CORRIDOR);
+    placed(s, "a", x - 1);
+    s.queueTarget("a", id);
+    run(s, 1);
+    const standAt = (to: number) => {
+      Object.assign(s.state.players.get("a")!, { x: to });
+      s.queueWalk("a", { x: to, y: 1 });
+    };
+    standAt(x + 1); // 2 tiles from the swing.
+    run(s, 1);
+    expect(s.state.enemies.get(id)).toMatchObject({
+      state: "fighting",
+      target: "a",
+    });
+    standAt(x + 2); // 3 tiles.
+    run(s, 1);
+    // It stood its ground at home, so giving up leaves it there, idle.
+    expect(s.state.enemies.get(id)).toMatchObject({
+      state: "idle",
+      target: "",
+      x,
+    });
+  });
+
+  test(`a kill pays experience for all ${health} health`, () => {
+    // Every roll lands for the least; the player is kept standing.
+    const s = new Simulation(parseRegion(CORRIDOR.join("\n")), () => 0);
+    placed(s, "a", x - 1);
+    s.queueTarget("a", id);
+    for (let i = 0; i < 400 && s.state.enemies.get(id)!.state !== "dead"; i++) {
+      s.state.players.get("a")!.health = 1000;
+      run(s, 1);
+    }
+    expect(s.state.enemies.get(id)!.state).toBe("dead");
+    const player = s.state.players.get("a")!;
+    // 6 experience per 100 damage dealt.
+    expect(player.attackXp + player.strengthXp).toBe(minXp);
   });
 });
 

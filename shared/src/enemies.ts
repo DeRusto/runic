@@ -166,14 +166,14 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     loot: [{ category: "material", chance: 1, items: [{ item: "tarnHide" }] }],
   },
   // Bristleback and Cinderhorn fight back once hit, like a Spider, but never start a fight,
-  // never wander, and chase only a couple of tiles. Every hit lands at least 100, so they hit
-  // seldom and as little as the game allows: the owner wants them to bite back, barely.
+  // never wander, and chase only a couple of tiles. Their numbers fit their hide bands 10 and
+  // 20 (#297), so a player of that band meets a fair fight rather than a few free hits.
   bristleback: {
-    health: 500,
-    hitChance: 0.2,
+    health: 1400,
+    hitChance: 0.4,
     accuracy: 0,
     style: "melee",
-    maxDamage: 100,
+    maxDamage: 300,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
@@ -187,11 +187,11 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     ],
   },
   cinderhorn: {
-    health: 1000,
-    hitChance: 0.25,
+    health: 2600,
+    hitChance: 0.5,
     accuracy: 0,
     style: "melee",
-    maxDamage: 150,
+    maxDamage: 450,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 200,

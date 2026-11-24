@@ -155,6 +155,23 @@ describe("enemyHit", () => {
     expect(enemyHit("spider", fresh, 1, rolls(0.345)).hit).toBe(false);
   });
 
+  test.each([
+    ["bristleback", 0.4, 300],
+    ["cinderhorn", 0.5, 450],
+  ] as const)(
+    "a %s hits on a roll under %d before Avoidance, for up to %d (#297)",
+    (kind, chance, max) => {
+      const strong = { ...fresh, health: 5000 };
+      expect(
+        enemyHit(kind, strong, 0, rolls(chance - 0.001, 0.9999)),
+      ).toMatchObject({
+        damage: max,
+        hit: true,
+      });
+      expect(enemyHit(kind, strong, 0, rolls(chance)).hit).toBe(false);
+    },
+  );
+
   test("a hit with no shield takes no block roll and is capped at the player's health", () => {
     expect(
       enemyHit("spider", { ...fresh, health: 40 }, 0, rolls(0, 0.99)),

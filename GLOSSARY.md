@@ -187,11 +187,11 @@ The docile creature that grazes by the Lake's shore, the hide band 1's: its tarn
 _Avoid_: Cow, ox (alone)
 
 **Bristleback**:
-The hide creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces. It never starts a fight, but once hit it headbutts back, seldom and for as little as a hit can do.
+The hide creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces. It never starts a fight, but once hit it headbutts back at its band's strength, and chases only 2 tiles.
 _Avoid_: Boar, pig
 
 **Cinderhorn**:
-The hide creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces. Like the Bristleback, it bites back only once hit, and weakly.
+The hide creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces. Like the Bristleback, it bites back only once hit, at its band's strength, and chases only 2 tiles.
 _Avoid_: Ox of ash, fire beast
 
 **Hide**:
