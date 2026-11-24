@@ -284,7 +284,7 @@ How much damage a player can still take before dying; at most 100 for each Hitpo
 _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
-The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses.
+The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses, and by half of each shot's experience in the Longrange stance.
 _Avoid_: Armour, defence
 
 **Avoidance**:

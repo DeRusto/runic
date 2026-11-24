@@ -178,6 +178,33 @@ test("a stance chosen in the room is synced, and survives logging out", async ()
   expect(synced(back).stance).toBe("precise");
 });
 
+test("each style's stance, chosen in the room, is synced and survives logging out (#280)", async () => {
+  const client = await clientFor("Bowyer");
+  const room = await joined(client);
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  expect(synced(room).rangedStance).toBe("steady");
+  room.send(STANCE_INTENT, "longrange");
+  room.send(STANCE_INTENT, "forceful");
+  await vi.waitFor(
+    () =>
+      expect(synced(room)).toMatchObject({
+        rangedStance: "longrange",
+        stance: "forceful",
+      }),
+    { timeout: TICK_MS * 3, interval: 20 },
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back)).toMatchObject({
+    rangedStance: "longrange",
+    stance: "forceful",
+  });
+});
+
 test("a sword equipped over the network is synced, and worn again after logging back in", async () => {
   const client = await clientFor("Swordsman");
   const room = await joined(client);

@@ -97,7 +97,7 @@ A ranged shot uses melee's curves, read from Ranged (#268):
 | Chance to land | 40%, plus 0.5 points per Ranged level above 1, plus worn Accuracy (the bow's and the ring's) |
 | Damage on a landed shot | 100 to (200 + 100 per 20 Ranged levels), plus the arrow's hit bonus and Might (the Might potion and the Might Virtue) |
 | Critical | Agility's crit chance (Agility spec §1), for 1.5 times the damage |
-| Experience | 6 Ranged per 100 damage dealt, rounded once per shot, none for overkill, and Hitpoints the same again |
+| Experience | 6 per 100 damage dealt, rounded once per shot, none for overkill, to Ranged or split with Defense as the Ranged stance directs (§6), and Hitpoints the same again |
 
 The Ranged stance decides where a shot's experience goes and can change its reach and fire rate (§6). Attack and Strength play no part in a shot, and the arrow adds nothing to a sword's swing. The melee hit and its numbers are unchanged; both share one roll in `shared/src/combat.ts`.
 
@@ -109,7 +109,7 @@ When neither the slot nor the inventory holds any more of that arrow, the attack
 
 ### The check before each shot
 
-Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above once the next shot falls due, even while walking back into reach; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the bow's 8 ticks, as the timer between shots outlives each click.
+Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above once the next shot falls due, even while walking back into reach; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the interval between shots (§6), as the timer between shots outlives each click.
 
 The client checks the empty-ammo refusal too and shows the line without sending the click, while the server's check stays the one that decides.
 
