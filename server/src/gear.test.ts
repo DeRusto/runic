@@ -927,7 +927,8 @@ describe("bows (Ranged spec §2)", () => {
   });
 
   test("add their Accuracy to the chance to hit, and no hit bonus", () => {
-    // 40% bare-handed, over 55% with a charwood bow's 15 points: a roll of 0.5 lands only with the bow.
+    // 40% bare-handed, and over 50% with a charwood bow's 15 points at Ranged 20 less the
+    // triangle's 10 against a melee Spider (#271): a roll of 0.5 lands only with the bow.
     // The landed shot is the bottom of the range plus the copper arrow's 100, and nothing from the bow.
     start({
       weapon: "charwoodBow",
@@ -955,7 +956,8 @@ describe("bows (Ranged spec §2)", () => {
       rangedXp: 0,
     });
     expect(me().weapon).toBe("charwoodBow");
-    rolls = [0.5, 0];
+    // 55% with the bow at Ranged 1, less the triangle's 10 against a melee Spider (#271).
+    rolls = [0.4, 0];
     sim.queueTarget("a", "0");
     sim.tick();
     expect(swings()).toEqual([200]);

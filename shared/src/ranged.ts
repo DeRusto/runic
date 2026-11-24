@@ -10,6 +10,7 @@ import {
   type RangedStance,
 } from "./stances.ts";
 import { hitCurvesOf } from "./stats.ts";
+import type { Style } from "./triangle.ts";
 import { virtueOf } from "./virtues.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
@@ -82,8 +83,8 @@ export function rangedHitOf(player: { rangedXp: number } & Worn) {
 }
 
 /**
- * One bow shot or knife throw at an enemy with `enemyHealth` left, rolled as a swing is (see
- * `rollPlayerHit`). Its experience goes to Ranged and Defense as the Ranged stance splits it
+ * One bow shot or knife throw at an enemy with `enemyHealth` left, which fights in
+ * `targetStyle`, rolled as a swing is (see `rollPlayerHit`). Its experience goes to Ranged and Defense as the Ranged stance splits it
  * (Steady when none is given), and Hitpoints gets the same amount again (#268).
  */
 export function rangedHit(
@@ -92,12 +93,14 @@ export function rangedHit(
     agilityXp: number;
     rangedStance?: RangedStance;
   } & Worn,
+  targetStyle: Style,
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     rangedHitOf(player),
+    { style: "ranged", against: targetStyle },
     player.agilityXp,
     mightBonus,
     enemyHealth,

@@ -108,11 +108,15 @@ export class Fighting {
       this.world.unsyncedPlayers.get(id)!.potion?.virtue === "might"
         ? MIGHT_POTION_HIT
         : 0;
+    // The enemy's fixed style is the target's side of the combat triangle; the weapon in hand,
+    // read now, picks the shot or the swing and so the player's side (#271).
+    const { style } = ENEMIES[enemy.kind];
     const { damage, critical, xp } = ranged
-      ? rangedHit(player, might, enemy.health, this.world.random)
+      ? rangedHit(player, style, might, enemy.health, this.world.random)
       : playerHit(
           player,
           player.stance,
+          style,
           might,
           enemy.health,
           this.world.random,

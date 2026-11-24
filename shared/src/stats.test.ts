@@ -5,6 +5,7 @@ import {
   blockOf,
   enemyHitChance,
   hitOf,
+  landChanceOf,
   maxHealthOf,
 } from "./stats.ts";
 
@@ -60,17 +61,40 @@ describe("Avoidance", () => {
 
 describe("an enemy's chance to hit", () => {
   test("is its base chance at no Avoidance, as before", () => {
-    expect(enemyHitChance("spider", 0)).toBe(0.35);
-    expect(enemyHitChance("skeleton", 0)).toBe(0.55);
+    expect(enemyHitChance("spider", 0, "melee")).toBe(0.35);
+    expect(enemyHitChance("skeleton", 0, "melee")).toBe(0.55);
   });
 
   test("loses one percentage point per Avoidance point", () => {
-    expect(enemyHitChance("spider", 10)).toBeCloseTo(0.25);
+    expect(enemyHitChance("spider", 10, "melee")).toBeCloseTo(0.25);
   });
 
   test("never goes below 5%, so nothing is unhittable", () => {
-    expect(enemyHitChance("spider", 34)).toBe(0.05);
-    expect(enemyHitChance("skeleton", 99)).toBe(0.05);
+    expect(enemyHitChance("spider", 34, "melee")).toBe(0.05);
+    expect(enemyHitChance("skeleton", 99, "melee")).toBe(0.05);
+  });
+});
+
+describe("the combat triangle on a chance to hit (#271)", () => {
+  test("a melee enemy hits a ranged player 10 points more often", () => {
+    expect(enemyHitChance("spider", 0, "ranged")).toBeCloseTo(0.45);
+    expect(enemyHitChance("skeletonMage", 0, "ranged")).toBeCloseTo(0.8);
+  });
+
+  test("keeps an enemy's 5% floor and never goes past a whole chance", () => {
+    expect(enemyHitChance("spider", 54, "ranged")).toBe(0.05);
+    expect(enemyHitChance("skeleton", 99, "ranged")).toBe(0.05);
+    // No Avoidance is below 0 today; this pins the top of the scale.
+    expect(enemyHitChance("skeletonMage", -100, "ranged")).toBe(1);
+  });
+
+  test("a player's chance to land stays between none and a whole chance", () => {
+    expect(landChanceOf(0.5, "ranged", "melee")).toBeCloseTo(0.4);
+    expect(landChanceOf(0.5, "melee", "ranged")).toBeCloseTo(0.6);
+    expect(landChanceOf(0.5, "melee", "melee")).toBe(0.5);
+    // Ranged 99 with a charwood bow and an emberite ring is past 100% already.
+    expect(landChanceOf(1.2, "ranged", "magic")).toBe(1);
+    expect(landChanceOf(0.05, "ranged", "melee")).toBe(0);
   });
 });
 
