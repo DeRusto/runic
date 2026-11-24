@@ -23,6 +23,6 @@ Experience comes from damage dealt (6 per 100), so a kill now pays for all of it
 
 The Skeleton Mage shoots from up to 5 tiles and fights in the ranged style (#298). A diagonal step counts as one tile. A fighting ranged enemy stands still while its target is within reach and in sight. It shoots when its attack timer is due. If reach or sight fails, it follows its walking route toward the target until both hold. Enemies without a shot reach still swing only when next to their target.
 
-Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns and standing stones block them. Water lets them pass. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
+Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns and standing stones block them. Shots pass over water and run-out Woodcutting stumps. Stumps still block walking while the tree regrows. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
 
 The Mage keeps its first attack delay and shoots every 8 ticks when it can. Its shot uses the same roll as a swing, including Avoidance, the combat triangle, shield block, armour, the health cap and Defense experience. It spends no ammunition and leaves none on the ground. The Mage casts with its staff and the hit shows on the player.
