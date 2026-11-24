@@ -211,17 +211,17 @@ describe("the leash", () => {
     expect(skeleton(s).state).toBe("fighting"); // 5 from home, but 4 from the notice tile.
   });
 
-  test("being hit while chasing doesn't move the notice tile", () => {
+  test("an attack while chasing renews the leash from the attacker", () => {
     const s = world(CORRIDOR);
     placed(s, "a", 11);
     s.queueTarget("a", "0");
     const events = run(s, 2); // Noticed from (8,1) on 1, then hit at (9,1) on 2.
     expect(swingTicks(events, "playerSwing")).toEqual([2]);
     expect(skeleton(s).x).toBe(9);
-    Object.assign(s.state.players.get("a")!, { x: 13 }); // 4 from (9,1), but 5 from (8,1).
+    Object.assign(s.state.players.get("a")!, { x: 13 }); // Within 4 tiles of the attacker’s tile at (10,1).
     s.queueWalk("a", { x: 13, y: 1 });
     run(s, 1);
-    expect(skeleton(s).target).toBe("");
+    expect(skeleton(s).target).toBe("a");
   });
 });
 
@@ -258,14 +258,14 @@ describe("giving up", () => {
     expect(skeleton(s)).toMatchObject({ state: "going home", target: "" });
   });
 
-  test("can be attacked on the way, and keeps walking without fighting", () => {
+  test("turns to chase a player who attacks it on the way home", () => {
     const s = givenUp();
     const a = s.state.players.get("a")!;
     Object.assign(a, { x: skeleton(s).x - 1 });
     s.queueTarget("a", "0");
     const events = run(s, 1);
     expect(swingTicks(events, "playerSwing")).toEqual([4]);
-    expect(skeleton(s)).toMatchObject({ state: "going home", target: "" });
+    expect(skeleton(s)).toMatchObject({ state: "fighting", target: "a" });
     expect(swingTicks(events, "enemySwing")).toEqual([]);
   });
 

@@ -155,6 +155,7 @@ export class Fighting {
       enemyId,
       id,
       damage,
+      player,
     );
     if (!loot) return;
     this.world.events.push({ type: "enemyDied", enemy: enemyId });
