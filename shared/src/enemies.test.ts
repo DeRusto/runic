@@ -70,6 +70,7 @@ test("a Skeleton's numbers are spec §5's, and otherwise a Spider's", () => {
     wanderTiles: 3,
     noticeTiles: 3,
     leashTiles: 4,
+    bone: { item: "bones", chance: 2 / 3 },
     loot: [
       { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
     ],

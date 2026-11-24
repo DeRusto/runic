@@ -194,10 +194,14 @@ export class Fighting {
     // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
     const amount =
       count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
+    const found =
+      item === "bones" || item === "heavyBones"
+        ? itemTag(item)
+        : `${amount} ${itemTag(item)}`;
     this.world.events.push({
       type: "told",
       player: id,
-      line: `You find ${amount} ${itemTag(item)}. It is on the ground.`,
+      line: `You find ${found}. It is on the ground.`,
       items: [item],
     });
   }

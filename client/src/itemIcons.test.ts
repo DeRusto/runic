@@ -145,6 +145,8 @@ describe("the committed icons", () => {
       "hollowEssence",
       "pickaxe",
       "emberbone",
+      "bones",
+      "heavyBones",
       "feather",
       "berry",
       "herb",
