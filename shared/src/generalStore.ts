@@ -60,7 +60,7 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   dewpetal: 6,
   nightbloom: 12,
   emberbloom: 20,
-  // The silk waits for Phase 8's Spider drop (#217), and is priced like the emberbone.
+  // The silk is priced like the emberbone (#217); Spiders drop it (#272).
   spiderSilk: 10,
   // #217's capes, priced by their tier: their Leatherworking recipes will set the final ones.
   copperMightCape: 20,
