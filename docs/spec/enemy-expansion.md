@@ -21,7 +21,7 @@ Experience comes from damage dealt (6 per 100), so a kill now pays for all of it
 
 ## 2. Ranged Enemies
 
-The Skeleton Mage shoots from up to 5 tiles and fights in the ranged style (#298). A diagonal step counts as one tile. A fighting ranged enemy stands still while its target is within reach and in sight. It shoots when its attack timer is due. Otherwise, if reach or sight fails, it follows its walking route toward the target until both hold. Enemies without a shot reach still swing only when next to their target.
+The Skeleton Mage shoots from up to 5 tiles and fights in the ranged style (#298). A diagonal step counts as one tile. A fighting ranged enemy stands still while its target is within reach and in sight. It shoots when its attack timer is due. If reach or sight fails, it follows its walking route toward the target until both hold. Enemies without a shot reach still swing only when next to their target.
 
 Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns and standing stones block them. Water lets them pass. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
 

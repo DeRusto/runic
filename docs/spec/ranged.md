@@ -82,15 +82,15 @@ A shot needs a straight line from the centre of the shooter's tile to the centre
 
 Every other tile lets a shot pass: doors, water, bushes, the gate, stations, stalls, strongboxes, barrels, crates, lamps, the well, villagers, marks, enemies and players (owner, #278). So a player can shoot across the Lake but not through a house. A Woodcutting tree that has run out shows as a stump, which a shot passes over until the tree grows back, though the stump still blocks walking (owner, #286). A run-out vein still blocks a shot. A pooled tree or vein that has left its spot blocks nothing until it comes back.
 
-The line counts every tile it touches, even at a single corner, so a diagonal that squeezes past the corner of a wall is blocked; this build took the suggestion in #278. The shooter's and the target's own tiles never block. The check reads only the line between the two tiles, so it gives the same answer with shooter and target swapped. It lives in `shared` as `inSight`, for the ranged enemies of a later milestone to use too.
+The line counts every tile it touches, even at a single corner, so a diagonal that squeezes past the corner of a wall is blocked; this build took the suggestion in #278. The shooter's and the target's own tiles never block. The check reads only the line between the two tiles, so it gives the same answer with shooter and target swapped. Player and enemy shots both use the shared `inSight` check.
 
 A player who attacks a target in reach but out of sight walks to the nearest tile, counted in steps, from which the target is both in reach and in sight, then fires on the tick they arrive. A target that moves out of sight mid-fight is walked to again the same way, with the same check made fresh on every step. When no tile the player can walk to has the target in both, the attack is cancelled and the chat says "You can't get a clear shot at that." No shot fires, no arrow is spent and no experience is paid, and the player never walks forever.
 
-Sight is for shots only. A melee swing still needs the player next to the enemy, and enemies, which all fight in melee, check no sight.
+A melee swing requires the fighters to be next to each other. A ranged enemy checks sight before shooting, as described in [Enemy Expansion §2](enemy-expansion.md#2-ranged-enemies).
 
 ### The hit
 
-A ranged shot uses melee's curves, read from Ranged (#268):
+A player's shot uses melee's curves, read from Ranged (#268):
 
 | Value | Rule |
 | --- | --- |
@@ -196,4 +196,4 @@ The magic side of the rule is written already: it names all three styles, so a m
 
 Every shot or swing renews the enemy's chase, hit or miss. The enemy goes after the last player who attacked it, and measures its leash from that player's tile at the moment of the attack. This applies to every style and to enemies on their way home. A docile creature still stands where it is and never fights back.
 
-An enemy that notices a player starts with its own tile as the point it measures from. Once the player stops attacking and walks past the leash, the enemy gives up and heads home. It also gives up if its target dies, leaves the world, or cannot be reached. If the enemy dies, its chase ends with it. A later attack on a living enemy can start a new chase.
+An enemy that notices a player starts with its own tile as the point it measures from. Once the player stops attacking and walks past the leash, the enemy gives up and heads home. It also gives up if its target dies, leaves the world, or it can neither attack from its tile nor find a walking route to the target. If the enemy dies, its chase ends with it. A later attack on a living enemy can start a new chase.

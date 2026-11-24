@@ -11,6 +11,7 @@ const BOW = {
   ammoCount: 1,
 };
 
+/** Starts a fight scenario with misses unless the test supplies a roll. */
 function encounter(
   rows: string[],
   fields: Partial<PlayerSave> = {},
