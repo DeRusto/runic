@@ -6,6 +6,7 @@ import {
   rangedHit,
   rangedWeaponOf,
 } from "./ranged.ts";
+import type { RangedStance } from "./stances.ts";
 import { MAX_XP } from "./skills.ts";
 
 /** Hands out these rolls in order, then fails the test if asked for more. */
@@ -32,6 +33,7 @@ describe("rangedHit", () => {
       critical: false,
       xp: [
         ["rangedXp", 0],
+        ["defenseXp", 0],
         ["hitpointsXp", 0],
       ],
     });
@@ -93,6 +95,7 @@ describe("rangedHit", () => {
       critical: false,
       xp: [
         ["rangedXp", 15],
+        ["defenseXp", 0],
         ["hitpointsXp", 15],
       ],
     });
@@ -101,6 +104,7 @@ describe("rangedHit", () => {
       critical: false,
       xp: [
         ["rangedXp", 3],
+        ["defenseXp", 0],
         ["hitpointsXp", 3],
       ],
     });
@@ -162,6 +166,7 @@ describe("throwing knives", () => {
   test("a throw trains Ranged and Hitpoints", () => {
     expect(rangedHit(thrower, 0, 900, rolls(0, 0.5, 0.99)).xp).toEqual([
       ["rangedXp", 15],
+      ["defenseXp", 0],
       ["hitpointsXp", 15],
     ]);
   });
@@ -173,6 +178,75 @@ describe("throwing knives", () => {
     expect(rangedAttackRefusal({ weapon: "birchBow" })).toBe(
       OUT_OF_ARROWS_LINE,
     );
+  });
+});
+
+describe("Ranged stances", () => {
+  test("Rapid takes 2 ticks off the interval and Longrange adds 2 tiles of reach, with a bow and with knives", () => {
+    const of = (weapon: string, rangedStance: RangedStance) =>
+      rangedWeaponOf({ weapon, rangedStance });
+    for (const weapon of ["birchBow", "oakBow", "charwoodBow"]) {
+      expect(of(weapon, "steady")).toMatchObject({
+        reachTiles: 6,
+        intervalTicks: 8,
+      });
+      expect(of(weapon, "rapid")).toMatchObject({
+        reachTiles: 6,
+        intervalTicks: 6,
+      });
+      expect(of(weapon, "longrange")).toMatchObject({
+        reachTiles: 8,
+        intervalTicks: 8,
+      });
+    }
+    for (const weapon of ["copperThrowingKnife", "emberiteThrowingKnife"]) {
+      expect(of(weapon, "steady")).toMatchObject({
+        reachTiles: 4,
+        intervalTicks: 6,
+      });
+      expect(of(weapon, "rapid")).toMatchObject({
+        reachTiles: 4,
+        intervalTicks: 4,
+      });
+      expect(of(weapon, "longrange")).toMatchObject({
+        reachTiles: 6,
+        intervalTicks: 6,
+      });
+    }
+    expect(of("copperSword", "rapid")).toBeUndefined();
+  });
+
+  test("Steady and Rapid send a hit's experience to Ranged, with a bow and with knives", () => {
+    for (const weapon of ["birchBow", "copperThrowingKnife"])
+      for (const rangedStance of ["steady", "rapid"] as const)
+        expect(
+          rangedHit(
+            { ...archer, weapon, rangedStance },
+            0,
+            900,
+            rolls(0, 0.5, 0.99),
+          ).xp,
+        ).toEqual([
+          ["rangedXp", 15],
+          ["defenseXp", 0],
+          ["hitpointsXp", 15],
+        ]);
+  });
+
+  test("Longrange splits a hit's experience between Ranged and Defense, with a bow and with knives, and Hitpoints gets the whole", () => {
+    for (const weapon of ["birchBow", "copperThrowingKnife"])
+      expect(
+        rangedHit(
+          { ...archer, weapon, rangedStance: "longrange" },
+          0,
+          900,
+          rolls(0, 0.5, 0.99),
+        ).xp,
+      ).toEqual([
+        ["rangedXp", 8],
+        ["defenseXp", 7],
+        ["hitpointsXp", 15],
+      ]);
   });
 });
 

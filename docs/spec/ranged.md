@@ -1,14 +1,14 @@
 # Runic: Ranged
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives. Stances, recovery, the combat triangle and chasing come in later tickets and extend this page.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. Recovery, the combat triangle and chasing come in later tickets and extend this page.
 
-The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate) and `shared/src/ranged.ts` (the ranged hit) and `shared/src/sight.ts` (the tall tiles and the line of sight); where this page and those files disagree, the files win and this page is fixed.
+The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate), `shared/src/ranged.ts` (the ranged hit), `shared/src/stances.ts` (the Ranged stances) and `shared/src/sight.ts` (the tall tiles and the line of sight); where this page and those files disagree, the files win and this page is fixed.
 
 ## 1. The Ranged skill
 
 Ranged moves from the upcoming skills to the trained ones, after Defense on the character sheet. It has its own synced experience field and save column, and counts toward total level like any other skill. Mastery takes its usual 7% share of Ranged experience (#80). The combat level formula already read Ranged (#78), so it needs no change. A save from before this build loads with 0 Ranged experience.
 
-A bow shot pays Ranged experience (§4). A sword or bare hands still fight in melee and train Attack and Strength as the stance directs (melee rework spec §3).
+A bow shot or knife throw pays Ranged experience, which Longrange splits with Defense (§4, §6). A sword or bare hands still fight in melee and train Attack and Strength as the stance directs (melee rework spec §3).
 
 ## 2. Gear, gates and the ammo slot
 
@@ -64,8 +64,8 @@ A player's style is the weapon in hand: a bow shoots, and a sword or bare hands 
 
 | Value | Bow | Melee, for comparison |
 | --- | --- | --- |
-| Reach | 6 tiles, a diagonal step counting as one (#270) | Next to the enemy |
-| Ticks between attacks | 8 (#270) | 8 |
+| Reach | 6 tiles, a diagonal step counting as one (#270); Longrange adds 2 (§6) | Next to the enemy |
+| Ticks between attacks | 8 (#270); Rapid takes 2 off (§6) | 8 |
 
 A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk goes to the nearest tile in reach, counted in steps, even when the enemy itself cannot be reached on foot, such as behind a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). "In reach" here always means in reach and in sight, as the next section sets out.
 
@@ -97,9 +97,9 @@ A ranged shot uses melee's curves, read from Ranged (#268):
 | Chance to land | 40%, plus 0.5 points per Ranged level above 1, plus worn Accuracy (the bow's and the ring's) |
 | Damage on a landed shot | 100 to (200 + 100 per 20 Ranged levels), plus the arrow's hit bonus and Might (the Might potion and the Might Virtue) |
 | Critical | Agility's crit chance (Agility spec §1), for 1.5 times the damage |
-| Experience | 6 Ranged per 100 damage dealt, rounded once per shot, none for overkill, and Hitpoints the same again |
+| Experience | 6 per 100 damage dealt, rounded once per shot, none for overkill, to Ranged or split with Defense as the Ranged stance directs (§6), and Hitpoints the same again |
 
-Stances come in a later ticket, so all of a shot's experience goes to Ranged, as Steady will send it. Attack and Strength play no part in a shot, and the arrow adds nothing to a sword's swing. The melee hit and its numbers are unchanged; both share one roll in `shared/src/combat.ts`.
+The Ranged stance decides where a shot's experience goes and can change its reach and fire rate (§6). Attack and Strength play no part in a shot, and the arrow adds nothing to a sword's swing. The melee hit and its numbers are unchanged; both share one roll in `shared/src/combat.ts`.
 
 ### Spending and refill
 
@@ -109,7 +109,7 @@ When neither the slot nor the inventory holds any more of that arrow, the attack
 
 ### The check before each shot
 
-Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above once the next shot falls due, even while walking back into reach; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the bow's 8 ticks, as the timer between shots outlives each click.
+Before every shot the server checks again that the target is alive and that a bow and an arrow are worn (owner, #277). A target that has died ends the attack. A bow taken off mid-fight ends the attack rather than turning it into a bare-handed swing, and arrows taken off end it with the chat line above once the next shot falls due, even while walking back into reach; in each case nothing is spent and nothing is paid. Repeated attack clicks never give more than one shot, arrow spent or experience award in a tick, and never beat the interval between shots (§6), as the timer between shots outlives each click.
 
 The client checks the empty-ammo refusal too and shows the line without sending the click, while the server's check stays the one that decides.
 
@@ -123,7 +123,7 @@ A bow shot plays the character's overhand cast clip, and its damage number, flas
 
 ## 5. Throwing knives
 
-Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks. Each knife supplies its tier's hit bonus and adds no Accuracy.
+Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks; Rapid changes the interval, and Longrange the reach and the experience split, as §6 sets out. Each knife supplies its tier's hit bonus and adds no Accuracy.
 
 | Throwing knife | Hit bonus | Ranged gate |
 | --- | --- | --- |
@@ -136,3 +136,27 @@ Throwing knives use the ranged hit, sight and experience rules in §4. A player 
 Smithing uses the existing anvil recipes and produces common knives. A player equips up to 20 of one tier in the weapon slot, and the Gear tab shows the count. Equipping more of the same tier by hand tops up the stack to 20. Swapping puts the entire worn stack into the inventory slot freed by the incoming weapon. Taking the stack off requires an empty inventory slot. On death the remaining knives drop together under the ground item rules (#71).
 
 A throw spends one knife whether it hits or misses. The last throw empties the weapon slot, ends the attack and shows “You have no throwing knives left to throw.” Any knives in the inventory remain there. The enemy can keep attacking, and the player stays idle against it until they give another order, equip a weapon, or either combatant dies.
+
+## 6. Stances
+
+Ranged has three stances of its own (#268). Their effects are relative to the weapon in hand, so they apply to bows and throwing knives alike (#270):
+
+| Stance | Experience | Reach | Ticks between attacks |
+| --- | --- | --- | --- |
+| Steady (the default) | All to Ranged | The weapon's: a bow 6, knives 4 | The weapon's: a bow 8, knives 6 |
+| Rapid | All to Ranged | The weapon's | 2 fewer: a bow 6, knives 4 |
+| Longrange | Split evenly between Ranged and Defense | 2 more: a bow 8, knives 6 | The weapon's |
+
+Hitpoints still gets the shot's whole experience again, whatever the stance. Longrange gives the odd point of an odd total to Ranged, as melee's Balanced gives it to Attack; #268 left this to the build. The split never adds or loses a point. Longrange is a deliberate exception to the melee rework, which left out a defensive stance (#268).
+
+### Each style keeps its own
+
+Melee and Ranged each remember their own stance, in separate save columns: `stance` for melee and `ranged_stance` for Ranged. One migration adds the Ranged column with Steady as its default, so a save from before this build starts Steady and keeps its melee stance. Wielding a bow or knives brings back the saved Ranged stance, and a sword or bare hands the saved melee stance; nothing about the stance moves when gear does.
+
+The Gear tab shows the stances of the weapon in hand: Balanced, Precise and Forceful with a sword or bare hands, and Steady, Rapid and Longrange with a bow or knives. Each button says what its stance does, and the player's own is shown pressed.
+
+### Changing stance
+
+Changing stance works as melee's does (melee rework spec §3). The client sends the stance intent with the stance's id, and the server sets whichever style's stance that id names and ignores anything else. It works at any time, mid-fight included, and is refused during an Agility crossing. The next shot reads the new stance.
+
+The wait between attacks is set when an attack is made, from the weapon in hand and the stance at that moment, so neither a change of stance nor a change of weapon shortens a wait already running (owner, #280). A bow switched to Rapid mid-fight fires its next shot when the 8 ticks end, and every 6 after. A bow swapped for knives mid-fight keeps the bow's 8 ticks before the first throw, and knives swapped for a bow keep the knives' 6 before the first shot; the new weapon's own interval applies from then on.

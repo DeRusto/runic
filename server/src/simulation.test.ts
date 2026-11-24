@@ -333,6 +333,7 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
       "Mining",
     ],
     stance: "balanced",
+    rangedStance: "steady",
     riggedShortcuts: [],
     health: 1000,
     inventory: EMPTY_INVENTORY,
@@ -408,6 +409,7 @@ const SAVED = {
   questPoints: 3,
   identifiesEssence: true,
   stance: "forceful" as const,
+  rangedStance: "rapid" as const,
   riggedShortcuts: ["brambleSwing"],
 };
 

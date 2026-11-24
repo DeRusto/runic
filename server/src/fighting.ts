@@ -6,6 +6,7 @@ import {
   GEAR_SLOTS,
   canShootAt,
   wornCountOf,
+  isRangedStance,
   isStance,
   itemTag,
   MIGHT_POTION_HIT,
@@ -38,11 +39,17 @@ export class Fighting {
     private readonly quests: Quests,
   ) {}
 
-  /** Comes straight off the network, so anything but a stance is ignored. Like pins, it skips the queue: the next swing reads it. */
+  /**
+   * Comes straight off the network, so anything but a stance is ignored. A melee stance and a
+   * Ranged stance each set their own style's, so each style keeps its own (Ranged spec §6).
+   * Like pins, it skips the queue: the next swing or shot reads it.
+   */
   setStance(id: string, stance: string) {
     if (this.world.isCrossing(id)) return;
     const player = this.world.state.players.get(id);
-    if (player && isStance(stance)) player.stance = stance;
+    if (!player) return;
+    if (isStance(stance)) player.stance = stance;
+    else if (isRangedStance(stance)) player.rangedStance = stance;
   }
 
   /** After the moves, so the first swing or shot lands on the tick the player arrives. */

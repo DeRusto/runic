@@ -1,8 +1,10 @@
 import {
   SKILLS,
   STARTING_PINNED_SKILLS,
+  STARTING_RANGED_STANCE,
   STARTING_STANCE,
   type QuestProgress,
+  type RangedStance,
   type Stance,
 } from "@runic/shared";
 import {
@@ -109,6 +111,11 @@ export const players = sqliteTable("players", {
     .default(false),
   /** Where melee experience goes (melee rework spec §3). */
   stance: text().notNull().$type<Stance>().default(STARTING_STANCE),
+  /** Where ranged experience goes; a save from before Ranged's stances starts Steady (Ranged spec §6). */
+  rangedStance: text("ranged_stance")
+    .notNull()
+    .$type<RangedStance>()
+    .default(STARTING_RANGED_STANCE),
   /** The shortcuts this player has rigged with a rope, in the order rigged (Agility spec §3). */
   riggedShortcuts: text("rigged_shortcuts", { mode: "json" })
     .notNull()

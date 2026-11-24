@@ -3,6 +3,12 @@ import { gearOf, type GearSlot } from "./gear.ts";
 import { tilesApart, type Tile, type TileKind } from "./region.ts";
 import { inSight } from "./sight.ts";
 import { levelFor, type XpField } from "./skills.ts";
+import {
+  RANGED_STANCES,
+  rangedXpOf,
+  STARTING_RANGED_STANCE,
+  type RangedStance,
+} from "./stances.ts";
 import { hitCurvesOf } from "./stats.ts";
 import { virtueOf } from "./virtues.ts";
 
@@ -15,15 +21,21 @@ export const OUT_OF_ARROWS_LINE = "You have no arrows left to fire.";
 export const OUT_OF_KNIVES_LINE = "You have no throwing knives left to throw.";
 
 /**
- * The reach and fire rate of the ranged weapon in hand, and whether it is `thrown`, spending
- * itself as throwing knives do; undefined for a sword or bare hands, which fight in melee (#271).
+ * The reach and fire rate of the ranged weapon in hand under the player's Ranged stance (Steady
+ * when none is given), and whether it is `thrown`, spending itself as throwing knives do;
+ * undefined for a sword or bare hands, which fight in melee (#271, Ranged spec §6).
  */
-export function rangedWeaponOf(player: Worn) {
+export function rangedWeaponOf(player: Worn & { rangedStance?: RangedStance }) {
   const { reachTiles, intervalTicks, thrown } =
     gearOf(player.weapon ?? "") ?? {};
-  return reachTiles === undefined || intervalTicks === undefined
-    ? undefined
-    : { reachTiles, intervalTicks, thrown: !!thrown };
+  if (reachTiles === undefined || intervalTicks === undefined) return undefined;
+  const { furtherTiles, fasterTicks } =
+    RANGED_STANCES[player.rangedStance ?? STARTING_RANGED_STANCE];
+  return {
+    reachTiles: reachTiles + furtherTiles,
+    intervalTicks: intervalTicks - fasterTicks,
+    thrown: !!thrown,
+  };
 }
 
 /** The slot a ranged weapon's shot spends from: the weapon slot for knives, the ammo slot for a bow (Ranged spec §4, §5). */
@@ -67,12 +79,16 @@ export function rangedHitOf(player: { rangedXp: number } & Worn) {
 }
 
 /**
- * One bow shot or knife throw at an enemy with `enemyHealth` left, rolled as a swing is (see `rollPlayerHit`).
- * All its experience goes to Ranged, as Steady sends it until stances come, and Hitpoints gets
- * the same amount again (#268).
+ * One bow shot or knife throw at an enemy with `enemyHealth` left, rolled as a swing is (see
+ * `rollPlayerHit`). Its experience goes to Ranged and Defense as the Ranged stance splits it
+ * (Steady when none is given), and Hitpoints gets the same amount again (#268).
  */
 export function rangedHit(
-  player: { rangedXp: number; agilityXp: number } & Worn,
+  player: {
+    rangedXp: number;
+    agilityXp: number;
+    rangedStance?: RangedStance;
+  } & Worn,
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
@@ -84,11 +100,16 @@ export function rangedHit(
     enemyHealth,
     random,
   );
+  const { rangedXp, defenseXp } = rangedXpOf(
+    player.rangedStance ?? STARTING_RANGED_STANCE,
+    xp,
+  );
   return {
     damage,
     critical,
     xp: [
-      ["rangedXp", xp],
+      ["rangedXp", rangedXp],
+      ["defenseXp", defenseXp],
       ["hitpointsXp", xp],
     ] as [XpField, number][],
   };
