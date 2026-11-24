@@ -123,7 +123,7 @@ A bow shot plays the character's overhand cast clip, and its damage number, flas
 
 ## 5. Throwing knives
 
-Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks, which Longrange and Rapid change as §6 sets out. Each knife supplies its tier's hit bonus and adds no Accuracy.
+Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks; Rapid changes the interval, and Longrange the reach and the experience split, as §6 sets out. Each knife supplies its tier's hit bonus and adds no Accuracy.
 
 | Throwing knife | Hit bonus | Ranged gate |
 | --- | --- | --- |

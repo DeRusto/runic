@@ -173,16 +173,20 @@ describe("Longrange", () => {
     });
     expect(shotTicks(attack(far), 1)).toEqual([1]);
     expect(me(far)).toMatchObject({ x: 1, y: 1 });
+    // Steady walks 2 tiles, into its 6, and shoots on arriving.
     const steady = archer({ rows: LONGRANGE_BOW_REACH });
-    expect(shotTicks(attack(steady), 1)).toEqual([]);
+    expect(shotTicks(attack(steady), 4)).toEqual([3]);
+    expect(me(steady)).toMatchObject({ x: 3, y: 1 });
   });
 
   test("knives reach an enemy 6 tiles away without walking, which Steady must walk to", () => {
     const far = thrower({ rows: BOW_REACH, rangedStance: "longrange" });
     expect(shotTicks(attack(far), 1)).toEqual([1]);
     expect(me(far)).toMatchObject({ x: 1, y: 1 });
+    // Steady walks 2 tiles, into its 4, and throws on arriving.
     const steady = thrower({ rows: BOW_REACH });
-    expect(shotTicks(attack(steady), 1)).toEqual([]);
+    expect(shotTicks(attack(steady), 4)).toEqual([3]);
+    expect(me(steady)).toMatchObject({ x: 3, y: 1 });
   });
 
   test("keeps the weapon's own fire rate", () => {

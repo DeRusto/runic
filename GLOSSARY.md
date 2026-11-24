@@ -272,7 +272,7 @@ _Avoid_: Long range, defensive
 The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
 
 **Ranged**:
-The skill that gates bows and arrows and sets how often and how hard a bow shot lands (#268). A shot pays 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, to Ranged or split with Defense as the Ranged stance directs, and Hitpoints the same again. A save from before it starts at 0 experience.
+The skill that gates bows, arrows and throwing knives and sets how often and how hard a ranged attack lands (#268, #279). A shot pays 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, to Ranged or split with Defense as the Ranged stance directs, and Hitpoints the same again. A save from before it starts at 0 experience.
 _Avoid_: Archery, Range
 
 **Hitpoints**:
@@ -284,7 +284,7 @@ How much damage a player can still take before dying; at most 100 for each Hitpo
 _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
-The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses, and by half of each shot's experience in the Longrange stance.
+The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses, and by the share of each shot's experience that the Longrange stance gives it, which is half, less the odd point.
 _Avoid_: Armour, defence
 
 **Avoidance**:
