@@ -437,6 +437,62 @@ describe("the stance", () => {
     buttons()[2].onclick();
     expect(room.send).toHaveBeenLastCalledWith(STANCE_INTENT, "forceful");
   });
+
+  /** Draws the stances for a player holding `weapon`, with these saved stances. */
+  const holding = (
+    weapon: string,
+    stance = "balanced",
+    rangedStance = "steady",
+  ) =>
+    sheet.drawStance({
+      weapon,
+      stance,
+      rangedStance,
+    } as unknown as SyncedPlayer);
+  const names = () => buttons().map((button: any) => button.textContent);
+  const pressed = () =>
+    buttons().map((button: any) => button.attributes["aria-pressed"]);
+
+  test("a sword or bare hands show Balanced, Precise and Forceful", () => {
+    holding("copperSword");
+    expect(names()).toEqual(["Balanced", "Precise", "Forceful"]);
+    holding("");
+    expect(names()).toEqual(["Balanced", "Precise", "Forceful"]);
+  });
+
+  test("a bow or knives show Steady, Rapid and Longrange, each saying what it does", () => {
+    for (const weapon of ["birchBow", "ironThrowingKnife"]) {
+      holding(weapon);
+      expect(names()).toEqual(["Steady", "Rapid", "Longrange"]);
+    }
+    expect(buttons().map(tipOf)).toEqual([
+      "Trains Ranged",
+      "Trains Ranged, and attacks 2 ticks sooner",
+      "Trains Ranged and Defense evenly, and reaches 2 tiles further",
+    ]);
+    expect(buttons()[2].attributes["aria-label"]).toBe(
+      "Longrange: Trains Ranged and Defense evenly, and reaches 2 tiles further",
+    );
+  });
+
+  test("each style shows its own saved stance as pressed, across a swap", () => {
+    holding("birchBow", "forceful", "rapid");
+    expect(pressed()).toEqual(["false", "true", "false"]);
+    expect(el("stance-trains").textContent).toBe(
+      "Trains Ranged, and attacks 2 ticks sooner",
+    );
+    holding("copperSword", "forceful", "rapid");
+    expect(pressed()).toEqual(["false", "false", "true"]);
+    expect(el("stance-trains").textContent).toBe("Trains Strength");
+    holding("birchBow", "forceful", "rapid");
+    expect(pressed()).toEqual(["false", "true", "false"]);
+  });
+
+  test("a click on a Ranged stance sends it", () => {
+    holding("birchBow");
+    buttons()[2].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(STANCE_INTENT, "longrange");
+  });
 });
 
 describe("opening and closing", () => {

@@ -63,7 +63,7 @@ export const EQUIP_INTENT = "equip";
 export const TAKE_OFF_INTENT = "takeOff";
 /** The pin intent's message type; its payload is `{ skill, pinned }`, with `pinned` false to unpin. */
 export const PIN_INTENT = "pin";
-/** The stance intent's message type; its payload is the `Stance`. */
+/** The stance intent's message type; its payload is a melee `Stance` or a `RangedStance`, which sets that style's own. */
 export const STANCE_INTENT = "stance";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";

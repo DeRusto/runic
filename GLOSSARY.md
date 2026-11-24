@@ -253,14 +253,26 @@ The skill that raises a player's max hit in melee, by 100 every 20 levels; train
 _Avoid_: Power, damage skill, Combat
 
 **Stance**:
-How a player fights in melee, chosen on the character sheet's Gear tab: Balanced splits each hit's melee experience evenly between Attack and Strength, Attack taking the odd point of an odd total, Precise gives it all to Attack, and Forceful all to Strength. It changes only where experience goes, never the hit itself. A new player starts Balanced.
+How a player fights, chosen on the character sheet's Gear tab, which shows only the stances of the weapon in hand. Each style keeps its own, so swapping a sword for a bow brings back the Ranged stance last chosen, and swapping back brings back the melee one. Melee's are Balanced, which splits each hit's melee experience evenly between Attack and Strength, Attack taking the odd point of an odd total, Precise, which gives it all to Attack, and Forceful, which gives it all to Strength; they change only where experience goes, never the hit itself. Ranged's are Steady, Rapid and Longrange (#280). A new player starts Balanced and Steady.
 _Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
+
+**Steady**:
+The default Ranged stance: all of a shot's ranged experience goes to Ranged, and the weapon keeps its own reach and fire rate (#268). A save from before Ranged's stances starts Steady.
+_Avoid_: Accurate, normal
+
+**Rapid**:
+The Ranged stance that attacks 2 ticks sooner than the weapon's own interval, so a bow fires every 6 ticks and knives every 4; all of a shot's ranged experience goes to Ranged (#268, #270).
+_Avoid_: Fast, quick
+
+**Longrange**:
+The Ranged stance that reaches 2 tiles further than the weapon's own reach, so a bow shoots from 8 tiles and knives from 6, and splits a shot's ranged experience evenly between Ranged and Defense, Ranged taking the odd point of an odd total (#268, #270).
+_Avoid_: Long range, defensive
 
 **Combat** (retired):
 The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
 
 **Ranged**:
-The skill that gates bows and arrows and sets how often and how hard a bow shot lands (#268). A shot pays Ranged 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, and Hitpoints the same again. A save from before it starts at 0 experience.
+The skill that gates bows and arrows and sets how often and how hard a bow shot lands (#268). A shot pays 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, to Ranged or split with Defense as the Ranged stance directs, and Hitpoints the same again. A save from before it starts at 0 experience.
 _Avoid_: Archery, Range
 
 **Hitpoints**:
@@ -653,7 +665,7 @@ The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, a
 _Avoid_: Quiver, ammunition slot
 
 **Reach**:
-How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6. A player who attacks an enemy out of reach or out of sight walks until it is in both, then shoots; with no tile they can walk to that has it in both, the attack is cancelled and the chat says so. A melee swing has no reach; it needs the player next to the enemy (#270).
+How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6 and throwing knives 4, and Longrange adds 2 to either. A player who attacks an enemy out of reach or out of sight walks until it is in both, then shoots; with no tile they can walk to that has it in both, the attack is cancelled and the chat says so. A melee swing has no reach; it needs the player next to the enemy (#270).
 _Avoid_: Range (the cooking station), distance
 
 **Sight**:
