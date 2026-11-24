@@ -1,4 +1,5 @@
 import {
+  AMMO_RECOVERY_CHANCE,
   AVOIDANCE_POTION_POINTS,
   ENEMIES,
   enemyHit,
@@ -126,6 +127,15 @@ export class Fighting {
       critical,
       ...(ranged?.thrown ? { weapon: player.weapon } : {}),
     });
+    // A landed shot against a living enemy deals positive damage.
+    if (ranged && damage === 0 && this.world.random() < AMMO_RECOVERY_CHANCE) {
+      this.world.groundItems.recoverAmmo(
+        enemy,
+        ranged.thrown ? player.weapon : player.ammo,
+        player.username,
+        this.world.state.tick,
+      );
+    }
     // With none left, it stops now and says so; the enemy fights on as usual. The last knife
     // leaves the hand empty, and the attack ends rather than turning into a punch (#279).
     if (ranged?.thrown) {

@@ -1,6 +1,6 @@
 # Runic: Ranged
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. Recovery, the combat triangle and chasing come in later tickets and extend this page.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. The sixth (#281) adds ammo recovery. The combat triangle and chasing come in later tickets.
 
 The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate), `shared/src/ranged.ts` (the ranged hit), `shared/src/stances.ts` (the Ranged stances) and `shared/src/sight.ts` (the tall tiles and the line of sight); where this page and those files disagree, the files win and this page is fixed.
 
@@ -160,3 +160,9 @@ The Gear tab shows the stances of the weapon in hand: Balanced, Precise and Forc
 Changing stance works as melee's does (melee rework spec §3). The client sends the stance intent with the stance's id, and the server sets whichever style's stance that id names and ignores anything else. It works at any time, mid-fight included, and is refused during an Agility crossing. The next shot reads the new stance.
 
 The wait between attacks is set when an attack is made, from the weapon in hand and the stance at that moment, so neither a change of stance nor a change of weapon shortens a wait already running (owner, #280). A bow switched to Rapid mid-fight fires its next shot when the 8 ticks end, and every 6 after. A bow swapped for knives mid-fight keeps the bow's 8 ticks before the first throw, and knives swapped for a bow keep the knives' 6 before the first shot; the new weapon's own interval applies from then on.
+
+## 7. Recovering ammo
+
+A missed shot rolls once for recovery. Half the time, the spent arrow or throwing knife lands on the tile the target occupies when the shot resolves. A hit uses up its ammo. A cancelled attack spends nothing and makes no recovery roll (#281).
+
+The shooter alone can see and take the recovered ammo for one minute. It goes public after that minute and despawns after three minutes. Recovery adds one to a matching stack on that tile while the shooter still owns it, and both timers start again. A public stack, a different item, or another player's stack stays separate. Ordinary drops and death drops each create a new ground item. Recovered ammo can join any matching stack within its owner window.

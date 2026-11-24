@@ -14,6 +14,9 @@ import { virtueOf } from "./virtues.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
 
+/** Chance to recover the ammo spent on a miss (Ranged spec §7). */
+export const AMMO_RECOVERY_CHANCE = 0.5;
+
 /** What the chat says when a bow has no arrows to fire, at the click or mid-fight (Ranged spec §4). */
 export const OUT_OF_ARROWS_LINE = "You have no arrows left to fire.";
 
