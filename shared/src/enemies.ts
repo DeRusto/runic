@@ -144,10 +144,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     loot: [],
   },
   // #238's three hide creatures, on the hide bands 1/10/20. The Tarn Ox is docile: it never
-  // fights back, leashes or wanders, so each swing against it is free. The ticket's 10/25/50 Hitpoints levels of health would pay
-  // 60/150/300 by spec §5's 6-experience-per-100 rule, above a Spider and Skeleton, so the
-  // healths here are the 2/5/10 levels whose kills pay the ticket's own 12/30/60, a few
-  // hits each.
+  // fights back, leashes or wanders, so each swing against it is free. Its 200 health is the
+  // 2 Hitpoints levels whose kill pays #238's 12 experience, a few hits.
   tarnOx: {
     health: 200,
     hitChance: 0,
