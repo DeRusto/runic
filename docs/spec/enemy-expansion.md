@@ -18,3 +18,11 @@ The Bristleback and Cinderhorn were tuned only to be killable, so a band-10 or b
 Their behaviour is otherwise unchanged. Both still start no fights, never wander, and give up once their attacker stands more than 2 tiles from where they last attacked. Their swing timing, return time, hide and bone drops stay as they were. The Tarn Ox stays docile and unchanged, so a new player keeps a safe first hide.
 
 Experience comes from damage dealt (6 per 100), so a kill now pays for all of its health: about 84 for a Bristleback and 156 for a Cinderhorn, before the stance splits it. Each hit's experience is rounded on its own, as for every enemy, so a kill's total can land a few points either side (a Bristleback killed in twelve hits of 109 and one of 92 pays 90).
+
+## 2. Ranged Enemies
+
+The Skeleton Mage shoots from up to 5 tiles and fights in the ranged style (#298). A diagonal step counts as one tile. A fighting ranged enemy stands still while its target is within reach and in sight. It shoots when its attack timer is due. Otherwise, if reach or sight fails, it follows its walking route toward the target until both hold. Enemies without a shot reach still swing only when next to their target.
+
+Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns and standing stones block them. Water lets them pass. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
+
+The Mage keeps its first attack delay and shoots every 8 ticks when it can. Its shot uses the same roll as a swing, including Avoidance, the combat triangle, shield block, armour, the health cap and Defense experience. It spends no ammunition and leaves none on the ground. The Mage casts with its staff and the hit shows on the player.

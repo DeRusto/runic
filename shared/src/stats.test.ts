@@ -78,7 +78,11 @@ describe("an enemy's chance to hit", () => {
 describe("the combat triangle on a chance to hit (#271)", () => {
   test("a melee enemy hits a ranged player 10 points more often", () => {
     expect(enemyHitChance("spider", 0, "ranged")).toBeCloseTo(0.45);
-    expect(enemyHitChance("skeletonMage", 0, "ranged")).toBeCloseTo(0.8);
+  });
+
+  test("a ranged enemy loses 10 points against melee and keeps its chance against ranged", () => {
+    expect(enemyHitChance("skeletonMage", 0, "melee")).toBeCloseTo(0.6);
+    expect(enemyHitChance("skeletonMage", 0, "ranged")).toBeCloseTo(0.7);
   });
 
   test("keeps an enemy's 5% floor and never goes past a whole chance", () => {

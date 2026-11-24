@@ -59,7 +59,7 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 
 ## 5. Enemies
 
-- **Skeleton Mage.** From KayKit Skeletons, the pack the Boneyard's Skeletons come from, so it shares their rig and animation clips. It fights up close like every enemy today, with harder hits than a Skeleton, and it drops the item the runekeeper's quest asks for. Ranged attacks wait for Phase 8's Ranged work.
+- **Skeleton Mage.** From KayKit Skeletons, the pack the Boneyard's Skeletons come from, so it shares their rig and animation clips. It shoots from up to 5 tiles with a clear line of sight, hits harder than a Skeleton, and drops the item the runekeeper's quest asks for. See [Enemy expansion](enemy-expansion.md#2-ranged-enemies) for how it fights.
 - **Imp.** From the Bestiary kit, weaker than a Skeleton Mage. The Bestiary kit is not CC0: its licence allows committing it as part of Runic but not redistributing it alone, so its files go under `client/public/` and get an entry in `client/public/LICENSE.txt`, as that notice requires.
 - The Hollow holds four Skeleton Mages and three Imps, fewer than the Boneyard's six Skeletons since each Mage is tougher. They respawn the way Skeletons do.
 - Their homes are inside the Hollow, and their reach (home, wander, notice range and leash) must keep them out of the Emberite pocket and off the gap, so a player mining Emberite is never pulled into a fight with them.
@@ -79,7 +79,7 @@ Today Odo asks for one piece of the strange material that any vein drops by chan
 - **Boneyard**: unchanged ("The field where Skeletons roam."), and the Hollow is not part of it.
 - **Strange material**: unchanged; finding a piece still starts Odo's essence quest.
 - **Quest essence**: new entry. An essence that mining gives only while its quest runs: Copper, Iron and Emberite essence for Odo, and Hollow essence for Hollis.
-- **Essence rock**, **Skeleton Mage**, **Imp** and the runekeeper: new entries when they are built.
+- **Essence rock**, **Imp** and the runekeeper: new entries when they are built.
 
 ## 8. Open questions
 

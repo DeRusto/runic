@@ -47,6 +47,8 @@ type EnemyStats = {
   accuracy: number;
   /** Its one fixed style, set against the player's by the combat triangle (#271). */
   style: Style;
+  /** Shot reach in tiles (#298). Omitted for enemies that only swing next to their target. */
+  reachTiles?: number;
   maxDamage: number;
   swingIntervalTicks: number;
   firstSwingDelayTicks: number;
@@ -114,7 +116,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 3200,
     hitChance: 0.6,
     accuracy: 10,
-    style: "melee",
+    style: "ranged",
+    reachTiles: 5,
     maxDamage: 650,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,

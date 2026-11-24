@@ -1,5 +1,6 @@
 import { schema, t } from "@colyseus/schema";
 import {
+  canShootAt,
   ENEMIES,
   rollLoot,
   tilesApart,
@@ -150,10 +151,7 @@ export class Enemies {
           tilesApart(target, memory.leashOrigin) <= stats.leashTiles &&
           this.chase(tick, enemy, memory, target)
         ) {
-          if (
-            tick >= memory.nextSwingTick &&
-            nextTo(this.tiles, enemy, target)
-          ) {
+          if (tick >= memory.nextSwingTick && this.canAttack(enemy, target)) {
             memory.nextSwingTick = tick + stats.swingIntervalTicks;
             world.swing(id, enemy.target);
           }
@@ -250,6 +248,13 @@ export class Enemies {
     return path;
   }
 
+  private canAttack(enemy: SyncedEnemy, target: Tile) {
+    const { reachTiles } = ENEMIES[enemy.kind];
+    return reachTiles === undefined
+      ? nextTo(this.tiles, enemy, target)
+      : canShootAt(this.tiles, enemy, target, reachTiles);
+  }
+
   private chase(
     tick: number,
     enemy: SyncedEnemy,
@@ -257,6 +262,11 @@ export class Enemies {
     target: Tile,
   ) {
     if (tick < memory.nextStepTick) return true;
+    if (
+      ENEMIES[enemy.kind].reachTiles !== undefined &&
+      this.canAttack(enemy, target)
+    )
+      return true;
     const path = this.pathToTarget(enemy, target);
     if (!path) return false;
     if (path.length) this.step(tick, enemy, memory, path[0]!);

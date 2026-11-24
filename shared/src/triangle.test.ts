@@ -27,10 +27,12 @@ describe("a player's style", () => {
 });
 
 describe("every enemy's style", () => {
-  test("is melee for all seven of today's enemies, the Skeleton Mage included", () => {
+  test("is ranged for the Skeleton Mage and melee for every other enemy", () => {
     const kinds = Object.keys(ENEMIES) as EnemyKind[];
-    expect(kinds).toHaveLength(7);
-    for (const kind of kinds) expect(ENEMIES[kind].style).toBe("melee");
+    for (const kind of kinds)
+      expect(ENEMIES[kind].style).toBe(
+        kind === "skeletonMage" ? "ranged" : "melee",
+      );
   });
 });
 

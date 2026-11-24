@@ -214,7 +214,7 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     clips: "players",
     held: { file: "Skeleton_Staff.gltf", slot: "handslotr" },
     armed: true,
-    swing: armedSwing,
+    swing: () => BOW_SHOT,
     death: "Death_A",
     hit: "Hit_A",
     returns: "respawn",
