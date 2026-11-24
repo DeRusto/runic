@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, and Ranged's experience with the ammo slot and gear counts (#276).
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), and the Ranged stance (#280).
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -47,11 +47,21 @@ const LATEST_COLUMNS = [
   "ranged_xp",
   "weapon_count",
   "ammo_count",
+  "ranged_stance",
 ];
-const LATEST_MIGRATIONS = 21;
+const LATEST_MIGRATIONS = 22;
 
-/** Makes the Ranged migration pending again: its columns gone, and its row in the journal. */
+/** Makes the Ranged stance's migration pending again: its column gone, and its row in the journal. */
+function unapplyRangedStance(sqlite: DatabaseSync) {
+  sqlite.exec("ALTER TABLE players DROP COLUMN ranged_stance");
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+  );
+}
+
+/** Makes the Ranged migration pending again, and the Ranged stance's after it: their columns gone, and their rows in the journal. */
 function unapplyRanged(sqlite: DatabaseSync) {
+  unapplyRangedStance(sqlite);
   for (const column of ["ranged_xp", "ammo", "weapon_count", "ammo_count"])
     sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
   sqlite.exec(
@@ -209,6 +219,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       questPoints: 0,
       identifiesEssence: false,
       stance: "balanced",
+      rangedStance: "steady",
       riggedShortcuts: [],
     });
     await database.shutdown();
@@ -447,6 +458,30 @@ describe("a save from just before Ranged (#276)", () => {
     });
     writeSave(10, sim.saveOf("a")!);
     expect(readSave(10)).toMatchObject({ weaponCount: 1, ammoCount: 0 });
+    await database.shutdown();
+  });
+});
+
+describe("a save from just before Ranged's stances (#280)", () => {
+  test("it starts Steady, keeps its melee stance and loses nothing", async () => {
+    await boot();
+    const sqlite = new DatabaseSync(path);
+    unapplyRangedStance(sqlite);
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (11, 'Bowyer', 'bowyer', 'x', 0)`);
+    sqlite.exec(`INSERT INTO players (account_id, attack_xp, strength_xp, defense_xp, herblaw_xp, hitpoints_xp, ranged_xp, x, y, health, inventory, inventory_counts, weapon, weapon_count, ammo, ammo_count, stance)
+      VALUES (11, 900, 400, 300, 0, 20000, 5000, 4, 1, 900, '[""]', '[0]', 'oakBow', 1, 'ironArrow', 17, 'precise')`);
+    sqlite.close();
+    const database = await openDatabase();
+    expect(readSave(11)).toMatchObject({
+      rangedStance: "steady",
+      stance: "precise",
+      rangedXp: 5000,
+      defenseXp: 300,
+      weapon: "oakBow",
+      ammo: "ironArrow",
+      ammoCount: 17,
+    });
     await database.shutdown();
   });
 });

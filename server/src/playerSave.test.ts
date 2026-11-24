@@ -24,6 +24,7 @@ describe("player save", () => {
       tools: ["pickaxe", "tinderbox"],
       pinnedSkills: ["Cooking", "Mining"],
       stance: "forceful",
+      rangedStance: "longrange",
       riggedShortcuts: ["cragLine", "brambleSwing"],
       bank: Array.from({ length: BANK_SLOTS }, (_, slot) =>
         slot === 5 ? "coins" : EMPTY_SLOT,
@@ -61,6 +62,14 @@ describe("player save", () => {
     expect(save.bank).toHaveLength(BANK_SLOTS);
     expect(save.bankCounts).toHaveLength(BANK_SLOTS);
     expect(save.pinnedSkills).not.toHaveLength(0);
+  });
+
+  it("starts a save from before Ranged's stances Steady, keeping its melee stance (#280)", () => {
+    const old = { ...newSave({ x: 1, y: 2 }), stance: "precise" as const };
+    expect(saveOf(playerFrom(old))).toMatchObject({
+      stance: "precise",
+      rangedStance: "steady",
+    });
   });
 
   it("counts a worn weapon from before slot counts as one, and an empty slot as none (Ranged spec §2)", () => {

@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `ranged_stance` text DEFAULT 'steady' NOT NULL;

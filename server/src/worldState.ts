@@ -1,9 +1,11 @@
 import { schema, t } from "@colyseus/schema";
 import {
   SKILLS,
+  STARTING_RANGED_STANCE,
   STARTING_STANCE,
   type FireLog,
   type PlayerAction,
+  type RangedStance,
   type Stance,
 } from "@runic/shared";
 import { Enemy } from "./enemies.ts";
@@ -37,6 +39,8 @@ export const Player = schema(
     riggedShortcuts: t.array("string"),
     /** Where melee experience goes (melee rework spec §3). */
     stance: t.string<Stance>().default(STARTING_STANCE),
+    /** Where ranged experience goes, and the reach and fire rate a shot takes (Ranged spec §6). */
+    rangedStance: t.string<RangedStance>().default(STARTING_RANGED_STANCE),
     health: t.uint16(),
     maxHealth: t.uint16(),
     inventory: t.array("string"),
