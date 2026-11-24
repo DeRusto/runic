@@ -292,7 +292,7 @@ How many percentage points come off an enemy's chance to hit a player, from Defe
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring and a bow add their Accuracy to the player's side (#238, #268).
+Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring and a bow add their Accuracy to the player's side (#238, #268).
 _Avoid_: Precision, attack bonus
 
 **Style**:

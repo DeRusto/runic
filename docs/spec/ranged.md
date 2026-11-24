@@ -169,7 +169,7 @@ The shooter alone can see and take the recovered ammo for one minute. It goes pu
 
 ## 8. The combat triangle
 
-Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. All seven of today's enemies fight in melee, the Skeleton Mage included, so for now the triangle matters only to a ranged player.
+Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. The Skeleton Mage fights at range (#298). The other enemies fight in melee.
 
 | Pairing | Effect on the chance to land |
 | --- | --- |
@@ -183,10 +183,12 @@ Points sit on the Accuracy and Avoidance scale, one point to a percentage point 
 | --- | --- | --- |
 | A sword or bare hands against a melee enemy | Unchanged | Unchanged |
 | A bow or throwing knives against a melee enemy | 10 points fewer | 10 points more |
+| A sword or bare hands against a ranged enemy | 10 points more | 10 points fewer |
+| A bow or throwing knives against a ranged enemy | Unchanged | Unchanged |
 
 The triangle's points add in before the limits, and each chance then stays on the scale. An enemy's chance to hit never falls below its 5% floor, and no chance to land, the player's or the enemy's, goes above a whole chance; a player's chance never falls below none. The triangle changes how often a hit lands and never how hard: damage, Might, criticals, blocks and armour are untouched.
 
-The style is read from the weapon in hand at the moment each hit resolves, not from when the attack began (owner, 2026-11-23). A player who swaps a sword for a bow mid-fight is hit as a ranged player from the enemy's next swing, and their own next attack is a shot, rolled with the triangle's points off. Every outcome is decided on the server; the client sends only its intents.
+The style is read from the weapon in hand at the moment each hit resolves, not from when the attack began (owner, 2026-11-23). A player who swaps a sword for a bow mid-fight is treated as ranged when the enemy attacks next. Their own next attack is a shot, with any triangle points determined by the enemy's style. Every outcome is decided on the server; the client sends only its intents.
 
 The magic side of the rule is written already: it names all three styles, so a magic enemy in Phase 9 needs only its style in its stats. A magic player needs a magic weapon, and `playerStyleOf`, which today knows only melee and ranged weapons, must learn to name it. Player-against-player fights (Phase 12) are out of scope. The Gear tab's hit chance shows the player's own chance before any triangle, since it depends on the target.
 

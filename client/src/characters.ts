@@ -214,6 +214,7 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     clips: "players",
     held: { file: "Skeleton_Staff.gltf", slot: "handslotr" },
     armed: true,
+    // The staff uses the same overhand release as a bow shot.
     swing: () => BOW_SHOT,
     death: "Death_A",
     hit: "Hit_A",

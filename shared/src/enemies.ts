@@ -108,10 +108,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
       { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
     ],
   },
-  // Runestone Hollow's (spec §5), first values to tune: a Skeleton Mage is a Skeleton that hits
-  // harder and lasts longer, and fights in melee despite its name (#271), and an Imp is a quick,
-  // weaker pest that notices from further off. A Mage drops Hollis's bone sigil, one kill in three,
-  // and only to a player Hollis asks it of; Imps drop nothing yet.
+  // Runestone Hollow spec §5 and Enemy Expansion spec §2. The Mage shoots from five tiles
+  // and can drop a bone sigil for a player who needs it for Hollis's quest.
   skeletonMage: {
     health: 3200,
     hitChance: 0.6,
