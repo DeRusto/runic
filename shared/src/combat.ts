@@ -50,7 +50,7 @@ function rollDamage(
 
 /**
  * One player attack with these hit stats at an enemy with `enemyHealth` left, melee or ranged.
- * The combat triangle moves the chance for a `style` attacker against a `targetStyle` target
+ * The combat triangle moves the chance for a `style` attacker against an `against` target
  * (#271); it never touches the damage. Rolls the hit, its damage, then a critical. `mightBonus` is a Might potion's, added to the hit
  * like the gear's while its buff lasts (#222). `xp` is the attack's experience before any split:
  * 6 per 100 damage, rounded once, and none for overkill, as the damage is capped at the enemy's
@@ -58,17 +58,13 @@ function rollDamage(
  */
 export function rollPlayerHit(
   { chance, max, gear }: { chance: number; max: number; gear: number },
-  [style, targetStyle]: [Style, Style],
+  { style, against }: { style: Style; against: Style },
   agilityXp: number,
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
 ) {
-  const rolled = rollDamage(
-    landChanceOf(chance, style, targetStyle),
-    max,
-    random,
-  );
+  const rolled = rollDamage(landChanceOf(chance, style, against), max, random);
   // Only on a hit, as 0 means a miss.
   const hit = rolled && rolled + gear + mightBonus;
   const critical = hit > 0 && random() < playerCritChance(agilityXp);
@@ -98,7 +94,7 @@ export function playerHit(
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     hitOf(player),
-    ["melee", targetStyle],
+    { style: "melee", against: targetStyle },
     player.agilityXp,
     mightBonus,
     enemyHealth,

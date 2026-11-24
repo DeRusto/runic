@@ -100,7 +100,7 @@ export function rangedHit(
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     rangedHitOf(player),
-    ["ranged", targetStyle],
+    { style: "ranged", against: targetStyle },
     player.agilityXp,
     mightBonus,
     enemyHealth,
