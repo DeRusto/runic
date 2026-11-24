@@ -1,6 +1,6 @@
 # Runic: Ranged
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. The sixth (#281) adds ammo recovery, and the seventh (#282) adds the combat triangle. Chasing comes in a later ticket.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. The sixth (#281) adds ammo recovery, and the seventh (#282) adds the combat triangle. The eighth (#283) makes every attack renew the enemy's chase.
 
 The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate), `shared/src/ranged.ts` (the ranged hit), `shared/src/stances.ts` (the Ranged stances), `shared/src/sight.ts` (the tall tiles and the line of sight) and `shared/src/triangle.ts` (styles and the combat triangle); where this page and those files disagree, the files win and this page is fixed.
 
@@ -189,3 +189,9 @@ The triangle's points add in before the limits, and each chance then stays on th
 The style is read from the weapon in hand at the moment each hit resolves, not from when the attack began (owner, 2026-11-23). A player who swaps a sword for a bow mid-fight is hit as a ranged player from the enemy's next swing, and their own next attack is a shot, rolled with the triangle's points off. Every outcome is decided on the server; the client sends only its intents.
 
 The magic side of the rule is written already: it names all three styles, so a magic enemy in Phase 9 needs only its style in its stats. A magic player needs a magic weapon, and `playerStyleOf`, which today knows only melee and ranged weapons, must learn to name it. Player-against-player fights (Phase 12) are out of scope. The Gear tab's hit chance shows the player's own chance before any triangle, since it depends on the target.
+
+## 9. The leash
+
+Every shot or swing renews the enemy's chase, hit or miss. The enemy goes after the last player who attacked it, and measures its leash from that player's tile at the moment of the attack. This applies to every style and to enemies on their way home. A docile creature still stands where it is and never fights back.
+
+An enemy that notices a player starts with its own tile as the point it measures from. Once the player stops attacking and walks past the leash, the enemy gives up and heads home. It also gives up if its target dies, leaves the world, or cannot be reached. If the enemy dies, its chase ends with it. A later attack on a living enemy can start a new chase.

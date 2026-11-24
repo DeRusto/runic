@@ -199,7 +199,7 @@ The skin a hide creature leaves with each of its killers, one to a player, every
 _Avoid_: Pelt, leather (that's what the pieces are made of)
 
 **Leash**:
-How far an enemy follows a player who walks away from a fight, before it gives up, walks home and recovers.
+How far an enemy follows a player who walks away. It measures from the tile of the last attacker when they attacked, even on a miss. If the enemy noticed the player first, it measures from its own notice tile until someone attacks it. Past that distance it gives up, walks home and recovers.
 _Avoid_: Aggro range, chase radius
 
 **Tick**:

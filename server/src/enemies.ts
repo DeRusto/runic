@@ -10,7 +10,7 @@ import {
   type Tile,
   type TileKind,
 } from "@runic/shared";
-import { findPath, legalSteps, nextTo } from "./pathfinding.ts";
+import { findPath, legalSteps, nextTo, pathToFirst } from "./pathfinding.ts";
 
 export const Enemy = schema(
   {
@@ -31,13 +31,13 @@ type Memory = {
   nextStepTick: number;
   nextSwingTick: number;
   returnTick: number;
-  fightStart: Tile;
+  leashOrigin: Tile;
   /** Who has damaged it since it last recovered or returned. Not saved (spec §6). */
   damagers: Set<string>;
 };
 
 /** A player as an enemy sees one: where they are and how much health they have, read live. */
-type Fighter = Tile & { health: number };
+type Fighter = Tile & { health: number; dead: boolean };
 
 /** What `advance` needs from the world on one tick. */
 export type EnemyWorld = {
@@ -45,7 +45,7 @@ export type EnemyWorld = {
   /** Every player in join order, as noticing checks them: a tie stays with the first. */
   players(): Iterable<{
     id: string;
-    player: Fighter & { dead: boolean };
+    player: Fighter;
     dropped: boolean;
     /** False while busy in a way enemies can't hit, such as Agility's crossing (#236). */
     hittable: boolean;
@@ -59,7 +59,7 @@ export type EnemyWorld = {
 /**
  * Every enemy in the region, from its tile in the map: its synced entry in `synced`, and what it
  * remembers. It notices, chases, leashes, wanders and goes home on its own; the world rolls and
- * applies the swings it asks for, and tells it when a player's swing lands.
+ * applies the swings it asks for, and tells it when a player attacks.
  */
 export class Enemies {
   private memories = new Map<string, Memory>();
@@ -78,7 +78,7 @@ export class Enemies {
           nextStepTick: 0,
           nextSwingTick: 0,
           returnTick: 0,
-          fightStart: { x, y },
+          leashOrigin: { x, y },
           damagers: new Set(),
         });
         synced.set(
@@ -95,8 +95,8 @@ export class Enemies {
   }
 
   /**
-   * A player's swing landed for `damage`, 0 for a miss. It turns to fight them, unless it is
-   * docile (#238) or attacks first and is on its way home (spec §4). Returns each damager's loot
+   * A player's attack dealt `damage`, 0 for a miss. It renews the chase unless the enemy is
+   * docile (#238). Returns each damager's loot
    * if this killed it, and undefined if it lives.
    */
   takeHit(
@@ -104,16 +104,15 @@ export class Enemies {
     enemyId: string,
     playerId: string,
     damage: number,
+    attacker: Tile,
   ): LootWon[] | undefined {
     const enemy = this.synced.get(enemyId)!;
     const memory = this.memories.get(enemyId)!;
-    const { noticeTiles, docile, returnTicks } = ENEMIES[enemy.kind];
-    if (
-      !docile &&
-      (enemy.state !== "going home" || noticeTiles === undefined)
-    ) {
+    const { docile, returnTicks } = ENEMIES[enemy.kind];
+    if (!docile) {
       if (enemy.state !== "fighting") this.startFight(tick, enemy, memory);
       enemy.target = playerId;
+      memory.leashOrigin = { x: attacker.x, y: attacker.y };
     }
     if (damage) memory.damagers.add(playerId);
     enemy.health -= damage;
@@ -150,10 +149,11 @@ export class Enemies {
         const target = world.player(enemy.target);
         if (
           target &&
+          !target.dead &&
           target.health > 0 &&
-          tilesApart(target, memory.fightStart) <= stats.leashTiles
+          tilesApart(target, memory.leashOrigin) <= stats.leashTiles &&
+          this.chase(tick, enemy, memory, target)
         ) {
-          this.step(tick, enemy, memory, target, true);
           if (
             tick >= memory.nextSwingTick &&
             nextTo(this.tiles, enemy, target)
@@ -167,7 +167,7 @@ export class Enemies {
         enemy.target = "";
       }
       if (enemy.state === "going home") {
-        this.step(tick, enemy, memory, memory.home, false);
+        this.goHome(tick, enemy, memory);
         if (tilesApart(enemy, memory.home) === 0) {
           enemy.health = stats.health;
           enemy.state = "idle";
@@ -209,7 +209,7 @@ export class Enemies {
 
   private startFight(tick: number, enemy: SyncedEnemy, memory: Memory) {
     enemy.state = "fighting";
-    memory.fightStart = { x: enemy.x, y: enemy.y };
+    memory.leashOrigin = { x: enemy.x, y: enemy.y };
     // Its timer outlives a fight, like the player's (spec D2).
     memory.nextSwingTick = Math.max(
       memory.nextSwingTick,
@@ -236,26 +236,45 @@ export class Enemies {
       const tiles = tilesApart(enemy, player);
       if (player.dead || dropped || !hittable || chased.has(id)) continue;
       // Strictly nearer, so a tie stays with whoever was checked first.
-      if (tiles >= nearestTiles) continue;
+      if (tiles >= nearestTiles || !this.pathToTarget(enemy, player)) continue;
       nearest = id;
       nearestTiles = tiles;
     }
     return nearest;
   }
 
-  /** One step towards `to`, if a step is due. `stopNextTo` stays off its tile (spec D1). */
-  private step(
+  /** Undefined means the target cannot be reached, even by a route around an obstacle. */
+  private pathToTarget(enemy: Tile, target: Tile) {
+    const path = pathToFirst(
+      this.tiles,
+      enemy,
+      ({ x, y }) => x === target.x && y === target.y,
+    );
+    path?.pop(); // Stay on the last tile before the target.
+    return path;
+  }
+
+  private chase(
     tick: number,
     enemy: SyncedEnemy,
     memory: Memory,
-    to: Tile,
-    stopNextTo: boolean,
+    target: Tile,
   ) {
+    if (tick < memory.nextStepTick) return true;
+    const path = this.pathToTarget(enemy, target);
+    if (!path) return false;
+    if (path.length) this.step(tick, enemy, memory, path[0]!);
+    return true;
+  }
+
+  private goHome(tick: number, enemy: SyncedEnemy, memory: Memory) {
     if (tick < memory.nextStepTick) return;
-    const path = findPath(this.tiles, enemy, to);
-    if (stopNextTo) path.pop();
-    if (!path.length) return;
-    Object.assign(enemy, path[0]);
+    const [step] = findPath(this.tiles, enemy, memory.home);
+    if (step) this.step(tick, enemy, memory, step);
+  }
+
+  private step(tick: number, enemy: SyncedEnemy, memory: Memory, to: Tile) {
+    Object.assign(enemy, to);
     memory.nextStepTick = tick + WALK_TICKS_PER_TILE;
   }
 }
