@@ -70,8 +70,14 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderChance: 0.1,
     wanderTiles: 5,
     leashTiles: 4,
-    // Spider silk waits for its own change (#217).
-    loot: [],
+    // Every player who damaged it finds 1 or 2 spider silk, even odds (#272, spec #293).
+    loot: [
+      {
+        category: "material",
+        chance: 1,
+        items: [{ item: "spiderSilk", count: [1, 2] }],
+      },
+    ],
   },
   skeleton: {
     health: 2400,
