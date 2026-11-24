@@ -257,6 +257,21 @@ describe("the Gear tab", () => {
     expect(box().dataset.count).toBe("");
   });
 
+  test("a stack of throwing knives in the weapon slot shows how many, and says the count too (#279)", () => {
+    wearing("ironThrowingKnife", "", { weaponCount: 12 });
+    expect(box().dataset.count).toBe("12");
+    expect(box().attributes["aria-label"]).toBe(
+      "Weapon: 12 Iron throwing knife. Adds 200 to a throw's minimum and maximum hit",
+    );
+    wearing("ironThrowingKnife", "", { weaponCount: 11 });
+    expect(box().dataset.count).toBe("11");
+    wearing("ironThrowingKnife", "", { weaponCount: 1 });
+    expect(box().dataset.count).toBe("1");
+    expect(box().attributes["aria-label"]).toMatch(
+      /^Weapon: 1 Iron throwing knife\./,
+    );
+  });
+
   test("a change in the ammo count alone redraws it", () => {
     wearing("", "", { ammo: "copperArrow", ammoCount: 17 });
     wearing("", "", { ammo: "copperArrow", ammoCount: 16 });
@@ -314,6 +329,22 @@ describe("the Gear tab's stats", () => {
       "Hit chance 46%",
       "Min hit 200 (+100/+100)",
       "Max hit 300 (+200/+100)",
+    ]);
+  });
+
+  test("with throwing knives, the hit rows are a throw's: Ranged with no Accuracy, and the knife's hit bonus, not the arrow's", () => {
+    expect(
+      stats({
+        rangedXp: xpForLevel(3),
+        weapon: "steelThrowingKnife",
+        weaponCount: 10,
+        ammo: "copperArrow",
+        ammoCount: 10,
+      }).slice(1, 4),
+    ).toEqual([
+      "Hit chance 41%",
+      "Min hit 350 (+100/+250)",
+      "Max hit 450 (+200/+250)",
     ]);
   });
 

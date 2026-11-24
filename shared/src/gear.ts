@@ -73,6 +73,8 @@ type Gear = {
   reachTiles?: number;
   /** A ranged weapon's ticks between shots (Ranged spec §4). */
   intervalTicks?: number;
+  /** A ranged weapon that is its own ammo, a throwing knife: each throw spends one from the weapon slot's stack (#279). */
+  thrown?: boolean;
 };
 
 const sword = (level: number, hitBonus: number): Gear => ({
@@ -97,6 +99,23 @@ const bow = (level: number, accuracy: number): Gear => ({
   accuracy,
   reachTiles: BOW_REACH_TILES,
   intervalTicks: BOW_INTERVAL_TICKS,
+});
+
+/** How far throwing knives reach, in 8-way tiles (#270, Ranged spec §5). */
+export const KNIFE_REACH_TILES = 4;
+/** How often throwing knives are thrown (#270, Ranged spec §5). */
+export const KNIFE_INTERVAL_TICKS = 6;
+
+/** A stack of throwing knives is a weapon of its own: it gates on Ranged, carries the throw's hit bonus and no Accuracy, and spends itself (Ranged spec §5). */
+const throwingKnife = (level: number, hitBonus: number): Gear => ({
+  slot: "weapon",
+  gate: "Ranged",
+  level,
+  does: `Adds ${hitBonus} to a throw's minimum and maximum hit`,
+  hitBonus,
+  reachTiles: KNIFE_REACH_TILES,
+  intervalTicks: KNIFE_INTERVAL_TICKS,
+  thrown: true,
 });
 
 /** Arrows go in the ammo slot and carry a shot's hit bonus (Ranged spec §2). They do nothing unless a bow is wielded. */
@@ -188,6 +207,12 @@ export const GEAR = new Map<string, Gear>([
   ["ironArrow", arrow(10, 200)],
   ["steelArrow", arrow(15, 250)],
   ["emberiteArrow", arrow(20, 300)],
+  // #228's throwing knives, on the arrows' gates and hit bonuses (#269).
+  ["copperThrowingKnife", throwingKnife(1, 100)],
+  ["bronzeThrowingKnife", throwingKnife(5, 150)],
+  ["ironThrowingKnife", throwingKnife(10, 200)],
+  ["steelThrowingKnife", throwingKnife(15, 250)],
+  ["emberiteThrowingKnife", throwingKnife(20, 300)],
   ["copperShield", shield(1, 10)],
   ["bronzeShield", shield(5, 15)],
   ["ironShield", shield(10, 20)],
@@ -251,10 +276,10 @@ export const GEAR = new Map<string, Gear>([
 /** The gear an item id is, improved or not, or undefined if it isn't gear. An improved piece has its common form's stats and gate (spec §2). */
 export const gearOf = (item: string) => GEAR.get(itemParts(item).base);
 
-/** Whether making `item` can roll an improved version: any gear but ammo, which no decision made improvable (Ranged spec §2). */
+/** Whether making `item` can roll an improved version: any gear but what a shot spends, arrows and throwing knives, which no decision made improvable (Ranged spec §2, §5). */
 export const canBeImproved = (item: string) => {
   const gear = GEAR.get(item);
-  return !!gear && gear.slot !== "ammo";
+  return !!gear && gear.slot !== "ammo" && !gear.thrown;
 };
 
 /** The percentage all worn armour takes off a hit. */

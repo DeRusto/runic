@@ -96,7 +96,7 @@ export function showFights(room: WorldConnection) {
         const from = room.state.players.get(event.player);
         // The patch came just before this message, so state.tick is this swing's tick for every viewer.
         const { clip, contactMs } = swingFor(
-          from?.weapon ?? "",
+          event.weapon ?? from?.weapon ?? "",
           event.player,
           room.state.tick,
         );

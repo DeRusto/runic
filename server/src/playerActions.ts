@@ -106,6 +106,8 @@ export type UnsyncedPlayer = {
   /** Number of obstacles crossed in order in the current lap. Session only. */
   courseProgress?: number;
   respawnTick: number;
+  /** The enemy the player's last throwing knife was thrown at, which they don't punch back until their next order (#279). Session only. */
+  ranDryAgainst?: string;
   /** Each started quest's progress, by quest id, kept for the save (#231). */
   quests: Map<string, { stage: string; turns: number }>;
   dropped?: boolean;

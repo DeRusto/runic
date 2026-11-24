@@ -1351,6 +1351,19 @@ describe("making improved gear (spec §2, §3)", () => {
     );
   });
 
+  test("smithed throwing knives never come out improved, and roll nothing (#279)", () => {
+    const random = vi.fn(() => 0);
+    for (const knife of [
+      "copperThrowingKnife",
+      "bronzeThrowingKnife",
+      "ironThrowingKnife",
+      "steelThrowingKnife",
+      "emberiteThrowingKnife",
+    ] as const)
+      expect(madeItem(knife, 99, random)).toBe(knife);
+    expect(random).not.toHaveBeenCalled();
+  });
+
   test("bars are never improved, and roll nothing", () => {
     const random = vi.fn(() => 0);
     expect(madeItem("copperBar", 1, random)).toBe("copperBar");

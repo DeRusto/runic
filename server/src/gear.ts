@@ -39,6 +39,14 @@ function takeFromSlot(world: World, id: string, slot: number, wanted: number) {
   return taken;
 }
 
+/** Spends one worn knife, hit or miss, and reports whether any are left (#279). */
+export function spendKnife(world: World, id: string) {
+  const player = world.player(id);
+  const count = player.weaponCount - 1;
+  wear(player, "weapon", count ? player.weapon : "", count);
+  return count > 0;
+}
+
 /**
  * Spends one arrow from the ammo slot, hit or miss. When the last one goes, the slot refills
  * with up to a stack of the same arrow from the inventory, taken slot by slot in order (owner,
@@ -89,6 +97,8 @@ export class Gear {
     const count = player.inventoryCounts[slot]!;
     this.placeGear(id, slot, worn, wornCount);
     wear(player, gear.slot, item, count);
+    if (gear.slot === "weapon")
+      this.world.unsynced(id).ranDryAgainst = undefined;
     this.world.fitHealth(id);
   }
 

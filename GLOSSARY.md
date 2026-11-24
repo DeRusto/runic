@@ -425,7 +425,7 @@ The fixed set of slots a player carries items in. A slot holds one piece of gear
 _Avoid_: Bag, backpack
 
 **Stack**:
-Up to 20 of the same material, food or arrows in one inventory slot. Arrows are the one gear that stacks, in the inventory and in the ammo slot; all other gear holds one to a slot.
+Up to 20 of the same material, food, arrows or throwing knives in one inventory slot. Arrows and throwing knives are the only gear that stacks: arrows in the inventory and the ammo slot, and knives in the inventory and the weapon slot. All other gear holds one to a slot.
 _Avoid_: Pile, bundle
 
 **Chat command**:
@@ -589,7 +589,7 @@ A feather the general store sells from day one, for an arrow's flight. Phase 8 w
 _Avoid_: Plume, quill
 
 **Throwing knife**:
-A small thrown weapon smithed from one bar at the anvil, plus an Emberbone at Emberite, one tier of five. It stacks like a material for now: Phase 8 decides what a throw spends and gives it combat meaning (#228).
+A ranged weapon smithed from one bar at the anvil, plus an Emberbone at Emberite. Up to 20 of the same tier fit in the weapon slot. Each attack spends one from that stack (#228, #279).
 _Avoid_: Dagger, knife (alone)
 
 **Gear**:

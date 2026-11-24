@@ -35,6 +35,7 @@ export class Walking {
   start(id: string, intent: QueuedAction) {
     const unsynced = this.world.unsyncedPlayers.get(id)!;
     const player = this.world.state.players.get(id)!;
+    unsynced.ranDryAgainst = undefined;
     // With no way there, the old action still ends, and nothing replaces it.
     const goNextTo = (action: UnsyncedAction) => {
       const path = pathNextTo(this.world.tiles, player, this.nextToOf(action)!);
