@@ -1,4 +1,4 @@
-import { parseRegion } from "@runic/shared";
+import { COMBAT_LOCK_TICKS, parseRegion } from "@runic/shared";
 import { expect, test } from "vitest";
 import { Simulation } from "./simulation.ts";
 
@@ -58,6 +58,13 @@ test("a Spider gives up across water and fights again when shot from its bank", 
   );
   expect(enemy).toMatchObject({ x: 6, state: "idle", target: "" });
 
+  s.queueWalk("a", { x: 1, y: 1 });
+  run(24);
+  expect(enemy).toMatchObject({ x: 6, state: "idle", target: "" });
+  expect(s.events).not.toContainEqual(
+    expect.objectContaining({ type: "enemySwing" }),
+  );
+
   addArcher("b", 8);
   s.queueTarget("b", "0");
   run(1);
@@ -84,45 +91,92 @@ test("a landed shot starts a chase the archer can escape by walking past the lea
   expect(enemy.target).toBe("");
 });
 
-test.each(["dies", "leaves"])(
-  "the latest attacker gets the chase until that attacker %s",
-  (end) => {
-    // Two missed shots and two failed recovery rolls, then the Spider lands its swing.
-    const { s, addArcher, run, enemy } = fight(
-      CORRIDOR,
-      0.99,
-      0.99,
-      0.99,
-      0.99,
-      0,
-      0,
+test("a Spider drops its target when it kills them and can chase again", () => {
+  // Two missed shots and two failed recovery rolls, then the Spider lands its swing.
+  const { s, addArcher, run, enemy } = fight(
+    CORRIDOR,
+    0.99,
+    0.99,
+    0.99,
+    0.99,
+    0,
+    0,
+  );
+  addArcher("b", 7);
+  s.queueTarget("a", "0");
+  run(1);
+  expect(enemy.target).toBe("a");
+  s.queueTarget("b", "0");
+  run(1);
+  expect(enemy.target).toBe("b");
+
+  s.queueWalk("a", { x: 1, y: 1 });
+  const latest = s.state.players.get("b")!;
+  latest.health = 1;
+  s.queueWalk("b", { x: 7, y: 1 });
+  run(3);
+  expect(latest.dead).toBe(true);
+  expect(enemy.target).toBe("");
+
+  s.queueTarget("a", "0");
+  run(8);
+  expect(enemy.target).toBe("a");
+});
+
+test("a Spider switches targets on each alternating shot", () => {
+  const { s, addArcher, run, enemy } = fight();
+  addArcher("b", 7);
+
+  for (const [id, ticks] of [
+    ["a", 1],
+    ["b", 1],
+    ["a", 7],
+    ["b", 1],
+  ] as const) {
+    s.queueTarget(id, "0");
+    s.events.length = 0;
+    run(ticks);
+    expect(s.events).toContainEqual(
+      expect.objectContaining({ type: "playerSwing", player: id, damage: 0 }),
     );
-    addArcher("b", 7);
-    s.queueTarget("a", "0");
-    run(1);
-    expect(enemy.target).toBe("a");
-    s.queueTarget("b", "0");
-    run(1);
-    expect(enemy.target).toBe("b");
+    expect(enemy).toMatchObject({ state: "fighting", target: id });
+  }
+});
 
-    s.queueWalk("a", { x: 1, y: 1 });
-    if (end === "dies") {
-      const latest = s.state.players.get("b")!;
-      latest.health = 1;
-      s.queueWalk("b", { x: 7, y: 1 });
-      run(3);
-      expect(latest.dead).toBe(true);
-    } else {
-      s.removePlayer("b");
-      run(1);
-    }
-    expect(enemy.target).toBe("");
+test("a Spider stops chasing a player who logs out and can chase again", () => {
+  // The route around the water takes longer than the archer's combat lock.
+  const { s, run, addArcher, enemy } = fight([
+    "TTTTTTTTTT",
+    "TR.~..S..T",
+    ...Array<string>(12).fill("T..~.....T"),
+    "T........T",
+    "TTTTTTTTTT",
+  ]);
+  s.queueTarget("a", "0");
+  run(1);
+  expect(enemy.target).toBe("a");
+  s.queueWalk("a", { x: 1, y: 1 });
+  run(COMBAT_LOCK_TICKS);
+  expect(enemy.target).toBe("a");
 
-    s.queueTarget("a", "0");
-    run(8);
-    expect(enemy.target).toBe("a");
-  },
-);
+  s.queueLogout("a");
+  run(1);
+  expect(s.loggedOut.splice(0)).toEqual(["a"]);
+  // WorldRoom removes the player after Simulation accepts the logout.
+  s.removePlayer("a");
+  run(1);
+  expect(enemy).toMatchObject({ state: "going home", target: "" });
+  run(60);
+  expect(enemy).toMatchObject({ x: 6, y: 1, state: "idle", target: "" });
+  expect(s.events).not.toContainEqual(
+    expect.objectContaining({ type: "enemySwing" }),
+  );
+
+  addArcher("b", 8);
+  s.queueTarget("b", "0");
+  run(1);
+  expect(enemy).toMatchObject({ state: "fighting", target: "b" });
+});
 
 test("a Tarn Ox takes a ranged hit without chasing or swinging", () => {
   const { s, run, enemy } = fight(
