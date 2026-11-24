@@ -127,6 +127,7 @@ export class Fighting {
       critical,
       ...(ranged?.thrown ? { weapon: player.weapon } : {}),
     });
+    // A landed shot against a living enemy deals positive damage.
     if (ranged && damage === 0 && this.world.random() < AMMO_RECOVERY_CHANCE) {
       this.world.groundItems.recoverAmmo(
         enemy,

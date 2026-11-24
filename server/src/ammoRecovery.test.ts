@@ -11,6 +11,7 @@ const BOW = {
 };
 const KNIVES = { weapon: "copperThrowingKnife", weaponCount: 1 };
 
+/** Alice starts in reach of a docile Tarn Ox by default. Once scripted rolls run out, 0.99 misses and loses the ammo. */
 function shooter(gear: typeof BOW | typeof KNIVES, rolls: number[], rows = OX) {
   const random = vi.fn(() => rolls.shift() ?? 0.99);
   const sim = new Simulation(parseRegion(rows.join("\n")), random);
@@ -174,5 +175,24 @@ test("recovered ammo stays separate from other owners and other items on the sam
     { x: 5, y: 1, item: "copperOre", count: 1, owner: "alice" },
     { x: 5, y: 1, item: "copperArrow", count: 1, owner: "bob" },
     { x: 5, y: 1, item: "copperArrow", count: 1, owner: "alice" },
+  ]);
+});
+
+test("a recovered arrow can join a matching stack the shooter dropped and still owns", () => {
+  const { sim } = shooter(BOW, [0.99, 0]);
+  const save = sim.saveOf("a")!;
+  save.inventory[0] = "copperArrow";
+  save.inventoryCounts![0] = 1;
+  sim.addPlayer("a", { ...save, x: 5 }, "alice");
+  sim.queueDrop("a", 0, 1);
+  sim.tick();
+  const id = [...sim.state.groundItems.keys()][0]!;
+
+  sim.queueTarget("a", "0");
+  sim.tick();
+
+  expect([...sim.state.groundItems.keys()]).toEqual([id]);
+  expect(drops(sim)).toEqual([
+    { x: 5, y: 1, item: "copperArrow", count: 2, owner: "alice" },
   ]);
 });
