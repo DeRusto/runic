@@ -300,7 +300,7 @@ How a fighter fights: melee, ranged or magic. A player's style is the weapon in 
 _Avoid_: Combat style, attack type, stance (each style has its own stances)
 
 **Combat triangle**:
-The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy still keeps its 5% chance to hit.
+The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy's chance to hit still never falls below 5%.
 _Avoid_: Rock-paper-scissors, style bonus, counter
 
 **Blocking**:
