@@ -64,8 +64,8 @@ A player's style is the weapon in hand: a bow shoots, and a sword or bare hands 
 
 | Value | Bow | Melee, for comparison |
 | --- | --- | --- |
-| Reach | 6 tiles, a diagonal step counting as one (#270) | Next to the enemy |
-| Ticks between attacks | 8 (#270) | 8 |
+| Reach | 6 tiles, a diagonal step counting as one (#270); Longrange adds 2 (§6) | Next to the enemy |
+| Ticks between attacks | 8 (#270); Rapid takes 2 off (§6) | 8 |
 
 A player who attacks an enemy within reach shoots from where they stand. From further off, they walk toward it, re-pathing each step as it moves, and stop on the first tile within reach; the first shot comes on the tick they arrive. The walk goes to the nearest tile in reach, counted in steps, even when the enemy itself cannot be reached on foot, such as behind a wall of trees. An enemy that moves out of reach mid-fight is walked back into reach the same way, and no shot fires, no arrow is spent and no experience is paid until it is in reach again (owner, #277). "In reach" here always means in reach and in sight, as the next section sets out.
 
@@ -123,7 +123,7 @@ A bow shot plays the character's overhand cast clip, and its damage number, flas
 
 ## 5. Throwing knives
 
-Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks. Each knife supplies its tier's hit bonus and adds no Accuracy.
+Throwing knives use the ranged hit, sight and experience rules in §4. A player can throw from up to 4 tiles away and throws once every 6 ticks, which Longrange and Rapid change as §6 sets out. Each knife supplies its tier's hit bonus and adds no Accuracy.
 
 | Throwing knife | Hit bonus | Ranged gate |
 | --- | --- | --- |
