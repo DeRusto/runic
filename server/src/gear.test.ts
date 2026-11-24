@@ -896,9 +896,9 @@ describe("a stack in the weapon slot (Ranged spec §2)", () => {
     expect(me().inventoryCounts[1]).toBe(7);
   });
 
-  test("drops whole on death, as one ground stack", () => {
-    start({ ...KNIVES, health: 100 });
-    rolls = [MISS, 0, 0]; // The Spider's first swing hits for 100.
+  test("drops worn knives whole on death, separate from knives in inventory", () => {
+    start({ ...KNIVES, health: 100, held: ["copperThrowingKnife"] });
+    rolls = [MISS, MISS, 0, 0]; // The throw is lost, then the Spider hits for 100.
     sim.queueTarget("a", "0");
     ticks(5);
     expect(me().dead).toBe(true);
@@ -907,7 +907,10 @@ describe("a stack in the weapon slot (Ranged spec §2)", () => {
         item,
         count,
       })),
-    ).toEqual([{ item: "copperThrowingKnife", count: 6 }]); // 7 less the one thrown.
+    ).toEqual([
+      { item: "copperThrowingKnife", count: 1 },
+      { item: "copperThrowingKnife", count: 6 }, // 7 less the one thrown.
+    ]);
     expect(me()).toMatchObject({ weapon: "", weaponCount: 0 });
   });
 });

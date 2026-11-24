@@ -481,7 +481,7 @@ The right-click choices **1**, **5**, **10**, **X** and **All** that Drop, and l
 _Avoid_: Quantity picker, split menu
 
 **Ground item**:
-One item or stack lying on a tile, from a single drop. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. Ground items never merge, but a stack taken into an inventory joins a matching stack there.
+One item or stack lying on a tile. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. A recovered arrow or throwing knife joins a matching stack on that tile while the shooter still owns it, restarting both timers. All other drops form their own ground items. A stack taken into an inventory joins a matching stack there.
 _Avoid_: Floor item
 
 **Loot**:

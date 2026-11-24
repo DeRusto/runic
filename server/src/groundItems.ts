@@ -5,7 +5,7 @@ import {
   type Tile,
 } from "@runic/shared";
 
-/** One item or stack lying on a tile, from a single drop. */
+/** One item or stack lying on a tile. */
 export const GroundItem = schema(
   {
     x: t.uint8(),
@@ -43,6 +43,26 @@ export class GroundItems {
     );
     this.dropTicks.set(id, tick);
     return id;
+  }
+
+  /** Adds one recovered arrow or knife to a matching stack within its owner window (Ranged spec §7). */
+  recoverAmmo(tile: Tile, item: string, owner: string, tick: number) {
+    for (const [id, dropTick] of this.dropTicks) {
+      // Shots resolve before ground item timers advance on this tick.
+      if (tick >= dropTick + GROUND_ITEM_OWNER_TICKS) continue;
+      const stack = this.synced.get(id)!;
+      if (
+        stack.owner !== owner ||
+        stack.item !== item ||
+        stack.x !== tile.x ||
+        stack.y !== tile.y
+      )
+        continue;
+      stack.count++;
+      this.dropTicks.set(id, tick);
+      return;
+    }
+    this.spawn(tile, item, 1, owner, tick);
   }
 
   /** Whether the player with this username can see the ground item with this id. */
