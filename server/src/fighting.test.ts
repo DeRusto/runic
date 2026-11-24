@@ -234,7 +234,7 @@ describe("the leash", () => {
       state: "fighting",
       target: "b",
     });
-    Object.assign(player(s, "b"), { x: 8 }); // 4 from the new attacker’s tile.
+    Object.assign(player(s, "b"), { x: 8 }); // 4 from the new attacker's tile.
     s.queueWalk("b", { x: 8, y: 1 });
     run(s, 1);
     expect(spider(s).state).toBe("fighting");

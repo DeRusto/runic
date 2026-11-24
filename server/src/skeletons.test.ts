@@ -218,7 +218,7 @@ describe("the leash", () => {
     const events = run(s, 2); // Noticed from (8,1) on 1, then hit at (9,1) on 2.
     expect(swingTicks(events, "playerSwing")).toEqual([2]);
     expect(skeleton(s).x).toBe(9);
-    Object.assign(s.state.players.get("a")!, { x: 13 }); // Within 4 tiles of the attacker’s tile at (10,1).
+    Object.assign(s.state.players.get("a")!, { x: 13 }); // Within 4 tiles of the attacker's tile at (10,1).
     s.queueWalk("a", { x: 13, y: 1 });
     run(s, 1);
     expect(skeleton(s).target).toBe("a");
