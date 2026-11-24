@@ -33,6 +33,12 @@ export type LootCategoryRow = {
   items: readonly LootItem[];
 };
 
+/** One bone item a damager can find, with a chance from 0 to 1. */
+export type BoneDrop = { item: "bones" | "heavyBones"; chance: number };
+
+// Combat drops spec §2.
+const BONE_DROP_CHANCE = 2 / 3;
+
 /** Hit chances are 0..1. Damage on a hit is any whole number from 100 to maxDamage. */
 type EnemyStats = {
   health: number;
@@ -54,6 +60,8 @@ type EnemyStats = {
   docile?: true;
   /** What each player who damaged it rolls for when it dies. */
   loot: readonly LootCategoryRow[];
+  /** Rolled independently of the loot table for each damager. */
+  bone?: BoneDrop;
 };
 
 /** Spec §5. */
@@ -92,6 +100,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 3,
     noticeTiles: 3,
     leashTiles: 4,
+    bone: { item: "bones", chance: BONE_DROP_CHANCE },
     // Spec §4: one Emberbone in four, per player who damaged it.
     loot: [
       { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
@@ -114,6 +123,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 3,
     noticeTiles: 3,
     leashTiles: 4,
+    bone: { item: "heavyBones", chance: BONE_DROP_CHANCE },
     loot: [
       { category: "quest", chance: 1 / 3, items: [{ item: "boneSigil" }] },
     ],
@@ -151,6 +161,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 0,
     leashTiles: 0,
     docile: true,
+    bone: { item: "bones", chance: BONE_DROP_CHANCE },
     // Every player who damaged it finds its hide (#238).
     loot: [{ category: "material", chance: 1, items: [{ item: "tarnHide" }] }],
   },
@@ -169,6 +180,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderChance: 0,
     wanderTiles: 0,
     leashTiles: 2,
+    bone: { item: "bones", chance: BONE_DROP_CHANCE },
     // Every player who damaged it finds its hide (#238).
     loot: [
       { category: "material", chance: 1, items: [{ item: "bristleHide" }] },
@@ -186,6 +198,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderChance: 0,
     wanderTiles: 0,
     leashTiles: 2,
+    bone: { item: "heavyBones", chance: BONE_DROP_CHANCE },
     // Every player who damaged it finds its hide (#238).
     loot: [
       { category: "material", chance: 1, items: [{ item: "cinderHide" }] },

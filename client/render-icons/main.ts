@@ -13,6 +13,7 @@ const KNIGHT = "/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb";
 const MINING_ICONS = "/50-rpg-mining-icons/PNG/Without background";
 const SPIDER_ICONS = "/rpg-spider-loot-icons/PNG/without background";
 const MONSTER_ICONS = "/rpg-monster-loot-icons/PNG/without background";
+const BONE_ICONS = "/skull-and-bone-rpg-icons/PNG/without_shadow";
 /** The icons taken from the owner's Craftpix packs rather than rendered, scaled to match (spec §7). */
 const PACK_ICONS: Record<string, string> = {
   emberiteSword: "/sword-rpg-game-icon-set/PNG/without background/21.png",
@@ -26,6 +27,8 @@ const PACK_ICONS: Record<string, string> = {
   hollowEssence: `${MINING_ICONS}/43.png`,
   pickaxe: `${MINING_ICONS}/2.png`,
   emberbone: `${MONSTER_ICONS}/24.png`,
+  bones: `${BONE_ICONS}/15.png`,
+  heavyBones: `${BONE_ICONS}/17.png`,
   feather: `${MONSTER_ICONS}/33.png`,
   berry: `${MONSTER_ICONS}/7.png`,
   herb: `${MONSTER_ICONS}/8.png`,

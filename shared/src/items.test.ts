@@ -54,8 +54,8 @@ describe("ITEMS", () => {
     // (the capes three), three ores, three logs, three raw fish, the three plants, the vial,
     // the three potions, the silk, the rope and torch, the three hides (#238), and coins
     // (#217, #222, #225), plus Fletching's twenty: a shaft, a feather, five arrowheads, five
-    // arrows, five knives, three bows (#228), and Odo's three proof essences and Hollis's two offering items (Runestone Hollow spec §4).
-    expect(Object.keys(ITEMS)).toHaveLength(136);
+    // arrows, five knives, three bows (#228), and Odo's three proof essences and Hollis's two offering items (Runestone Hollow spec §4), and two kinds of bones (#296).
+    expect(Object.keys(ITEMS)).toHaveLength(138);
   });
 
   test("the hides stack to 20, and a hands, feet, neck or ring piece takes a whole slot (#238)", () => {

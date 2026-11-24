@@ -26,6 +26,9 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ironOre: 8,
   emberiteOre: 20,
   emberbone: 10,
+  // First values for the bones in the combat drops spec §2.
+  bones: 4,
+  heavyBones: 8,
   ashstone: 25,
   cinderglass: 50,
   heartflame: 100,

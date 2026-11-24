@@ -1,5 +1,6 @@
 import {
   ENEMIES,
+  type BoneDrop,
   type EnemyKind,
   type LootCategoryRow,
   type LootItem,
@@ -184,15 +185,17 @@ function pick(items: readonly LootItem[], random: () => number) {
  * What each damager wins from a loot table, such as a dead enemy's: each player rolls the whole table, in
  * table order. Each of a category's picks rolls its chance, then an item by weight, then a count
  * from its range. A certain outcome (a chance of 1, one item, a fixed count) takes no roll, so
- * tables that change nothing replay the same rolls.
+ * tables that change nothing replay the same rolls. Each damager then rolls for the enemy's
+ * bone, if any.
  */
 export function rollLoot(
   table: readonly LootCategoryRow[],
   damagers: Iterable<string>,
   random: () => number,
+  bone?: BoneDrop,
 ): LootWon[] {
   const won: LootWon[] = [];
-  for (const player of damagers)
+  for (const player of damagers) {
     for (const { chance, picks = 1, items } of table)
       for (let i = 0; i < picks; i++) {
         if (chance < 1 && random() >= chance) continue;
@@ -200,5 +203,8 @@ export function rollLoot(
         const [min, max] = typeof count === "number" ? [count, count] : count;
         won.push({ player, item, count: rollBetween(min, max, random) });
       }
+    if (bone && (bone.chance === 1 || random() < bone.chance))
+      won.push({ player, item: bone.item, count: 1 });
+  }
   return won;
 }

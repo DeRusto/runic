@@ -57,12 +57,20 @@ function run(s: Simulation, ticks = 1) {
 const toldTo = (events: WorldEvent[], id: string) =>
   events.flatMap((e) => (e.type === "told" && e.player === id ? [e.line] : []));
 
-/** "a" swings once and "b" lands the killing blow, each doing 1 damage. */
-function killedByTwo(rolls: number[], s: Simulation, ...bones: number[]) {
+/** "a" swings once and "b" lands the killing blow, each doing 100 damage. */
+function killedByTwo(
+  rolls: number[],
+  s: Simulation,
+  ...emberboneRolls: number[]
+) {
   s.addPlayer("a", SAVE, "a");
   s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 200;
-  rolls.push(...SWING, ...SWING, ...bones);
+  rolls.push(
+    ...SWING,
+    ...SWING,
+    ...emberboneRolls.flatMap((roll) => [roll, MISS]),
+  );
   s.queueTarget("a", "0");
   s.queueTarget("b", "0");
 }
@@ -126,7 +134,7 @@ test("a dead player still rolls", () => {
   run(s);
   // "a" is dead by the time "b" lands the killing blow.
   Object.assign(s.state.players.get("a")!, { dead: true, health: 0 });
-  rolls.push(...SWING, WIN, LOSE);
+  rolls.push(...SWING, WIN, MISS, LOSE, MISS);
   s.queueTarget("b", "0");
   run(s);
   expect(enemy(s).state).toBe("dead");
@@ -143,7 +151,7 @@ test("a player who has left doesn't roll", () => {
   s.queueTarget("a", "0");
   run(s);
   s.removePlayer("a");
-  // Only "b" rolls, so the one winning roll is theirs and nothing else is drawn.
+  // Only "b" rolls, so only they can win the Emberbone.
   rolls.push(...SWING, WIN);
   s.queueTarget("b", "0");
   const events = run(s, 8);

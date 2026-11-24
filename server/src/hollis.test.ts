@@ -123,7 +123,7 @@ describe("on the offering", () => {
     expect(me().inventoryCounts[0]).toBe(2);
   });
 
-  test("a Skeleton Mage's bone sigil drops for a player Hollis asked, and not for one Hollis didn't", () => {
+  test("a Skeleton Mage's bone sigil drops for a player Hollis asked, while both players can find heavy bones", () => {
     sim.addPlayer("b", { ...SAVE, x: 9, ...KNOWS_ESSENCE }, "b");
     const mage = sim.state.enemies.get("0")!;
     const sigils = (owner: string) =>
@@ -133,12 +133,17 @@ describe("on the offering", () => {
     // "a" is on the offering, "b" never took it; both win the roll.
     Object.assign(me(), { x: 7, y: 1 });
     mage.health = 200;
-    rolls.push(...SWING, ...SWING, HIT, HIT);
+    rolls.push(...SWING, ...SWING, HIT, HIT, HIT, HIT);
     sim.queueTarget("a", "0");
     sim.queueTarget("b", "0");
     run();
     expect(mage.state).toBe("dead");
     expect([sigils("a"), sigils("b")]).toEqual([1, 0]);
+    expect(
+      [...sim.state.groundItems.values()]
+        .filter(({ item }) => item === "heavyBones")
+        .map(({ owner }) => owner),
+    ).toEqual(["a", "b"]);
   });
 
   test("the offering handed over finishes the quest and opens the altar", () => {

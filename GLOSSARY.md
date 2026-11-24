@@ -497,7 +497,7 @@ What an enemy leaves when it dies: a ground item on the enemy's tile for each pl
 _Avoid_: Drop, reward
 
 **Loot table**:
-An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range.
+An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range. Each player rolls for the enemy’s bone separately after rolling its loot table.
 _Avoid_: Drop table
 
 **Pile**:
@@ -541,7 +541,7 @@ Making a potion, anywhere in the inventory and with no station: using a vial on 
 _Avoid_: Brewing, crafting
 
 **Material**:
-An item that goes into making something: ore, finds, bars, logs, fish and Emberbones. Gems, logs and fish count as materials before anything uses them.
+An item that goes into making something: ore, finds, bars, logs, fish, Emberbones, bones and heavy bones. An item can count as a material before it has a use.
 _Avoid_: Resource, ingredient
 
 **Ore**:
@@ -587,6 +587,12 @@ _Avoid_: Talisman (there are none), magic stone
 **Emberbone**:
 Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.
 _Avoid_: Trophy, token
+
+**Bones**:
+A stackable material left by Skeletons, Tarn Oxen and Bristlebacks. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
+
+**Heavy bones**:
+A stackable material left by Skeleton Mages and Cinderhorns at the same chance as bones. The general store pays more for heavy bones.
 
 **Spider silk**:
 A thread a Spider leaves behind, needed to make rope and to augment capes. Every Spider kill leaves 1 or 2, at even odds, for each player who damaged it (#272).

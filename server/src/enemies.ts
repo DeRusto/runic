@@ -108,7 +108,7 @@ export class Enemies {
   ): LootWon[] | undefined {
     const enemy = this.synced.get(enemyId)!;
     const memory = this.memories.get(enemyId)!;
-    const { docile, returnTicks } = ENEMIES[enemy.kind];
+    const { docile, returnTicks, loot, bone } = ENEMIES[enemy.kind];
     if (!docile) {
       if (enemy.state !== "fighting") this.startFight(tick, enemy, memory);
       enemy.target = playerId;
@@ -121,13 +121,9 @@ export class Enemies {
     enemy.target = "";
     memory.returnTick = tick + returnTicks;
     // It starts over, as it can't be damaged until it returns.
-    const loot = rollLoot(
-      ENEMIES[enemy.kind].loot,
-      memory.damagers,
-      this.random,
-    );
+    const won = rollLoot(loot, memory.damagers, this.random, bone);
     memory.damagers.clear();
-    return loot;
+    return won;
   }
 
   /** One tick of every enemy, in order, so a swing's result shows to the enemies after it. */
