@@ -15,7 +15,14 @@ import {
 } from "./index.ts";
 import { levelFor, type XpField } from "./skills.ts";
 import { meleeXpOf, type Stance } from "./stances.ts";
-import { avoidanceOf, blockOf, enemyHitChance, hitOf } from "./stats.ts";
+import {
+  avoidanceOf,
+  blockOf,
+  enemyHitChance,
+  hitOf,
+  landChanceOf,
+} from "./stats.ts";
+import { playerStyleOf, type Style } from "./triangle.ts";
 
 // Agility spec §1.
 const BASE_CRIT_PER_THOUSAND = 100;
@@ -43,19 +50,25 @@ function rollDamage(
 
 /**
  * One player attack with these hit stats at an enemy with `enemyHealth` left, melee or ranged.
- * Rolls the hit, its damage, then a critical. `mightBonus` is a Might potion's, added to the hit
+ * The combat triangle moves the chance for a `style` attacker against a `targetStyle` target
+ * (#271); it never touches the damage. Rolls the hit, its damage, then a critical. `mightBonus` is a Might potion's, added to the hit
  * like the gear's while its buff lasts (#222). `xp` is the attack's experience before any split:
  * 6 per 100 damage, rounded once, and none for overkill, as the damage is capped at the enemy's
  * health.
  */
 export function rollPlayerHit(
   { chance, max, gear }: { chance: number; max: number; gear: number },
+  [style, targetStyle]: [Style, Style],
   agilityXp: number,
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
 ) {
-  const rolled = rollDamage(chance, max, random);
+  const rolled = rollDamage(
+    landChanceOf(chance, style, targetStyle),
+    max,
+    random,
+  );
   // Only on a hit, as 0 means a miss.
   const hit = rolled && rolled + gear + mightBonus;
   const critical = hit > 0 && random() < playerCritChance(agilityXp);
@@ -70,19 +83,22 @@ export function rollPlayerHit(
 }
 
 /**
- * One player swing at an enemy with `enemyHealth` left (see `rollPlayerHit`). The melee
+ * One player swing at an enemy with `enemyHealth` left, which fights in `targetStyle` (see
+ * `rollPlayerHit`). The melee
  * experience goes to Attack and Strength as `stance` splits it; Hitpoints gets the same amount
  * again.
  */
 export function playerHit(
   player: { attackXp: number; strengthXp: number; agilityXp: number } & Worn,
   stance: Stance,
+  targetStyle: Style,
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     hitOf(player),
+    ["melee", targetStyle],
     player.agilityXp,
     mightBonus,
     enemyHealth,
@@ -102,7 +118,8 @@ export function playerHit(
 
 /**
  * One enemy swing at a player. Rolls the hit against the player's Avoidance plus
- * `avoidanceBonus` (an Avoidance potion's, #222), then a block. `hit` is whether it hit at all,
+ * `avoidanceBonus` (an Avoidance potion's, #222), with the combat triangle read from the weapon
+ * in the player's hand now (#271), then a block. `hit` is whether it hit at all,
  * blocked or not. Armour never turns a landed hit into 0, and the health cap comes after it.
  */
 export function enemyHit(
@@ -113,7 +130,11 @@ export function enemyHit(
 ) {
   const avoidance = avoidanceOf(player);
   const rolled = rollDamage(
-    enemyHitChance(kind, avoidance.skill + avoidance.gear + avoidanceBonus),
+    enemyHitChance(
+      kind,
+      avoidance.skill + avoidance.gear + avoidanceBonus,
+      playerStyleOf(player),
+    ),
     ENEMIES[kind].maxDamage,
     random,
   );

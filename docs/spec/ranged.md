@@ -1,8 +1,8 @@
 # Runic: Ranged
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. The sixth (#281) adds ammo recovery. The combat triangle and chasing come in later tickets.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 8 map (#88). The spec issue #275 gathers the owner's decisions (#268, #269, #270, #271), and each build ticket records here the part it builds. The first ticket (#276) makes Ranged a trained skill, adds the ammo slot, and gates bows and arrows on Ranged. The second (#277) adds shooting with a bow, and the third (#278) adds sight, so houses, trees and rocks block a shot. The fourth (#279) adds throwing knives, and the fifth (#280) adds Ranged's own stances. The sixth (#281) adds ammo recovery, and the seventh (#282) adds the combat triangle. Chasing comes in a later ticket.
 
-The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate), `shared/src/ranged.ts` (the ranged hit), `shared/src/stances.ts` (the Ranged stances) and `shared/src/sight.ts` (the tall tiles and the line of sight); where this page and those files disagree, the files win and this page is fixed.
+The values live in `shared/src/skills.ts` (the skill list), `shared/src/gear.ts` (gates, bonuses, the ammo slot, and a bow's reach and fire rate), `shared/src/ranged.ts` (the ranged hit), `shared/src/stances.ts` (the Ranged stances), `shared/src/sight.ts` (the tall tiles and the line of sight) and `shared/src/triangle.ts` (styles and the combat triangle); where this page and those files disagree, the files win and this page is fixed.
 
 ## 1. The Ranged skill
 
@@ -166,3 +166,26 @@ The wait between attacks is set when an attack is made, from the weapon in hand 
 A missed shot rolls once for recovery. Half the time, the spent arrow or throwing knife lands on the tile the target occupies when the shot resolves. A hit uses up its ammo. A cancelled attack spends nothing and makes no recovery roll (#281).
 
 The shooter alone can see and take the recovered ammo for one minute. It goes public after that minute and despawns after three minutes. Recovery adds one to a matching stack on that tile while the shooter still owns it, and both timers start again. A public stack, a different item, or another player's stack stays separate. Ordinary drops and death drops each create a new ground item. Recovered ammo can join any matching stack within its owner window.
+
+## 8. The combat triangle
+
+Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. All seven of today's enemies fight in melee, the Skeleton Mage included, so for now the triangle matters only to a ranged player.
+
+| Pairing | Effect on the chance to land |
+| --- | --- |
+| The attacker's style beats the target's | 10 points more |
+| The target's style beats the attacker's | 10 points fewer |
+| The same style | No change |
+
+Points sit on the Accuracy and Avoidance scale, one point to a percentage point (#271). The modifier applies on both sides of every swing and shot, so against today's roster:
+
+| Fight | The player's chance to land | The enemy's chance to hit |
+| --- | --- | --- |
+| A sword or bare hands against a melee enemy | Unchanged | Unchanged |
+| A bow or throwing knives against a melee enemy | 10 points fewer | 10 points more |
+
+The triangle's points add in before the limits, and each chance then stays on the scale. An enemy's chance to hit never falls below its 5% floor, and no chance to land, the player's or the enemy's, goes above a whole chance; a player's chance never falls below none. The triangle changes how often a hit lands and never how hard: damage, Might, criticals, blocks and armour are untouched.
+
+The style is read from the weapon in hand at the moment each hit resolves, not from when the attack began (owner, 2026-11-23). A player who swaps a sword for a bow mid-fight is hit as a ranged player from the enemy's next swing, and their own next attack is a shot, rolled with the triangle's points off. Every outcome is decided on the server; the client sends only its intents.
+
+The magic side is written already: the rule names all three styles, so a magic enemy or a magic player in Phase 9 needs only its style set. Player-against-player fights (Phase 12) are out of scope. The Gear tab's hit chance shows the player's own chance before any triangle, since it depends on the target.

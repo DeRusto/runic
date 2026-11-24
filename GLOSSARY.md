@@ -295,6 +295,14 @@ _Avoid_: Dodge, evasion
 Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring and a bow add their Accuracy to the player's side (#238, #268).
 _Avoid_: Precision, attack bonus
 
+**Style**:
+How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats, and all seven of today's enemies fight in melee, the Skeleton Mage included (#271). Nothing fights with magic until Phase 9.
+_Avoid_: Combat style, attack type, stance (each style has its own stances)
+
+**Combat triangle**:
+The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy still keeps its 5% chance to hit.
+_Avoid_: Rock-paper-scissors, style bonus, counter
+
 **Blocking**:
 The skill that makes a shield block more often; trained by blocking. It doesn't decide who can use a shield.
 _Avoid_: Shield skill, parry

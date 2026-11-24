@@ -1,4 +1,5 @@
 import type { ItemId } from "./items.ts";
+import type { Style } from "./triangle.ts";
 
 export type EnemyKind =
   | "spider"
@@ -38,6 +39,8 @@ type EnemyStats = {
   hitChance: number;
   /** Points added to its chance to hit, against a player's Avoidance (spec §5). */
   accuracy: number;
+  /** Its one fixed style, set against the player's by the combat triangle (#271). */
+  style: Style;
   maxDamage: number;
   swingIntervalTicks: number;
   firstSwingDelayTicks: number;
@@ -59,6 +62,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 800,
     hitChance: 0.35,
     accuracy: 0,
+    style: "melee",
     maxDamage: 200,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
@@ -73,6 +77,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 2400,
     hitChance: 0.55,
     accuracy: 0,
+    style: "melee",
     maxDamage: 500,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
@@ -87,13 +92,14 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     ],
   },
   // Runestone Hollow's (spec §5), first values to tune: a Skeleton Mage is a Skeleton that hits
-  // harder and lasts longer, still in melee until Phase 8's Ranged work, and an Imp is a quick,
+  // harder and lasts longer, and fights in melee despite its name (#271), and an Imp is a quick,
   // weaker pest that notices from further off. A Mage drops Hollis's bone sigil, one kill in three,
   // and only to a player Hollis asks it of; Imps drop nothing yet.
   skeletonMage: {
     health: 3200,
     hitChance: 0.6,
     accuracy: 10,
+    style: "melee",
     maxDamage: 650,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
@@ -110,6 +116,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 1200,
     hitChance: 0.5,
     accuracy: 0,
+    style: "melee",
     maxDamage: 300,
     swingIntervalTicks: 6,
     firstSwingDelayTicks: 3,
@@ -129,6 +136,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 200,
     hitChance: 0,
     accuracy: 0,
+    style: "melee",
     maxDamage: 0,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
@@ -147,6 +155,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 500,
     hitChance: 0.2,
     accuracy: 0,
+    style: "melee",
     maxDamage: 100,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
@@ -163,6 +172,7 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     health: 1000,
     hitChance: 0.25,
     accuracy: 0,
+    style: "melee",
     maxDamage: 150,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,

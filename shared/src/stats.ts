@@ -16,6 +16,7 @@ import {
   STRENGTH_LEVELS_PER_DAMAGE,
 } from "./index.ts";
 import { levelFor } from "./skills.ts";
+import { trianglePointsOf, type Style } from "./triangle.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
 
@@ -42,13 +43,31 @@ export const avoidanceOf = (player: { defenseXp: number } & Worn) => ({
     AVOIDANCE_TENTHS_PER_POINT,
 });
 
-/** An enemy's chance (0..1) to hit a player with `avoidance` points: base + accuracy − Avoidance, floored (spec §5). */
-export const enemyHitChance = (kind: EnemyKind, avoidance: number) =>
-  Math.max(
-    MIN_ENEMY_HIT_CHANCE,
+/** Keeps a chance to land on the scale: no more than a whole chance, and no less than `floor`. */
+const onScale = (chance: number, floor: number) =>
+  Math.min(1, Math.max(floor, chance));
+
+/**
+ * An enemy's chance (0..1) to hit a player with `avoidance` points who fights in `playerStyle`:
+ * base + Accuracy + the combat triangle's points − Avoidance, floored at 5% (spec §5, #271).
+ */
+export const enemyHitChance = (
+  kind: EnemyKind,
+  avoidance: number,
+  playerStyle: Style,
+) =>
+  onScale(
     ENEMIES[kind].hitChance +
-      (ENEMIES[kind].accuracy - avoidance) / POINTS_PER_HIT_CHANCE,
+      (ENEMIES[kind].accuracy +
+        trianglePointsOf(ENEMIES[kind].style, playerStyle) -
+        avoidance) /
+        POINTS_PER_HIT_CHANCE,
+    MIN_ENEMY_HIT_CHANCE,
   );
+
+/** A player's `chance` (0..1) to land, moved by the combat triangle for a `style` fighter against an `against` one and kept on the scale (#271). */
+export const landChanceOf = (chance: number, style: Style, against: Style) =>
+  onScale(chance + trianglePointsOf(style, against) / POINTS_PER_HIT_CHANCE, 0);
 
 /**
  * The hit curves every style shares, from the level that lands hits and the level that sets
