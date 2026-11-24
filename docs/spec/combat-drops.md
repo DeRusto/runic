@@ -1,6 +1,6 @@
 # Runic: Combat drops
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is milestone 4 of the Phase 8 map (#88), planned in spec #293 from the owner's decision in #272. It adds drops to enemies that leave nothing useful today and changes no rule of how loot lands: each player who damaged an enemy rolls its loot table, and what they win lands on the enemy's tile as their own ground item for the first minute, with a chat line (#71).
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is milestone 4 of the Phase 8 map (#88), planned in spec #293 from the owner's decision in #272. It gives the Spider its first drop, and the next ticket adds bones and heavy bones to five other enemies. It changes no rule of how loot lands: each player who damaged an enemy rolls its loot table, and what they win lands on the enemy's tile as their own ground item for the first minute, with a chat line (#71).
 
 The values live in the `loot` rows of `shared/src/enemies.ts`; where this page and that file disagree, the file wins and this page is fixed.
 
