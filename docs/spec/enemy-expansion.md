@@ -17,4 +17,4 @@ The Bristleback and Cinderhorn were tuned only to be killable, so a band-10 or b
 
 Their behaviour is otherwise unchanged. Both still start no fights, never wander, and give up once their attacker stands more than 2 tiles from where they last attacked. Their swing timing, return time, hide and bone drops stay as they were. The Tarn Ox stays docile and unchanged, so a new player keeps a safe first hide.
 
-Experience comes from damage dealt (6 per 100), so a kill now pays for all of its health: 84 for a Bristleback and 156 for a Cinderhorn, before the stance splits it.
+Experience comes from damage dealt (6 per 100), so a kill now pays for all of its health: about 84 for a Bristleback and 156 for a Cinderhorn, before the stance splits it. Each hit's experience is rounded on its own, as for every enemy, so a kill's total can land a few points either side (a Bristleback killed in twelve hits of 109 and one of 92 pays 90).

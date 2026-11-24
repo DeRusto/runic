@@ -81,9 +81,9 @@ test("the region's shore, field and Boneyard's edge start a Tarn Ox, Bristleback
 // #297: each fights back at its hide band's strength, but still starts nothing and chases little.
 // The Bristleback is enemy "1" at (5,1); the Cinderhorn is "2" at (8,1).
 describe.each([
-  { name: "Bristleback", id: "1", x: 5, health: 1400, minXp: 84 },
-  { name: "Cinderhorn", id: "2", x: 8, health: 2600, minXp: 156 },
-])("a $name", ({ id, x, health, minXp }) => {
+  { name: "Bristleback", id: "1", x: 5, health: 1400, xp: 84 },
+  { name: "Cinderhorn", id: "2", x: 8, health: 2600, xp: 156 },
+])("a $name", ({ id, x, health, xp }) => {
   test("never starts a fight with a player standing beside it, and never wanders", () => {
     const s = world(CORRIDOR);
     placed(s, "a", x - 1);
@@ -132,7 +132,8 @@ describe.each([
   });
 
   test(`a kill pays experience for all ${health} health`, () => {
-    // Every roll lands for the least; the player is kept standing.
+    // Every roll is 0, so each hit lands as a critical for 150, and the last for what is
+    // left; each pays its own 6 per 100, rounded. The player is kept standing.
     const s = new Simulation(parseRegion(CORRIDOR.join("\n")), () => 0);
     placed(s, "a", x - 1);
     s.queueTarget("a", id);
@@ -142,8 +143,7 @@ describe.each([
     }
     expect(s.state.enemies.get(id)!.state).toBe("dead");
     const player = s.state.players.get("a")!;
-    // 6 experience per 100 damage dealt.
-    expect(player.attackXp + player.strengthXp).toBe(minXp);
+    expect(player.attackXp + player.strengthXp).toBe(xp);
   });
 });
 
