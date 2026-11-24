@@ -144,10 +144,8 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     loot: [],
   },
   // #238's three hide creatures, on the hide bands 1/10/20. The Tarn Ox is docile: it never
-  // fights back, leashes or wanders, so each swing against it is free. The ticket's 10/25/50 Hitpoints levels of health would pay
-  // 60/150/300 by spec §5's 6-experience-per-100 rule, above a Spider and Skeleton, so the
-  // healths here are the 2/5/10 levels whose kills pay the ticket's own 12/30/60, a few
-  // hits each.
+  // fights back, leashes or wanders, so each swing against it is free. Its 200 health is the
+  // 2 Hitpoints levels whose kill pays #238's 12 experience, a few hits.
   tarnOx: {
     health: 200,
     hitChance: 0,
@@ -166,14 +164,14 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     loot: [{ category: "material", chance: 1, items: [{ item: "tarnHide" }] }],
   },
   // Bristleback and Cinderhorn fight back once hit, like a Spider, but never start a fight,
-  // never wander, and chase only a couple of tiles. Every hit lands at least 100, so they hit
-  // seldom and as little as the game allows: the owner wants them to bite back, barely.
+  // never wander, and chase only a couple of tiles. Their numbers fit their hide bands 10 and
+  // 20 (#297), so a player of that band meets a fair fight rather than a few free hits.
   bristleback: {
-    health: 500,
-    hitChance: 0.2,
+    health: 1400,
+    hitChance: 0.4,
     accuracy: 0,
     style: "melee",
-    maxDamage: 100,
+    maxDamage: 300,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 150,
@@ -187,11 +185,11 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     ],
   },
   cinderhorn: {
-    health: 1000,
-    hitChance: 0.25,
+    health: 2600,
+    hitChance: 0.5,
     accuracy: 0,
     style: "melee",
-    maxDamage: 150,
+    maxDamage: 450,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,
     returnTicks: 200,
