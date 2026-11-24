@@ -78,7 +78,7 @@ export const ITEMS = {
   mightPotion: STACKS,
   fortitudePotion: STACKS,
   avoidancePotion: STACKS,
-  /** Spiders leave it behind at about a kill in three (#217); Phase 8 owns drop tables. */
+  /** A Spider leaves 1 or 2 every kill, for each player who damaged it (#272). */
   spiderSilk: STACKS,
   /** #238's three docile creatures' hides, one per winner every kill: Tarn Ox's, Bristleback's and Cinderhorn's. */
   tarnHide: STACKS,

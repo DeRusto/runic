@@ -14,7 +14,14 @@ test("a Spider's numbers are the first slice's", () => {
     wanderChance: 0.1,
     wanderTiles: 5,
     leashTiles: 4,
-    loot: [],
+    // #272: 1 or 2 spider silk every kill.
+    loot: [
+      {
+        category: "material",
+        chance: 1,
+        items: [{ item: "spiderSilk", count: [1, 2] }],
+      },
+    ],
   });
 });
 

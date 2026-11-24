@@ -215,7 +215,7 @@ test("returning forgets who damaged it", () => {
   expect(bones(s, "b")).toBe(1);
 });
 
-test("Spiders still give nothing, and draw no roll", () => {
+test("Spiders give no Emberbone, only their silk", () => {
   const { s, rolls } = world(SPIDER);
   s.addPlayer("a", SAVE, "a");
   enemy(s).health = 1;
@@ -224,8 +224,9 @@ test("Spiders still give nothing, and draw no roll", () => {
   const events = run(s);
   expect(enemy(s).state).toBe("dead");
   expect(bones(s, "a")).toBe(0);
-  expect(toldTo(events, "a")).toEqual([]);
-  expect(rolls).toEqual([WIN]);
+  expect(toldTo(events, "a")).toEqual([
+    "You find a [Spider silk]. It is on the ground.",
+  ]);
 });
 
 test("who damaged what isn't in the save", () => {

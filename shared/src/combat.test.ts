@@ -246,6 +246,15 @@ describe("rollLoot", () => {
     ]);
   });
 
+  test("each damager rolls only a count for a Spider's silk, 1 or 2 at even odds (#272)", () => {
+    expect(
+      rollLoot(ENEMIES.spider.loot, ["a", "b"], rolls(0.4999, 0.5)),
+    ).toEqual([
+      { player: "a", item: "spiderSilk", count: 1 },
+      { player: "b", item: "spiderSilk", count: 2 },
+    ]);
+  });
+
   test("a table rolls each category's picks, then picks by weight, then a count from its range", () => {
     const loot = [
       {

@@ -589,7 +589,7 @@ Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the 
 _Avoid_: Trophy, token
 
 **Spider silk**:
-A thread a Spider sometimes leaves behind, needed to make rope and to augment capes. Phase 8 owns drop tables, so nothing gives it yet.
+A thread a Spider leaves behind, needed to make rope and to augment capes. Every Spider kill leaves 1 or 2, at even odds, for each player who damaged it (#272).
 _Avoid_: Web, thread
 
 **Rope**:
