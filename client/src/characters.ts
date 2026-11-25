@@ -217,6 +217,22 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     death: "dead",
     returns: "reappear",
   },
+  gorger: {
+    name: "Gorger",
+    file: "Gorger.glb",
+    fit: { width: 1.25 },
+    clips: "own",
+    gait: {
+      idle: "Slime_Idle",
+      move: "Slime_Walk",
+      moveSpeed: 1.4,
+      fight: "Slime_Idle",
+    },
+    swing: () => ({ clip: "Slime_Attack", contactMs: 330 }),
+    hit: "Slime_Hit",
+    death: "Slime_Death",
+    returns: "reappear",
+  },
   // On the players' rig, so it shares their clips (spec D16), with its blade always out.
   skeleton: {
     file: "Skeleton_Warrior.glb",
