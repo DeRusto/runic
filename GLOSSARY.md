@@ -174,6 +174,9 @@ _Avoid_: Mob, monster, NPC
 The weaker enemy: a large spider that fights back only when attacked, unlike a Skeleton.
 _Avoid_: Thornback (its old name)
 
+**Fenwing**:
+A long-legged bird on the Lake shore that fights back in melee. It leaves feathers every kill and sometimes leaves bones (#300).
+
 **Thornling**:
 A knee-high thorny creature in the middle field. It fights back with ranged shots from up to four tiles and leaves no loot (#299).
 
@@ -598,7 +601,7 @@ Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the 
 _Avoid_: Trophy, token
 
 **Bones**:
-A stackable material left by Skeletons, Tarn Oxen and Bristlebacks. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
+A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
 
 **Heavy bones**:
 A stackable material left by Skeleton Mages and Cinderhorns at the same chance as bones. The general store pays more for heavy bones.
@@ -620,7 +623,7 @@ A stick split from a log at the workbench, ten to the log. A log of any tier mak
 _Avoid_: Shaft (alone), stick
 
 **Feather**:
-A feather the general store sells from day one, for an arrow's flight. Phase 8 will let enemies leave one behind; until then the shelf is the only source (#228).
+Part of the arrow recipe. Fenwings leave feathers, and the general store sells them (#228, #300).
 _Avoid_: Plume, quill
 
 **Throwing knife**:

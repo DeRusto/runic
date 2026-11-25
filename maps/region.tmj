@@ -3323,6 +3323,82 @@
                  "width":0,
                  "x":880,
                  "y":880
+                },
+                {
+                 "height":0,
+                 "id":208,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"fenwing"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":176,
+                 "y":144
+                },
+                {
+                 "height":0,
+                 "id":209,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"fenwing"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":224,
+                 "y":160
+                },
+                {
+                 "height":0,
+                 "id":210,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"fenwing"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":256,
+                 "y":160
+                },
+                {
+                 "height":0,
+                 "id":211,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"fenwing"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":336,
+                 "y":112
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -3331,7 +3407,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":208,
+ "nextobjectid":212,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

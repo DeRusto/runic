@@ -206,6 +206,17 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     death: "Death",
     returns: "reappear",
   },
+  fenwing: {
+    name: "Fenwing",
+    file: "Fenwing.glb",
+    fit: { height: HEIGHT * 0.72 },
+    clips: "own",
+    gait: { idle: "idle", move: "walk", moveSpeed: 1.5, fight: "idle" },
+    swing: () => ({ clip: "attack", contactMs: 350 }),
+    hit: "hit",
+    death: "dead",
+    returns: "reappear",
+  },
   // On the players' rig, so it shares their clips (spec D16), with its blade always out.
   skeleton: {
     file: "Skeleton_Warrior.glb",
