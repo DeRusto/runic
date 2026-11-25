@@ -601,7 +601,7 @@ Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the 
 _Avoid_: Trophy, token
 
 **Bones**:
-A stackable material left by Skeletons, Tarn Oxen and Bristlebacks. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
+A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
 
 **Heavy bones**:
 A stackable material left by Skeleton Mages and Cinderhorns at the same chance as bones. The general store pays more for heavy bones.
