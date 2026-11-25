@@ -28,15 +28,20 @@ models/
     Skeleton_Mage.glb, Skeleton_Staff.gltf, Skeleton_Staff.bin
         KayKit Skeletons, by Kay Lousberg (www.kaylousberg.com). CC0: see
         models/LICENSE-KayKit-Skeletons.txt.
+    CairnWarden.glb, Skeleton_Axe.gltf, Skeleton_Axe.bin,
+    Skeleton_Shield_Large_A.gltf, Skeleton_Shield_Large_A.bin
+        KayKit Skeletons 1.1, by Kay Lousberg (www.kaylousberg.com). CC0: see
+        models/LICENSE-KayKit-Skeletons.txt. CairnWarden.glb is the Skeleton Rogue.
     Bush_*, Grass_*, Rock_*, forest_texture.png
         KayKit Forest Nature, by Kay Lousberg (www.kaylousberg.com), recorded as
         CC0 in docs/adr/0003-three-js-isometric-client.md.
     workbench.glb, workbenchGrind.glb, campfirePit.glb
         Kenney Survival Kit 2.0 (www.kenney.nl). CC0: see
         models/LICENSE-Kenney-Survival-Kit.txt.
-    altarStone.glb
+    altarStone.glb, BurialMound.glb
         Kenney Graveyard Kit 5.0 (www.kenney.nl). CC0: see
-        models/LICENSE-Kenney-Graveyard-Kit.txt.
+        models/LICENSE-Kenney-Graveyard-Kit.txt. BurialMound.glb is the small
+        crypt roof with its colour map embedded.
     statueRing.glb, statueObelisk.glb, statueColumn.glb,
     statueColumnDamaged.glb, stoneTallB.glb, stoneTallE.glb, fenceGate.glb
         Kenney Nature Kit (www.kenney.nl). CC0: see

@@ -19,12 +19,18 @@ The part of a region where bushes grow, and players pick berries and herbs to tr
 _Avoid_: Forest, woods
 
 **Field**:
-The part of a region where enemies roam.
+The part of a region where enemies roam. The Boneyard and the Cairns are fields.
 _Avoid_: Wilderness, combat zone
 
 **Boneyard**:
 The field where Skeletons roam.
 _Avoid_: Graveyard, dungeon
+
+**The Cairns**:
+The field north-east of the village, above the Boneyard, where Cairn wardens roam among stone burial mounds (#302).
+
+**Burial mound**:
+A stone mound in the Cairns that blocks walking and counts as a tall tile for shots (#302).
 
 **Runestone Hollow**:
 The ruined valley east of the Boneyard, floored with moss and set with broken columns and standing stones, where the altar stands. Its only way in is a gap in the trees behind the Emberite veins, so the walk there crosses the Boneyard. It is not part of the Boneyard.
@@ -182,6 +188,9 @@ A knee-high thorny creature in the middle field. It fights back with ranged shot
 
 **Gorger**:
 A slime in the middle field that oozes toward reachable players within three tiles. Each player who damages it gets one pick from its bag when it dies (#301).
+
+**Cairn warden**:
+An armoured dead guardian in the Cairns. It attacks reachable players within four tiles and may leave heavy bones for each damager (#302).
 
 **Skeleton**:
 The harder enemy: an armed skeleton that attacks players who come near, unlike a Spider. It can leave an Emberbone.
@@ -702,7 +711,7 @@ Whether a shot can fly from the shooter to the target: the straight line between
 _Avoid_: Line of fire, LOS
 
 **Tall tile**:
-A tile a shot cannot pass: a house wall, a tree (a prop, or a Woodcutting tree that is not a stump), a rock (a prop, an ore vein or an essence vein), or one of Runestone Hollow's columns and standing stones (owner, 2026-11-23).
+A tile a shot cannot pass: a house wall, a tree (a prop, or a Woodcutting tree that is not a stump), a rock (a prop, an ore vein or an essence vein), one of Runestone Hollow's columns or standing stones, or a burial mound in the Cairns (#302).
 _Avoid_: Wall (alone), obstacle (that's Agility's)
 
 **Panel**:

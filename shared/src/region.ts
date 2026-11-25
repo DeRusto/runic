@@ -21,6 +21,7 @@ export const groundBlocks = (ground: GroundKind) => ground === "water";
 export type PropKind =
   | "tree"
   | "rock"
+  | "burialMound"
   | "tuft"
   | "well"
   | "lamp"
@@ -75,6 +76,7 @@ export const TILE_KINDS = {
   "=": { ground: "path", blocks: false },
   T: { ground: "grass", prop: "tree", blocks: true },
   t: { ground: "thicket", prop: "tree", blocks: true },
+  "%": { ground: "moss", prop: "burialMound", blocks: true },
   o: { ground: "grass", prop: "rock", blocks: true },
   '"': { ground: "grass", prop: "tuft", blocks: false },
   b: { ground: "thicket", bush: "berryBush", blocks: true },
@@ -82,6 +84,7 @@ export const TILE_KINDS = {
   d: { ground: "thicket", bush: "dewpetalBush", blocks: true },
   n: { ground: "thicket", bush: "nightbloomBush", blocks: true },
   m: { ground: "thicket", bush: "emberbloomBush", blocks: true },
+  u: { ground: "moss", enemy: "cairnWarden", blocks: false },
   y: { ground: "grass", enemy: "gorger", blocks: false },
   j: { ground: "grass", enemy: "fenwing", blocks: false },
   I: { ground: "grass", enemy: "thornling", blocks: false },

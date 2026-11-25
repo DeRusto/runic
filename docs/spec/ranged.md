@@ -71,7 +71,7 @@ A player who attacks an enemy within reach shoots from where they stand. From fu
 
 ### Sight
 
-A shot needs a straight line from the centre of the shooter's tile to the centre of the target's that crosses no tall tile (#270, #278). The tall tiles are (owner, 2026-11-23):
+A shot needs a straight line from the centre of the shooter's tile to the centre of the target's that crosses no tall tile (#270, #278). The tall tiles are listed below (owner, 2026-11-23, and #302).
 
 | Tall | On the map |
 | --- | --- |
@@ -79,6 +79,7 @@ A shot needs a straight line from the centre of the shooter's tile to the centre
 | Trees | Tree props, and the trees Woodcutting fells |
 | Rocks | Rock props, ore veins and essence veins |
 | Runestone Hollow's ruins | Its columns and standing stones |
+| Burial mounds | Stone mounds in the Cairns (#302) |
 
 Every other tile lets a shot pass: doors, water, bushes, the gate, stations, stalls, strongboxes, barrels, crates, lamps, the well, villagers, marks, enemies and players (owner, #278). So a player can shoot across the Lake but not through a house. A Woodcutting tree that has run out shows as a stump, which a shot passes over until the tree grows back, though the stump still blocks walking (owner, #286). A run-out vein still blocks a shot. A pooled tree or vein that has left its spot blocks nothing until it comes back.
 

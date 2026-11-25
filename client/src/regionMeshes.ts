@@ -145,19 +145,20 @@ const NATURE_PROPS = {
   standingStone: { scale: 1.3, models: ["stoneTallB", "stoneTallE"] },
 };
 /**
- * The goods outside the general store: textured models drawn whole, as a station's parts are,
- * rather than baked to vertex colours like the props above. Each faces the road, to the south.
+ * Textured props drawn whole, as a station's parts are. The store's goods face south toward the road.
  */
-const GOODS = {
+const TEXTURED_PROPS = {
+  burialMound: { parts: [{ file: "BurialMound.glb", width: 0.95 }] },
   appleBarrel: { parts: [{ file: "Barrel_Apples.glb", width: 0.55 }] },
   carrotCrate: { parts: [{ file: "FarmCrate_Carrot.glb", width: 0.75 }] },
   fruitBasket: { parts: [{ file: "display-fruit.glb", width: 0.6 }] },
 } satisfies Partial<Record<PropKind, { parts: StationPart[] }>>;
-type Goods = keyof typeof GOODS;
-const isGoods = (prop: PropKind): prop is Goods => Object.hasOwn(GOODS, prop);
+type TexturedProp = keyof typeof TEXTURED_PROPS;
+const isTexturedProp = (prop: PropKind): prop is TexturedProp =>
+  Object.hasOwn(TEXTURED_PROPS, prop);
 
 const PROP_MODELS: Record<
-  Exclude<PropKind, Goods>,
+  Exclude<PropKind, TexturedProp>,
   {
     scale: number | [number, number, number];
     models: string[];
@@ -510,7 +511,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const color = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
 
-  const goods: { prop: Goods; at: THREE.Vector3 }[] = [];
+  const texturedProps: { prop: TexturedProp; at: THREE.Vector3 }[] = [];
   tiles.forEach((row, y) =>
     row.forEach((tile, x) => {
       const hash = tileHash(x, y);
@@ -594,12 +595,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
             }),
           ),
         );
-      } else if (isGoods(prop!)) {
-        goods.push({ prop: prop as Goods, at });
+      } else if (isTexturedProp(prop!)) {
+        texturedProps.push({ prop: prop as TexturedProp, at });
       } else {
         const options = propVariants[prop!];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const { scale, fixed } = PROP_MODELS[prop as Exclude<PropKind, Goods>];
+        const { scale, fixed } =
+          PROP_MODELS[prop as Exclude<PropKind, TexturedProp>];
         place(
           geometry,
           new THREE.Matrix4().compose(
@@ -614,15 +616,15 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     }),
   );
   scene.add(slabs);
-  const goodsModels = new Map(
+  const texturedModels = new Map(
     await Promise.all(
-      Object.entries(GOODS).map(
+      Object.entries(TEXTURED_PROPS).map(
         async ([kind, look]) => [kind, await loadStation(look)] as const,
       ),
     ),
   );
-  for (const { prop, at } of goods) {
-    const model = goodsModels.get(prop)!.clone();
+  for (const { prop, at } of texturedProps) {
+    const model = texturedModels.get(prop)!.clone();
     model.position.add(at);
     scene.add(model);
   }

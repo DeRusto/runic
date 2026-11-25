@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import {
   crossingFrom,
   ENEMIES,
@@ -21,6 +21,10 @@ const { tiles: region, pools } = loadRegion(
 );
 const blocks = (x: number, y: number) => region[y]![x]!.blocks;
 const key = (x: number, y: number) => `${x},${y}`;
+
+/** The field painted north of the Boneyard for #302. */
+const inCairns = ([x, y]: readonly [number, number]) =>
+  x >= 69 && x <= 90 && y >= 3 && y <= 13;
 
 /**
  * The fewest steps to every tile a player can walk to from (x, y): 8 ways, no cutting
@@ -57,6 +61,8 @@ const IS = {
   nightbloomBush: (tile) => tile.bush === "nightbloomBush",
   emberbloomBush: (tile) => tile.bush === "emberbloomBush",
   fenwing: (tile) => tile.enemy === "fenwing",
+  cairnWarden: (tile) => tile.enemy === "cairnWarden",
+  burialMound: (tile) => tile.prop === "burialMound",
   gorger: (tile) => tile.enemy === "gorger",
   thornling: (tile) => tile.enemy === "thornling",
   spider: (tile) => tile.enemy === "spider",
@@ -567,7 +573,7 @@ describe("the region", () => {
   });
 
   it("lets a player into Runestone Hollow only through the Boneyard, by the gap behind the Emberite pocket", () => {
-    const moss = tilesOf("moss");
+    const moss = tilesOf("moss").filter((tile) => !inCairns(tile));
     expect(moss.length).toBeGreaterThan(0);
     expect(moss.filter(([x, y]) => withoutAshen.has(key(x, y)))).toEqual([]);
     // Every walkable way out of the Hollow is the one gap tile in the old east border.
@@ -774,4 +780,15 @@ describe("tileHash", () => {
       expect(seen.size).toBeGreaterThan(200);
     }
   });
+});
+
+test("four reachable Cairn warden homes stand above the Boneyard among burial mounds", () => {
+  const homes = tilesOf("cairnWarden");
+  const mounds = tilesOf("burialMound");
+  const reachable = stepsFrom(tilesOf("respawn")[0]!);
+  expect(homes).toHaveLength(4);
+  expect(mounds.length).toBeGreaterThanOrEqual(4);
+  expect([...homes, ...mounds].every(inCairns)).toBe(true);
+  for (const [x, y] of homes) expect(reachable.has(key(x, y))).toBe(true);
+  for (const [x, y] of mounds) expect(blocks(x, y)).toBe(true);
 });

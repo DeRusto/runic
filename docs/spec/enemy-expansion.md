@@ -23,7 +23,7 @@ Experience comes from damage dealt (6 per 100), so a kill now pays for all of it
 
 The Skeleton Mage shoots from up to 5 tiles and fights in the ranged style (#298). A diagonal step counts as one tile. A fighting ranged enemy stands still while its target is within reach and in sight. It shoots when its attack timer is due. If reach or sight fails, it follows its walking route toward the target until both hold. Enemies without a shot reach still swing only when next to their target.
 
-Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns and standing stones block them. Shots pass over water and run-out Woodcutting stumps. Stumps still block walking while the tree regrows. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
+Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns, standing stones and burial mounds block them. Shots pass over water and run-out Woodcutting stumps. Stumps still block walking while the tree regrows. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
 
 The Mage keeps its first attack delay and shoots every 8 ticks when it can. Its shot uses the same roll as a swing, including Avoidance, the combat triangle, shield block, armour, the health cap and Defense experience. It spends no ammunition and leaves none on the ground. The Mage casts with its staff and the hit shows on the player.
 
@@ -57,3 +57,11 @@ Each damager gets one pick from the bag, a single material loot row with a guara
 | Fairly often | 12 | Bones (1), coins (5–20) |
 | Sometimes | 6 | Tarn hide (1), bristle hide (1), copper arrows (5–10), bronze arrows (5–10) |
 | Rarely | 1 | Cinder hide (1), Emberbone (1), copper sword (1), bronze sword (1) |
+
+## 6. The Cairns and the Cairn Warden
+
+The Cairns is a moss-covered field within the existing region, above the Boneyard (#302). It spans columns 69 to 90 and rows 3 to 13, with an open approach from the south. Its five burial mounds replace rock props, so their tiles still block walking and shots in both directions. No previously walkable tile gains a blocker.
+
+Four Cairn wardens live there. Each has 4500 health, a base 65% chance to land a melee swing, +15 Accuracy and a max hit of 800. It notices reachable players within 4 tiles and gives up past its 5-tile leash. The first swing is due after 4 ticks, then every 8 ticks. When idle and ready to move, it has a 10% chance to wander up to 3 tiles from home. It returns home 200 ticks after death.
+
+Each player who damaged the warden independently rolls a two-in-three chance for one heavy bones drop on the warden's tile. The drop is private to that player for the first minute. The warden has no other loot.

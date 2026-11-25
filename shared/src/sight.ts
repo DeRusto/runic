@@ -1,16 +1,17 @@
 import type { PropKind, Tile, TileKind } from "./region.ts";
 
-/** The props a shot can't pass: trees, rocks, and Runestone Hollow's ruins (owner, 2026-11-23; Ranged spec §4). */
+/** The props a shot cannot pass (Ranged spec §4 and #302). */
 const TALL_PROPS: ReadonlySet<PropKind> = new Set([
   "tree",
   "rock",
+  "burialMound",
   "column",
   "standingStone",
 ]);
 
 /**
  * Whether a tile stops a shot: a house wall, a tree (prop, or a Woodcutting tree that is not a stump), a rock (prop, ore
- * vein or essence vein), a column or a standing stone. Every other tile lets it pass, doors,
+ * vein or essence vein), a burial mound, a column or a standing stone. Every other tile lets it pass, doors,
  * water and bushes included (Ranged spec §4).
  */
 export const isTall = (tile: TileKind) =>

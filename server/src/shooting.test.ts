@@ -378,8 +378,8 @@ describe("sight", () => {
     }
   });
 
-  test("a shot through a house wall, tree, rock, vein or Woodcutting tree does not; the archer walks until the line is clear, then fires", () => {
-    for (const between of "HToceEg") {
+  test("an archer walks around tall cover before shooting", () => {
+    for (const between of "HToceEg%") {
       const s = archer({ rows: behind(between) });
       s.queueTarget("a", "0");
       const events = run(s, 3);
