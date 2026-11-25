@@ -766,7 +766,26 @@ describe("the stunned, trapSprung and slipped events", () => {
   });
 });
 
-test("the killing player sees the elite's name in chat when the blow lands", () => {
+test.each([
+  {
+    scenario: "an elite killed by you",
+    elite: true,
+    killer: "a",
+    line: "You defeat the Elite Skeleton.",
+  },
+  {
+    scenario: "an ordinary enemy killed by you",
+    elite: false,
+    killer: "a",
+    line: undefined,
+  },
+  {
+    scenario: "an elite killed by another player",
+    elite: true,
+    killer: "b",
+    line: undefined,
+  },
+])("chat after the killing blow for $scenario", ({ elite, killer, line }) => {
   vi.useFakeTimers();
   vi.clearAllMocks();
   enemyFigures.set("enemy", {
@@ -782,14 +801,14 @@ test("the killing player sees the elite's name in chat when the blow lands", () 
       sessionId: "a",
       state: {
         tick: 1,
-        enemies: new Map([["enemy", { kind: "skeleton", elite: true }]]),
+        enemies: new Map([["enemy", { kind: "skeleton", elite }]]),
         players: new Map(),
       },
     } as unknown as WorldConnection);
     onMessage.mock.calls[0]![1]([
       {
         type: "playerSwing",
-        player: "a",
+        player: killer,
         enemy: "enemy",
         damage: 100,
         critical: false,
@@ -798,9 +817,8 @@ test("the killing player sees the elite's name in chat when the blow lands", () 
     ] satisfies WorldEvent[]);
     expect(printChatLine).not.toHaveBeenCalled();
     vi.runAllTimers();
-    expect(printChatLine).toHaveBeenCalledExactlyOnceWith(
-      "You defeat the Elite Skeleton.",
-    );
+    if (line) expect(printChatLine).toHaveBeenCalledExactlyOnceWith(line);
+    else expect(printChatLine).not.toHaveBeenCalled();
   } finally {
     enemyFigures.delete("enemy");
     vi.useRealTimers();

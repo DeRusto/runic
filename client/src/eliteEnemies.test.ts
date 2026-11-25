@@ -4,6 +4,7 @@ import { expect, test, vi } from "vitest";
 import { ENEMY_LOOKS, Figure } from "./characters.ts";
 import { showEnemies } from "./enemies.ts";
 import type { WorldConnection } from "./players.ts";
+import { scene } from "./scene.ts";
 
 vi.mock("./scene.ts", () => ({
   scene: new THREE.Scene(),
@@ -29,7 +30,7 @@ test("the pointer and figure follow the synced variant, and the bar reads its ow
   });
   const overheads = makeElement();
   const tile = {
-    x: 0,
+    x: 2,
     y: 0,
     kind: "spider",
     state: "idle",
@@ -38,7 +39,7 @@ test("the pointer and figure follow the synced variant, and the bar reads its ow
     health: 800,
     maxHealth: 800,
   };
-  const ordinaryTile = { ...tile, x: 3 };
+  const ordinaryTile = { ...tile, x: 5 };
   const enemies = new Map([
     ["0", tile],
     ["1", ordinaryTile],
@@ -46,6 +47,7 @@ test("the pointer and figure follow the synced variant, and the bar reads its ow
   const material = new THREE.MeshStandardMaterial({ color: 0xa0a0a0 });
   const makeFigure = (at: { x: number; y: number }) => {
     const model = new THREE.Mesh(new THREE.BoxGeometry(), material.clone());
+    model.position.y = 0.5;
     return new Figure(
       at,
       model,
@@ -85,25 +87,34 @@ test("the pointer and figure follow the synced variant, and the bar reads its ow
       } as unknown as WorldConnection,
       { spider: newFigure } as Parameters<typeof showEnemies>[1],
     );
-    const model = models.get(0)!.model as THREE.Mesh<
+    const model = models.get(2)!.model as THREE.Mesh<
       THREE.BoxGeometry,
       THREE.MeshStandardMaterial
     >;
     const ray = new THREE.Raycaster(
-      new THREE.Vector3(0, 4, 0),
+      new THREE.Vector3(2, 4, 0),
       new THREE.Vector3(0, -1, 0),
+    );
+    const highRay = new THREE.Raycaster(
+      new THREE.Vector3(2, 0.99, -2),
+      new THREE.Vector3(0, 0, 1),
     );
     const bar = overheads.children[0]!.children[1]!;
     const fill = bar.children[0]!;
     frame!(16);
+    scene.updateMatrixWorld();
     expect(model.scale.x).toBe(1);
+    expect(enemyUnder(ray)?.id).toBe("0");
+    expect(enemyUnder(highRay)).toBeUndefined();
 
     Object.assign(tile, { elite: true, health: 1600, maxHealth: 1600 });
     frame!(32);
-    expect(enemyUnder(ray)?.name).toBe("Elite Spider");
+    scene.updateMatrixWorld();
+    expect(enemyUnder(highRay)?.name).toBe("Elite Spider");
     expect(model.scale.x).toBe(1.2);
+    expect(model.position.y).toBeCloseTo(0.6);
     expect(model.material.color.equals(material.color)).toBe(false);
-    const other = models.get(3)!.model as typeof model;
+    const other = models.get(5)!.model as typeof model;
     expect(other.material.color.equals(material.color)).toBe(true);
     expect(bar.hidden).toBe(true);
     expect(fill.style.width).toBe("100%");
@@ -115,7 +126,10 @@ test("the pointer and figure follow the synced variant, and the bar reads its ow
 
     Object.assign(tile, { elite: false, maxHealth: 800 });
     frame!(64);
+    scene.updateMatrixWorld();
     expect(enemyUnder(ray)?.name).toBe(ENEMY_LOOKS.spider.name);
+    expect(enemyUnder(highRay)).toBeUndefined();
+    expect(model.position.y).toBeCloseTo(0.5);
     expect(model.scale.x).toBe(1);
     expect(model.material.color.equals(material.color)).toBe(true);
     expect(bar.hidden).toBe(true);

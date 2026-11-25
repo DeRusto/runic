@@ -345,6 +345,7 @@ export class Figure {
   private sunk = 0;
   private growth = 1;
   private readonly fullScale: number;
+  private readonly fittedY: number;
   private sizeMultiplier = 1;
   private kick = new THREE.Vector3();
   private flashTimer?: ReturnType<typeof setTimeout>;
@@ -375,6 +376,7 @@ export class Figure {
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
+    this.fittedY = model.position.y;
     for (const [skill, name] of HELD_TOOLS) {
       const tool = model.getObjectByName(inHand(name));
       if (tool) this.tools.push([skill, tool]);
@@ -500,6 +502,11 @@ export class Figure {
 
   /** Changes the fitted size while preserving the current return animation. */
   setSizeMultiplier(multiplier: number) {
+    // The initial fit offsets the model's origin so its base rests on the tile.
+    const dy = this.fittedY * (multiplier - this.sizeMultiplier);
+    this.from.y += dy;
+    this.to.y += dy;
+    this.model.position.y += dy;
     this.sizeMultiplier = multiplier;
     this.model.scale.setScalar(this.fullScale * multiplier * this.growth);
   }
