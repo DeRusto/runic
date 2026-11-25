@@ -3399,6 +3399,63 @@
                  "width":0,
                  "x":336,
                  "y":112
+                },
+                {
+                 "height":0,
+                 "id":212,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"gorger"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":768,
+                 "y":576
+                },
+                {
+                 "height":0,
+                 "id":213,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"gorger"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":912,
+                 "y":736
+                },
+                {
+                 "height":0,
+                 "id":214,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"gorger"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":784,
+                 "y":880
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -3407,7 +3464,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":212,
+ "nextobjectid":215,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

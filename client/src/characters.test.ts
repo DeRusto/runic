@@ -538,6 +538,7 @@ async function fakeModel(path: string) {
       "Idle",
       "idle",
       "Spider_Idle",
+      "Slime_Idle",
       "Idle_A",
       "Idle_Loop",
     ].map((name) => new THREE.AnimationClip(name, 1, [])),
@@ -559,21 +560,27 @@ describe("loadEnemies", () => {
     }
   });
 
-  it("gives the Fenwing a named look with five clips in its own model", () => {
-    const look = ENEMY_LOOKS.fenwing;
-    expect(look.name).toBe("Fenwing");
-    expect(look.clips).toBe("own");
-    const clips = clipsOf(look.file.replace(/\.glb$/, ""));
-    const used = [
-      look.gait?.idle,
-      look.gait?.move,
-      look.swing("0", 0).clip,
-      look.hit,
-      look.death,
-    ];
-    expect(new Set(used).size).toBe(5);
-    for (const clip of used) expect(clips).toContain(clip);
-  });
+  it.each([
+    ["fenwing", "Fenwing"],
+    ["gorger", "Gorger"],
+  ] as const)(
+    "gives %s a named look with five clips in its own model",
+    (kind, name) => {
+      const look = ENEMY_LOOKS[kind];
+      expect(look.name).toBe(name);
+      expect(look.clips).toBe("own");
+      const clips = clipsOf(look.file.replace(/\.glb$/, ""));
+      const used = [
+        look.gait?.idle,
+        look.gait?.move,
+        look.swing("0", 0).clip,
+        look.hit,
+        look.death,
+      ];
+      expect(new Set(used).size).toBe(5);
+      for (const clip of used) expect(clips).toContain(clip);
+    },
+  );
 
   it("sizes each kind by its row: its wide side across the tile, or the Skeleton by height", async () => {
     const newEnemy = await loadEnemies(fakeModel);

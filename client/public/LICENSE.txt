@@ -69,6 +69,9 @@ models/
         Adapted from Seagull in Gobkit Free Animal Pack Vol.5, with
         lengthened legs and a hit clip. CC0: see
         models/LICENSE-Gobkit-Free-Animal-Pack-Vol-5.txt.
+    Gorger.glb
+        Slime from Quaternius's Animated Monster Pack, with a new hit clip.
+        CC0: see models/LICENSE-Quaternius-Animated-Monster-Pack.txt.
     TarnOx.glb
         The Bull from Quaternius's Ultimate Animated Animals (quaternius.com),
         kept to the four clips the game plays. CC0: see

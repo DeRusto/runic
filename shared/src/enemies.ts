@@ -5,6 +5,7 @@ export type EnemyKind =
   | "spider"
   | "thornling"
   | "fenwing"
+  | "gorger"
   | "skeleton"
   | "tarnOx"
   | "bristleback"
@@ -128,6 +129,41 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
       },
     ],
     bone: { item: "bones", chance: BONE_DROP_CHANCE },
+  },
+  // Enemy Expansion spec §5. Timing and wander match the Skeleton.
+  gorger: {
+    health: 1600,
+    hitChance: 0.45,
+    accuracy: 0,
+    style: "melee",
+    maxDamage: 350,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 200,
+    wanderChance: 0.1,
+    wanderTiles: 3,
+    noticeTiles: 3,
+    leashTiles: 4,
+    loot: [
+      {
+        category: "material",
+        chance: 1,
+        items: [
+          { item: "spiderSilk", weight: 24, count: [1, 2] },
+          { item: "feather", weight: 24, count: [3, 6] },
+          { item: "bones", weight: 12 },
+          { item: "coins", weight: 12, count: [5, 20] },
+          { item: "tarnHide", weight: 6 },
+          { item: "bristleHide", weight: 6 },
+          { item: "copperArrow", weight: 6, count: [5, 10] },
+          { item: "bronzeArrow", weight: 6, count: [5, 10] },
+          { item: "cinderHide", weight: 1 },
+          { item: "emberbone", weight: 1 },
+          { item: "copperSword", weight: 1 },
+          { item: "bronzeSword", weight: 1 },
+        ],
+      },
+    ],
   },
   skeleton: {
     health: 2400,

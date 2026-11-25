@@ -42,3 +42,18 @@ Four Fenwings live on the Lake shore beside the Tarn Oxen (#300). Each has 500 h
 The timing matches the Spider. The first swing is due after 4 ticks, with subsequent swings every 8 ticks. At idle it has a 10% chance to wander when ready to move, up to 2 tiles from home to stay near the shore. It returns home 150 ticks after death.
 
 Each player who damaged it gets 3 to 6 feathers and independently has a two-in-three chance to get bones. Both drops appear on the defeated Fenwing's tile and are private to the recipient for the first minute. Feathers are used in the arrow recipe, and the general store continues to sell them.
+
+## 5. Gorger
+
+Three Gorgers live in the middle field (#301). A Gorger has 1600 health, 0 Accuracy, a base 45% chance to land a melee swing and a max hit of 350. It notices reachable players within 3 tiles and gives up past its 4-tile leash.
+
+Its timing and wander match the Skeleton. The first swing is due after 4 ticks, then every 8 ticks. When idle and ready to move it has a 10% chance to wander up to 3 tiles from home. It returns home 200 ticks after death.
+
+Each damager gets one pick from the bag, a single material loot row with a guaranteed roll. Each weight below applies to one item and the weights total 100. Count ranges are inclusive and uniform. The pick lands on the Gorger's tile and stays private to the damager for the first minute. The Gorger has no separate bone roll. Both swords are common quality.
+
+| How often | Weight per item | Items |
+| --------- | --------------- | ----- |
+| Often | 24 | Spider silk (1–2), feathers (3–6) |
+| Fairly often | 12 | Bones (1), coins (5–20) |
+| Sometimes | 6 | Tarn hide (1), bristle hide (1), copper arrows (5–10), bronze arrows (5–10) |
+| Rarely | 1 | Cinder hide (1), Emberbone (1), copper sword (1), bronze sword (1) |

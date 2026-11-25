@@ -57,6 +57,7 @@ const IS = {
   nightbloomBush: (tile) => tile.bush === "nightbloomBush",
   emberbloomBush: (tile) => tile.bush === "emberbloomBush",
   fenwing: (tile) => tile.enemy === "fenwing",
+  gorger: (tile) => tile.enemy === "gorger",
   thornling: (tile) => tile.enemy === "thornling",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
@@ -673,6 +674,18 @@ describe("the region", () => {
 it("homes four Thornlings on walkable grass in the middle field", () => {
   const homes = tilesOf("thornling");
   expect(homes).toHaveLength(4);
+  for (const [x, y] of homes) {
+    expect(x).toBeGreaterThanOrEqual(37);
+    expect(x).toBeLessThanOrEqual(61);
+    expect(y).toBeGreaterThanOrEqual(30);
+    expect(y).toBeLessThanOrEqual(57);
+    expect(region[y]![x]).toMatchObject({ ground: "grass", blocks: false });
+  }
+});
+
+it("homes three Gorgers on walkable grass in the middle field", () => {
+  const homes = tilesOf("gorger");
+  expect(homes).toHaveLength(3);
   for (const [x, y] of homes) {
     expect(x).toBeGreaterThanOrEqual(37);
     expect(x).toBeLessThanOrEqual(61);
