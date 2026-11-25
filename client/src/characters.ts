@@ -156,7 +156,7 @@ type EnemyFit = { height: number } | { width: number };
 /**
  * How each enemy looks and moves on the client. `file` is its model, sized by `fit`. Its clips
  * are its own model's or the players' shared packs.
- * `held` is a weapon model put in a hand slot, and `armed` keeps it out in every stance. The
+ * `held` lists models put in hand slots, and `armed` keeps it out in every stance. The
  * clips it plays that aren't in its gait follow, and `hit` is played when a blow lands, if any.
  */
 type EnemyLook = {
@@ -165,7 +165,7 @@ type EnemyLook = {
   fit: EnemyFit;
   clips: "own" | "players";
   gait?: typeof PLAYER_GAIT;
-  held?: { file: string; slot: string };
+  held?: { file: string; slot: string }[];
   armed?: true;
   swing: (id: string, tick: number) => { clip: string; contactMs: number };
   death: string;
@@ -238,7 +238,7 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     file: "Skeleton_Warrior.glb",
     fit: { height: HEIGHT },
     clips: "players",
-    held: { file: "Skeleton_Blade.gltf", slot: "handslotr" },
+    held: [{ file: "Skeleton_Blade.gltf", slot: "handslotr" }],
     armed: true,
     swing: armedSwing,
     death: "Death_A",
@@ -251,12 +251,33 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     file: "Skeleton_Mage.glb",
     fit: { height: HEIGHT },
     clips: "players",
-    held: { file: "Skeleton_Staff.gltf", slot: "handslotr" },
+    held: [{ file: "Skeleton_Staff.gltf", slot: "handslotr" }],
     armed: true,
     // The staff uses the same overhand release as a bow shot.
     swing: () => BOW_SHOT,
     death: "Death_A",
     hit: "Hit_A",
+    returns: "respawn",
+  },
+  cairnWarden: {
+    name: "Cairn warden",
+    file: "CairnWarden.glb",
+    fit: { height: HEIGHT * 1.15 },
+    clips: "players",
+    gait: {
+      idle: "Idle_B",
+      move: "Walking_B",
+      moveSpeed: 1.8,
+      fight: "Melee_Blocking",
+    },
+    held: [
+      { file: "Skeleton_Axe.gltf", slot: "handslotr" },
+      { file: "Skeleton_Shield_Large_A.gltf", slot: "handslotl" },
+    ],
+    armed: true,
+    swing: () => ({ clip: "Melee_1H_Attack_Chop", contactMs: 580 }),
+    hit: "Hit_B",
+    death: "Death_B",
     returns: "respawn",
   },
   imp: {
@@ -879,7 +900,7 @@ export async function loadEnemies(loadModel: LoadModel = fetchModel) {
       const look = ENEMY_LOOKS[kind];
       const [{ scene, animations }, held, shared] = await Promise.all([
         loadModel(look.file),
-        look.held && loadModel(look.held.file),
+        Promise.all((look.held ?? []).map(({ file }) => loadModel(file))),
         look.clips === "players" ? loadClips(loadModel) : undefined,
       ]);
       const { fit: size } = look;
@@ -888,9 +909,9 @@ export async function loadEnemies(loadModel: LoadModel = fetchModel) {
           ? size.height / box.y
           : size.width / Math.max(box.x, box.z),
       );
-      if (held) {
-        castShadows(held.scene);
-        scene.getObjectByName(look.held!.slot)!.add(held.scene);
+      for (const [index, model] of held.entries()) {
+        castShadows(model.scene);
+        scene.getObjectByName(look.held![index]!.slot)!.add(model.scene);
       }
       const own = new Map(animations.map((c) => [c.name, c]));
       const clips = shared ?? own;

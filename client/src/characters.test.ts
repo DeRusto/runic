@@ -523,13 +523,15 @@ describe("fight clips", () => {
   });
 });
 
-/** A stand-in model 2 wide, 1 tall and 1 deep, with a right hand slot, a clip named for its file, and the idle clips a Figure starts on. */
+/** A stand-in model 2 wide, 1 tall and 1 deep, with both hand slots, a clip named for its file, and the idle clips a Figure starts on. */
 async function fakeModel(path: string) {
   const scene = new THREE.Group();
   scene.add(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1)));
   const hand = new THREE.Object3D();
   hand.name = "handslotr";
-  scene.add(hand);
+  const shieldHand = new THREE.Object3D();
+  shieldHand.name = "handslotl";
+  scene.add(hand, shieldHand);
   scene.name = path;
   return {
     scene,
@@ -540,6 +542,7 @@ async function fakeModel(path: string) {
       "Spider_Idle",
       "Slime_Idle",
       "Idle_A",
+      "Idle_B",
       "Idle_Loop",
     ].map((name) => new THREE.AnimationClip(name, 1, [])),
   } as unknown as GLTF;
@@ -555,8 +558,8 @@ describe("loadEnemies", () => {
   it("names a committed model for every kind, and its held weapon", () => {
     for (const { file, held } of Object.values(ENEMY_LOOKS)) {
       expect(existsSync(`client/public/models/${file}`)).toBe(true);
-      if (held)
-        expect(existsSync(`client/public/models/${held.file}`)).toBe(true);
+      for (const { file } of held ?? [])
+        expect(existsSync(`client/public/models/${file}`)).toBe(true);
     }
   });
 
@@ -581,6 +584,25 @@ describe("loadEnemies", () => {
       for (const clip of used) expect(clips).toContain(clip);
     },
   );
+
+  it("names the Cairn warden and gives it all five combat and movement clips", () => {
+    const look = ENEMY_LOOKS.cairnWarden;
+    expect(look.name).toBe("Cairn warden");
+    expect(look.file).toBe("CairnWarden.glb");
+    const clips = [
+      ...clipsOf("Rig_Medium_MovementBasic"),
+      ...clipsOf("Rig_Medium_General"),
+      ...clipsOf("Rig_Medium_CombatMelee"),
+    ];
+    for (const clip of [
+      look.gait?.idle,
+      look.gait?.move,
+      look.swing("0", 0).clip,
+      look.hit,
+      look.death,
+    ])
+      expect(clips).toContain(clip);
+  });
 
   it("sizes each kind by its row: its wide side across the tile, or the Skeleton by height", async () => {
     const newEnemy = await loadEnemies(fakeModel);
@@ -610,6 +632,18 @@ describe("loadEnemies", () => {
     expect(skeleton.model.getObjectByName("Skeleton_Blade.gltf")).toBeDefined();
     expect(skeleton.alwaysArmed).toBe(true);
     expect(newEnemy.spider(tile).alwaysArmed).toBeFalsy();
+  });
+
+  it("puts the Cairn warden's axe and shield in opposite hands", async () => {
+    const warden = (await loadEnemies(fakeModel)).cairnWarden(tile);
+    expect(
+      warden.model.getObjectByName("Skeleton_Axe.gltf")?.parent?.name,
+    ).toBe("handslotr");
+    expect(
+      warden.model.getObjectByName("Skeleton_Shield_Large_A.gltf")?.parent
+        ?.name,
+    ).toBe("handslotl");
+    expect(warden.alwaysArmed).toBe(true);
   });
 });
 

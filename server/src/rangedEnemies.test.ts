@@ -56,7 +56,7 @@ test("a provoked Mage six tiles away steps into reach, then stands and shoots", 
   expect(enemy.x).toBe(6);
 });
 
-test.each(["H", "g"])(
+test.each(["H", "g", "%"])(
   "a Mage walks around cover (%s) before it can shoot",
   (cover) => {
     const { sim, enemy } = encounter([

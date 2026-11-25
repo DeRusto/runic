@@ -6,7 +6,7 @@ import { inSight, isTall } from "./sight.ts";
 const region = (...rows: string[]) => parseRegion(rows.join("\n"));
 
 /** The test map characters for tall tiles: walls, tree props, rocks, veins and Woodcutting trees. */
-const TALL_CHARS = new Set("HTtAociEegkC");
+const TALL_CHARS = new Set("HTtAociEegkC%");
 
 describe("isTall", () => {
   test("house walls, trees, rocks, veins, columns and standing stones are tall", () => {
@@ -106,4 +106,12 @@ describe("inSight", () => {
             expect(inSight(tiles, a, b)).toBe(inSight(tiles, b, a));
           }
   });
+});
+
+test("a burial mound blocks a shot in either direction", () => {
+  const tiles = region("..%..");
+  const west = { x: 0, y: 0 };
+  const east = { x: 4, y: 0 };
+  expect(inSight(tiles, west, east)).toBe(false);
+  expect(inSight(tiles, east, west)).toBe(false);
 });

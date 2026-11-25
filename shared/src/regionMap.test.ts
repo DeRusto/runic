@@ -540,3 +540,20 @@ describe("shortcut placements", () => {
     );
   });
 });
+
+it("loads a burial mound as a blocking feature", () => {
+  const tileset = {
+    tiles: [
+      ...TILESET.tiles,
+      {
+        id: 6,
+        properties: [property("prop", "burialMound"), property("blocks", true)],
+      },
+    ],
+  };
+  const { tiles } = load(
+    mapWith(withLayer("features", [0, 7, 0, 0, 0, 0])),
+    tileset,
+  );
+  expect(tiles[0]![1]).toMatchObject({ prop: "burialMound", blocks: true });
+});

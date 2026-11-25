@@ -11,6 +11,7 @@ export type EnemyKind =
   | "bristleback"
   | "cinderhorn"
   | "skeletonMage"
+  | "cairnWarden"
   | "imp";
 export type EnemyState = "idle" | "fighting" | "going home" | "dead";
 
@@ -204,6 +205,23 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     loot: [
       { category: "quest", chance: 1 / 3, items: [{ item: "boneSigil" }] },
     ],
+  },
+  // Enemy Expansion spec §6. Timing and wander match the Skeleton Mage.
+  cairnWarden: {
+    health: 4500,
+    hitChance: 0.65,
+    accuracy: 15,
+    style: "melee",
+    maxDamage: 800,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 200,
+    wanderChance: 0.1,
+    wanderTiles: 3,
+    noticeTiles: 4,
+    leashTiles: 5,
+    bone: { item: "heavyBones", chance: BONE_DROP_CHANCE },
+    loot: [],
   },
   imp: {
     health: 1200,

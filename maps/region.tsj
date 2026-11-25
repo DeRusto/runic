@@ -1,11 +1,11 @@
-{ "columns":43,
+{ "columns":44,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":688,
+ "imagewidth":704,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":43,
+ "tilecount":44,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -569,6 +569,20 @@
                  "name":"strongbox",
                  "type":"string",
                  "value":"hollow"
+                }]
+        },
+        {
+         "id":43,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"prop",
+                 "type":"string",
+                 "value":"burialMound"
                 }]
         }],
  "tilewidth":16,

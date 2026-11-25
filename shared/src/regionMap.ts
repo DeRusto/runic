@@ -60,6 +60,7 @@ const FEATURE_VALUES = {
   prop: {
     tree: 1,
     rock: 1,
+    burialMound: 1,
     tuft: 1,
     well: 1,
     lamp: 1,
