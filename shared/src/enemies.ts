@@ -47,6 +47,8 @@ type EnemyStats = {
   accuracy: number;
   /** Its one fixed style, set against the player's by the combat triangle (#271). */
   style: Style;
+  /** Shot reach in tiles (#298). Omitted for enemies that only swing next to their target. */
+  reachTiles?: number;
   maxDamage: number;
   swingIntervalTicks: number;
   firstSwingDelayTicks: number;
@@ -106,15 +108,14 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
       { category: "material", chance: 0.25, items: [{ item: "emberbone" }] },
     ],
   },
-  // Runestone Hollow's (spec §5), first values to tune: a Skeleton Mage is a Skeleton that hits
-  // harder and lasts longer, and fights in melee despite its name (#271), and an Imp is a quick,
-  // weaker pest that notices from further off. A Mage drops Hollis's bone sigil, one kill in three,
-  // and only to a player Hollis asks it of; Imps drop nothing yet.
+  // Runestone Hollow spec §5 and Enemy Expansion spec §2. The Mage shoots from five tiles
+  // and can drop a bone sigil for a player who needs it for Hollis's quest.
   skeletonMage: {
     health: 3200,
     hitChance: 0.6,
     accuracy: 10,
-    style: "melee",
+    style: "ranged",
+    reachTiles: 5,
     maxDamage: 650,
     swingIntervalTicks: 8,
     firstSwingDelayTicks: 4,

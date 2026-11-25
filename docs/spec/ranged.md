@@ -82,15 +82,15 @@ A shot needs a straight line from the centre of the shooter's tile to the centre
 
 Every other tile lets a shot pass: doors, water, bushes, the gate, stations, stalls, strongboxes, barrels, crates, lamps, the well, villagers, marks, enemies and players (owner, #278). So a player can shoot across the Lake but not through a house. A Woodcutting tree that has run out shows as a stump, which a shot passes over until the tree grows back, though the stump still blocks walking (owner, #286). A run-out vein still blocks a shot. A pooled tree or vein that has left its spot blocks nothing until it comes back.
 
-The line counts every tile it touches, even at a single corner, so a diagonal that squeezes past the corner of a wall is blocked; this build took the suggestion in #278. The shooter's and the target's own tiles never block. The check reads only the line between the two tiles, so it gives the same answer with shooter and target swapped. It lives in `shared` as `inSight`, for the ranged enemies of a later milestone to use too.
+The line counts every tile it touches, even at a single corner, so a diagonal that squeezes past the corner of a wall is blocked; this build took the suggestion in #278. The shooter's and the target's own tiles never block. The check reads only the line between the two tiles, so it gives the same answer with shooter and target swapped. Player and enemy shots both use the shared `inSight` check.
 
 A player who attacks a target in reach but out of sight walks to the nearest tile, counted in steps, from which the target is both in reach and in sight, then fires on the tick they arrive. A target that moves out of sight mid-fight is walked to again the same way, with the same check made fresh on every step. When no tile the player can walk to has the target in both, the attack is cancelled and the chat says "You can't get a clear shot at that." No shot fires, no arrow is spent and no experience is paid, and the player never walks forever.
 
-Sight is for shots only. A melee swing still needs the player next to the enemy, and enemies, which all fight in melee, check no sight.
+A melee swing requires the fighters to be next to each other. A ranged enemy checks sight before shooting, as described in [Enemy Expansion §2](enemy-expansion.md#2-ranged-enemies).
 
 ### The hit
 
-A ranged shot uses melee's curves, read from Ranged (#268):
+A player's shot uses melee's curves, read from Ranged (#268):
 
 | Value | Rule |
 | --- | --- |
@@ -169,7 +169,7 @@ The shooter alone can see and take the recovered ammo for one minute. It goes pu
 
 ## 8. The combat triangle
 
-Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. All seven of today's enemies fight in melee, the Skeleton Mage included, so for now the triangle matters only to a ranged player.
+Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. The Skeleton Mage fights at range (#298). The other enemies fight in melee.
 
 | Pairing | Effect on the chance to land |
 | --- | --- |
@@ -183,10 +183,12 @@ Points sit on the Accuracy and Avoidance scale, one point to a percentage point 
 | --- | --- | --- |
 | A sword or bare hands against a melee enemy | Unchanged | Unchanged |
 | A bow or throwing knives against a melee enemy | 10 points fewer | 10 points more |
+| A sword or bare hands against a ranged enemy | 10 points more | 10 points fewer |
+| A bow or throwing knives against a ranged enemy | Unchanged | Unchanged |
 
 The triangle's points add in before the limits, and each chance then stays on the scale. An enemy's chance to hit never falls below its 5% floor, and no chance to land, the player's or the enemy's, goes above a whole chance; a player's chance never falls below none. The triangle changes how often a hit lands and never how hard: damage, Might, criticals, blocks and armour are untouched.
 
-The style is read from the weapon in hand at the moment each hit resolves, not from when the attack began (owner, 2026-11-23). A player who swaps a sword for a bow mid-fight is hit as a ranged player from the enemy's next swing, and their own next attack is a shot, rolled with the triangle's points off. Every outcome is decided on the server; the client sends only its intents.
+The style is read from the weapon in hand at the moment each hit resolves, not from when the attack began (owner, 2026-11-23). A player who swaps a sword for a bow mid-fight is treated as ranged when the enemy attacks next. Their own next attack is a shot, with any triangle points determined by the enemy's style. Every outcome is decided on the server; the client sends only its intents.
 
 The magic side of the rule is written already: it names all three styles, so a magic enemy in Phase 9 needs only its style in its stats. A magic player needs a magic weapon, and `playerStyleOf`, which today knows only melee and ranged weapons, must learn to name it. Player-against-player fights (Phase 12) are out of scope. The Gear tab's hit chance shows the player's own chance before any triangle, since it depends on the target.
 
@@ -194,4 +196,4 @@ The magic side of the rule is written already: it names all three styles, so a m
 
 Every shot or swing renews the enemy's chase, hit or miss. The enemy goes after the last player who attacked it, and measures its leash from that player's tile at the moment of the attack. This applies to every style and to enemies on their way home. A docile creature still stands where it is and never fights back.
 
-An enemy that notices a player starts with its own tile as the point it measures from. Once the player stops attacking and walks past the leash, the enemy gives up and heads home. It also gives up if its target dies, leaves the world, or cannot be reached. If the enemy dies, its chase ends with it. A later attack on a living enemy can start a new chase.
+An enemy that notices a player starts with its own tile as the point it measures from. Once the player stops attacking and walks past the leash, the enemy gives up and heads home. It also gives up if its target dies, leaves the world, or it can neither attack from its tile nor find a walking route to the target. If the enemy dies, its chase ends with it. A later attack on a living enemy can start a new chase.

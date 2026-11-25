@@ -292,12 +292,18 @@ How many percentage points come off an enemy's chance to hit a player, from Defe
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring and a bow add their Accuracy to the player's side (#238, #268).
+Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring and a bow add their Accuracy to the player's side (#238, #268).
 _Avoid_: Precision, attack bonus
 
 **Style**:
-How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats, and all seven of today's enemies fight in melee, the Skeleton Mage included (#271). Nothing fights with magic until Phase 9.
+How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats (#271). The Skeleton Mage fights at range (#298). Nothing fights with magic until Phase 9.
 _Avoid_: Combat style, attack type, stance (each style has its own stances)
+
+**Ranged enemy**:
+An enemy with a shot reach in its stats. While fighting, it stands and shoots when its target is within reach and in sight. It follows its path toward the target if either condition fails. A shot rolls like a swing and spends no ammunition.
+
+**Skeleton Mage**:
+Runestone Hollow's ranged enemy. It shoots from up to 5 tiles and chases players it notices within 3 tiles by a walking route. It can leave a bone sigil for Hollis's quest.
 
 **Combat triangle**:
 The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy's chance to hit still never falls below 5%.
