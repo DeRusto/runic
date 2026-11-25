@@ -1,6 +1,6 @@
 import type { PropKind, Tile, TileKind } from "./region.ts";
 
-/** The props a shot can't pass: trees, rocks, burial mounds and Runestone Hollow's ruins (owner, 2026-11-23; Ranged spec §4). */
+/** The props a shot cannot pass (Ranged spec §4 and #302). */
 const TALL_PROPS: ReadonlySet<PropKind> = new Set([
   "tree",
   "rock",
