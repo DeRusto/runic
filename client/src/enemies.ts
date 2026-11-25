@@ -18,23 +18,26 @@ const THORN_FLIGHT_MS = 300;
 /** Draws a Thornling shot after its windup. The server has already resolved the hit. */
 export function showThorn(enemy: Figure, target: Figure, contactMs: number) {
   const from = enemy.model.position.clone().add(new THREE.Vector3(0, 0.36, 0));
-  const to = target.model.position.clone().add(new THREE.Vector3(0, 0.65, 0));
+  const to = new THREE.Vector3();
+  const direction = new THREE.Vector3();
   const thorn = new THREE.Mesh(thornShape, thornColor);
-  thorn.quaternion.setFromUnitVectors(
-    thornAxis,
-    to.clone().sub(from).normalize(),
-  );
   const impactAt = performance.now() + contactMs;
 
   function fly(now: number) {
     const progress = 1 - (impactAt - now) / THORN_FLIGHT_MS;
-    if (progress >= 1 || !enemy.model.parent) {
+    if (progress >= 1 || !enemy.model.parent || !target.model.parent) {
       thorn.removeFromParent();
       return;
     }
     if (progress >= 0) {
       if (!thorn.parent) scene.add(thorn);
+      to.copy(target.model.position);
+      to.y += 0.65;
       thorn.position.lerpVectors(from, to, progress);
+      thorn.quaternion.setFromUnitVectors(
+        thornAxis,
+        direction.subVectors(to, from).normalize(),
+      );
     }
     requestAnimationFrame(fly);
   }
