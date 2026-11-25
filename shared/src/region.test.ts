@@ -56,6 +56,7 @@ const IS = {
   herbBush: (tile) => tile.bush === "herbBush",
   nightbloomBush: (tile) => tile.bush === "nightbloomBush",
   emberbloomBush: (tile) => tile.bush === "emberbloomBush",
+  fenwing: (tile) => tile.enemy === "fenwing",
   thornling: (tile) => tile.enemy === "thornling",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
@@ -386,6 +387,19 @@ describe("the region", () => {
         .map((pool) => [pool.kind, pool.active]),
     ).toEqual([["shore", 3]]);
     expect(spotsOf("shore").map(key2).sort()).toEqual(bank.map(key2).sort());
+  });
+
+  it("homes four Fenwings on walkable Lake shore beside the Tarn Oxen", () => {
+    const homes = tilesOf("fenwing");
+    const water = tilesOf("water").map(asTile);
+    const oxen = tilesOf("tarnOx").map(asTile);
+    expect(homes).toHaveLength(4);
+    for (const [x, y] of homes) {
+      expect(region[y]![x]).toMatchObject({ ground: "grass", blocks: false });
+      expect(reachable.has(key(x, y))).toBe(true);
+      expect(water.some((tile) => tilesApart(tile, { x, y }) === 1)).toBe(true);
+      expect(oxen.some((tile) => tilesApart(tile, { x, y }) <= 3)).toBe(true);
+    }
   });
 
   it("stands the Fisher on the bank where a path reaches the shore", () => {

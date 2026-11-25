@@ -34,3 +34,11 @@ Four Thornlings live in the middle field (#299). Each has 1000 health, 0 Accurac
 Its timing matches the Spider. The first shot is due after 4 ticks, then every 8 ticks. At idle it has a 10% chance to take a wander step when ready to move, up to 5 tiles from home. It returns at home 150 ticks after death. A fight pays the usual experience for damage dealt, and a kill yields no loot or bones.
 
 Its attack animation flings a thorn, with the hit shown when the thorn reaches the player. The hover tooltip reads “Thornling” and the right-click menu offers “Attack Thornling”.
+
+## 4. Fenwing
+
+Four Fenwings live on the Lake shore beside the Tarn Oxen (#300). Each has 500 health, 0 Accuracy, a base 30% chance to land a hit, and a max hit of 150. A Fenwing ignores passers-by. It retaliates in melee and gives up once its attacker stands more than 3 tiles from where they last attacked.
+
+The timing matches the Spider. The first swing is due after 4 ticks, with subsequent swings every 8 ticks. At idle it has a 10% chance to wander when ready to move, up to 2 tiles from home to stay near the shore. It returns home 150 ticks after death.
+
+Each player who damaged it gets 3 to 6 feathers and independently has a two-in-three chance to get bones. Both drops appear on the defeated Fenwing's tile and are private to the recipient for the first minute. Feathers are used in the arrow recipe, and the general store continues to sell them.

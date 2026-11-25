@@ -100,6 +100,57 @@ test("each damager rolls for their own bones and only the winner sees the drop f
   }
 });
 
+test.each(["a", "b"])(
+  "both Fenwing damagers get feathers and %s wins their own bone roll",
+  (winner) => {
+    const low = 2 / 3 - 0.0001;
+    const high = 2 / 3;
+    const s = fight("fenwing", 2, [
+      0,
+      winner === "a" ? low : high,
+      MISS,
+      winner === "b" ? low : high,
+    ]);
+    const drops = [...s.state.groundItems];
+    expect(drops.map(([, drop]) => drop)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          item: "feather",
+          count: 3,
+          owner: "a",
+          x: 8,
+          y: 1,
+        }),
+        expect.objectContaining({
+          item: "feather",
+          count: 6,
+          owner: "b",
+          x: 8,
+          y: 1,
+        }),
+        expect.objectContaining({
+          item: "bones",
+          count: 1,
+          owner: winner,
+          x: 8,
+          y: 1,
+        }),
+      ]),
+    );
+    expect(drops).toHaveLength(3);
+    for (let i = 0; i < GROUND_ITEM_OWNER_TICKS - 1; i++) s.tick();
+    for (const [id, drop] of drops) {
+      expect(s.canSee(drop.owner, id)).toBe(true);
+      expect(s.canSee(drop.owner === "a" ? "b" : "a", id)).toBe(false);
+    }
+    s.tick();
+    for (const [id] of drops) {
+      expect(s.canSee("a", id)).toBe(true);
+      expect(s.canSee("b", id)).toBe(true);
+    }
+  },
+);
+
 test.each([
   ["spider", ["spiderSilk"]],
   ["imp", []],

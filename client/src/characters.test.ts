@@ -536,6 +536,7 @@ async function fakeModel(path: string) {
     animations: [
       `${path} clip`,
       "Idle",
+      "idle",
       "Spider_Idle",
       "Idle_A",
       "Idle_Loop",
@@ -556,6 +557,22 @@ describe("loadEnemies", () => {
       if (held)
         expect(existsSync(`client/public/models/${held.file}`)).toBe(true);
     }
+  });
+
+  it("gives the Fenwing a named look with five clips in its own model", () => {
+    const look = ENEMY_LOOKS.fenwing;
+    expect(look.name).toBe("Fenwing");
+    expect(look.clips).toBe("own");
+    const clips = clipsOf(look.file.replace(/\.glb$/, ""));
+    const used = [
+      look.gait?.idle,
+      look.gait?.move,
+      look.swing("0", 0).clip,
+      look.hit,
+      look.death,
+    ];
+    expect(new Set(used).size).toBe(5);
+    for (const clip of used) expect(clips).toContain(clip);
   });
 
   it("sizes each kind by its row: its wide side across the tile, or the Skeleton by height", async () => {

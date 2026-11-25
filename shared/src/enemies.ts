@@ -4,6 +4,7 @@ import type { Style } from "./triangle.ts";
 export type EnemyKind =
   | "spider"
   | "thornling"
+  | "fenwing"
   | "skeleton"
   | "tarnOx"
   | "bristleback"
@@ -105,6 +106,28 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
     wanderTiles: 5,
     leashTiles: 4,
     loot: [],
+  },
+  // Enemy Expansion spec §4. Spider timing with a shorter wander to stay by the shore.
+  fenwing: {
+    health: 500,
+    hitChance: 0.3,
+    accuracy: 0,
+    style: "melee",
+    maxDamage: 150,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 150,
+    wanderChance: 0.1,
+    wanderTiles: 2,
+    leashTiles: 3,
+    loot: [
+      {
+        category: "material",
+        chance: 1,
+        items: [{ item: "feather", count: [3, 6] }],
+      },
+    ],
+    bone: { item: "bones", chance: BONE_DROP_CHANCE },
   },
   skeleton: {
     health: 2400,

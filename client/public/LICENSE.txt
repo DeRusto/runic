@@ -65,6 +65,9 @@ models/
     Spider.glb
         Converted from Quaternius's Easy Enemy Pack (quaternius.com). CC0: see
         models/LICENSE-Quaternius-Easy-Enemy-Pack.txt.
+    Fenwing.glb
+        Adapted from Seagull in Gobkit Free Animal Pack Vol.5, with a taller
+        silhouette and a hit clip. CC0: see models/LICENSE-Gobkit-Free-Animal-Pack-Vol-5.txt.
     TarnOx.glb
         The Bull from Quaternius's Ultimate Animated Animals (quaternius.com),
         kept to the four clips the game plays. CC0: see
