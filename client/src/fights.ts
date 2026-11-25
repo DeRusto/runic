@@ -130,7 +130,7 @@ export function showFights(room: WorldConnection) {
           target
         ) {
           shooter.face(target.tile);
-          showThorn(shooter, target, contactMs);
+          showThorn(shooter.model, target.model, contactMs);
         }
         shooter.once(clip);
         killingContactMs = contactMs;

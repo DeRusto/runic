@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { expect, test, vi } from "vitest";
-import type { Figure } from "./characters.ts";
 import { showThorn } from "./enemies.ts";
 import { scene } from "./scene.ts";
 
@@ -18,7 +17,7 @@ test("a flying thorn follows the target's rendered movement until contact", () =
   player.position.x = 4;
   scene.add(enemy, player);
   try {
-    showThorn({ model: enemy } as Figure, { model: player } as Figure, 650);
+    showThorn(enemy, player, 650);
     frame!(450);
     const thorn = scene.children[2]!;
     expect(thorn.position.x).toBeCloseTo(4 / 3);
