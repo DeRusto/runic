@@ -49,7 +49,7 @@ const MARKER_MS = 2 * TICK_MS;
 
 /**
  * Targets what is under a click or walks to the ground tile. Right-click opens the choices for
- * villagers, marks, stalls, strongboxes, obstacles and other players.
+ * named enemies, villagers, marks, stalls, strongboxes, obstacles and other players.
  */
 export function walkOnClick(
   room: WorldConnection,
@@ -158,11 +158,24 @@ export function walkOnClick(
     raycaster.setFromCamera(pointer, camera);
   };
 
+  const attack = (enemy: NonNullable<ReturnType<typeof enemyUnder>>) => {
+    if (crossing()) return;
+    const refused = rangedAttackRefusal(
+      room.state.players.get(room.sessionId) ?? {},
+    );
+    if (refused) return printChatLine(refused);
+    showMarker(enemy.tile.x, enemy.tile.y);
+    room.send(TARGET_INTENT, enemy.id);
+  };
+
   // The browser's own menu never shows on the canvas, whatever is under the click.
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
     if (crossing()) return;
     aim(event);
+    const enemy = enemyUnder(raycaster);
+    if (enemy?.name)
+      return openMenu(event, [[`Attack ${enemy.name}`, () => attack(enemy)]]);
     const villager = villagerUnder(raycaster);
     if (villager) {
       const visit = (then?: DialogueAction) => () => {
@@ -217,16 +230,7 @@ export function walkOnClick(
     if (crossing()) return;
     aim(event);
     const enemy = enemyUnder(raycaster);
-    if (enemy) {
-      // The server checks it too, against its own state (Ranged spec §4).
-      const refused = rangedAttackRefusal(
-        room.state.players.get(room.sessionId) ?? {},
-      );
-      if (refused) return printChatLine(refused);
-      showMarker(enemy.tile.x, enemy.tile.y);
-      room.send(TARGET_INTENT, enemy.id);
-      return;
-    }
+    if (enemy) return attack(enemy);
     const groundItem = groundItemUnder(raycaster);
     if (groundItem) {
       showMarker(groundItem.x, groundItem.y);

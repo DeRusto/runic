@@ -27,11 +27,11 @@ describe("a player's style", () => {
 });
 
 describe("every enemy's style", () => {
-  test("is ranged for the Skeleton Mage and melee for every other enemy", () => {
+  test("is ranged for the Skeleton Mage and Thornling and melee for every other enemy", () => {
     const kinds = Object.keys(ENEMIES) as EnemyKind[];
     for (const kind of kinds)
       expect(ENEMIES[kind].style).toBe(
-        kind === "skeletonMage" ? "ranged" : "melee",
+        kind === "skeletonMage" || kind === "thornling" ? "ranged" : "melee",
       );
   });
 });

@@ -1,6 +1,6 @@
 import { Callbacks } from "@colyseus/sdk";
 import { ENEMIES, type EnemyKind, type EnemyState } from "@runic/shared";
-import type * as THREE from "three";
+import * as THREE from "three";
 import { ENEMY_LOOKS, type Figure } from "./characters.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { Overhead } from "./overhead.ts";
@@ -10,6 +10,45 @@ import { scene } from "./scene.ts";
 export const enemyFigures = new Map<string, Figure>();
 export const enemyOverheads = new Map<string, Overhead>();
 
+const thornShape = new THREE.ConeGeometry(0.055, 0.38, 4);
+const thornColor = new THREE.MeshBasicMaterial({ color: 0xc0a34f });
+const thornAxis = new THREE.Vector3(0, 1, 0);
+const THORN_FLIGHT_MS = 300;
+
+/** Draws a Thornling shot after its windup. The server has already resolved the hit. */
+export function showThorn(
+  enemy: THREE.Object3D,
+  target: THREE.Object3D,
+  contactMs: number,
+) {
+  const from = enemy.position.clone().add(new THREE.Vector3(0, 0.36, 0));
+  const to = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const thorn = new THREE.Mesh(thornShape, thornColor);
+  const impactAt = performance.now() + contactMs;
+
+  function fly(now: number) {
+    const progress = 1 - (impactAt - now) / THORN_FLIGHT_MS;
+    if (progress >= 1 || !enemy.parent || !target.parent) {
+      thorn.removeFromParent();
+      return;
+    }
+    if (progress >= 0) {
+      if (!thorn.parent) scene.add(thorn);
+      to.copy(target.position);
+      to.y += 0.65;
+      thorn.position.lerpVectors(from, to, progress);
+      thorn.quaternion.setFromUnitVectors(
+        thornAxis,
+        direction.subVectors(to, from).normalize(),
+      );
+    }
+    requestAnimationFrame(fly);
+  }
+
+  requestAnimationFrame(fly);
+}
+
 /** Draws every enemy, and returns what finds the live enemy under a click's ray. */
 export function showEnemies(
   room: WorldConnection,
@@ -18,7 +57,11 @@ export function showEnemies(
   const figures: { id: string; figure: Figure; hitBox: THREE.Mesh }[] = [];
   const hitBoxes = new Map<
     THREE.Object3D,
-    { id: string; tile: { x: number; y: number; state: EnemyState } }
+    {
+      id: string;
+      name?: string;
+      tile: { x: number; y: number; state: EnemyState };
+    }
   >();
 
   Callbacks.get(room).onAdd("enemies", (enemy, id) => {
@@ -27,7 +70,11 @@ export function showEnemies(
     // A plain box, not the skinned mesh, so a click between the legs still counts.
     const hitBox = newHitBox();
     figures.push({ id, figure, hitBox });
-    hitBoxes.set(hitBox, { id, tile: enemy });
+    hitBoxes.set(hitBox, {
+      id,
+      name: ENEMY_LOOKS[enemy.kind].name,
+      tile: enemy,
+    });
     if (enemy.state === "dead")
       figure.alreadyGone(ENEMY_LOOKS[enemy.kind].death);
     enemyFigures.set(id, figure);

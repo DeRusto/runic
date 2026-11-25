@@ -3247,6 +3247,82 @@
                  "width":0,
                  "x":160,
                  "y":496
+                }, 
+                {
+                 "height":0,
+                 "id":204,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"thornling"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":672,
+                 "y":560
+                }, 
+                {
+                 "height":0,
+                 "id":205,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"thornling"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":864,
+                 "y":592
+                }, 
+                {
+                 "height":0,
+                 "id":206,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"thornling"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":720,
+                 "y":736
+                }, 
+                {
+                 "height":0,
+                 "id":207,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"enemy",
+                         "type":"string",
+                         "value":"thornling"
+                        }],
+                 "rotation":0,
+                 "type":"enemyHome",
+                 "visible":true,
+                 "width":0,
+                 "x":880,
+                 "y":880
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -3255,7 +3331,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":204,
+ "nextobjectid":208,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

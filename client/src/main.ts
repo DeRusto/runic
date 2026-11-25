@@ -98,10 +98,11 @@ function enterWorld(room: WorldConnection) {
   status.textContent = "";
   const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure, tiles);
   const openMenu = showBottomBar(room, sayOverhead, tiles);
+  const enemyUnder = showEnemies(room, newEnemy);
   walkOnClick(
     room,
     tiles,
-    showEnemies(room, newEnemy),
+    enemyUnder,
     showGatheringSites(room, tiles, spots, setSiteLook, siteModel),
     stationUnder,
     showFires(room),
@@ -111,7 +112,7 @@ function enterWorld(room: WorldConnection) {
     stalls.stallUnder,
     strongboxes.strongboxUnder,
     obstacleUnder,
-    showGroundItems(room),
+    showGroundItems(room, enemyUnder),
     // It opens only with the player on the pile, which the following camera settles at the screen's
     // centre; projecting the pile now would use the camera still on its way there.
     showPileWindow(room, () => ({ x: innerWidth / 2, y: innerHeight / 2 })),

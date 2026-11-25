@@ -26,3 +26,11 @@ The Skeleton Mage shoots from up to 5 tiles and fights in the ranged style (#298
 Shots use the same tall-tile sight check as player shots. House walls, trees, rocks, columns and standing stones block them. Shots pass over water and run-out Woodcutting stumps. Stumps still block walking while the tree regrows. Noticing still requires a walking route, and the existing leash still ends a chase. A player's attack renews the chase as before.
 
 The Mage keeps its first attack delay and shoots every 8 ticks when it can. Its shot uses the same roll as a swing, including Avoidance, the combat triangle, shield block, armour, the health cap and Defense experience. It spends no ammunition and leaves none on the ground. The Mage casts with its staff and the hit shows on the player.
+
+## 3. Thornling
+
+Four Thornlings live in the middle field (#299). Each has 1000 health, 0 Accuracy, a base 40% chance to land a shot, and a max hit of 250. It fights at range, shoots up to 4 tiles using the sight rule in §2, and leashes 4 tiles from its attacker’s last attack. It ignores passers-by and retaliates on an attack, including a miss under the existing chase rule.
+
+Its timing matches the Spider. The first shot is due after 4 ticks, then every 8 ticks. At idle it has a 10% chance to take a wander step when ready to move, up to 5 tiles from home. It returns at home 150 ticks after death. A fight pays the usual experience for damage dealt, and a kill yields no loot or bones.
+
+Its attack animation flings a thorn, with the hit shown when the thorn reaches the player. The hover tooltip reads “Thornling” and the right-click menu offers “Attack Thornling”.

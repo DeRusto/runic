@@ -82,6 +82,7 @@ export const TILE_KINDS = {
   d: { ground: "thicket", bush: "dewpetalBush", blocks: true },
   n: { ground: "thicket", bush: "nightbloomBush", blocks: true },
   m: { ground: "thicket", bush: "emberbloomBush", blocks: true },
+  I: { ground: "grass", enemy: "thornling", blocks: false },
   S: { ground: "grass", enemy: "spider", blocks: false },
   // #238's docile creatures: they stand where they start.
   X: { ground: "grass", enemy: "tarnOx", blocks: false },

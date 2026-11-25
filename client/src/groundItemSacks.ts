@@ -1,6 +1,7 @@
 import { Callbacks } from "@colyseus/sdk";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import type { showEnemies } from "./enemies.ts";
 import { groundItemsLabel, type SeenGroundItem } from "./groundItems.ts";
 import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
 import { colouredNames, iconUrl } from "./itemIcons.ts";
@@ -67,7 +68,10 @@ function sackFor(items: SeenGroundItem[], mine: boolean) {
  * others), and labels the tile under the pointer. Returns what finds the tile of ground items
  * under a click's ray, with their ids.
  */
-export function showGroundItems(room: WorldConnection) {
+export function showGroundItems(
+  room: WorldConnection,
+  enemyUnder: ReturnType<typeof showEnemies>,
+) {
   const callbacks = Callbacks.get(room);
   const tiles = new Map<
     string,
@@ -140,10 +144,12 @@ export function showGroundItems(room: WorldConnection) {
       -(event.clientY / innerHeight) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
-    const tile = tileUnder(raycaster);
+    const enemyName = enemyUnder(raycaster)?.name;
+    const tile = enemyName ? undefined : tileUnder(raycaster);
     hovered?.scale.setScalar(1);
     hovered = tile?.sack;
     hovered?.scale.setScalar(HOVER_SCALE);
+    if (enemyName) return showTip([enemyName], event);
     if (!tile) return hideTip();
     showTip(
       colouredNames(
