@@ -765,3 +765,44 @@ describe("the stunned, trapSprung and slipped events", () => {
     expect(figure.once).not.toHaveBeenCalled();
   });
 });
+
+test("the killing player sees the elite's name in chat when the blow lands", () => {
+  vi.useFakeTimers();
+  vi.clearAllMocks();
+  enemyFigures.set("enemy", {
+    dieAndSink: vi.fn(),
+    flash: vi.fn(),
+    once: vi.fn(),
+  });
+  try {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      sessionId: "a",
+      state: {
+        tick: 1,
+        enemies: new Map([["enemy", { kind: "skeleton", elite: true }]]),
+        players: new Map(),
+      },
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1]([
+      {
+        type: "playerSwing",
+        player: "a",
+        enemy: "enemy",
+        damage: 100,
+        critical: false,
+      },
+      { type: "enemyDied", enemy: "enemy" },
+    ] satisfies WorldEvent[]);
+    expect(printChatLine).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    expect(printChatLine).toHaveBeenCalledExactlyOnceWith(
+      "You defeat the Elite Skeleton.",
+    );
+  } finally {
+    enemyFigures.delete("enemy");
+    vi.useRealTimers();
+  }
+});

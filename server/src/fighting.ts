@@ -241,6 +241,7 @@ export class Fighting {
       player,
       avoidance,
       this.world.random,
+      enemy.elite,
     );
     player.health -= damage;
     for (const [field, gained] of xp) this.world.earnXp(player, field, gained);

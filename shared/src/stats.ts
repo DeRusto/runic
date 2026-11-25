@@ -1,3 +1,4 @@
+import { ELITE_ACCURACY_POINTS } from "./elites.ts";
 import { ENEMIES, type EnemyKind } from "./enemies.ts";
 import {
   AVOIDANCE_TENTHS_PER_POINT,
@@ -55,10 +56,12 @@ export const enemyHitChance = (
   kind: EnemyKind,
   avoidance: number,
   playerStyle: Style,
+  elite = false,
 ) =>
   onScale(
     ENEMIES[kind].hitChance +
       (ENEMIES[kind].accuracy +
+        (elite ? ELITE_ACCURACY_POINTS : 0) +
         trianglePointsOf(ENEMIES[kind].style, playerStyle) -
         avoidance) /
         POINTS_PER_HIT_CHANCE,

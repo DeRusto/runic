@@ -1,6 +1,8 @@
 import { schema, t } from "@colyseus/schema";
 import {
   canShootAt,
+  ELITE_HEALTH_MULTIPLIER,
+  ELITE_RETURN_CHANCE,
   ENEMIES,
   rollLoot,
   tilesApart,
@@ -19,6 +21,8 @@ export const Enemy = schema(
     y: t.uint8(),
     kind: t.string<EnemyKind>(),
     health: t.uint16(),
+    maxHealth: t.uint16(),
+    elite: t.boolean().default(false),
     target: t.string().default(""),
     state: t.string<EnemyState>().default("idle"),
   },
@@ -89,6 +93,7 @@ export class Enemies {
             y,
             kind: enemy,
             health: ENEMIES[enemy].health,
+            maxHealth: ENEMIES[enemy].health,
           }),
         );
       }),
@@ -122,7 +127,7 @@ export class Enemies {
     enemy.target = "";
     memory.returnTick = tick + returnTicks;
     // It starts over, as it can't be damaged until it returns.
-    const won = rollLoot(loot, memory.damagers, this.random, bone);
+    const won = rollLoot(loot, memory.damagers, this.random, bone, enemy.elite);
     memory.damagers.clear();
     return won;
   }
@@ -163,7 +168,7 @@ export class Enemies {
       if (enemy.state === "going home") {
         this.goHome(tick, enemy, memory);
         if (tilesApart(enemy, memory.home) === 0) {
-          enemy.health = stats.health;
+          enemy.health = enemy.maxHealth;
           enemy.state = "idle";
           memory.damagers.clear();
         }
@@ -185,9 +190,14 @@ export class Enemies {
     for (const [id, memory] of this.memories) {
       const enemy = this.synced.get(id)!;
       if (enemy.state !== "dead" || tick < memory.returnTick) continue;
+      const { docile, health } = ENEMIES[enemy.kind];
+      const elite = !docile && this.random() < ELITE_RETURN_CHANCE;
+      const maxHealth = elite ? health * ELITE_HEALTH_MULTIPLIER : health;
       Object.assign(enemy, {
         ...memory.home,
-        health: ENEMIES[enemy.kind].health,
+        elite,
+        maxHealth,
+        health: maxHealth,
         state: "idle",
       });
       returned.push(id);

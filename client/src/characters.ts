@@ -316,6 +316,14 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
   },
 };
 
+/** Gives every elite a name, including kinds that have no ordinary pointer label. */
+export function eliteNameOf(kind: EnemyKind) {
+  const name =
+    ENEMY_LOOKS[kind].name ??
+    kind[0]!.toUpperCase() + kind.slice(1).replace(/[A-Z]/g, " $&");
+  return `Elite ${name}`;
+}
+
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
 export class Figure {
   readonly mixer: THREE.AnimationMixer;
@@ -336,7 +344,8 @@ export class Figure {
   private sinking = false;
   private sunk = 0;
   private growth = 1;
-  private fullScale: number;
+  private readonly fullScale: number;
+  private sizeMultiplier = 1;
   private kick = new THREE.Vector3();
   private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
@@ -489,6 +498,12 @@ export class Figure {
     this.playBase();
   }
 
+  /** Changes the fitted size while preserving the current return animation. */
+  setSizeMultiplier(multiplier: number) {
+    this.sizeMultiplier = multiplier;
+    this.model.scale.setScalar(this.fullScale * multiplier * this.growth);
+  }
+
   /** A red flash. The materials must be this figure's own. */
   flash() {
     const paint = (hex: number) =>
@@ -610,7 +625,7 @@ export class Figure {
     }
     if (this.growth < 1) {
       this.growth = Math.min(1, this.growth + dt * GROW_SPEED);
-      model.scale.setScalar(this.fullScale * this.growth);
+      model.scale.setScalar(this.fullScale * this.sizeMultiplier * this.growth);
     }
   }
 }

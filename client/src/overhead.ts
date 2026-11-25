@@ -64,8 +64,8 @@ export class Overhead {
   }
 
   /** Call once a frame, after the camera has moved. */
-  place({ x, z }: THREE.Vector3) {
-    point.set(x, HEAD_HEIGHT, z).project(camera);
+  place({ x, z }: THREE.Vector3, sizeMultiplier = 1) {
+    point.set(x, HEAD_HEIGHT * sizeMultiplier, z).project(camera);
     const left = ((point.x + 1) / 2) * innerWidth;
     const top = ((1 - point.y) / 2) * innerHeight;
     this.element.style.transform = `translate(${left}px, ${top}px) translate(-50%, -100%)`;
