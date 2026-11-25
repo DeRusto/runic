@@ -65,3 +65,13 @@ The Cairns is a moss-covered field within the existing region, above the Boneyar
 Four Cairn wardens live there. Each has 4500 health, a base 65% chance to land a melee swing, +15 Accuracy and a max hit of 800. It notices reachable players within 4 tiles and gives up past its 5-tile leash. The first swing is due after 4 ticks, then every 8 ticks. When idle and ready to move, it has a 10% chance to wander up to 3 tiles from home. It returns home 200 ticks after death.
 
 Each player who damaged the warden independently rolls a two-in-three chance for one heavy bones drop on the warden's tile. The drop is private to that player for the first minute. The warden has no other loot.
+
+## 7. Elites
+
+After an enemy dies, its return has a one-in-twenty chance to be elite (#303). Startup enemies are ordinary, and docile enemies such as the Tarn Ox always return ordinary. An elite keeps its variant until death, including when it walks home and recovers. The next return rolls again.
+
+An elite has double its kind's maximum health, +10 Accuracy points and a max hit 25% higher. Round the max hit to the nearest whole unit, with halves rounded up. A Fenwing's 150 becomes 188. The elite keeps its kind's noticing, wandering, chase, leash, style and reach. Experience still comes from damage dealt and is rounded per hit.
+
+For each damager, every gear and material row gets twice its usual independent picks. Quest rows keep their usual picks and quest requirements, so an Elite Skeleton Mage can leave at most one bone sigil for a damager on Hollis's offering. An elite always drops one of its kind's bones per damager if its kind has a bone drop. An Elite Gorger gives two bag picks, and an Elite Imp still leaves nothing.
+
+The server syncs the elite flag and the enemy's own maximum health. The client shows “Elite” before the kind's name in the menu, tooltip and defeat message. Its figure is 20% larger with a violet tint. The health bar reads against its own maximum.

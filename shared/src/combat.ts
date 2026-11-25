@@ -1,3 +1,4 @@
+import { ELITE_LOOT_MULTIPLIER, ELITE_MAX_HIT_MULTIPLIER } from "./elites.ts";
 import {
   ENEMIES,
   type BoneDrop,
@@ -124,15 +125,18 @@ export function enemyHit(
   player: { defenseXp: number; blockingXp: number; health: number } & Worn,
   avoidanceBonus: number,
   random: () => number,
+  elite = false,
 ) {
   const avoidance = avoidanceOf(player);
+  const { maxDamage } = ENEMIES[kind];
   const rolled = rollDamage(
     enemyHitChance(
       kind,
       avoidance.skill + avoidance.gear + avoidanceBonus,
       playerStyleOf(player),
+      elite,
     ),
-    ENEMIES[kind].maxDamage,
+    elite ? Math.round(maxDamage * ELITE_MAX_HIT_MULTIPLIER) : maxDamage,
     random,
   );
   const block = blockOf(player);
@@ -186,24 +190,28 @@ function pick(items: readonly LootItem[], random: () => number) {
  * table order. Each of a category's picks rolls its chance, then an item by weight, then a count
  * from its range. A certain outcome (a chance of 1, one item, a fixed count) takes no roll, so
  * tables that change nothing replay the same rolls. Each damager then rolls for the enemy's
- * bone, if any.
+ * bone, if any. For elites, gear and material get twice the picks and bone drops are guaranteed.
  */
 export function rollLoot(
   table: readonly LootCategoryRow[],
   damagers: Iterable<string>,
   random: () => number,
   bone?: BoneDrop,
+  elite = false,
 ): LootWon[] {
   const won: LootWon[] = [];
   for (const player of damagers) {
-    for (const { chance, picks = 1, items } of table)
-      for (let i = 0; i < picks; i++) {
+    for (const { category, chance, picks = 1, items } of table) {
+      const attempts =
+        elite && category !== "quest" ? picks * ELITE_LOOT_MULTIPLIER : picks;
+      for (let i = 0; i < attempts; i++) {
         if (chance < 1 && random() >= chance) continue;
         const { item, count = 1 } = pick(items, random);
         const [min, max] = typeof count === "number" ? [count, count] : count;
         won.push({ player, item, count: rollBetween(min, max, random) });
       }
-    if (bone && (bone.chance === 1 || random() < bone.chance))
+    }
+    if (bone && (elite || bone.chance === 1 || random() < bone.chance))
       won.push({ player, item: bone.item, count: 1 });
   }
   return won;

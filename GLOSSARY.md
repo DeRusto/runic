@@ -176,6 +176,9 @@ _Avoid_: Building, home
 A creature in a field that players fight to train Attack and Strength.
 _Avoid_: Mob, monster, NPC
 
+**Elite**:
+A tougher enemy of the same kind that can appear when a non-docile enemy returns after death. It has double health, higher Accuracy and a higher max hit. Its gear and material loot roll twice for each damager, and its bone kind drops every kill if it has one (#303).
+
 **Spider**:
 The weaker enemy: a large spider that fights back only when attacked, unlike a Skeleton.
 _Avoid_: Thornback (its old name)

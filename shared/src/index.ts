@@ -258,6 +258,7 @@ export type WorldEvent =
 export * from "./bank.ts";
 export * from "./combat.ts";
 export * from "./dialogue.ts";
+export * from "./elites.ts";
 export * from "./enemies.ts";
 export * from "./firemaking.ts";
 export * from "./herblaw.ts";

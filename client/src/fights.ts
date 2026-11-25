@@ -12,7 +12,12 @@ import {
   itemTag,
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
-import { BLOCK_CLIP, ENEMY_LOOKS, swingFor } from "./characters.ts";
+import {
+  BLOCK_CLIP,
+  eliteNameOf,
+  ENEMY_LOOKS,
+  swingFor,
+} from "./characters.ts";
 import { chatItems } from "./itemIcons.ts";
 import {
   playerFigures,
@@ -89,6 +94,7 @@ export function showFights(room: WorldConnection) {
     // A death follows its killing swing in the same batch, and falls when that swing connects.
     // The server decided on the tick; this is the moment the clip connects (spec §7).
     let killingContactMs = 0;
+    let lastAttacker: string | undefined;
     for (const event of events) {
       if (event.type === "playerSwing") {
         const attacker = playerFigures.get(event.player);
@@ -106,6 +112,7 @@ export function showFights(room: WorldConnection) {
         attacker?.once(clip);
         ownContactAt.set(event.player, Date.now() + contactMs);
         killingContactMs = contactMs;
+        lastAttacker = event.player;
         atContact(
           enemyOverheads.get(event.enemy),
           event.damage,
@@ -163,7 +170,15 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "enemyDied") {
         const enemy = enemyFigures.get(event.enemy)!;
         const { death } = clipsOf(event.enemy);
-        setTimeout(() => enemy.dieAndSink(death), killingContactMs);
+        const state = room.state.enemies.get(event.enemy)!;
+        const defeated =
+          state.elite && lastAttacker === room.sessionId
+            ? eliteNameOf(state.kind)
+            : undefined;
+        setTimeout(() => {
+          enemy.dieAndSink(death);
+          if (defeated) printChatLine(`You defeat the ${defeated}.`);
+        }, killingContactMs);
       } else if (event.type === "playerDied") {
         setTimeout(
           () => playerFigures.get(event.player)?.once("Death_A", 1, true),
