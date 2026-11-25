@@ -69,6 +69,9 @@ models/
         Adapted from Seagull in Gobkit Free Animal Pack Vol.5, with
         lengthened legs and a hit clip. CC0: see
         models/LICENSE-Gobkit-Free-Animal-Pack-Vol-5.txt.
+    Gorger.glb
+        Slime from Quaternius's Animated Monster Pack, with a new hit clip.
+        CC0: see models/LICENSE-Quaternius-Animated-Monster-Pack.txt.
     TarnOx.glb
         The Bull from Quaternius's Ultimate Animated Animals (quaternius.com),
         kept to the four clips the game plays. CC0: see
@@ -109,7 +112,3 @@ ui/
         Kenney Game Icons 1.0. CC0: see ui/LICENSE-Kenney-Game-Icons.txt.
     splash.webp
         Supplied for Runic by DeRusto. No licence is granted for it here.
-
-models/Gorger.glb
-        Slime from Quaternius's Animated Monster Pack, with a new hit clip.
-        CC0: see models/LICENSE-Quaternius-Animated-Monster-Pack.txt.

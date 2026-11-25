@@ -600,7 +600,7 @@ A small carved stone made at the altar from one rune essence, paid in Runecrafti
 _Avoid_: Talisman (there are none), magic stone
 
 **Emberbone**:
-Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.
+A material needed to make Emberite gear. Each player who damages a Skeleton has a one-in-four chance to find an Emberbone when it dies. It can also come from a Gorger's bag, at one chance in a hundred per pick (#301).
 _Avoid_: Trophy, token
 
 **Bones**:
