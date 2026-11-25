@@ -131,11 +131,34 @@ test("an elite Fenwing lands on 39 percent and can hit for 188", () => {
   returnWith(0);
   sim.queueTarget("a", "0");
   for (let i = 0; i < 4; i++) sim.tick();
-  rolls.push(0.39, 0.9999);
+  rolls.push(0.39, 0.9999, 0.1);
   sim.tick();
   expect(sim.events.filter(({ type }) => type === "enemySwing")).toMatchObject([
-    { damage: 188 },
+    { damage: 188, critical: false },
   ]);
+});
+
+test.each([
+  ["j", "swing"],
+  ["I", "shot"],
+] as const)("an elite %s reports a critical %s", (glyph, attack) => {
+  const { sim, add, kill, returnWith, rolls } = encounter(glyph);
+  const player = add("a", attack === "shot" ? 3 : 1);
+  kill("a");
+  returnWith(0);
+  sim.queueTarget("a", "0");
+  sim.tick();
+  // The Thornling can still shoot after its target steps out of melee reach.
+  if (attack === "shot") sim.queueWalk("a", { x: 4, y: 0 });
+  for (let i = 0; i < 3; i++) sim.tick();
+  if (attack === "shot") expect(player.x).toBe(4);
+  const health = player.health;
+  rolls.push(0, 0, 0);
+  sim.tick();
+  expect(sim.events.filter(({ type }) => type === "enemySwing")).toMatchObject([
+    { enemy: "0", player: "a", damage: 150, blocked: false, critical: true },
+  ]);
+  expect(player.health).toBe(health - 150);
 });
 
 test("an elite Fenwing gives twice the Hitpoints experience through damage", () => {

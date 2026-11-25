@@ -1,4 +1,9 @@
-import { ELITE_LOOT_MULTIPLIER, ELITE_MAX_HIT_MULTIPLIER } from "./elites.ts";
+import {
+  ELITE_CRIT_CHANCE,
+  ELITE_CRIT_MULTIPLIER,
+  ELITE_LOOT_MULTIPLIER,
+  ELITE_MAX_HIT_MULTIPLIER,
+} from "./elites.ts";
 import {
   ENEMIES,
   type BoneDrop,
@@ -118,7 +123,7 @@ export function playerHit(
  * One enemy swing at a player. Rolls the hit against the player's Avoidance plus
  * `avoidanceBonus` (an Avoidance potion's, #222), with the combat triangle read from the weapon
  * in the player's hand now (#271), then a block. `hit` is whether it hit at all,
- * blocked or not. Armour never turns a landed hit into 0, and the health cap comes after it.
+ * blocked or not. An unblocked elite hit can crit before armour and the health cap.
  */
 export function enemyHit(
   kind: EnemyKind,
@@ -142,7 +147,13 @@ export function enemyHit(
   const block = blockOf(player);
   const blocked =
     rolled > 0 && !!block && random() < block.shield + block.skill;
-  const landed = blocked ? 0 : rolled;
+  const critical =
+    elite && rolled > 0 && !blocked && random() < ELITE_CRIT_CHANCE;
+  const landed = blocked
+    ? 0
+    : critical
+      ? Math.round(rolled * ELITE_CRIT_MULTIPLIER)
+      : rolled;
   const armoured =
     landed &&
     Math.max(1, Math.round((landed * (100 - armourPercentOf(player))) / 100));
@@ -161,6 +172,7 @@ export function enemyHit(
   return {
     damage: Math.min(armoured, player.health),
     blocked,
+    critical,
     hit: rolled > 0,
     xp,
   };

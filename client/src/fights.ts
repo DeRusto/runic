@@ -156,6 +156,7 @@ export function showFights(room: WorldConnection) {
             const victim = playerFigures.get(event.player);
             if (victim && !victim.playingOnce) victim.once("Hit_A");
           },
+          event.critical,
         );
       } else if (
         event.type === "stunned" ||

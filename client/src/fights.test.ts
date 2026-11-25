@@ -336,6 +336,7 @@ describe("an enemy's swing", () => {
     player: "a",
     damage,
     blocked: false,
+    critical: false,
   });
   /** A tick on which Skeleton "0" swings with the given contact. */
   const tickWith = (contactMs: number) =>
@@ -453,7 +454,7 @@ describe("an enemy's swing", () => {
 describe("the enemySwing event", () => {
   const holdBlow = vi.fn();
   const showBlow = vi.fn();
-  const send = (damage: number, blocked: boolean) => {
+  const send = (damage: number, blocked: boolean, critical = false) => {
     const onMessage = vi.fn();
     showFights({
       onReconnect: vi.fn(),
@@ -466,6 +467,7 @@ describe("the enemySwing event", () => {
       player: "a",
       damage,
       blocked,
+      critical,
     };
     onMessage.mock.calls[0]![1]([swing]);
   };
@@ -477,6 +479,14 @@ describe("the enemySwing event", () => {
     Object.assign(overhead, { holdBlow, showBlow });
   });
   afterEach(() => vi.useRealTimers());
+
+  test("an enemy critical uses the same blow display at contact", () => {
+    send(150, false, true);
+    vi.advanceTimersByTime(449);
+    expect(showBlow).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(showBlow).toHaveBeenCalledWith(150, true);
+  });
 
   test("a block shows Blocked and Melee_Block_Hit at contact, with no line", () => {
     send(0, true);
@@ -538,6 +548,7 @@ describe("a block during the player's own swing", () => {
     player: "a",
     damage: 0,
     blocked: true,
+    critical: false,
   };
   const connect = () => {
     const onMessage = vi.fn();
