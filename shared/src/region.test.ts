@@ -22,6 +22,10 @@ const { tiles: region, pools } = loadRegion(
 const blocks = (x: number, y: number) => region[y]![x]!.blocks;
 const key = (x: number, y: number) => `${x},${y}`;
 
+/** The field painted north of the Boneyard for #302. */
+const inCairns = ([x, y]: readonly [number, number]) =>
+  x >= 69 && x <= 90 && y >= 3 && y <= 13;
+
 /**
  * The fewest steps to every tile a player can walk to from (x, y): 8 ways, no cutting
  * past blocked corners (spec §4). A diagonal takes as long as a straight step.
@@ -569,7 +573,7 @@ describe("the region", () => {
   });
 
   it("lets a player into Runestone Hollow only through the Boneyard, by the gap behind the Emberite pocket", () => {
-    const moss = tilesOf("moss").filter(([x]) => x >= 95);
+    const moss = tilesOf("moss").filter((tile) => !inCairns(tile));
     expect(moss.length).toBeGreaterThan(0);
     expect(moss.filter(([x, y]) => withoutAshen.has(key(x, y)))).toEqual([]);
     // Every walkable way out of the Hollow is the one gap tile in the old east border.
@@ -779,8 +783,6 @@ describe("tileHash", () => {
 });
 
 test("four reachable Cairn warden homes stand above the Boneyard among burial mounds", () => {
-  const inCairns = ([x, y]: readonly [number, number]) =>
-    x >= 69 && x <= 90 && y >= 3 && y <= 13;
   const homes = tilesOf("cairnWarden");
   const mounds = tilesOf("burialMound");
   const reachable = stepsFrom(tilesOf("respawn")[0]!);
