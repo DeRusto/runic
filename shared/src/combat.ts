@@ -124,6 +124,7 @@ export function playerHit(
  * `avoidanceBonus` (an Avoidance potion's, #222), with the combat triangle read from the weapon
  * in the player's hand now (#271), then a block. `hit` is whether it hit at all,
  * blocked or not. An unblocked elite hit can crit before armour and the health cap.
+ * Armour never turns a landed hit into 0.
  */
 export function enemyHit(
   kind: EnemyKind,

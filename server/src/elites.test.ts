@@ -139,9 +139,9 @@ test("an elite Fenwing lands on 39 percent and can hit for 188", () => {
 });
 
 test.each([
-  ["j", "swing"],
-  ["I", "shot"],
-] as const)("an elite %s reports a critical %s", (glyph, attack) => {
+  { glyph: "j", name: "Fenwing", attack: "swing" },
+  { glyph: "I", name: "Thornling", attack: "shot" },
+])("an elite $name reports a critical $attack", ({ glyph, attack }) => {
   const { sim, add, kill, returnWith, rolls } = encounter(glyph);
   const player = add("a", attack === "shot" ? 3 : 1);
   kill("a");
