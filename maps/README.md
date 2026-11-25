@@ -31,7 +31,7 @@ An object's class is one of these:
 | Class       | Needs                                                                                                                                                            |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `respawn`   | Nothing. There's exactly one                                                                                                                                     |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`, or a docile creature: `tarnOx`, `bristleback`, `cinderhorn` (#238)                                             |
+| `enemyHome` | An `enemy` string property: `spider`, `thornling`, `skeleton`, `skeletonMage`, `imp`, `tarnOx`, `bristleback`, `cinderhorn`                                      |
 | `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`, `tamsin`, `hollis`                                                                                    |
 | `mark`      | Its name: a mark id, `drunk`, `pedlar`                                                                                                                           |
 | `sitePool`  | A rectangle with `site` (`vein`, `bush`, `fishingSpot`), `kind` and `active` (an int)                                                                            |

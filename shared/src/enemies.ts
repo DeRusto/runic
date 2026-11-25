@@ -3,6 +3,7 @@ import type { Style } from "./triangle.ts";
 
 export type EnemyKind =
   | "spider"
+  | "thornling"
   | "skeleton"
   | "tarnOx"
   | "bristleback"
@@ -88,6 +89,22 @@ export const ENEMIES: Record<EnemyKind, EnemyStats> = {
         items: [{ item: "spiderSilk", count: [1, 2] }],
       },
     ],
+  },
+  // Enemy Expansion spec §3. Its timing and wander match the Spider.
+  thornling: {
+    health: 1000,
+    hitChance: 0.4,
+    accuracy: 0,
+    style: "ranged",
+    reachTiles: 4,
+    maxDamage: 250,
+    swingIntervalTicks: 8,
+    firstSwingDelayTicks: 4,
+    returnTicks: 150,
+    wanderChance: 0.1,
+    wanderTiles: 5,
+    leashTiles: 4,
+    loot: [],
   },
   skeleton: {
     health: 2400,

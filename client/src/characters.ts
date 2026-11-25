@@ -160,6 +160,7 @@ type EnemyFit = { height: number } | { width: number };
  * clips it plays that aren't in its gait follow, and `hit` is played when a blow lands, if any.
  */
 type EnemyLook = {
+  name?: string;
   file: string;
   fit: EnemyFit;
   clips: "own" | "players";
@@ -192,6 +193,17 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     gait: SPIDER_GAIT,
     swing: () => ({ clip: "Spider_Attack", contactMs: 450 }),
     death: "Spider_Death",
+    returns: "reappear",
+  },
+  thornling: {
+    name: "Thornling",
+    file: "Thornling.glb",
+    fit: { height: HEIGHT * 0.45 },
+    clips: "own",
+    gait: { idle: "Idle", move: "Walk", moveSpeed: 1.5, fight: "Idle" },
+    swing: () => ({ clip: "Bite_InPlace", contactMs: 650 }),
+    hit: "HitRecieve",
+    death: "Death",
     returns: "reappear",
   },
   // On the players' rig, so it shares their clips (spec D16), with its blade always out.

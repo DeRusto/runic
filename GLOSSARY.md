@@ -174,6 +174,9 @@ _Avoid_: Mob, monster, NPC
 The weaker enemy: a large spider that fights back only when attacked, unlike a Skeleton.
 _Avoid_: Thornback (its old name)
 
+**Thornling**:
+A knee-high thorny creature in the middle field. It fights back with ranged shots from up to four tiles and leaves no loot (#299).
+
 **Skeleton**:
 The harder enemy: an armed skeleton that attacks players who come near, unlike a Spider. It is the only source of Emberbones.
 _Avoid_: Undead, boss
@@ -296,7 +299,7 @@ Points an entity adds to its own chance to hit, against a player's Avoidance. Th
 _Avoid_: Precision, attack bonus
 
 **Style**:
-How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats (#271). The Skeleton Mage fights at range (#298). Nothing fights with magic until Phase 9.
+How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats (#271). The Skeleton Mage and Thornling fight at range (#298, #299). Nothing fights with magic until Phase 9.
 _Avoid_: Combat style, attack type, stance (each style has its own stances)
 
 **Ranged enemy**:

@@ -169,7 +169,7 @@ The shooter alone can see and take the recovered ammo for one minute. It goes pu
 
 ## 8. The combat triangle
 
-Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. The Skeleton Mage fights at range (#298). The other enemies fight in melee.
+Melee beats ranged, ranged beats magic, and magic beats melee (#72, #271). A player's style is the weapon in hand: a sword or bare hands fight in melee, and a bow or throwing knives at range. Each enemy has one fixed style in its stats. The Skeleton Mage and Thornling fight at range (#298, #299). The other enemies fight in melee.
 
 | Pairing | Effect on the chance to land |
 | --- | --- |

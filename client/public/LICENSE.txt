@@ -12,6 +12,9 @@ icons/
 
 models/
     The LICENSE-*.txt files beside the models, one per pack.
+    Thornling.glb
+        Cactus from Quaternius's Cute Animated Monsters Pack. CC0: see
+        models/LICENSE-Quaternius-Cute-Animated-Monsters.txt.
     Imp.glb
         NOT CC0. Quaternius's Bestiary - Dungeon Monsters Kit, free version
         (quaternius.com), under the Quaternius Asset License v1.0: see

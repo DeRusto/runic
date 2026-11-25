@@ -19,7 +19,7 @@ import {
   playerOverheads,
   type WorldConnection,
 } from "./players.ts";
-import { enemyFigures, enemyOverheads } from "./enemies.ts";
+import { enemyFigures, enemyOverheads, showThorn } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
 import { STATION_LOOKS } from "./stationLooks.ts";
 import { stationTile } from "./stations.ts";
@@ -123,7 +123,16 @@ export function showFights(room: WorldConnection) {
           event.enemy,
           room.state.tick,
         );
-        enemyFigures.get(event.enemy)!.once(clip);
+        const shooter = enemyFigures.get(event.enemy)!;
+        const target = playerFigures.get(event.player);
+        if (
+          room.state.enemies.get(event.enemy)?.kind === "thornling" &&
+          target
+        ) {
+          shooter.face(target.tile);
+          showThorn(shooter, target, contactMs);
+        }
+        shooter.once(clip);
         killingContactMs = contactMs;
         if (event.blocked) {
           setTimeout(() => {
