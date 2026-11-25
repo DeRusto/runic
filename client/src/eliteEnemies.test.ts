@@ -11,7 +11,7 @@ vi.mock("./scene.ts", () => ({
   camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100),
 }));
 
-test("the pointer and figure follow the synced variant, and the bar reads its own maximum", () => {
+test("the pointer and figure follow the synced elite flag, and the bar reads its own maximum", () => {
   type Element = {
     children: Element[];
     hidden: boolean;

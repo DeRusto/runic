@@ -55,7 +55,7 @@ const ELITE_TINT = new THREE.Color(0xa272ff);
 const ELITE_TINT_STRENGTH = 0.55;
 
 /** Enemy figures own their materials, so a tint affects only the figure that returned. */
-function watchVariant(figure: Figure) {
+function watchEliteAppearance(figure: Figure) {
   const colors = new Map<THREE.Color, THREE.Color>();
   figure.model.traverse((object) => {
     if (
@@ -87,7 +87,7 @@ export function showEnemies(
     id: string;
     figure: Figure;
     hitBox: THREE.Mesh;
-    showVariant: ReturnType<typeof watchVariant>;
+    showEliteAppearance: ReturnType<typeof watchEliteAppearance>;
   }[] = [];
   const hitBoxes = new Map<
     THREE.Object3D,
@@ -108,9 +108,9 @@ export function showEnemies(
     scene.add(figure.model);
     // A plain box, not the skinned mesh, so a click between the legs still counts.
     const hitBox = newHitBox();
-    const showVariant = watchVariant(figure);
-    showVariant(enemy.elite);
-    figures.push({ id, figure, hitBox, showVariant });
+    const showEliteAppearance = watchEliteAppearance(figure);
+    showEliteAppearance(enemy.elite);
+    figures.push({ id, figure, hitBox, showEliteAppearance });
     hitBoxes.set(hitBox, {
       id,
       tile: enemy,
@@ -122,10 +122,10 @@ export function showEnemies(
   });
 
   const frame = (now: number) => {
-    for (const { id, figure, hitBox, showVariant } of figures) {
+    for (const { id, figure, hitBox, showEliteAppearance } of figures) {
       const enemy = room.state.enemies.get(id)!;
       const size = enemy.elite ? ELITE_SIZE_MULTIPLIER : 1;
-      showVariant(enemy.elite);
+      showEliteAppearance(enemy.elite);
       figure.fightTile = room.state.players.get(enemy.target);
       figure.update(now);
       hitBox.scale.y = size;
