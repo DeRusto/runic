@@ -192,6 +192,7 @@ export type WorldEvent =
       player: string;
       damage: number;
       blocked: boolean;
+      critical: boolean;
     }
   | { type: "enemyDied"; enemy: string }
   | { type: "playerDied"; player: string }

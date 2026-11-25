@@ -236,7 +236,7 @@ export class Fighting {
       this.world.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
         ? AVOIDANCE_POTION_POINTS
         : 0;
-    const { damage, blocked, hit, xp } = enemyHit(
+    const { damage, blocked, critical, hit, xp } = enemyHit(
       enemy.kind,
       player,
       avoidance,
@@ -251,6 +251,7 @@ export class Fighting {
       player: playerId,
       damage,
       blocked,
+      critical,
     });
     if (hit) this.windows.hit(playerId);
     if (player.health === 0) this.die(playerId, player);

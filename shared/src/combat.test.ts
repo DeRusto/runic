@@ -144,8 +144,61 @@ describe("enemyHit", () => {
     expect(enemyHit("spider", fresh, 0, rolls(0.99))).toEqual({
       damage: 0,
       blocked: false,
+      critical: false,
       hit: false,
       xp: [["defenseXp", 6]],
+    });
+  });
+
+  test.each([
+    [0.0999, 152, true],
+    [0.1, 101, false],
+  ])(
+    "an elite's crit roll %f deals %i damage",
+    (critRoll, damage, critical) => {
+      expect(
+        enemyHit("spider", fresh, 0, rolls(0, 0.01, critRoll), true),
+      ).toMatchObject({ damage, critical });
+    },
+  );
+
+  test("an elite rolls block first, then applies a critical before armour and Defense experience", () => {
+    const player = {
+      ...fresh,
+      shield: "copperShield",
+      body: "emberiteChestplate",
+    };
+    // 103 becomes 155 before 12% armour reduces it to 136.
+    expect(
+      enemyHit("spider", player, 0, rolls(0, 0.02, 0.5, 0), true),
+    ).toMatchObject({
+      damage: 136,
+      blocked: false,
+      critical: true,
+      xp: [["defenseXp", 12]],
+    });
+    expect(
+      enemyHit("spider", player, 0, rolls(0, 0.02, 0), true),
+    ).toMatchObject({ damage: 0, blocked: true, critical: false });
+  });
+
+  test("an elite's miss and an ordinary enemy's hit spend no crit roll", () => {
+    expect(enemyHit("spider", fresh, 0, rolls(0.99), true)).toMatchObject({
+      damage: 0,
+      critical: false,
+    });
+    expect(enemyHit("spider", fresh, 0, rolls(0, 0))).toMatchObject({
+      damage: 100,
+      critical: false,
+    });
+  });
+
+  test("an elite's critical damage stops at the player's remaining health", () => {
+    const player = { ...fresh, health: 125 };
+    expect(enemyHit("spider", player, 0, rolls(0, 0, 0), true)).toMatchObject({
+      damage: 125,
+      critical: true,
+      xp: [["defenseXp", 11]],
     });
   });
 
@@ -178,6 +231,7 @@ describe("enemyHit", () => {
     ).toEqual({
       damage: 40,
       blocked: false,
+      critical: false,
       hit: true,
       xp: [["defenseXp", 8]],
     });
@@ -188,6 +242,7 @@ describe("enemyHit", () => {
     expect(enemyHit("spider", shielded, 0, rolls(0, 0.5, 0))).toEqual({
       damage: 0,
       blocked: true,
+      critical: false,
       hit: true,
       xp: [
         ["blockingXp", BLOCKING_XP_PER_BLOCK],

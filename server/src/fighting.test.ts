@@ -1086,6 +1086,7 @@ test("a swing's event says who, at whom, and the damage; a miss is 0", () => {
       player: "a",
       damage: 0,
       blocked: false,
+      critical: false,
       tick: 5,
     },
   ]);
