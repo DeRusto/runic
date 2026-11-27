@@ -7,8 +7,15 @@ export const RUNE_ESSENCE = "runeEssence";
 /** The chance, tunable, that any successful mine also gives essence (#232). */
 export const ESSENCE_FIND_CHANCE = 0.2;
 
-/** The four elemental runes, gates lowest first; higher runes come with Phase 9's spells (#232). */
-export const RUNES = ["airRune", "waterRune", "earthRune", "fireRune"] as const;
+/** The four elemental runes (#232) and Magic's focus and fury runes (Magic spec §4), gates lowest first. */
+export const RUNES = [
+  "airRune",
+  "focusRune",
+  "waterRune",
+  "earthRune",
+  "furyRune",
+  "fireRune",
+] as const;
 export type RuneId = (typeof RUNES)[number];
 
 /** What a vein's find is for a player who identifies essence: the strange material is the essence unmasked (#232). */

@@ -267,6 +267,7 @@ export * from "./firemaking.ts";
 export * from "./herblaw.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";
+export * from "./weapons.ts";
 export * from "./virtues.ts";
 export * from "./generalStore.ts";
 export * from "./items.ts";

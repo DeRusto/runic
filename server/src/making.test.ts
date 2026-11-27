@@ -825,6 +825,50 @@ describe("crafting at the workbench (#225)", () => {
     expect(sim.state.players.get("b")!.craftingXp).toBe(xpForLevel(10) + 20);
   });
 
+  test("a birch staff is made from a birch log at Crafting 1, paying Crafting (Magic spec §2)", () => {
+    craft([["birchLog", 1]]);
+    sim.queueMake("a", { item: "birchStaff", all: false });
+    run(7);
+    expect(items()).toEqual([["birchStaff", 1]]);
+    expect(sim.state.players.get("a")!.craftingXp).toBe(8);
+    expect(made()).toEqual(["birchStaff"]);
+  });
+
+  test("the oak and charwood staves need their gem and Crafting 10 and 20 (Magic spec §2)", () => {
+    craft(
+      [
+        ["oakLog", 1],
+        ["ashstone", 1],
+      ],
+      { craftingXp: xpForLevel(9) },
+    );
+    sim.queueMake("a", { item: "oakStaff", all: false });
+    run(7);
+    expect(lines()).toEqual(["Needs Crafting 10"]);
+    expect(items()).toEqual([
+      ["oakLog", 1],
+      ["ashstone", 1],
+    ]);
+    craft(
+      [
+        ["charwoodLog", 1],
+        ["cinderglass", 1],
+      ],
+      { id: "b", craftingXp: xpForLevel(20) },
+    );
+    sim.queueMake("b", { item: "charwoodStaff", all: false });
+    run(7);
+    expect(items("b")).toEqual([["charwoodStaff", 1]]);
+    expect(sim.state.players.get("b")!.craftingXp).toBe(xpForLevel(20) + 25);
+  });
+
+  test("a staff rolls improved like all gear, at its Crafting level (Magic spec §2)", () => {
+    craft([["birchLog", 1]], { craftingXp: xpForLevel(20), random: () => 0 });
+    sim.queueMake("a", { item: "birchStaff", all: false });
+    run(7);
+    expect(items()).toEqual([["birchStaff:rare:fortitude", 1]]);
+  });
+
   test("the workbench needs no tool", () => {
     craft([["spiderSilk", 2]]);
     sim.state.players.get("a")!.tools.length = 0;
@@ -1307,6 +1351,41 @@ describe("runecrafting at the altar (#232)", () => {
     run(7);
     expect(items("b")).toEqual([["airRune", 2]]);
     expect(sim.state.players.get("b")!.runecraftingXp).toBe(xpForLevel(2) + 10);
+  });
+
+  test("focus runes are made from Runecrafting 1 for 5 experience, two to an essence at 2 (Magic spec §4)", () => {
+    craft([["runeEssence", 1]], { runecraftingXp: xpForLevel(1) });
+    sim.queueMake("a", { item: "focusRune", all: false });
+    run(7);
+    expect(items()).toEqual([["focusRune", 1]]);
+    expect(sim.state.players.get("a")!.runecraftingXp).toBe(5);
+    craft([["runeEssence", 1]], { id: "b", runecraftingXp: xpForLevel(2) });
+    sim.queueMake("b", { item: "focusRune", all: false });
+    run(7);
+    expect(items("b")).toEqual([["focusRune", 2]]);
+    expect(sim.state.players.get("b")!.runecraftingXp).toBe(xpForLevel(2) + 10);
+  });
+
+  test("fury runes need Runecrafting 15 and pay 16 experience, two to an essence at 30 (Magic spec §4)", () => {
+    craft([["runeEssence", 1]], { runecraftingXp: xpForLevel(14) });
+    sim.queueMake("a", { item: "furyRune", all: false });
+    run(7);
+    expect(lines()).toEqual(["Needs Runecrafting 15"]);
+    expect(items()).toEqual([["runeEssence", 1]]);
+    craft([["runeEssence", 1]], { id: "b", runecraftingXp: xpForLevel(15) });
+    sim.queueMake("b", { item: "furyRune", all: false });
+    run(7);
+    expect(items("b")).toEqual([["furyRune", 1]]);
+    expect(sim.state.players.get("b")!.runecraftingXp).toBe(
+      xpForLevel(15) + 16,
+    );
+    craft([["runeEssence", 1]], { id: "c", runecraftingXp: xpForLevel(30) });
+    sim.queueMake("c", { item: "furyRune", all: false });
+    run(7);
+    expect(items("c")).toEqual([["furyRune", 2]]);
+    expect(sim.state.players.get("c")!.runecraftingXp).toBe(
+      xpForLevel(30) + 32,
+    );
   });
 
   test("Make all keeps the doubling rune by rune, until the essence runs out", () => {

@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { GEMS } from "./items.ts";
+import { RUNES } from "./runecrafting.ts";
 import { xpForLevel } from "./skills.ts";
 import { STALLS } from "./stalls.ts";
 import {
@@ -11,8 +12,6 @@ import {
   strongboxRefusal,
 } from "./strongboxes.ts";
 import { PICKPOCKETS } from "./thieving.ts";
-
-const RUNES = ["airRune", "waterRune", "earthRune", "fireRune"];
 
 test("the Boneyard strongbox needs Thieving 40, and the Runestone Hollow strongbox 55", () => {
   expect(STRONGBOXES.boneyard.level).toBe(40);
@@ -76,6 +75,29 @@ test.each([
       { item: gem, count: 1 },
       { item: rune, count: runes },
     ]);
+  },
+);
+
+test.each([["boneyard"], ["hollow"]] as const)(
+  "the %s strongbox picks evenly among all six runes, focus and fury among them, with today's counts (Magic spec §4)",
+  (kind) => {
+    const picked = [0, 1, 2, 3, 4, 5].map(
+      (sixth) => strongboxLoot(kind, () => (sixth + 0.5) / 6)[2]!.item,
+    );
+    expect(picked).toEqual([
+      "airRune",
+      "focusRune",
+      "waterRune",
+      "earthRune",
+      "furyRune",
+      "fireRune",
+    ]);
+    expect(STRONGBOXES[kind].runes.map(({ weight }) => weight)).toEqual([
+      1, 1, 1, 1, 1, 1,
+    ]);
+    const counts = kind === "boneyard" ? [2, 5] : [4, 10];
+    for (const { fewest, most } of STRONGBOXES[kind].runes)
+      expect([fewest, most]).toEqual(counts);
   },
 );
 

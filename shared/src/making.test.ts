@@ -417,6 +417,27 @@ test("the recipes are the rebalance spec §3's Making table, #221's range, #225'
       ticks: 6,
       xp: 20,
     },
+    birchStaff: {
+      skill: "Crafting",
+      level: 1,
+      costs: { birchLog: 1 },
+      ticks: 6,
+      xp: 8,
+    },
+    oakStaff: {
+      skill: "Crafting",
+      level: 10,
+      costs: { oakLog: 1, ashstone: 1 },
+      ticks: 6,
+      xp: 16,
+    },
+    charwoodStaff: {
+      skill: "Crafting",
+      level: 20,
+      costs: { charwoodLog: 1, cinderglass: 1 },
+      ticks: 6,
+      xp: 25,
+    },
     arrowShaft: {
       skill: "Fletching",
       level: 1,
@@ -494,6 +515,14 @@ test("the recipes are the rebalance spec §3's Making table, #221's range, #225'
       ticks: 6,
       xp: 5,
     },
+    focusRune: {
+      skill: "Runecrafting",
+      level: 1,
+      doublesAt: 2,
+      costs: { runeEssence: 1 },
+      ticks: 6,
+      xp: 5,
+    },
     waterRune: {
       skill: "Runecrafting",
       level: 5,
@@ -509,6 +538,14 @@ test("the recipes are the rebalance spec §3's Making table, #221's range, #225'
       costs: { runeEssence: 1 },
       ticks: 6,
       xp: 12,
+    },
+    furyRune: {
+      skill: "Runecrafting",
+      level: 15,
+      doublesAt: 30,
+      costs: { runeEssence: 1 },
+      ticks: 6,
+      xp: 16,
     },
     fireRune: {
       skill: "Runecrafting",
@@ -776,6 +813,11 @@ test("only the runes double, one essence making two once the making skill reache
   expect(doublesAt("earthRune", 20)).toBe(true);
   expect(doublesAt("fireRune", 39)).toBe(false);
   expect(doublesAt("fireRune", 40)).toBe(true);
+  // Magic's runes double at 2 and 30 (Magic spec §4).
+  expect(doublesAt("focusRune", 1)).toBe(false);
+  expect(doublesAt("focusRune", 2)).toBe(true);
+  expect(doublesAt("furyRune", 29)).toBe(false);
+  expect(doublesAt("furyRune", 30)).toBe(true);
   for (const item of Object.keys(RECIPES))
     if (!RUNES.includes(item as never))
       expect(doublesAt(item as never, 99)).toBe(false);
@@ -1125,6 +1167,36 @@ describe("fletching at the workbench (#228)", () => {
     ).toBe("Not enough materials");
   });
 
+  test("staves cost their own wood, and from oak a gem, gated on Crafting at 1, 10 and 20 (Magic spec §2)", () => {
+    const crafting = (level: number, held: [string, number][]) =>
+      holding(held, 0, 0, 0, xpForLevel(level));
+    expect(makeRefusal("birchStaff", crafting(1, [["birchLog", 1]]))).toBe(
+      undefined,
+    );
+    expect(makeRefusal("birchStaff", crafting(1, [["oakLog", 1]]))).toBe(
+      "Not enough materials",
+    );
+    const oak: [string, number][] = [
+      ["oakLog", 1],
+      ["ashstone", 1],
+    ];
+    expect(makeRefusal("oakStaff", crafting(9, oak))).toBe("Needs Crafting 10");
+    expect(makeRefusal("oakStaff", crafting(10, oak))).toBeUndefined();
+    expect(makeRefusal("oakStaff", crafting(10, [["oakLog", 1]]))).toBe(
+      "Not enough materials",
+    );
+    const charwood: [string, number][] = [
+      ["charwoodLog", 1],
+      ["cinderglass", 1],
+    ];
+    expect(makeRefusal("charwoodStaff", crafting(19, charwood))).toBe(
+      "Needs Crafting 20",
+    );
+    expect(
+      makeRefusal("charwoodStaff", crafting(20, charwood)),
+    ).toBeUndefined();
+  });
+
   test("bows cost their own wood and a rope, gated on Fletching at 1, 10 and 20", () => {
     expect(
       makeRefusal(
@@ -1349,6 +1421,13 @@ describe("making improved gear (spec §2, §3)", () => {
     expect(madeItem("birchBow", 1, rolling(0, 0.5, 0))).toBe(
       "birchBow:uncommon:fortitude",
     );
+  });
+
+  test("a staff can come out improved, its chance read off Crafting (Magic spec §2)", () => {
+    expect(madeItem("birchStaff", 1, rolling(0, 0.5, 0))).toBe(
+      "birchStaff:uncommon:fortitude",
+    );
+    expect(madeItem("charwoodStaff", 20, rolling(0.04))).toBe("charwoodStaff");
   });
 
   test("smithed throwing knives never come out improved, and roll nothing (#279)", () => {

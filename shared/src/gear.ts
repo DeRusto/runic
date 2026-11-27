@@ -1,5 +1,6 @@
 import { itemParts } from "./items.ts";
 import { levelFor } from "./skills.ts";
+import { arrow, bow, staff, sword, throwingKnife } from "./weapons.ts";
 
 /** The names of a player's synced gear fields, which are also their save columns. */
 export const GEAR_SLOTS = [
@@ -49,12 +50,14 @@ const GATE_SKILLS = {
   Attack: "attackXp",
   Defense: "defenseXp",
   Ranged: "rangedXp",
+  Magic: "magicXp",
 } as const;
-type GateSkill = keyof typeof GATE_SKILLS;
+export type GateSkill = keyof typeof GATE_SKILLS;
 
-type Gear = {
+/** One piece of gear's row in `GEAR`. */
+export type Gear = {
   slot: GearSlot;
-  /** The skill that decides who can equip it: Attack for a sword, Ranged for a bow or arrows, and Defense for every maker's other pieces (spec §5, #217, Ranged spec §2). */
+  /** The skill that decides who can equip it: Attack for a sword, Ranged for a bow or arrows, Magic for a staff, and Defense for every maker's other pieces (spec §5, #217, Ranged spec §2, Magic spec §2). */
   gate: GateSkill;
   /** The level of `gate` needed to equip it. */
   level: number;
@@ -76,56 +79,6 @@ type Gear = {
   /** A ranged weapon that is its own ammo, a throwing knife: each throw spends one from the weapon slot's stack (#279). */
   thrown?: boolean;
 };
-
-const sword = (level: number, hitBonus: number): Gear => ({
-  slot: "weapon",
-  gate: "Attack",
-  level,
-  does: `Adds ${hitBonus} to your minimum and maximum hit`,
-  hitBonus,
-});
-
-/** How far a bow shoots, in 8-way tiles (#270, Ranged spec §4). */
-export const BOW_REACH_TILES = 6;
-/** How often a bow fires, a melee swing's pace (#270, Ranged spec §4). */
-export const BOW_INTERVAL_TICKS = 8;
-
-/** A bow gates on Ranged and carries Accuracy, never a hit bonus: the arrow decides how hard a shot hits (Ranged spec §2). It shoots from its reach (§4). */
-const bow = (level: number, accuracy: number): Gear => ({
-  slot: "weapon",
-  gate: "Ranged",
-  level,
-  does: `Adds ${accuracy} points to your chance to hit`,
-  accuracy,
-  reachTiles: BOW_REACH_TILES,
-  intervalTicks: BOW_INTERVAL_TICKS,
-});
-
-/** How far throwing knives reach, in 8-way tiles (#270, Ranged spec §5). */
-export const KNIFE_REACH_TILES = 4;
-/** How often throwing knives are thrown (#270, Ranged spec §5). */
-export const KNIFE_INTERVAL_TICKS = 6;
-
-/** A stack of throwing knives is a weapon of its own: it gates on Ranged, carries the throw's hit bonus and no Accuracy, and spends itself (Ranged spec §5). */
-const throwingKnife = (level: number, hitBonus: number): Gear => ({
-  slot: "weapon",
-  gate: "Ranged",
-  level,
-  does: `Adds ${hitBonus} to a throw's minimum and maximum hit`,
-  hitBonus,
-  reachTiles: KNIFE_REACH_TILES,
-  intervalTicks: KNIFE_INTERVAL_TICKS,
-  thrown: true,
-});
-
-/** Arrows go in the ammo slot and carry a shot's hit bonus (Ranged spec §2). They do nothing unless a bow is wielded. */
-const arrow = (level: number, hitBonus: number): Gear => ({
-  slot: "ammo",
-  gate: "Ranged",
-  level,
-  does: `Adds ${hitBonus} to a bow shot's minimum and maximum hit`,
-  hitBonus,
-});
 
 const shield = (level: number, blockPercent: number): Gear => ({
   slot: "shield",
@@ -209,6 +162,10 @@ export const GEAR = new Map<string, Gear>([
   ["birchBow", bow(1, 5)],
   ["oakBow", bow(10, 10)],
   ["charwoodBow", bow(20, 15)],
+  // Magic spec §2's staves, on the bows' gates and Accuracy.
+  ["birchStaff", staff(1, 5)],
+  ["oakStaff", staff(10, 10)],
+  ["charwoodStaff", staff(20, 15)],
   // #228's arrows, on the sword ladder's gates and hit bonuses (#268, #269).
   ["copperArrow", arrow(1, 100)],
   ["bronzeArrow", arrow(5, 150)],

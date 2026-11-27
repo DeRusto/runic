@@ -33,6 +33,9 @@ export const ITEMS = {
   waterRune: STACKS,
   earthRune: STACKS,
   fireRune: STACKS,
+  /** Magic's two spell runes (Magic spec §4), made from rune essence at the altar like the elementals. */
+  focusRune: STACKS,
+  furyRune: STACKS,
   copperOre: STACKS,
   copperBar: STACKS,
   copperSword: SINGLE,
@@ -128,6 +131,10 @@ export const ITEMS = {
   birchBow: SINGLE,
   oakBow: SINGLE,
   charwoodBow: SINGLE,
+  /** Crafting's staves (Magic spec §2), weapons gated on Magic. */
+  birchStaff: SINGLE,
+  oakStaff: SINGLE,
+  charwoodStaff: SINGLE,
   /** #238's Leatherworking pieces: the hands of every tier, on their own armour line. */
   copperGloves: SINGLE,
   bronzeGloves: SINGLE,

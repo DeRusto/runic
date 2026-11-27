@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), the Ranged stance (#280), and the Knight's color and skin tone.
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), the Ranged stance (#280), the Knight's color and skin tone, and Magic's experience (#327).
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -50,11 +50,21 @@ const LATEST_COLUMNS = [
   "ranged_stance",
   "knight_color",
   "skin_tone",
+  "magic_xp",
 ];
-const LATEST_MIGRATIONS = 23;
+const LATEST_MIGRATIONS = 24;
 
-/** Makes the appearance migration pending again: its columns gone, and its row in the journal. */
+/** Makes the Magic migration pending again: its column gone, and its row in the journal. */
+function unapplyMagic(sqlite: DatabaseSync) {
+  sqlite.exec("ALTER TABLE players DROP COLUMN magic_xp");
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+  );
+}
+
+/** Makes the appearance migration pending again, and the Magic one after it: their columns gone, and their rows in the journal. */
 function unapplyAppearance(sqlite: DatabaseSync) {
+  unapplyMagic(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN knight_color");
   sqlite.exec("ALTER TABLE players DROP COLUMN skin_tone");
   sqlite.exec(
@@ -516,6 +526,37 @@ describe("a save from before the Knight's colors and skin tones", () => {
       skinTone: "fair",
       rangedStance: "rapid",
       attackXp: 900,
+    });
+    await database.shutdown();
+  });
+});
+
+describe("a save from just before Magic (#327)", () => {
+  test("it loads with 0 Magic experience and nothing else lost", async () => {
+    await boot();
+    const sqlite = new DatabaseSync(path);
+    unapplyMagic(sqlite);
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (13, 'Apprentice', 'apprentice', 'x', 0)`);
+    sqlite.exec(`INSERT INTO players (account_id, attack_xp, strength_xp, defense_xp, ranged_xp, herblaw_xp, hitpoints_xp, crafting_xp, runecrafting_xp, mastery_xp, x, y, health, inventory, inventory_counts, weapon, shield, knight_color)
+      VALUES (13, 900, 400, 300, 1250, 0, 20000, 4050, 200, 500, 4, 1, 900, '["airRune",""]', '[12,0]', 'birchBow', 'copperShield', 'violet')`);
+    sqlite.close();
+    const database = await openDatabase();
+    expect(readSave(13)).toMatchObject({
+      magicXp: 0,
+      attackXp: 900,
+      strengthXp: 400,
+      defenseXp: 300,
+      rangedXp: 1250,
+      hitpointsXp: 20000,
+      craftingXp: 4050,
+      runecraftingXp: 200,
+      masteryXp: 500,
+      inventory: ["airRune", ""],
+      inventoryCounts: [12, 0],
+      weapon: "birchBow",
+      shield: "copperShield",
+      knightColor: "violet",
     });
     await database.shutdown();
   });

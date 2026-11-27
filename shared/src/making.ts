@@ -432,6 +432,28 @@ export const RECIPES = {
     ticks: 6,
     xp: 20,
   },
+  /** Magic spec §2's staves: a wood of each tier, and from oak up the gem its tier's mining finds. Experience is on Crafting's own 8 to 25 line. */
+  birchStaff: {
+    skill: "Crafting",
+    level: 1,
+    costs: { birchLog: 1 },
+    ticks: 6,
+    xp: 8,
+  },
+  oakStaff: {
+    skill: "Crafting",
+    level: 10,
+    costs: { oakLog: 1, ashstone: 1 },
+    ticks: 6,
+    xp: 16,
+  },
+  charwoodStaff: {
+    skill: "Crafting",
+    level: 20,
+    costs: { charwoodLog: 1, cinderglass: 1 },
+    ticks: 6,
+    xp: 25,
+  },
   /** #228's workbench: Fletching's stock. A shaft comes from any tier's log, an arrow from ten of each part, and a bow from its own wood and a rope. */
   arrowShaft: {
     skill: "Fletching",
@@ -502,11 +524,19 @@ export const RECIPES = {
     ticks: 6,
     xp: 90,
   },
-  /** #232's altar: the four elemental runes, one essence to a rune and never a failure. Once the making skill is at a rune's `doublesAt`, one essence makes two. */
+  /** #232's altar: the four elemental runes and Magic's focus and fury runes (Magic spec §4), one essence to a rune and never a failure. Once the making skill is at a rune's `doublesAt`, one essence makes two. */
   airRune: {
     skill: "Runecrafting",
     level: 1,
     // Twice the gate, as every rune's doubling level is (#232).
+    doublesAt: 2,
+    costs: { runeEssence: 1 },
+    ticks: 6,
+    xp: 5,
+  },
+  focusRune: {
+    skill: "Runecrafting",
+    level: 1,
     doublesAt: 2,
     costs: { runeEssence: 1 },
     ticks: 6,
@@ -527,6 +557,14 @@ export const RECIPES = {
     costs: { runeEssence: 1 },
     ticks: 6,
     xp: 12,
+  },
+  furyRune: {
+    skill: "Runecrafting",
+    level: 15,
+    doublesAt: 30,
+    costs: { runeEssence: 1 },
+    ticks: 6,
+    xp: 16,
   },
   fireRune: {
     skill: "Runecrafting",

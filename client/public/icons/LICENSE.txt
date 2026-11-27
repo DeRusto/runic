@@ -54,6 +54,8 @@ every file). The file's number in its pack is in brackets.
     berry and herb perch, pike and trout recoloured from them
 "Bow and Crossbow RPG Icons"
     birchBow.png (1), oakBow.png (12), charwoodBow.png (17)
+"50 RPG Staff Icons"
+    birchStaff.png (2), oakStaff.png (1), charwoodStaff.png (49)
 "50 RPG Armor Icons"
     gossamerCloak.png (38); the five chestplates (23) and the fifteen capes (7),
     recoloured by tier
@@ -111,6 +113,10 @@ airRune.png, waterRune.png, earthRune.png, fireRune.png
     Rendered from four rune medallions made for Runic by DeRusto with Meshy.
     The owner's own creations, not from a pack. No licence is granted for them
     here.
+
+focusRune.png, furyRune.png
+    The air and fire rune icons with their coloured glyphs and gems shifted to
+    violet and magenta. The same terms as the runes.
 
 leafTunic.png, brownPants.png, burlapBoots.png
     Rendered from three clothing models made for Runic by DeRusto with Meshy.

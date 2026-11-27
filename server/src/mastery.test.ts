@@ -127,3 +127,14 @@ test("Ranged experience earns Mastery its 7%, as every combat skill does (Ranged
     masteryHundredths: 50,
   });
 });
+
+test("Magic experience earns Mastery its 7%, as every skill does (Magic spec §1)", () => {
+  const world = new World(SPIDER_TILES, () => 0.99);
+  const player = new Player();
+  world.earnXp(player, "magicXp", 150);
+  expect(player).toMatchObject({
+    magicXp: 150,
+    masteryXp: 10,
+    masteryHundredths: 50,
+  });
+});

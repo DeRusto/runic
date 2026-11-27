@@ -4,6 +4,7 @@ import { COINS, ITEMS } from "./items.ts";
 import {
   dealRefusal,
   dealTotals,
+  STARTING_STOCK,
   storePaysFor,
   valueOf,
   type Deal,
@@ -44,6 +45,21 @@ describe("value", () => {
     expect(valueOf("birchBow")).toBe(23);
     expect(valueOf("oakBow")).toBe(26);
     expect(valueOf("charwoodBow")).toBe(32);
+  });
+
+  test("a staff is worth its wood and gem, as a bow is worth its wood and rope, rising by tier (Magic spec §2)", () => {
+    expect(valueOf("birchStaff")).toBe(3);
+    expect(valueOf("oakStaff")).toBe(31);
+    expect(valueOf("charwoodStaff")).toBe(62);
+  });
+
+  test("the focus and fury runes are worth 8 and 24, so the store pays 3 and 9 for them and stocks neither (Magic spec §4)", () => {
+    expect(valueOf("focusRune")).toBe(8);
+    expect(valueOf("furyRune")).toBe(24);
+    expect(storePaysFor(valueOf("focusRune"))).toBe(3);
+    expect(storePaysFor(valueOf("furyRune"))).toBe(9);
+    expect(STARTING_STOCK).not.toHaveProperty("focusRune");
+    expect(STARTING_STOCK).not.toHaveProperty("furyRune");
   });
 
   test("a throwing knife is worth two bars, the Emberbone's cost included at Emberite (#228)", () => {

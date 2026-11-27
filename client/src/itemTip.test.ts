@@ -10,6 +10,7 @@ const player = (
   attackXp: 0,
   defenseXp: xpForLevel(defenseLevel),
   rangedXp: 0,
+  magicXp: 0,
   miningXp: 0,
   smithingXp: xpForLevel(smithingLevel),
   cookingXp: 0,
@@ -50,6 +51,21 @@ describe("an item's tip (spec §5)", () => {
     expect(
       itemTip("bronzeArrow", { ...player(1), rangedXp: xpForLevel(5) }).refusal,
     ).toBeUndefined();
+  });
+
+  test("a staff is a weapon gated on Magic that gives its Accuracy, and focus and fury runes are Runes (Magic spec §2, §4)", () => {
+    expect(itemTip("oakStaff")).toMatchObject({
+      kind: "Weapon, needs Magic 10",
+      stats: ["Adds 10 points to your chance to hit."],
+    });
+    expect(itemTip("oakStaff", player(1)).refusal).toBe(
+      "You need Magic 10 to equip this.",
+    );
+    expect(
+      itemTip("oakStaff", { ...player(1), magicXp: xpForLevel(10) }).refusal,
+    ).toBeUndefined();
+    expect(itemTip("focusRune").kind).toBe("Rune");
+    expect(itemTip("furyRune").kind).toBe("Rune");
   });
 
   test("an improved piece adds its Virtue line", () => {

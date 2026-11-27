@@ -46,6 +46,9 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   waterRune: 12,
   earthRune: 18,
   fireRune: 30,
+  // Magic's runes on the same ladder: focus at air's gate, fury between earth's and fire's (Magic spec §4).
+  focusRune: 8,
+  furyRune: 24,
   // Low, and rising by tier like ore (#208).
   birchLog: 3,
   oakLog: 6,

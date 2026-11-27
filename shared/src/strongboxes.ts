@@ -1,4 +1,5 @@
 import type { ItemId } from "./items.ts";
+import { RUNES } from "./runecrafting.ts";
 import { levelFor } from "./skills.ts";
 import {
   evenPick,
@@ -7,9 +8,9 @@ import {
   type LootRow,
 } from "./thieving.ts";
 
-/** The four elemental runes, an even pick, `fewest` to `most` of one. */
+/** All six runes, the elementals and Magic's focus and fury, an even pick, `fewest` to `most` of one (Magic spec §4). */
 const runes = (fewest: number, most: number): LootRow[] =>
-  (["airRune", "waterRune", "earthRune", "fireRune"] as const).map((item) => ({
+  RUNES.map((item) => ({
     item,
     fewest,
     most,
