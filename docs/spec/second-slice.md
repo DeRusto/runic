@@ -134,7 +134,7 @@ Wandering, walking speed, return after dying, experience rules, shared fights an
 
 - When a Skeleton dies, each player who damaged it since it last recovered or returned rolls their own chance. A swing that missed doesn't count. Dead players count, and players who have left the room don't **[D8]**.
 - A won Emberbone lands on the ground under the Skeleton as a ground item owned by the winner, with a chat-box line **[D8]**. Only the winner can see it for the first minute (200 ticks), then everyone can, and it vanishes at 3 minutes (600 ticks). A full inventory no longer loses it ([Loot on the ground](https://github.com/DeRusto/runic/issues/120)).
-- Spiders still give nothing.
+- Spiders give no Emberbone; their spider silk is the combat drops spec's (`combat-drops.md`).
 
 ### Unchanged rules worth repeating
 

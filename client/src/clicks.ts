@@ -1,18 +1,29 @@
 import {
+  CROSS_INTENT,
+  crossRefusal,
+  OBSTACLES,
   GATHERING,
   offers,
   gatherRefusal,
   PICKPOCKET_INTENT,
   PICKPOCKETS,
   pickpocketRefusal,
+  STEAL_INTENT,
+  stallRefusal,
+  OPEN_INTENT,
+  strongboxRefusal,
   stationRefusal,
   TAKE_INTENT,
+  rangedAttackRefusal,
   TARGET_INTENT,
   TICK_MS,
   VISIT_INTENT,
   WALK_INTENT,
   type DialogueAction,
-  type MarkId,
+  isPickpocketTarget,
+  type PickpocketTarget,
+  type StallKind,
+  type StrongboxKind,
   type TileKind,
 } from "@runic/shared";
 import * as THREE from "three";
@@ -29,11 +40,17 @@ import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
 import { stationTile, type addStations } from "./stations.ts";
 import type { addMarks } from "./marks.ts";
+import type { addStalls } from "./stalls.ts";
+import type { addObstacles } from "./obstacles.ts";
+import type { addStrongboxes } from "./strongboxes.ts";
 import type { addVillagers } from "./villagers.ts";
 
 const MARKER_MS = 2 * TICK_MS;
 
-/** A click targets the live enemy, ground item or pile, bush, vein, station, villager or mark under the ray, or else walks to the tile under it on the ground plane. A right-click on a villager offers to talk or, skipping the talk, what their conversation opens; on a mark it offers to pickpocket; on another player it opens the player menu. */
+/**
+ * Targets what is under a click or walks to the ground tile. Right-click opens the choices for
+ * named enemies, villagers, marks, stalls, strongboxes, obstacles and other players.
+ */
 export function walkOnClick(
   room: WorldConnection,
   tiles: TileKind[][],
@@ -44,6 +61,9 @@ export function walkOnClick(
   openSmithingPanel: ReturnType<typeof showSmithingPanel>,
   villagerUnder: Awaited<ReturnType<typeof addVillagers>>,
   markUnder: Awaited<ReturnType<typeof addMarks>>,
+  stallUnder: Awaited<ReturnType<typeof addStalls>>["stallUnder"],
+  strongboxUnder: ReturnType<typeof addStrongboxes>["strongboxUnder"],
+  obstacleUnder: ReturnType<typeof addObstacles>,
   groundItemUnder: ReturnType<typeof showGroundItems>,
   openPileWindow: ReturnType<typeof showPileWindow>,
   otherPlayerUnder: ReturnType<typeof showPlayers>["otherPlayerUnder"],
@@ -68,22 +88,66 @@ export function walkOnClick(
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
   };
 
-  /** Pickpockets the mark, unless the rules refuse, which the chat says why (#250). */
-  const pickpocket = ({
-    mark,
-    x,
-    y,
-  }: {
-    mark: MarkId;
-    x: number;
-    y: number;
-  }) => {
+  /**
+   * One Thieving attempt on a target at (x, y): `refusal` says why the rules refuse it, which the
+   * chat shows instead of sending the intent.
+   */
+  const thieve = (
+    refusal: (thievingXp: number) => string | undefined,
+    send: () => void,
+    x: number,
+    y: number,
+  ) => {
     const me = room.state.players.get(room.sessionId);
     if (!me) return;
-    const refusal = pickpocketRefusal(PICKPOCKETS[mark], me.thievingXp);
-    if (refusal) return printChatLine(refusal);
+    const refused = refusal(me.thievingXp);
+    if (refused) return printChatLine(refused);
     showMarker(x, y);
-    room.send(PICKPOCKET_INTENT, mark);
+    send();
+  };
+
+  /** Pickpockets a mark or villager (#250, #251). */
+  const pickpocket = (target: PickpocketTarget, x: number, y: number) =>
+    thieve(
+      (xp) => pickpocketRefusal(PICKPOCKETS[target], xp),
+      () => room.send(PICKPOCKET_INTENT, target),
+      x,
+      y,
+    );
+
+  /** Steals from one of Marta's stalls (#252). */
+  const steal = (stall: StallKind, x: number, y: number) =>
+    thieve(
+      (xp) => stallRefusal(stall, xp),
+      () => room.send(STEAL_INTENT, stall),
+      x,
+      y,
+    );
+
+  /** Opens a strongbox (#253). */
+  const openStrongbox = (strongbox: StrongboxKind, x: number, y: number) =>
+    thieve(
+      (xp) => strongboxRefusal(strongbox, xp),
+      () => room.send(OPEN_INTENT, strongbox),
+      x,
+      y,
+    );
+
+  const crossing = () =>
+    room.state.players.get(room.sessionId)?.action === "crossing";
+
+  const cross = ({
+    obstacle,
+    x,
+    y,
+  }: NonNullable<ReturnType<typeof obstacleUnder>>) => {
+    if (crossing()) return;
+    const me = room.state.players.get(room.sessionId);
+    if (!me) return;
+    const refused = crossRefusal(obstacle, me);
+    if (refused) return printChatLine(refused);
+    showMarker(x, y);
+    room.send(CROSS_INTENT, obstacle);
   };
 
   const aim = (event: MouseEvent) => {
@@ -94,16 +158,31 @@ export function walkOnClick(
     raycaster.setFromCamera(pointer, camera);
   };
 
+  const attack = (enemy: NonNullable<ReturnType<typeof enemyUnder>>) => {
+    if (crossing()) return;
+    const refused = rangedAttackRefusal(
+      room.state.players.get(room.sessionId) ?? {},
+    );
+    if (refused) return printChatLine(refused);
+    showMarker(enemy.tile.x, enemy.tile.y);
+    room.send(TARGET_INTENT, enemy.id);
+  };
+
   // The browser's own menu never shows on the canvas, whatever is under the click.
   const onContextMenu = (event: MouseEvent) => {
     event.preventDefault();
+    if (crossing()) return;
     aim(event);
+    const enemy = enemyUnder(raycaster);
+    if (enemy?.name)
+      return openMenu(event, [[`Attack ${enemy.name}`, () => attack(enemy)]]);
     const villager = villagerUnder(raycaster);
     if (villager) {
       const visit = (then?: DialogueAction) => () => {
         showMarker(villager.x, villager.y);
         room.send(VISIT_INTENT, { villager: villager.villager, then });
       };
+      const { villager: id, x, y } = villager;
       return openMenu(event, [
         ["Talk-to", visit()],
         ...(offers(villager.villager, "openStore")
@@ -112,22 +191,46 @@ export function walkOnClick(
         ...(offers(villager.villager, "openBank")
           ? ([["Bank", visit("openBank")]] as const)
           : []),
+        ...(isPickpocketTarget(id)
+          ? ([["Pickpocket", () => pickpocket(id, x, y)]] as const)
+          : []),
       ]);
     }
     const mark = markUnder(raycaster);
-    if (mark) return openMenu(event, [["Pickpocket", () => pickpocket(mark)]]);
+    if (mark)
+      return openMenu(event, [
+        ["Pickpocket", () => pickpocket(mark.mark, mark.x, mark.y)],
+      ]);
+    const stall = stallUnder(raycaster);
+    if (stall)
+      return openMenu(event, [
+        ["Steal-from", () => steal(stall.stall, stall.x, stall.y)],
+      ]);
+    const strongbox = strongboxUnder(raycaster);
+    if (strongbox)
+      return openMenu(event, [
+        [
+          "Open",
+          () => openStrongbox(strongbox.strongbox, strongbox.x, strongbox.y),
+        ],
+      ]);
+    const obstacle = obstacleUnder(raycaster);
+    if (obstacle)
+      return openMenu(event, [
+        [
+          `Cross ${OBSTACLES[obstacle.obstacle].name.toLowerCase()}`,
+          () => cross(obstacle),
+        ],
+      ]);
     const id = otherPlayerUnder(raycaster);
     if (id) openMenu(event, [...playerMenuChoices(room, id)]);
   };
 
   const onClick = (event: MouseEvent) => {
+    if (crossing()) return;
     aim(event);
     const enemy = enemyUnder(raycaster);
-    if (enemy) {
-      showMarker(enemy.tile.x, enemy.tile.y);
-      room.send(TARGET_INTENT, enemy.id);
-      return;
-    }
+    if (enemy) return attack(enemy);
     const groundItem = groundItemUnder(raycaster);
     if (groundItem) {
       showMarker(groundItem.x, groundItem.y);
@@ -159,12 +262,20 @@ export function walkOnClick(
       }
       return;
     }
+    const stall = stallUnder(raycaster);
+    if (stall) return steal(stall.stall, stall.x, stall.y);
+    const strongbox = strongboxUnder(raycaster);
+    if (strongbox)
+      return openStrongbox(strongbox.strongbox, strongbox.x, strongbox.y);
+    // Before the obstacle: a fire can burn on an obstacle's tile, which the obstacle also claims.
     const fire = fireUnder(raycaster);
     if (fire && me) {
       showMarker(fire.x, fire.y);
       openSmithingPanel("fire", { x: fire.x, y: fire.y });
       return;
     }
+    const obstacle = obstacleUnder(raycaster);
+    if (obstacle) return cross(obstacle);
     const villager = villagerUnder(raycaster);
     if (villager) {
       showMarker(villager.x, villager.y);
@@ -172,7 +283,7 @@ export function walkOnClick(
       return;
     }
     const mark = markUnder(raycaster);
-    if (mark) return pickpocket(mark);
+    if (mark) return pickpocket(mark.mark, mark.x, mark.y);
     if (!raycaster.ray.intersectPlane(ground, hit)) return;
     const x = Math.round(hit.x);
     const y = Math.round(hit.z);

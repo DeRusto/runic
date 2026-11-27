@@ -1,9 +1,11 @@
+import type { VillagerId } from "./dialogue.ts";
 import type { ItemId } from "./items.ts";
 import { levelFor } from "./skills.ts";
 
 /** A person who stands in the region only to be pickpocketed (#235): their name and what they are, for the nameplate ("Pell, drunk"). Add one by adding a row. */
 export const MARKS = {
   drunk: { name: "Pell", role: "drunk" },
+  pedlar: { name: "Jory", role: "pedlar" },
 } as const;
 export type MarkId = keyof typeof MARKS;
 
@@ -21,7 +23,10 @@ export type Pickpocket = {
   failHit: number;
 };
 
-/** Every target that can be pickpocketed, by its mark's id (#250). Villagers join in #251. */
+/**
+ * Every target that can be pickpocketed, by its mark's or villager's id (#250, #251). Every mark is
+ * one; a villager is one only with a row here, and Aldous, the banker, never has one.
+ */
 export const PICKPOCKETS = {
   drunk: {
     called: "Pell",
@@ -32,8 +37,49 @@ export const PICKPOCKETS = {
     rare: { item: "cookedPerch", chancePercent: 12.5 },
     failHit: 100,
   },
-} as const satisfies Record<MarkId, Pickpocket>;
+  pedlar: {
+    called: "Jory",
+    level: 10,
+    xp: 20,
+    coins: { fewest: 4, most: 12 },
+    // A coil from the stock on his back.
+    rare: { item: "rope", chancePercent: 12.5 },
+    failHit: 150,
+  },
+  marta: {
+    called: "Marta",
+    level: 20,
+    xp: 32,
+    coins: { fewest: 8, most: 20 },
+    // One of the store's empty vials, kept in her apron.
+    rare: { item: "vial", chancePercent: 12.5 },
+    failHit: 200,
+  },
+  odo: {
+    called: "Odo",
+    level: 30,
+    xp: 45,
+    coins: { fewest: 12, most: 30 },
+    // A bar from the forge, waiting for the anvil.
+    rare: { item: "ironBar", chancePercent: 12.5 },
+    failHit: 250,
+  },
+  hollis: {
+    called: "Hollis",
+    level: 45,
+    xp: 62,
+    coins: { fewest: 20, most: 45 },
+    // A piece of the essence the stones are fed.
+    rare: { item: "runeEssence", chancePercent: 12.5 },
+    failHit: 300,
+  },
+} as const satisfies Record<MarkId, Pickpocket> &
+  Partial<Record<VillagerId, Pickpocket>>;
 export type PickpocketTarget = keyof typeof PICKPOCKETS;
+
+/** Whether `id`, a mark's or villager's, names someone who can be pickpocketed (#251). Safe on any string off the network. */
+export const isPickpocketTarget = (id: string): id is PickpocketTarget =>
+  Object.hasOwn(PICKPOCKETS, id);
 
 /** How likely a pickpocket at exactly the target's level is to fail (#250). Every Thieving target uses this curve. */
 export const FAIL_PERCENT_AT_REQUIREMENT = 50;
@@ -52,13 +98,43 @@ export const failPercent = (level: number, required: number) =>
       SURE_HANDED_LEVELS,
   );
 
+/** Whether one attempt on any Thieving target that needs `required` fails, rolled once (#250, #252, #253). */
+export const thievingFails = (
+  required: number,
+  thievingXp: number,
+  random: () => number,
+) => random() * 100 < failPercent(levelFor(thievingXp), required);
+
 /** Whether one attempt on `target` fails, rolled once. */
 export const pickpocketFails = (
   target: PickpocketTarget,
   thievingXp: number,
   random: () => number,
-) =>
-  random() * 100 < failPercent(levelFor(thievingXp), PICKPOCKETS[target].level);
+) => thievingFails(PICKPOCKETS[target].level, thievingXp, random);
+
+/** One row of a Thieving loot table: the item, how many of it, and its weight against the other rows (#252, #253). */
+export type LootRow = {
+  item: ItemId;
+  fewest: number;
+  most: number;
+  weight: number;
+};
+
+/** An even pick from `fewest` to `most`, both included. */
+export const evenPick = (
+  { fewest, most }: { fewest: number; most: number },
+  random: () => number,
+) => fewest + Math.floor(random() * (most - fewest + 1));
+
+/** One roll on a loot table: a row picked by weight, then an even pick of how many. */
+export function pickByWeight(
+  rows: readonly LootRow[],
+  random: () => number,
+): { item: ItemId; count: number } {
+  let pick = random() * rows.reduce((sum, row) => sum + row.weight, 0);
+  const row = rows.find((r) => (pick -= r.weight) < 0) ?? rows.at(-1)!;
+  return { item: row.item, count: evenPick(row, random) };
+}
 
 /** What one success takes: an even pick of the coins, and now and then the rare item as well (#250). */
 export function pickpocketLoot(
@@ -66,9 +142,9 @@ export function pickpocketLoot(
   random: () => number,
 ): { item: ItemId; count: number }[] {
   const { coins, rare } = PICKPOCKETS[target];
-  const count =
-    coins.fewest + Math.floor(random() * (coins.most - coins.fewest + 1));
-  const loot: { item: ItemId; count: number }[] = [{ item: "coins", count }];
+  const loot: { item: ItemId; count: number }[] = [
+    { item: "coins", count: evenPick(coins, random) },
+  ];
   if (random() * 100 < rare.chancePercent)
     loot.push({ item: rare.item, count: 1 });
   return loot;

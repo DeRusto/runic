@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `rigged_shortcuts` text DEFAULT '[]' NOT NULL;

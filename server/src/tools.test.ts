@@ -44,7 +44,6 @@ test("a new player has no tools", () => {
 test("a player gets only the tools they lack", () => {
   sim.addPlayer("b", {
     ...NEXT_TO,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
@@ -128,7 +127,6 @@ test("a save from before tools loads with none", () => {
   sim.addPlayer("b", {
     x: 1,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
@@ -143,7 +141,6 @@ test("tools are kept through dying", () => {
   sim.addPlayer("a", {
     x: 1,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,

@@ -19,12 +19,18 @@ The part of a region where bushes grow, and players pick berries and herbs to tr
 _Avoid_: Forest, woods
 
 **Field**:
-The part of a region where enemies roam.
+The part of a region where enemies roam. The Boneyard and the Cairns are fields.
 _Avoid_: Wilderness, combat zone
 
 **Boneyard**:
 The field where Skeletons roam.
 _Avoid_: Graveyard, dungeon
+
+**The Cairns**:
+The field north-east of the village, above the Boneyard, where Cairn wardens roam among stone burial mounds (#302).
+
+**Burial mound**:
+A stone mound in the Cairns that blocks walking and counts as a tall tile for shots (#302).
 
 **Runestone Hollow**:
 The ruined valley east of the Boneyard, floored with moss and set with broken columns and standing stones, where the altar stands. Its only way in is a gap in the trees behind the Emberite veins, so the walk there crosses the Boneyard. It is not part of the Boneyard.
@@ -167,15 +173,30 @@ A building in the village, drawn from the tiles it stands on. It blocks walking 
 _Avoid_: Building, home
 
 **Enemy**:
-A creature in a field that players fight to train Combat.
+A creature in a field that players fight to train Attack and Strength.
 _Avoid_: Mob, monster, NPC
+
+**Elite**:
+A tougher enemy of the same kind that can appear when a non-docile enemy returns after death. It has double health, higher Accuracy and a higher max hit. Among enemies, only elites can land critical hits (#304). Its gear and material loot roll twice for each damager, and its bone kind drops every kill if it has one (#303).
 
 **Spider**:
 The weaker enemy: a large spider that fights back only when attacked, unlike a Skeleton.
 _Avoid_: Thornback (its old name)
 
+**Fenwing**:
+A long-legged bird on the Lake shore that fights back in melee. It leaves feathers every kill and sometimes leaves bones (#300).
+
+**Thornling**:
+A knee-high thorny creature in the middle field. It fights back with ranged shots from up to four tiles and leaves no loot (#299).
+
+**Gorger**:
+A slime in the middle field that oozes toward reachable players within three tiles. Each player who damages it gets one pick from its bag when it dies (#301).
+
+**Cairn warden**:
+An armoured dead guardian in the Cairns. It attacks reachable players within four tiles and may leave heavy bones for each damager (#302).
+
 **Skeleton**:
-The harder enemy: an armed skeleton that attacks players who come near, unlike a Spider. It is the only source of Emberbones.
+The harder enemy: an armed skeleton that attacks players who come near, unlike a Spider. It can leave an Emberbone.
 _Avoid_: Undead, boss
 
 **Docile creature**:
@@ -187,11 +208,11 @@ The docile creature that grazes by the Lake's shore, the hide band 1's: its tarn
 _Avoid_: Cow, ox (alone)
 
 **Bristleback**:
-The hide creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces. It never starts a fight, but once hit it headbutts back, seldom and for as little as a hit can do.
+The hide creature that roots in the field, the hide band 10's: its bristle hide works into the Iron and Steel pieces. It never starts a fight, but once hit it headbutts back at its band's strength, and chases only 2 tiles.
 _Avoid_: Boar, pig
 
 **Cinderhorn**:
-The hide creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces. Like the Bristleback, it bites back only once hit, and weakly.
+The hide creature that grazes at the Boneyard's edge, the hide band 20's: its cinder hide works into the Emberite pieces. Like the Bristleback, it bites back only once hit, at its band's strength, and chases only 2 tiles.
 _Avoid_: Ox of ash, fire beast
 
 **Hide**:
@@ -199,7 +220,7 @@ The skin a hide creature leaves with each of its killers, one to a player, every
 _Avoid_: Pelt, leather (that's what the pieces are made of)
 
 **Leash**:
-How far an enemy follows a player who walks away from a fight, before it gives up, walks home and recovers.
+How far an enemy follows a player who walks away. It measures from the tile of the last attacker when they attacked, even on a miss. If the enemy noticed the player first, it measures from its own notice tile until someone attacks it. Past that distance it gives up, walks home and recovers.
 _Avoid_: Aggro range, chase radius
 
 **Tick**:
@@ -235,18 +256,45 @@ A trainable ability with its own experience and level, raised by doing the match
 _Avoid_: Stat, attribute, profession
 
 **Total level**:
-The sum of a player's levels across the 23 registered skills, at most 2,277. Combat doesn't count: it is replaced when it splits.
+The sum of a player's levels across the 23 registered skills, at most 2,277.
 _Avoid_: Overall level, combat level
 
 **Combat level**:
-How strong a fighter a player is, worked out from their combat skills: a base of Defense, Blocking, Hitpoints and half Prayer, plus the best of melee, Ranged and Magic. A fresh player is 3. Not the level of the Combat skill.
+How strong a fighter a player is, worked out from their combat skills: a base of Defense, Blocking, Hitpoints and half Prayer, plus the best of melee (Attack and Strength), Ranged and Magic. A fresh player is 3.
 
 **Mastery**:
 A skill with no activity of its own: it gains a 7% share of the experience that lands in every other skill, counted separately for each. Quest experience and experience moved by a split earn no share.
 
-**Combat**:
-The skill that raises how often and how hard a player hits; trained by dealing damage to enemies.
-_Avoid_: Melee, fighting, attack
+**Attack**:
+The skill that raises how often a player's melee swing lands, and gates which swords they can wield; trained by dealing melee damage, as the stance directs.
+_Avoid_: Accuracy (that's gear's points), Combat
+
+**Strength**:
+The skill that raises a player's max hit in melee, by 100 every 20 levels; trained by dealing melee damage, as the stance directs.
+_Avoid_: Power, damage skill, Combat
+
+**Stance**:
+How a player fights, chosen on the character sheet's Gear tab, which shows only the stances of the weapon in hand. Each style keeps its own, so swapping a sword for a bow brings back the Ranged stance last chosen, and swapping back brings back the melee one. Melee's are Balanced, which splits each hit's melee experience evenly between Attack and Strength, Attack taking the odd point of an odd total, Precise, which gives it all to Attack, and Forceful, which gives it all to Strength; they change only where experience goes, never the hit itself. Ranged's are Steady, Rapid and Longrange (#280). A new player starts Balanced and Steady.
+_Avoid_: Combat style, attack style (style means melee, Ranged or Magic)
+
+**Steady**:
+The default Ranged stance: all of a shot's ranged experience goes to Ranged, and the weapon keeps its own reach and fire rate (#268). A save from before Ranged's stances starts Steady.
+_Avoid_: Accurate, normal
+
+**Rapid**:
+The Ranged stance that attacks 2 ticks sooner than the weapon's own interval, so a bow fires every 6 ticks and knives every 4; all of a shot's ranged experience goes to Ranged (#268, #270).
+_Avoid_: Fast, quick
+
+**Longrange**:
+The Ranged stance that reaches 2 tiles further than the weapon's own reach, so a bow shoots from 8 tiles and knives from 6, and splits a shot's ranged experience evenly between Ranged and Defense, Ranged taking the odd point of an odd total (#268, #270).
+_Avoid_: Long range, defensive
+
+**Combat** (retired):
+The one melee skill before Phase 8, which raised both how often and how hard a player hit. Attack and Strength replaced it (#88): each took a full copy of every player's Combat experience, with no Mastery share, so nobody lost a level. Combat level keeps its name and still means the level worked out from the combat skills.
+
+**Ranged**:
+The skill that gates bows, arrows and throwing knives and sets how often and how hard a ranged attack lands (#268, #279). A shot pays 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, to Ranged or split with Defense as the Ranged stance directs, and Hitpoints the same again. A save from before it starts at 0 experience.
+_Avoid_: Archery, Range
 
 **Hitpoints**:
 The skill that sets a player's maximum health; trained by dealing damage. Players start at level 10.
@@ -257,7 +305,7 @@ How much damage a player can still take before dying; at most 100 for each Hitpo
 _Avoid_: Hitpoints (that's the skill), life
 
 **Defense**:
-The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses.
+The skill that makes a player harder to hit, by giving Avoidance; trained by being attacked, whether the swing lands or misses, and by the share of each shot's experience that the Longrange stance gives it, which is half, less the odd point.
 _Avoid_: Armour, defence
 
 **Avoidance**:
@@ -265,8 +313,22 @@ How many percentage points come off an enemy's chance to hit a player, from Defe
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an entity adds to its own chance to hit, against a player's Avoidance. Every enemy's is 0 for now, and a ring adds its Accuracy to the player's side (#238).
+Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring and a bow add their Accuracy to the player's side (#238, #268).
 _Avoid_: Precision, attack bonus
+
+**Style**:
+How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats (#271). The Skeleton Mage and Thornling fight at range (#298, #299). Nothing fights with magic until Phase 9.
+_Avoid_: Combat style, attack type, stance (each style has its own stances)
+
+**Ranged enemy**:
+An enemy with a shot reach in its stats. While fighting, it stands and shoots when its target is within reach and in sight. It follows its path toward the target if either condition fails. A shot rolls like a swing and spends no ammunition.
+
+**Skeleton Mage**:
+Runestone Hollow's ranged enemy. It shoots from up to 5 tiles and chases players it notices within 3 tiles by a walking route. It can leave a bone sigil for Hollis's quest.
+
+**Combat triangle**:
+The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy's chance to hit still never falls below 5%.
+_Avoid_: Rock-paper-scissors, style bonus, counter
 
 **Blocking**:
 The skill that makes a shield block more often; trained by blocking. It doesn't decide who can use a shield.
@@ -336,8 +398,8 @@ The skill trained only by crossing obstacles, on a course or a shortcut. It gate
 _Avoid_: Running, stamina
 
 **Obstacle**:
-A fixed place a player crosses for Agility experience, such as a log to balance on or a net to climb. Crossing one near its level can fail, which costs a little health but never kills.
-_Avoid_: Hurdle
+A crossing between a marked start tile and a landing tile that earns Agility experience. The crossing takes a fixed number of ticks. During those ticks the player cannot act or take a hit, and other players can cross the same obstacle. A shortcut can fail near its required level and cost a little health, but it never kills the player.
+_Avoid_: Hurdle as the general term for an obstacle. Hurdle is also the name of one Southfield obstacle.
 
 **Course**:
 A loop of obstacles crossed in order. Each obstacle pays experience, and finishing the loop pays a lap bonus.
@@ -356,19 +418,23 @@ Stealing from a person, a villager or a mark, mostly for coins, now and then for
 _Avoid_: Steal from, rob
 
 **Mark**:
-A person who stands in the region only to be pickpocketed, with no job to offer, such as the drunk outside the inn. A mark is not a villager.
+A person who stands in the region only to be pickpocketed, with no job to offer, such as the drunk outside the inn or the pedlar in the square. A mark is not a villager.
 _Avoid_: Victim, target (alone), NPC
 
 **Pell**:
 The drunk, the first mark, who stands outside the inn's door. Pickpocketing him needs Thieving 1 and pays a few coins, and now and then a cooked perch as well (#250).
 _Avoid_: Drunkard, the sot
 
+**Jory**:
+The travelling pedlar, the second mark, who stands in the village square with his pack. Pickpocketing him needs Thieving 10 and pays coins, and now and then a rope as well (#251).
+_Avoid_: Peddler, trader, merchant
+
 **Stun**:
 A few ticks after a failed pickpocket when the player can't act or move and clicks are ignored. Enemies can still hit them.
 _Avoid_: Freeze, daze
 
 **Busy**:
-A player held for a set number of ticks, who can't act or move while the server ignores their clicks. Each use says whether enemies can still hit the player: a stun says yes, and Agility's crossing will say no (#236).
+A player held for a set number of ticks, who can't act or move while the server ignores their clicks. Each use says whether enemies can still hit the player: a stun says yes, and Agility's crossing says no (#236).
 _Avoid_: Locked (that's the combat lock), frozen
 
 **Stall**:
@@ -406,7 +472,7 @@ The fixed set of slots a player carries items in. A slot holds one piece of gear
 _Avoid_: Bag, backpack
 
 **Stack**:
-Up to 20 of the same material or food in one inventory slot. Gear doesn't stack.
+Up to 20 of the same material, food, arrows or throwing knives in one inventory slot. Arrows and throwing knives are the only gear that stacks: arrows in the inventory and the ammo slot, and knives in the inventory and the weapon slot. All other gear holds one to a slot.
 _Avoid_: Pile, bundle
 
 **Chat command**:
@@ -450,7 +516,7 @@ The right-click choices **1**, **5**, **10**, **X** and **All** that Drop, and l
 _Avoid_: Quantity picker, split menu
 
 **Ground item**:
-One item or stack lying on a tile, from a single drop. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. Ground items never merge, but a stack taken into an inventory joins a matching stack there.
+One item or stack lying on a tile. Only the player it belongs to can see and take it for the first minute, then everyone can, and it vanishes after three minutes. A recovered arrow or throwing knife joins a matching stack on that tile while the shooter still owns it, restarting both timers. All other drops form their own ground items. A stack taken into an inventory joins a matching stack there.
 _Avoid_: Floor item
 
 **Loot**:
@@ -458,7 +524,7 @@ What an enemy leaves when it dies: a ground item on the enemy's tile for each pl
 _Avoid_: Drop, reward
 
 **Loot table**:
-An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range.
+An enemy's **loot** by category (gear, material or quest). Each player who damaged it rolls the whole table: each of a category's picks gives one of its items at the category's chance, chosen by weight, as a fixed count or a count from a range. If the enemy can leave bones, each player who damaged it rolls for them separately after rolling its loot table.
 _Avoid_: Drop table
 
 **Pile**:
@@ -502,7 +568,7 @@ Making a potion, anywhere in the inventory and with no station: using a vial on 
 _Avoid_: Brewing, crafting
 
 **Material**:
-An item that goes into making something: ore, finds, bars, logs, fish and Emberbones. Gems, logs and fish count as materials before anything uses them.
+An item that goes into making something: ore, finds, bars, logs, fish, Emberbones, bones and heavy bones. An item can count as a material before it has a use.
 _Avoid_: Resource, ingredient
 
 **Ore**:
@@ -546,15 +612,21 @@ A small carved stone made at the altar from one rune essence, paid in Runecrafti
 _Avoid_: Talisman (there are none), magic stone
 
 **Emberbone**:
-Loot from a Skeleton, needed to make Emberite gear. Each player who damaged the Skeleton has their own chance at one.
+A material needed to make Emberite gear. Each player who damages a Skeleton has a one-in-four chance to find an Emberbone when it dies. It can also come from a Gorger's bag, at one chance in a hundred per pick (#301).
 _Avoid_: Trophy, token
 
+**Bones**:
+A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
+
+**Heavy bones**:
+A stackable material left by Skeleton Mages and Cinderhorns at the same chance as bones. The general store pays more for heavy bones.
+
 **Spider silk**:
-A thread a Spider sometimes leaves behind, needed to make rope and to augment capes. Phase 8 owns drop tables, so nothing gives it yet.
+A thread a Spider leaves behind, needed to make rope and to augment capes. Every Spider kill leaves 1 or 2, at even odds, for each player who damaged it (#272).
 _Avoid_: Web, thread
 
 **Rope**:
-A length spun from two spider silk at the workbench. Nothing uses it yet: it waits for Agility's shortcuts, and sells at the general store until then.
+A length spun from two spider silk at the workbench. It rigs the Bramble swing and the Crag line, two of Agility's shortcuts: the first crossing spends one, and that shortcut stays rigged for that player for good. It also goes into torches, bows and capes, and sells at the general store.
 _Avoid_: Cord, line
 
 **Torch**:
@@ -566,19 +638,19 @@ A stick split from a log at the workbench, ten to the log. A log of any tier mak
 _Avoid_: Shaft (alone), stick
 
 **Feather**:
-A feather the general store sells from day one, for an arrow's flight. Phase 8 will let enemies leave one behind; until then the shelf is the only source (#228).
+Part of the arrow recipe. Fenwings leave feathers, and the general store sells them (#228, #300).
 _Avoid_: Plume, quill
 
 **Throwing knife**:
-A small thrown weapon smithed from one bar at the anvil, plus an Emberbone at Emberite, one tier of five. It stacks like a material for now: Phase 8 decides what a throw spends and gives it combat meaning (#228).
+A ranged weapon smithed from one bar at the anvil, plus an Emberbone at Emberite. Up to 20 of the same tier fit in the weapon slot. Each attack spends one from that stack (#228, #279).
 _Avoid_: Dagger, knife (alone)
 
 **Gear**:
-What a player equips to fight better: a weapon, which raises how hard they hit, a shield, which gives them a chance to block, or armour. It never wears out.
+What a player equips to fight better: a weapon (a sword raises how hard they hit, and a bow how often), arrows in the ammo slot, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
 
 **Bow**:
-A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot and adds to the hit like a sword, at the Combat level its wood's gate sits at; Phase 8 re-gates it on Ranged and tunes the bonus (#228). It rolls improved versions like all gear.
+A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot, gated on Ranged at 1, 10 and 20, and adds 5, 10 or 15 points of Accuracy; it carries no hit bonus, since the arrow decides how hard a shot hits (#268). A bow worn before the Ranged gate came stays worn. Bows can still roll improved versions; arrows never do.
 _Avoid_: Ranged weapon, longbow
 
 **Improved item**:
@@ -626,8 +698,24 @@ A reagent worked into a piece of gear at the workbench, owned by Crafting: the g
 _Avoid_: Enchanting, upgrade
 
 **Gear slot**:
-Where a piece of gear goes when it is equipped, out of the inventory. A player has ten: weapon, shield, head, body, legs, hands, feet, cape, neck and ring.
+Where a piece of gear goes when it is equipped, out of the inventory. A player has eleven: weapon, shield, head, body, legs, hands, feet, cape, neck, ring and ammo. Each holds one item, but the weapon slot and the ammo slot keep a count, so a stack moves whole when it goes on, comes off or drops on death.
 _Avoid_: Equipment slot
+
+**Ammo slot**:
+The eleventh gear slot, which holds one stack of arrows of one tier, up to 20, and nothing else. Arrows gate on Ranged by tier and carry the hit bonus a bow shot adds. Each shot spends one, hit or miss, and when the last goes the slot refills with up to 20 more of the same arrow from the inventory. Equipping more of the worn arrow tops the slot up to 20, and another tier swaps the stacks. It keeps its arrows while a sword is in hand, and drops its whole stack on death (#269).
+_Avoid_: Quiver, ammunition slot
+
+**Reach**:
+How far a ranged weapon shoots, counted in tiles with a diagonal step as one: a bow reaches 6 and throwing knives 4, and Longrange adds 2 to either. A player who attacks an enemy out of reach or out of sight walks until it is in both, then shoots; with no tile they can walk to that has it in both, the attack is cancelled and the chat says so. A melee swing has no reach; it needs the player next to the enemy (#270).
+_Avoid_: Range (the cooking station), distance
+
+**Sight**:
+Whether a shot can fly from the shooter to the target: the straight line between their tiles crosses no tall tile, even at a corner. Water, bushes, doors and every other low tile let it pass (#270, #278).
+_Avoid_: Line of fire, LOS
+
+**Tall tile**:
+A tile a shot cannot pass: a house wall, a tree (a prop, or a Woodcutting tree that is not a stump), a rock (a prop, an ore vein or an essence vein), one of Runestone Hollow's columns or standing stones, or a burial mound in the Cairns (#302).
+_Avoid_: Wall (alone), obstacle (that's Agility's)
 
 **Panel**:
 A window that opens over the world: the character sheet, the smithing panel, the social panel, the journal or the pile window. Any number can be open at once, each dragged by its title bar, and Escape closes the one in front. The inventory and the bottom bar are not panels.
@@ -670,7 +758,7 @@ The tools a player owns. It has no limit and grows as tools are added, unlike th
 _Avoid_: Tool inventory, bag
 
 **Respawn**:
-Returning to the village with everything kept, after dying.
+Returning to the village with full health after dying. Levels and experience stay; the inventory and worn gear drop where the player fell, and only the Toolbelt is kept (#119).
 _Avoid_: Revive, resurrect
 
 **Combat lock**:

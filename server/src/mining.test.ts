@@ -329,7 +329,6 @@ test("while Odo asks for proof, a vein can give its tier's essence, until the pl
     {
       x: 4,
       y: 1,
-      combatXp: 0,
       defenseXp: 0,
       herblawXp: 0,
       miningXp: 0,

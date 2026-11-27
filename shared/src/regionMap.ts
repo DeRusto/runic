@@ -1,5 +1,13 @@
+import {
+  isObstacleKind,
+  OBSTACLES,
+  obstacleLanding,
+  type ObstacleKind,
+} from "./agility.ts";
 import { VILLAGERS } from "./dialogue.ts";
 import { MARKS } from "./thieving.ts";
+import { STALLS } from "./stalls.ts";
+import { STRONGBOXES } from "./strongboxes.ts";
 import { ENEMIES } from "./enemies.ts";
 import { FISHING_SPOTS } from "./fishing.ts";
 import { BUSHES } from "./herblaw.ts";
@@ -41,7 +49,9 @@ type TiledMap = {
 type TiledTileset = {
   tiles?: { id: number; properties?: TiledProperty[] }[];
 };
-type TileProperties = Partial<Omit<TileKind, "enemy" | "villager">>;
+type TileProperties = Partial<
+  Omit<TileKind, "enemy" | "villager" | "obstacle">
+>;
 
 const LAYERS = ["ground", "features", "placements"];
 
@@ -50,6 +60,7 @@ const FEATURE_VALUES = {
   prop: {
     tree: 1,
     rock: 1,
+    burialMound: 1,
     tuft: 1,
     well: 1,
     lamp: 1,
@@ -61,13 +72,14 @@ const FEATURE_VALUES = {
     appleBarrel: 1,
     carrotCrate: 1,
     fruitBasket: 1,
-    marketStall: 1,
   } satisfies Record<NonNullable<TileKind["prop"]>, 1>,
   bush: BUSHES,
   vein: VEINS,
   tree: TREES,
   fishingSpot: FISHING_SPOTS,
   station: STATIONS,
+  stall: STALLS,
+  strongbox: STRONGBOXES,
   house: { wall: 1, door: 1 } satisfies Record<
     NonNullable<TileKind["house"]>,
     1
@@ -205,6 +217,8 @@ export function loadRegion(
   const properties = readTiles(JSON.parse(tilesetText) as TiledTileset);
   const ids = new Set(properties.keys());
   const features = readCells(map, "features", ids);
+  // The simulation finds each stall and strongbox by its kind, so the region has at most one of each.
+  const standing = new Set<string>();
   const tiles = readCells(map, "ground", ids).map((row, y) =>
     row.map((groundId, x) => {
       const { ground } = properties.get(groundId ?? -1) ?? {};
@@ -214,6 +228,14 @@ export function loadRegion(
       if (featureId !== undefined && Object.keys(feature).length === 0)
         fail(`tile ${featureId} in "features" means nothing`);
       if ("ground" in feature) fail(`ground tile in "features" at ${x},${y}`);
+      for (const [kind, plural] of [
+        [feature.stall, "stalls"],
+        [feature.strongbox, "strongboxes"],
+      ] as const) {
+        if (!kind) continue;
+        if (standing.has(kind)) fail(`two ${kind} ${plural}`);
+        standing.add(kind);
+      }
       return { ground, blocks: groundBlocks(ground), ...feature } as TileKind;
     }),
   );
@@ -223,6 +245,7 @@ export function loadRegion(
   const rectangles = placements.objects.filter((o) => o.type === "sitePool");
   const pools = rectangles.map(readPool);
   const taken = new Set<string>();
+  const obstacles = new Map<ObstacleKind, Tile>();
   for (const object of placements.objects) {
     if (object.type === "sitePool") continue;
     const x = object.x / map.tilewidth;
@@ -231,6 +254,15 @@ export function loadRegion(
     if (!tile) return fail(`"${object.type}" is off the grid at ${x},${y}`);
     if (taken.has(`${x},${y}`)) fail(`two placements share ${x},${y}`);
     taken.add(`${x},${y}`);
+    if (object.type === "obstacle") {
+      if (!isObstacleKind(object.name))
+        return fail(`unknown obstacle "${String(object.name)}"`);
+      if (tile.blocks) fail(`"${object.name}" stands on a blocking tile`);
+      if (obstacles.has(object.name)) fail(`two ${object.name} obstacles`);
+      tile.obstacle = object.name;
+      obstacles.set(object.name, obstacleLanding(object.name, { x, y }));
+      continue;
+    }
     if (object.type !== "siteSpot") {
       place(tile, object);
       continue;
@@ -272,6 +304,19 @@ export function loadRegion(
       if (!beside.some(([bx, by]) => tiles[by!]?.[bx!]?.blocks === false))
         fail(`a ${siteName(pool)} at ${x},${y} has no walkable tile beside it`);
     }
+  const poolSpots = new Set(
+    pools.flatMap(({ spots }) => spots.map(({ x, y }) => `${x},${y}`)),
+  );
+  for (const [name, { x, y }] of obstacles) {
+    const landing = tiles[y]?.[x];
+    if (landing?.blocks !== false || poolSpots.has(`${x},${y}`))
+      fail(`${name} needs a clear landing at ${x},${y}`);
+    // A shortcut is crossed back from its far end, so that end must belong to it alone.
+    if (!OBSTACLES[name].shortcut) continue;
+    if (landing.obstacle || landing.obstacleEnd)
+      fail(`${name} ends on another obstacle at ${x},${y}`);
+    landing.obstacleEnd = name;
+  }
   if (placements.objects.filter((o) => o.type === "respawn").length !== 1)
     fail("needs exactly one respawn");
   return { tiles, pools };

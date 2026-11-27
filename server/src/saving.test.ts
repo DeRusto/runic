@@ -8,6 +8,7 @@ import {
   EVENTS,
   LOGOUT_INTENT,
   PIN_INTENT,
+  STANCE_INTENT,
   QUEST_DONE,
   respawnTile,
   SAVE_INTERVAL_TICKS,
@@ -139,9 +140,9 @@ test("pins survive logging out, follow the player to another device, and new ski
   expect(synced(room).smithingXp).toBe(0);
   expect(synced(room).blockingXp).toBe(0);
   expect(synced(room).masteryXp).toBe(0);
-  room.send(PIN_INTENT, { skill: "Combat", pinned: false });
+  room.send(PIN_INTENT, { skill: "Attack", pinned: false });
   room.send(PIN_INTENT, { skill: "Blocking", pinned: true });
-  const pinned = ["Defense", "Herblaw", "Hitpoints", "Mining", "Smithing"];
+  const pinned = ["Strength", "Defense", "Herblaw", "Hitpoints", "Mining"];
   await vi.waitFor(
     () =>
       expect([...synced(room).pinnedSkills]).toEqual([...pinned, "Blocking"]),
@@ -157,6 +158,51 @@ test("pins survive logging out, follow the player to another device, and new ski
   device.auth.token = client.auth.token!;
   const back = await joined(device);
   expect([...synced(back).pinnedSkills]).toEqual([...pinned, "Blocking"]);
+});
+test("a stance chosen in the room is synced, and survives logging out", async () => {
+  const client = await clientFor("Stancer");
+  const room = await joined(client);
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  expect(synced(room).stance).toBe("balanced");
+  room.send(STANCE_INTENT, "precise");
+  await vi.waitFor(() => expect(synced(room).stance).toBe("precise"), {
+    timeout: TICK_MS * 3,
+    interval: 20,
+  });
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back).stance).toBe("precise");
+});
+
+test("each style's stance, chosen in the room, is synced and survives logging out (#280)", async () => {
+  const client = await clientFor("Bowyer");
+  const room = await joined(client);
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  expect(synced(room).rangedStance).toBe("steady");
+  room.send(STANCE_INTENT, "longrange");
+  room.send(STANCE_INTENT, "forceful");
+  await vi.waitFor(
+    () =>
+      expect(synced(room)).toMatchObject({
+        rangedStance: "longrange",
+        stance: "forceful",
+      }),
+    { timeout: TICK_MS * 3, interval: 20 },
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back)).toMatchObject({
+    rangedStance: "longrange",
+    stance: "forceful",
+  });
 });
 
 test("a sword equipped over the network is synced, and worn again after logging back in", async () => {

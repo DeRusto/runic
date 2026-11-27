@@ -1,0 +1,7 @@
+Slime from Animated Monster Pack (August 2018) by Quaternius.
+https://quaternius.com/packs/animatedmonster.html
+
+CC0 1.0 Universal Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Converted to GLB for Runic, with a hit recoil clip added to the original rig.

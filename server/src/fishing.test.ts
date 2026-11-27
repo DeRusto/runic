@@ -175,7 +175,6 @@ test("a save from before Fishing loads with none", () => {
   sim.addPlayer("c", {
     x: 2,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,

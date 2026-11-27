@@ -78,6 +78,23 @@ const lake = (objects: object[], ground = [2, 1, 1, 1, 6, 1]) =>
   mapWith(withLayer("ground", ground, mapWith({}, objects)));
 
 describe("loadRegion", () => {
+  it.each([
+    ["stall", "fish", "two fish stalls"],
+    ["strongbox", "boneyard", "two boneyard strongboxes"],
+  ])("refuses two of the same %s kind", (feature, kind, message) => {
+    const tileset = {
+      tiles: [
+        ...TILESET.tiles,
+        {
+          id: 6,
+          properties: [property(feature, kind), property("blocks", true)],
+        },
+      ],
+    };
+    const map = mapWith(withLayer("features", [0, 7, 0, 0, 7, 0]));
+    expect(() => load(map, tileset)).toThrow(message);
+  });
+
   it("merges ground, features and placements into one tile each", () => {
     const { tiles } = load(
       mapWith({}, [
@@ -447,4 +464,96 @@ describe("loadRegion", () => {
   ])("refuses a tileset with %s", (_, tileset, message) => {
     expect(() => load(mapWith(), tileset)).toThrow(message);
   });
+});
+
+describe("obstacle placements", () => {
+  const beam = { type: "obstacle", name: "balanceBeam", ...at(0, 1) };
+  it("loads the start of an obstacle with a clear landing", () => {
+    const map = mapWith({}, [respawn, beam]);
+    const { tiles } = load({
+      ...map,
+      ...withLayer("features", [0, 3, 4, 0, 0, 0], map),
+    });
+    expect(tiles[1]![0]!.obstacle).toBe("balanceBeam");
+    expect(tiles[1]![2]!.blocks).toBe(false);
+  });
+  it("refuses a landing on a blocked tile", () => {
+    const map = mapWith({}, [respawn, beam]);
+    expect(() =>
+      load({ ...map, ...withLayer("features", [0, 3, 4, 0, 0, 5], map) }),
+    ).toThrow("balanceBeam needs a clear landing");
+  });
+  it("refuses an unknown obstacle", () => {
+    const map = mapWith({}, [respawn, { ...beam, name: "unknown" }]);
+    expect(() =>
+      load({ ...map, ...withLayer("features", [0, 3, 4, 0, 0, 0], map) }),
+    ).toThrow('unknown obstacle "unknown"');
+  });
+
+  it.each([
+    [
+      "a landing outside the map",
+      [{ ...beam, ...at(1, 1) }],
+      [0, 3, 4, 0, 0, 0],
+      "balanceBeam needs a clear landing",
+    ],
+    [
+      "a second obstacle with the same name",
+      [beam, { ...beam, ...at(1, 1) }],
+      [0, 3, 4, 0, 0, 0],
+      "two balanceBeam obstacles",
+    ],
+    [
+      "a start on a blocking tile",
+      [beam],
+      [0, 3, 4, 5, 0, 0],
+      '"balanceBeam" stands on a blocking tile',
+    ],
+  ] as const)("refuses %s", (_, obstacles, features, message) => {
+    const map = mapWith({}, [respawn, ...obstacles]);
+    expect(() =>
+      load({ ...map, ...withLayer("features", features, map) }),
+    ).toThrow(message);
+  });
+});
+
+describe("shortcut placements", () => {
+  const stile = { type: "obstacle", name: "ridgeStile", ...at(0, 1) };
+  const clear = (map: ReturnType<typeof mapWith>) => ({
+    ...map,
+    ...withLayer("features", [0, 3, 4, 0, 0, 0], map),
+  });
+  it("marks a shortcut's far end, so it can be crossed back", () => {
+    const { tiles } = load(clear(mapWith({}, [respawn, stile])));
+    expect(tiles[1]![0]!.obstacle).toBe("ridgeStile");
+    expect(tiles[1]![2]!.obstacleEnd).toBe("ridgeStile");
+  });
+  it("leaves a course obstacle's landing unmarked: it is crossed one way", () => {
+    const beam = { type: "obstacle", name: "balanceBeam", ...at(0, 1) };
+    const { tiles } = load(clear(mapWith({}, [respawn, beam])));
+    expect(tiles[1]![2]!.obstacleEnd).toBeUndefined();
+  });
+  it("refuses a shortcut whose far end is another obstacle's start", () => {
+    const stones = { type: "obstacle", name: "steppingStones", ...at(2, 1) };
+    expect(() => load(clear(mapWith({}, [respawn, stile, stones])))).toThrow(
+      "ridgeStile ends on another obstacle at 2,1",
+    );
+  });
+});
+
+it("loads a burial mound as a blocking feature", () => {
+  const tileset = {
+    tiles: [
+      ...TILESET.tiles,
+      {
+        id: 6,
+        properties: [property("prop", "burialMound"), property("blocks", true)],
+      },
+    ],
+  };
+  const { tiles } = load(
+    mapWith(withLayer("features", [0, 7, 0, 0, 0, 0])),
+    tileset,
+  );
+  expect(tiles[0]![1]).toMatchObject({ prop: "burialMound", blocks: true });
 });

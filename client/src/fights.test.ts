@@ -18,6 +18,7 @@ const {
     tile: { x: 3, y: 2 },
     moving: false,
     once: vi.fn(),
+    face: vi.fn(),
     onceWithin: vi.fn(() => 2400),
     work: undefined as unknown,
   },
@@ -224,12 +225,14 @@ describe("the playerSwing event", () => {
       state: {
         tick,
         players: new Map([["a", { weapon, x: 1, y: 1 }]]),
-        enemies: new Map([["0", { kind: "spider" }]]),
+        enemies: new Map([["0", { kind: "spider", x: 7, y: 1 }]]),
       },
     } as unknown as WorldConnection);
     onMessage.mock.calls[0]![1](events);
   };
-  const swing = (damage: number): WorldEvent => ({
+  const swing = (
+    damage: number,
+  ): Extract<WorldEvent, { type: "playerSwing" }> => ({
     type: "playerSwing",
     player: "a",
     enemy: "0",
@@ -250,6 +253,24 @@ describe("the playerSwing event", () => {
     send([swing(2)], "copperSword");
     expect(figure.once).toHaveBeenLastCalledWith(clip);
     vi.advanceTimersByTime(contactMs - 1);
+    expect(enemy.flash).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(enemy.flash).toHaveBeenCalledOnce();
+  });
+
+  test("turns the attacker to face the enemy, as a shot that ends the fight has already cleared their target", () => {
+    send([swing(2)], "birchBow");
+    expect(figure.face).toHaveBeenLastCalledWith({
+      kind: "spider",
+      x: 7,
+      y: 1,
+    });
+  });
+
+  test("the last knife plays the throw even after the weapon slot clears", () => {
+    send([{ ...swing(2), weapon: "copperThrowingKnife" }], "");
+    expect(figure.once).toHaveBeenLastCalledWith("Fishing_Cast");
+    vi.advanceTimersByTime(999);
     expect(enemy.flash).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
     expect(enemy.flash).toHaveBeenCalledOnce();
@@ -315,6 +336,7 @@ describe("an enemy's swing", () => {
     player: "a",
     damage,
     blocked: false,
+    critical: false,
   });
   /** A tick on which Skeleton "0" swings with the given contact. */
   const tickWith = (contactMs: number) =>
@@ -432,7 +454,7 @@ describe("an enemy's swing", () => {
 describe("the enemySwing event", () => {
   const holdBlow = vi.fn();
   const showBlow = vi.fn();
-  const send = (damage: number, blocked: boolean) => {
+  const send = (damage: number, blocked: boolean, critical = false) => {
     const onMessage = vi.fn();
     showFights({
       onReconnect: vi.fn(),
@@ -445,6 +467,7 @@ describe("the enemySwing event", () => {
       player: "a",
       damage,
       blocked,
+      critical,
     };
     onMessage.mock.calls[0]![1]([swing]);
   };
@@ -456,6 +479,14 @@ describe("the enemySwing event", () => {
     Object.assign(overhead, { holdBlow, showBlow });
   });
   afterEach(() => vi.useRealTimers());
+
+  test("an enemy critical uses the same blow display at contact", () => {
+    send(150, false, true);
+    vi.advanceTimersByTime(449);
+    expect(showBlow).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(showBlow).toHaveBeenCalledWith(150, true);
+  });
 
   test("a block shows Blocked and Melee_Block_Hit at contact, with no line", () => {
     send(0, true);
@@ -517,6 +548,7 @@ describe("a block during the player's own swing", () => {
     player: "a",
     damage: 0,
     blocked: true,
+    critical: false,
   };
   const connect = () => {
     const onMessage = vi.fn();
@@ -685,16 +717,19 @@ describe("the mine event", () => {
   });
 });
 
-describe("the stunned event", () => {
+describe("the stunned, trapSprung and slipped events", () => {
   const holdBlow = vi.fn();
   const showBlow = vi.fn();
-  const send = (damage: number) => {
+  const send = (
+    damage: number,
+    type: "stunned" | "trapSprung" | "slipped" = "stunned",
+  ) => {
     const onMessage = vi.fn();
     showFights({
       onReconnect: vi.fn(),
       onMessage,
     } as unknown as WorldConnection);
-    onMessage.mock.calls[0]![1]([{ type: "stunned", player: "a", damage }]);
+    onMessage.mock.calls[0]![1]([{ type, player: "a", damage }]);
   };
 
   beforeEach(() => {
@@ -712,6 +747,20 @@ describe("the stunned event", () => {
     expect(figure.once).toHaveBeenCalledWith("Hit_A");
   });
 
+  test("shows a strongbox trap's hit at once, with Hit_A (#253)", () => {
+    send(800, "trapSprung");
+    vi.advanceTimersByTime(0);
+    expect(showBlow).toHaveBeenCalledWith(800, false);
+    expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+
+  test("shows a failed shortcut crossing's hit at once, with Hit_A (Agility spec §3)", () => {
+    send(150, "slipped");
+    vi.advanceTimersByTime(0);
+    expect(showBlow).toHaveBeenCalledWith(150, false);
+    expect(figure.once).toHaveBeenCalledWith("Hit_A");
+  });
+
   test("holds the hit off the bar before showing it, so the bar ends on the true health", () => {
     send(100);
     vi.advanceTimersByTime(0);
@@ -726,4 +775,63 @@ describe("the stunned event", () => {
     vi.advanceTimersByTime(0);
     expect(figure.once).not.toHaveBeenCalled();
   });
+});
+
+test.each([
+  {
+    scenario: "an elite killed by you",
+    elite: true,
+    killer: "a",
+    line: "You defeat the Elite Skeleton.",
+  },
+  {
+    scenario: "an ordinary enemy killed by you",
+    elite: false,
+    killer: "a",
+    line: undefined,
+  },
+  {
+    scenario: "an elite killed by another player",
+    elite: true,
+    killer: "b",
+    line: undefined,
+  },
+])("chat after the killing blow for $scenario", ({ elite, killer, line }) => {
+  vi.useFakeTimers();
+  vi.clearAllMocks();
+  enemyFigures.set("enemy", {
+    dieAndSink: vi.fn(),
+    flash: vi.fn(),
+    once: vi.fn(),
+  });
+  try {
+    const onMessage = vi.fn();
+    showFights({
+      onReconnect: vi.fn(),
+      onMessage,
+      sessionId: "a",
+      state: {
+        tick: 1,
+        enemies: new Map([["enemy", { kind: "skeleton", elite }]]),
+        players: new Map(),
+      },
+    } as unknown as WorldConnection);
+    onMessage.mock.calls[0]![1]([
+      {
+        type: "playerSwing",
+        player: killer,
+        enemy: "enemy",
+        damage: 100,
+        critical: false,
+      },
+      { type: "enemyDied", enemy: "enemy" },
+    ] satisfies WorldEvent[]);
+    expect(printChatLine).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    if (line) expect(printChatLine).toHaveBeenCalledExactlyOnceWith(line);
+    else expect(printChatLine).not.toHaveBeenCalled();
+  } finally {
+    enemyFigures.delete("enemy");
+    vi.useRealTimers();
+  }
 });

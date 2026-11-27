@@ -1,17 +1,11 @@
 import type { TileKind } from "@runic/shared";
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import {
   addFireTile,
   addStations,
   removeFireTile,
   stationTile,
 } from "./stations.ts";
-
-// The real hit boxes join the three.js scene, which needs a browser.
-vi.mock("./hitBoxes.ts", () => ({
-  HIT_BOX_HEIGHT: 1,
-  newHitBox: () => ({ position: { set() {} } }),
-}));
 
 /** A row-major grid whose `F` tiles are the furnace and `A` the anvil. */
 const grid = (...rows: string[]) =>
@@ -26,7 +20,7 @@ const grid = (...rows: string[]) =>
   );
 
 test("a station facing picks its tile nearest the player, the first in row order on a tie", () => {
-  addStations(grid("......", ".FF..A", ".FF...", "......"));
+  addStations(grid("......", ".FF..A", ".FF...", "......"), {});
   expect(stationTile("furnace", { x: 0, y: 1 })).toEqual({ x: 1, y: 1 });
   expect(stationTile("furnace", { x: 3, y: 3 })).toEqual({ x: 2, y: 2 });
   expect(stationTile("furnace", { x: 3, y: 0 })).toEqual({ x: 2, y: 1 });

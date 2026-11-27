@@ -8,7 +8,7 @@ import {
   removeItems,
   type Quality,
 } from "./items.ts";
-import { capeOfGossamer } from "./gear.ts";
+import { capeOfGossamer } from "./virtues.ts";
 import { AUGMENTATIONS, costsOf, RECIPES, type RecipeItem } from "./making.ts";
 import { POTIONS, type PotionId } from "./potions.ts";
 
@@ -26,6 +26,9 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ironOre: 8,
   emberiteOre: 20,
   emberbone: 10,
+  // First values for the bones in the combat drops spec §2.
+  bones: 4,
+  heavyBones: 8,
   ashstone: 25,
   cinderglass: 50,
   heartflame: 100,
@@ -60,7 +63,7 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   dewpetal: 6,
   nightbloom: 12,
   emberbloom: 20,
-  // The silk waits for Phase 8's Spider drop (#217), and is priced like the emberbone.
+  // The silk is priced like the emberbone (#217); Spiders drop it (#272).
   spiderSilk: 10,
   // #217's capes, priced by their tier: their Leatherworking recipes will set the final ones.
   copperMightCape: 20,

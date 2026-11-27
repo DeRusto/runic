@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import {
+  crossingFrom,
   ENEMIES,
+  OBSTACLES,
   loadRegion,
   TREES as TREES_TABLE,
   neighbours,
@@ -19,6 +21,10 @@ const { tiles: region, pools } = loadRegion(
 );
 const blocks = (x: number, y: number) => region[y]![x]!.blocks;
 const key = (x: number, y: number) => `${x},${y}`;
+
+/** The field painted north of the Boneyard for #302. */
+const inCairns = ([x, y]: readonly [number, number]) =>
+  x >= 69 && x <= 90 && y >= 3 && y <= 13;
 
 /**
  * The fewest steps to every tile a player can walk to from (x, y): 8 ways, no cutting
@@ -54,6 +60,11 @@ const IS = {
   herbBush: (tile) => tile.bush === "herbBush",
   nightbloomBush: (tile) => tile.bush === "nightbloomBush",
   emberbloomBush: (tile) => tile.bush === "emberbloomBush",
+  fenwing: (tile) => tile.enemy === "fenwing",
+  cairnWarden: (tile) => tile.enemy === "cairnWarden",
+  burialMound: (tile) => tile.prop === "burialMound",
+  gorger: (tile) => tile.enemy === "gorger",
+  thornling: (tile) => tile.enemy === "thornling",
   spider: (tile) => tile.enemy === "spider",
   skeleton: (tile) => tile.enemy === "skeleton",
   skeletonMage: (tile) => tile.enemy === "skeletonMage",
@@ -82,6 +93,8 @@ const IS = {
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   mark: (tile) => !!tile.mark,
+  boneyardStrongbox: (tile) => tile.strongbox === "boneyard",
+  hollowStrongbox: (tile) => tile.strongbox === "hollow",
   house: (tile) => !!tile.house,
 } satisfies Record<string, (tile: TileKind) => boolean>;
 
@@ -140,6 +153,28 @@ const TREES = ["birch", "oak", "charwood"] as const;
 describe("the region", () => {
   const respawn = tilesOf("respawn")[0]!;
   const reachable = stepsFrom(respawn);
+  /** Every tile reachable on foot or by crossing a shortcut from either end (Agility spec §3). */
+  const reachableByShortcut = new Set(reachable.keys());
+  for (let grew = true; grew;) {
+    grew = false;
+    region.forEach((row, y) =>
+      row.forEach((tile, x) => {
+        const crossing = crossingFrom(tile, { x, y });
+        if (!crossing || !OBSTACLES[crossing.obstacle].shortcut) return;
+        const { landing } = crossing;
+        if (!reachableByShortcut.has(key(x, y))) return;
+        if (reachableByShortcut.has(key(landing.x, landing.y))) return;
+        for (const at of stepsFrom([landing.x, landing.y]).keys())
+          reachableByShortcut.add(at);
+        grew = true;
+      }),
+    );
+  }
+  /** A pool is open when a player can walk next to one of its spots, and a pocket's when only a shortcut leads there. */
+  const isOpen = ({ spots }: (typeof pools)[number]) =>
+    spots.some(({ x, y }) =>
+      tilesNextTo([x, y]).some(([nx, ny]) => reachable.has(key(nx, ny))),
+    );
   /** Every tile a player can walk to from the respawn tile without setting foot on ashen ground. */
   const withoutAshen = stepsFrom(
     respawn,
@@ -168,7 +203,7 @@ describe("the region", () => {
     ["forester", 1],
     ["fisher", 1],
     ["villager", 6],
-    ["mark", 1],
+    ["mark", 2],
   ] as const)("has the right number of %s", (kind, count) => {
     expect(tilesOf(kind)).toHaveLength(count);
   });
@@ -184,16 +219,28 @@ describe("the region", () => {
     ["nightbloomBush", "herblaw", 4, 8],
     ["emberbloomBush", "herblaw", 3, 8],
   ] as const)(
-    "keeps %s in one %s pool, %i active of %i spots, and none fixed",
+    "keeps %s in one open %s pool, %i active of %i spots, and none fixed",
     (kind, skill, active, spots) => {
       expect(
         pools
-          .filter((pool) => pool.kind === kind)
+          .filter((pool) => pool.kind === kind && isOpen(pool))
           .map((pool) => [pool.skill, pool.active, pool.spots.length]),
       ).toEqual([[skill, active, spots]]);
       expect(tilesOf(kind)).toEqual([]);
     },
   );
+
+  it("puts one small pool in each pocket a shortcut opens", () => {
+    expect(
+      pools
+        .filter((pool) => !isOpen(pool))
+        .map((pool) => [pool.kind, pool.active, pool.spots.length]),
+    ).toEqual([
+      ["essence", 2, 3],
+      ["nightbloomBush", 1, 3],
+      ["emberbloomBush", 1, 2],
+    ]);
+  });
 
   it("has an outer ring of blocks", () => {
     for (let x = 0; x < 128; x++) {
@@ -212,7 +259,7 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
-  it("lets a player walk next to every spot, station and villager", () => {
+  it("lets a player walk, or cross a shortcut, next to every spot, station and villager", () => {
     expect(
       [
         ...tilesOf(
@@ -224,7 +271,10 @@ describe("the region", () => {
         ),
         ...spotsOf(...VEINS, "essence", ...BUSHES, "shore"),
       ].filter(
-        (tile) => !tilesNextTo(tile).some(([x, y]) => reachable.has(key(x, y))),
+        (tile) =>
+          !tilesNextTo(tile).some(([x, y]) =>
+            reachableByShortcut.has(key(x, y)),
+          ),
       ),
     ).toEqual([]);
     // A walk to a station ends next to any of its tiles, so the altar's walled-in obelisk tile is fine.
@@ -346,6 +396,19 @@ describe("the region", () => {
     expect(spotsOf("shore").map(key2).sort()).toEqual(bank.map(key2).sort());
   });
 
+  it("homes four Fenwings on walkable Lake shore beside the Tarn Oxen", () => {
+    const homes = tilesOf("fenwing");
+    const water = tilesOf("water").map(asTile);
+    const oxen = tilesOf("tarnOx").map(asTile);
+    expect(homes).toHaveLength(4);
+    for (const [x, y] of homes) {
+      expect(region[y]![x]).toMatchObject({ ground: "grass", blocks: false });
+      expect(reachable.has(key(x, y))).toBe(true);
+      expect(water.some((tile) => tilesApart(tile, { x, y }) === 1)).toBe(true);
+      expect(oxen.some((tile) => tilesApart(tile, { x, y }) <= 3)).toBe(true);
+    }
+  });
+
   it("stands the Fisher on the bank where a path reaches the shore", () => {
     const fisher = asTile(tilesOf("fisher")[0]!);
     const near = (kind: keyof typeof IS) =>
@@ -423,6 +486,11 @@ describe("the region", () => {
     expect(region[44]![12]!.mark).toBe("drunk");
     expect(region[45]![10]!.house).toBe("door");
     expect(region[45]![12]!.station).toBe("range");
+  });
+
+  it("stands Jory, the pedlar, in the village square, on its cobbles (#251)", () => {
+    expect(region[40]![20]!.mark).toBe("pedlar");
+    expect(region[40]![20]!.ground).toBe("cobble");
   });
 
   it("stands the furnace, anvil and Blacksmith at the crossroads' north-east corner", () => {
@@ -505,7 +573,7 @@ describe("the region", () => {
   });
 
   it("lets a player into Runestone Hollow only through the Boneyard, by the gap behind the Emberite pocket", () => {
-    const moss = tilesOf("moss");
+    const moss = tilesOf("moss").filter((tile) => !inCairns(tile));
     expect(moss.length).toBeGreaterThan(0);
     expect(moss.filter(([x, y]) => withoutAshen.has(key(x, y)))).toEqual([]);
     // Every walkable way out of the Hollow is the one gap tile in the old east border.
@@ -557,6 +625,32 @@ describe("the region", () => {
     ).toEqual([]);
   });
 
+  it.each([
+    ["the Boneyard strongbox", "boneyardStrongbox", "ashen", ["skeleton"]],
+    [
+      "the Runestone Hollow strongbox",
+      "hollowStrongbox",
+      "moss",
+      ["skeletonMage", "imp"],
+    ],
+  ] as const)(
+    "stands %s alone on its zone's ground, reached only across the Boneyard and within an enemy's reach (#253)",
+    (_, kind, ground, enemies) => {
+      const boxes = tilesOf(kind);
+      expect(boxes).toHaveLength(1);
+      const [box] = boxes as [readonly [number, number]];
+      expect(region[box[1]]![box[0]]!.ground).toBe(ground);
+      const beside = tilesNextTo(box);
+      expect(beside.some(([x, y]) => reachable.has(key(x, y)))).toBe(true);
+      expect(beside.some(([x, y]) => withoutAshen.has(key(x, y)))).toBe(false);
+      expect(
+        tilesOf(...enemies).some(
+          (home) => tilesApart(asTile(home), asTile(box)) <= reachOf(home),
+        ),
+      ).toBe(true);
+    },
+  );
+
   it("leaves the old stone circle on the Boneyard's far side as bare ground ringed by its rocks", () => {
     const ring = neighbours({ x: 86, y: 44 });
     expect(region[44]![86]).toEqual({ ground: "ashen", blocks: false });
@@ -581,6 +675,30 @@ describe("the region", () => {
       [],
     );
   });
+});
+
+it("homes four Thornlings on walkable grass in the middle field", () => {
+  const homes = tilesOf("thornling");
+  expect(homes).toHaveLength(4);
+  for (const [x, y] of homes) {
+    expect(x).toBeGreaterThanOrEqual(37);
+    expect(x).toBeLessThanOrEqual(61);
+    expect(y).toBeGreaterThanOrEqual(30);
+    expect(y).toBeLessThanOrEqual(57);
+    expect(region[y]![x]).toMatchObject({ ground: "grass", blocks: false });
+  }
+});
+
+it("homes three Gorgers on walkable grass in the middle field", () => {
+  const homes = tilesOf("gorger");
+  expect(homes).toHaveLength(3);
+  for (const [x, y] of homes) {
+    expect(x).toBeGreaterThanOrEqual(37);
+    expect(x).toBeLessThanOrEqual(61);
+    expect(y).toBeGreaterThanOrEqual(30);
+    expect(y).toBeLessThanOrEqual(57);
+    expect(region[y]![x]).toMatchObject({ ground: "grass", blocks: false });
+  }
 });
 
 describe("parseRegion", () => {
@@ -662,4 +780,15 @@ describe("tileHash", () => {
       expect(seen.size).toBeGreaterThan(200);
     }
   });
+});
+
+test("four reachable Cairn warden homes stand above the Boneyard among burial mounds", () => {
+  const homes = tilesOf("cairnWarden");
+  const mounds = tilesOf("burialMound");
+  const reachable = stepsFrom(tilesOf("respawn")[0]!);
+  expect(homes).toHaveLength(4);
+  expect(mounds.length).toBeGreaterThanOrEqual(4);
+  expect([...homes, ...mounds].every(inCairns)).toBe(true);
+  for (const [x, y] of homes) expect(reachable.has(key(x, y))).toBe(true);
+  for (const [x, y] of mounds) expect(blocks(x, y)).toBe(true);
 });

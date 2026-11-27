@@ -20,6 +20,8 @@ every file). The file's number in its pack is in brackets.
     hollowEssence.png (43), pickaxe.png (2)
 "RPG Monster Loot Icons"
     emberbone.png (24), feather.png (33), berry.png (7), herb.png (8)
+"Skull and Bone RPG Icons"
+    bones.png (15), heavyBones.png (17), from the "without_shadow" folder
 "RPG Spider Loot Icons"
     spiderSilk.png (5), mightPotion.png (33), avoidancePotion.png (41)
 "RPG Dwarf Loot Icons"

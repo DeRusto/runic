@@ -52,7 +52,6 @@ function addShopper(id: string, ...stacks: [string, number][]) {
   });
   sim.addPlayer(id, {
     ...BESIDE_MARTA,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
@@ -153,6 +152,16 @@ describe("opening the store", () => {
 });
 
 describe("a deal", () => {
+  test.each([
+    ["bones", 1],
+    ["heavyBones", 3],
+  ])("Marta buys %s for %i coins", (item, coins) => {
+    addShopper("a", [item, 1]);
+    openStore();
+    deal("a", { sell: [{ item, count: 1 }] });
+    expect(held()).toEqual([[COINS, coins]]);
+  });
+
   test("sells first, then buys with the proceeds, and the sold items go on the shelf", () => {
     addShopper("a", ["ironSword", 1], ["tin", 3]);
     openStore();

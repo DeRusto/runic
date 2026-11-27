@@ -25,6 +25,7 @@ CLIPS.set("PickUp", new THREE.AnimationClip("PickUp", PICK_UP_S, []));
 const DEATH_S = 1.5;
 CLIPS.set("Death_A", new THREE.AnimationClip("Death_A", DEATH_S, []));
 CLIPS.set("Spawn_Ground", new THREE.AnimationClip("Spawn_Ground", 1, []));
+CLIPS.set("Fishing_Cast", new THREE.AnimationClip("Fishing_Cast", 1.8, []));
 const PICKAXING_S = 3.733;
 CLIPS.set("Pickaxing", new THREE.AnimationClip("Pickaxing", PICKAXING_S, []));
 
@@ -131,6 +132,24 @@ describe("characterFor", () => {
 });
 
 describe("Figure", () => {
+  test("a crossing slide moves through its marked start before the landing", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = new Figure(tile, new THREE.Object3D(), CLIPS);
+    const crossing = { landing: { x: 1, y: 2 }, ms: 1200 };
+    figure.update(1000);
+    tile.x = 1;
+    figure.update(1000, crossing);
+    figure.update(1150, crossing);
+    expect(figure.model.position).toMatchObject({ x: 0.5, z: 0 });
+    figure.update(1300, crossing);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 0 });
+    figure.update(1750, crossing);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 1 });
+    tile.y = 2;
+    figure.update(2200);
+    expect(figure.model.position).toMatchObject({ x: 1, z: 2 });
+  });
+
   it("stands on its tile playing Idle_A", () => {
     const figure = figureAt({ x: 3, y: 4 });
     figure.update(16);
@@ -155,6 +174,33 @@ describe("Figure", () => {
     expect(figure.moving).toBe(true);
     figure.update(2000);
     expect(figure.moving).toBe(false);
+  });
+
+  it("a shot facing an enemy holds once a step that came in the same patch is over", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    // The step east and a shot at an enemy to the south arrive together, with no fight target left.
+    tile.x = 1;
+    figure.face({ x: 1, y: 5 });
+    figure.once("Fishing_Cast");
+    for (let now = 16; now <= 1000; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(0, 2);
+  });
+
+  it("forgets a shot's facing at death, so the respawn faces where it walked last", () => {
+    const tile = { x: 0, y: 0 };
+    const figure = figureAt(tile);
+    figure.update(0);
+    tile.x = 1;
+    for (let now = 16; now <= 1000; now += 16) figure.update(now);
+    figure.face({ x: 1, y: 5 });
+    figure.once("Fishing_Cast");
+    figure.alreadyDown("Death_A");
+    figure.respawn();
+    figure.once("Fishing_Cast");
+    for (let now = 1016; now <= 2000; now += 16) figure.update(now);
+    expect(figure.model.rotation.y).toBeCloseTo(Math.PI / 2, 2);
   });
 
   it("runs at 2x, crossfading over 0.12 s, when its tile changes", () => {
@@ -478,21 +524,26 @@ describe("fight clips", () => {
   });
 });
 
-/** A stand-in model 2 wide, 1 tall and 1 deep, with a right hand slot, a clip named for its file, and the idle clips a Figure starts on. */
+/** A stand-in model 2 wide, 1 tall and 1 deep, with both hand slots, a clip named for its file, and the idle clips a Figure starts on. */
 async function fakeModel(path: string) {
   const scene = new THREE.Group();
   scene.add(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1)));
   const hand = new THREE.Object3D();
   hand.name = "handslotr";
-  scene.add(hand);
+  const shieldHand = new THREE.Object3D();
+  shieldHand.name = "handslotl";
+  scene.add(hand, shieldHand);
   scene.name = path;
   return {
     scene,
     animations: [
       `${path} clip`,
       "Idle",
+      "idle",
       "Spider_Idle",
+      "Slime_Idle",
       "Idle_A",
+      "Idle_B",
       "Idle_Loop",
     ].map((name) => new THREE.AnimationClip(name, 1, [])),
   } as unknown as GLTF;
@@ -508,9 +559,50 @@ describe("loadEnemies", () => {
   it("names a committed model for every kind, and its held weapon", () => {
     for (const { file, held } of Object.values(ENEMY_LOOKS)) {
       expect(existsSync(`client/public/models/${file}`)).toBe(true);
-      if (held)
-        expect(existsSync(`client/public/models/${held.file}`)).toBe(true);
+      for (const { file } of held ?? [])
+        expect(existsSync(`client/public/models/${file}`)).toBe(true);
     }
+  });
+
+  it.each([
+    ["fenwing", "Fenwing"],
+    ["gorger", "Gorger"],
+  ] as const)(
+    "gives %s a named look with five clips in its own model",
+    (kind, name) => {
+      const look = ENEMY_LOOKS[kind];
+      expect(look.name).toBe(name);
+      expect(look.clips).toBe("own");
+      const clips = clipsOf(look.file.replace(/\.glb$/, ""));
+      const used = [
+        look.gait?.idle,
+        look.gait?.move,
+        look.swing("0", 0).clip,
+        look.hit,
+        look.death,
+      ];
+      expect(new Set(used).size).toBe(5);
+      for (const clip of used) expect(clips).toContain(clip);
+    },
+  );
+
+  it("names the Cairn warden and gives it all five combat and movement clips", () => {
+    const look = ENEMY_LOOKS.cairnWarden;
+    expect(look.name).toBe("Cairn warden");
+    expect(look.file).toBe("CairnWarden.glb");
+    const clips = [
+      ...clipsOf("Rig_Medium_MovementBasic"),
+      ...clipsOf("Rig_Medium_General"),
+      ...clipsOf("Rig_Medium_CombatMelee"),
+    ];
+    for (const clip of [
+      look.gait?.idle,
+      look.gait?.move,
+      look.swing("0", 0).clip,
+      look.hit,
+      look.death,
+    ])
+      expect(clips).toContain(clip);
   });
 
   it("sizes each kind by its row: its wide side across the tile, or the Skeleton by height", async () => {
@@ -541,6 +633,18 @@ describe("loadEnemies", () => {
     expect(skeleton.model.getObjectByName("Skeleton_Blade.gltf")).toBeDefined();
     expect(skeleton.alwaysArmed).toBe(true);
     expect(newEnemy.spider(tile).alwaysArmed).toBeFalsy();
+  });
+
+  it("puts the Cairn warden's axe and shield in opposite hands", async () => {
+    const warden = (await loadEnemies(fakeModel)).cairnWarden(tile);
+    expect(
+      warden.model.getObjectByName("Skeleton_Axe.gltf")?.parent?.name,
+    ).toBe("handslotr");
+    expect(
+      warden.model.getObjectByName("Skeleton_Shield_Large_A.gltf")?.parent
+        ?.name,
+    ).toBe("handslotl");
+    expect(warden.alwaysArmed).toBe(true);
   });
 });
 
@@ -806,6 +910,20 @@ describe("swingFor", () => {
     );
   });
 
+  test("a bow shoots with the cast clip, its blow landing once the arrow has flown", () => {
+    expect(swingFor("birchBow", "a", 8)).toEqual({
+      clip: "Fishing_Cast",
+      contactMs: 1000,
+    });
+    expect(swingFor("charwoodBow", "b", 9)).toEqual(
+      swingFor("birchBow", "a", 8),
+    );
+  });
+
+  test("the adventurer every player wears has the bow shot's clip among its animations", () => {
+    expect(clipsOf("Adventurer")).toContain(swingFor("birchBow", "a", 8).clip);
+  });
+
   test("no sword punches at 550 ms", () => {
     expect(swingFor("", "a", 8)).toEqual({
       clip: "Melee_Unarmed_Attack_Punch_A",
@@ -836,6 +954,7 @@ describe("gear in hand", () => {
       "Melee_Unarmed_Attack_Punch_A",
       "Melee_1H_Attack_Chop",
       "Melee_Block_Hit",
+      "Fishing_Cast",
       "Pickaxing",
       "Hammering",
       "Death_A",
@@ -922,6 +1041,24 @@ describe("gear in hand", () => {
     figure.update(2100);
     figure.update(2116);
     expect(sword.visible).toBe(false);
+  });
+
+  test("a killing bow shot keeps a worn shield up, as a killing swing does", () => {
+    const { figure, shield } = wearer();
+    figure.weapon = "birchBow";
+    figure.shield = "copperShield";
+    figure.face(FOE);
+    figure.once(swingFor("birchBow", "a", 8).clip);
+    figure.update(1016);
+    expect(shield.visible).toBe(true);
+  });
+
+  test("a fishing cast, the bow shot's clip, shows nothing worn", () => {
+    const { figure, shield } = wearer();
+    figure.shield = "copperShield";
+    figure.once("Fishing_Cast");
+    figure.update(1016);
+    expect(shield.visible).toBe(false);
   });
 
   test("a punch with a shield worn keeps the shield up after the kill", () => {

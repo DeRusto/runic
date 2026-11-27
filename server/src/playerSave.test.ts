@@ -2,7 +2,7 @@ import { BANK_SLOTS, EMPTY_SLOT, SKILLS } from "@runic/shared";
 import { describe, expect, it } from "vitest";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
 import type { PlayerSave } from "./saves.ts";
-import { Player } from "./simulation.ts";
+import { Player } from "./worldState.ts";
 
 /** A player built from `save`, as the room builds one at login. */
 const playerFrom = (save: PlayerSave) =>
@@ -23,6 +23,9 @@ describe("player save", () => {
       inventoryCounts: [3, 0, 2],
       tools: ["pickaxe", "tinderbox"],
       pinnedSkills: ["Cooking", "Mining"],
+      stance: "forceful",
+      rangedStance: "longrange",
+      riggedShortcuts: ["cragLine", "brambleSwing"],
       bank: Array.from({ length: BANK_SLOTS }, (_, slot) =>
         slot === 5 ? "coins" : EMPTY_SLOT,
       ),
@@ -39,6 +42,9 @@ describe("player save", () => {
       cape: "",
       neck: "",
       ring: "",
+      ammo: "steelArrow",
+      weaponCount: 1,
+      ammoCount: 13,
       // The quest columns' defaults: a save from before quests holds no progress (#231).
       quests: {},
       questPoints: 0,
@@ -56,6 +62,28 @@ describe("player save", () => {
     expect(save.bank).toHaveLength(BANK_SLOTS);
     expect(save.bankCounts).toHaveLength(BANK_SLOTS);
     expect(save.pinnedSkills).not.toHaveLength(0);
+  });
+
+  it("starts a save from before Ranged's stances Steady, keeping its melee stance (#280)", () => {
+    const old = { ...newSave({ x: 1, y: 2 }), stance: "precise" as const };
+    expect(saveOf(playerFrom(old))).toMatchObject({
+      stance: "precise",
+      rangedStance: "steady",
+    });
+  });
+
+  it("counts a worn weapon from before slot counts as one, and an empty slot as none (Ranged spec §2)", () => {
+    const old = { ...newSave({ x: 1, y: 2 }), weapon: "copperSword" };
+    expect(syncedOf(old)).toMatchObject({ weaponCount: 1, ammoCount: 0 });
+    expect(
+      syncedOf({ ...old, weaponCount: 0, ammo: "", ammoCount: 0 }),
+    ).toMatchObject({ weaponCount: 1, ammoCount: 0 });
+    expect(
+      syncedOf({ ...old, ammo: "ironArrow", ammoCount: 13 }),
+    ).toMatchObject({ weaponCount: 1, ammoCount: 13 });
+    expect(
+      syncedOf({ ...newSave({ x: 1, y: 2 }), weaponCount: 4 }),
+    ).toMatchObject({ weaponCount: 0 });
   });
 
   it("starts a new account with no experience but its starting Hitpoints", () => {

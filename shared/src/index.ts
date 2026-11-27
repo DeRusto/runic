@@ -2,6 +2,8 @@ import type { GatheringSkill, GatheringVerb } from "./gathering.ts";
 import type { VillagerId } from "./dialogue.ts";
 import type { ItemId, Virtue } from "./items.ts";
 import type { StationKind } from "./stations.ts";
+import type { StallKind } from "./stalls.ts";
+import type { StrongboxKind } from "./strongboxes.ts";
 
 export const SERVER_PORT = 2567;
 export const WORLD_ROOM = "world";
@@ -17,8 +19,14 @@ export const MAKE_INTENT = "make";
  * Arriving opens the conversation, or with `then`, a `DialogueAction` the conversation offers, runs that instead.
  */
 export const VISIT_INTENT = "visit";
-/** The pickpocket intent's message type, for clicking a mark's Pickpocket; its payload is the mark's id (#250). */
+/** The pickpocket intent's message type, for clicking Pickpocket on a mark or villager; its payload is their id, a `PickpocketTarget` (#250, #251). */
 export const PICKPOCKET_INTENT = "pickpocket";
+/** The steal intent's message type, for clicking one of Marta's stalls; its payload is the stall's kind, a `StallKind` (#252). */
+export const STEAL_INTENT = "steal";
+/** The open intent's message type, for clicking a strongbox; its payload is the strongbox's kind, a `StrongboxKind` (#253). */
+export const OPEN_INTENT = "open";
+/** The cross intent’s message type. Its payload is the obstacle’s ObstacleKind. */
+export const CROSS_INTENT = "cross";
 /** The choose intent's message type; its payload is the picked choice's index among the conversation's current choices. */
 export const CHOOSE_INTENT = "choose";
 /** The end talk intent's message type, for closing a conversation; it has no payload. */
@@ -55,6 +63,8 @@ export const EQUIP_INTENT = "equip";
 export const TAKE_OFF_INTENT = "takeOff";
 /** The pin intent's message type; its payload is `{ skill, pinned }`, with `pinned` false to unpin. */
 export const PIN_INTENT = "pin";
+/** The stance intent's message type; its payload is a melee `Stance` or a `RangedStance`, which sets that style's stance. */
+export const STANCE_INTENT = "stance";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
@@ -141,22 +151,27 @@ export const GROUND_ITEM_DESPAWN_TICKS = 600;
 
 // Fighting (spec §5). Hit chances are 0..1, per level above 1.
 export const PLAYER_HIT_CHANCE = 0.4;
-export const PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL = 0.005;
+export const PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL = 0.005;
 export const PLAYER_BASE_DAMAGE = 200;
-/** Each this many Combat levels adds 100 to the maximum hit. */
-export const COMBAT_LEVELS_PER_DAMAGE = 20;
+/** Each this many Strength levels adds 100 to the maximum hit. */
+export const STRENGTH_LEVELS_PER_DAMAGE = 20;
 // Experience per 100 damage; each swing's rounds to the nearest whole number.
 export const XP_PER_DAMAGE_DEALT = 6;
 export const DEFENSE_XP_PER_ENEMY_SWING = 6;
 export const DEFENSE_XP_PER_DAMAGE_TAKEN = 4;
 export const BLOCKING_XP_PER_BLOCK = 40;
-/** A player's landed hit, sword bonus included, is critical this often, for this many times its damage. Enemies never crit. */
-export const PLAYER_CRIT_CHANCE = 0.1;
+/** A critical multiplies the damage of a landed player hit. */
 export const PLAYER_CRIT_MULTIPLIER = 1.5;
 
 /** What a player is doing; "" for nothing. */
 export type PlayerAction =
-  "" | "walking" | GatheringSkill | "making" | "lighting" | "fighting";
+  | ""
+  | "walking"
+  | GatheringSkill
+  | "making"
+  | "lighting"
+  | "crossing"
+  | "fighting";
 
 /** The server's per-tick message, sent right after the patch when there's anything to report. Its payload is `WorldEvent[]`. */
 export const EVENTS = "events";
@@ -168,6 +183,8 @@ export type WorldEvent =
       enemy: string;
       damage: number;
       critical: boolean;
+      /** The thrown weapon, which may have left the weapon slot in the preceding patch. */
+      weapon?: string;
     }
   | {
       type: "enemySwing";
@@ -175,6 +192,7 @@ export type WorldEvent =
       player: string;
       damage: number;
       blocked: boolean;
+      critical: boolean;
     }
   | { type: "enemyDied"; enemy: string }
   | { type: "playerDied"; player: string }
@@ -223,16 +241,31 @@ export type WorldEvent =
   /** The server shut the bank window, on a walk away or a hit. */
   | { type: "bankClosed"; player: string }
   /** A failed pickpocket's hit, in hundredths of a Hitpoints level, and the stun that follows (#250). */
-  | { type: "stunned"; player: string; damage: number };
+  | { type: "stunned"; player: string; damage: number }
+  /** A theft emptied `stall` for `player` alone, for `ticks`: only their client shows it bare (#252). */
+  | { type: "stallEmptied"; player: string; stall: StallKind; ticks: number }
+  /** A success emptied `strongbox` for `player` alone, for `ticks`: only their client shows it open (#253). */
+  | {
+      type: "strongboxEmptied";
+      player: string;
+      strongbox: StrongboxKind;
+      ticks: number;
+    }
+  /** A failed strongbox's trap hit `player` for `damage`, in hundredths of a Hitpoints level; it can kill (#253). */
+  | { type: "trapSprung"; player: string; damage: number }
+  /** A failed shortcut crossing hit `player` for `damage`, never fatally, and left them at the start (Agility spec §3). */
+  | { type: "slipped"; player: string; damage: number };
 
 export * from "./bank.ts";
 export * from "./combat.ts";
 export * from "./dialogue.ts";
+export * from "./elites.ts";
 export * from "./enemies.ts";
 export * from "./firemaking.ts";
 export * from "./herblaw.ts";
 export * from "./gathering.ts";
 export * from "./gear.ts";
+export * from "./virtues.ts";
 export * from "./generalStore.ts";
 export * from "./items.ts";
 export * from "./tools.ts";
@@ -243,11 +276,18 @@ export * from "./region.ts";
 export * from "./regionMap.ts";
 export * from "./skills.ts";
 export * from "./thieving.ts";
+export * from "./stalls.ts";
+export * from "./strongboxes.ts";
+export * from "./agility.ts";
+export * from "./stances.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";
+export * from "./ranged.ts";
+export * from "./sight.ts";
 export * from "./runecrafting.ts";
 export * from "./social.ts";
 export * from "./stations.ts";
 export * from "./woodcutting.ts";
 export * from "./fishing.ts";
+export * from "./triangle.ts";

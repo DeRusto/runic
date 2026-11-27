@@ -12,14 +12,19 @@ import {
   itemTag,
 } from "@runic/shared";
 import { holdResult, printChatLine, revealResult } from "./bottomBar.ts";
-import { BLOCK_CLIP, ENEMY_LOOKS, swingFor } from "./characters.ts";
+import {
+  BLOCK_CLIP,
+  eliteNameOf,
+  ENEMY_LOOKS,
+  swingFor,
+} from "./characters.ts";
 import { chatItems } from "./itemIcons.ts";
 import {
   playerFigures,
   playerOverheads,
   type WorldConnection,
 } from "./players.ts";
-import { enemyFigures, enemyOverheads } from "./enemies.ts";
+import { enemyFigures, enemyOverheads, showThorn } from "./enemies.ts";
 import type { Overhead } from "./overhead.ts";
 import { STATION_LOOKS } from "./stationLooks.ts";
 import { stationTile } from "./stations.ts";
@@ -89,6 +94,7 @@ export function showFights(room: WorldConnection) {
     // A death follows its killing swing in the same batch, and falls when that swing connects.
     // The server decided on the tick; this is the moment the clip connects (spec §7).
     let killingContactMs = 0;
+    let lastAttacker: string | undefined;
     for (const event of events) {
       if (event.type === "playerSwing") {
         const attacker = playerFigures.get(event.player);
@@ -96,13 +102,17 @@ export function showFights(room: WorldConnection) {
         const from = room.state.players.get(event.player);
         // The patch came just before this message, so state.tick is this swing's tick for every viewer.
         const { clip, contactMs } = swingFor(
-          from?.weapon ?? "",
+          event.weapon ?? from?.weapon ?? "",
           event.player,
           room.state.tick,
         );
+        // The patch may already have cleared their target, when this attack ended the fight.
+        const at = room.state.enemies.get(event.enemy);
+        if (at) attacker?.face(at);
         attacker?.once(clip);
         ownContactAt.set(event.player, Date.now() + contactMs);
         killingContactMs = contactMs;
+        lastAttacker = event.player;
         atContact(
           enemyOverheads.get(event.enemy),
           event.damage,
@@ -120,7 +130,16 @@ export function showFights(room: WorldConnection) {
           event.enemy,
           room.state.tick,
         );
-        enemyFigures.get(event.enemy)!.once(clip);
+        const shooter = enemyFigures.get(event.enemy)!;
+        const target = playerFigures.get(event.player);
+        if (
+          room.state.enemies.get(event.enemy)?.kind === "thornling" &&
+          target
+        ) {
+          shooter.face(target.tile);
+          showThorn(shooter.model, target.model, contactMs);
+        }
+        shooter.once(clip);
         killingContactMs = contactMs;
         if (event.blocked) {
           setTimeout(() => {
@@ -137,9 +156,14 @@ export function showFights(room: WorldConnection) {
             const victim = playerFigures.get(event.player);
             if (victim && !victim.playingOnce) victim.once("Hit_A");
           },
+          event.critical,
         );
-      } else if (event.type === "stunned") {
-        // No swing to wait for: the mark shoves at once (#250).
+      } else if (
+        event.type === "stunned" ||
+        event.type === "trapSprung" ||
+        event.type === "slipped"
+      ) {
+        // No swing to wait for: the mark shoves, the strongbox's trap springs, or the player slips, at once (#250, #253, #234).
         atContact(playerOverheads.get(event.player), event.damage, 0, () => {
           const victim = playerFigures.get(event.player);
           if (victim && !victim.playingOnce) victim.once("Hit_A");
@@ -147,7 +171,15 @@ export function showFights(room: WorldConnection) {
       } else if (event.type === "enemyDied") {
         const enemy = enemyFigures.get(event.enemy)!;
         const { death } = clipsOf(event.enemy);
-        setTimeout(() => enemy.dieAndSink(death), killingContactMs);
+        const state = room.state.enemies.get(event.enemy)!;
+        const defeated =
+          state.elite && lastAttacker === room.sessionId
+            ? eliteNameOf(state.kind)
+            : undefined;
+        setTimeout(() => {
+          enemy.dieAndSink(death);
+          if (defeated) printChatLine(`You defeat the ${defeated}.`);
+        }, killingContactMs);
       } else if (event.type === "playerDied") {
         setTimeout(
           () => playerFigures.get(event.player)?.once("Death_A", 1, true),

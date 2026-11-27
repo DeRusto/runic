@@ -1,7 +1,11 @@
 import {
   SKILLS,
   STARTING_PINNED_SKILLS,
+  STARTING_RANGED_STANCE,
+  STARTING_STANCE,
   type QuestProgress,
+  type RangedStance,
+  type Stance,
 } from "@runic/shared";
 import {
   index,
@@ -25,9 +29,8 @@ export const accounts = sqliteTable("accounts", {
 });
 
 type XpField = (typeof SKILLS)[number][1];
-/** The skills the first save had: their columns came before any default, so they have none. */
+/** The skills the first save had that are still trained: their columns came before any default, so they have none. */
 const FOUNDING_SKILLS = [
-  "combatXp",
   "defenseXp",
   "herblawXp",
   "hitpointsXp",
@@ -77,6 +80,12 @@ export const players = sqliteTable("players", {
   cape: text().notNull().default(""),
   neck: text().notNull().default(""),
   ring: text().notNull().default(""),
+  /** The arrows in the ammo slot, or "" (Ranged spec §2). */
+  ammo: text().notNull().default(""),
+  /** How many the weapon slot holds. A worn weapon with no count is 1, as every save from before counts had (Ranged spec §2). */
+  weaponCount: integer("weapon_count").notNull().default(0),
+  /** How many arrows the ammo slot holds (Ranged spec §2). */
+  ammoCount: integer("ammo_count").notNull().default(0),
   tools: text({ mode: "json" }).notNull().$type<string[]>().default([]),
   pinnedSkills: text("pinned_skills", { mode: "json" })
     .notNull()
@@ -100,6 +109,18 @@ export const players = sqliteTable("players", {
   identifiesEssence: integer("identifies_essence", { mode: "boolean" })
     .notNull()
     .default(false),
+  /** Where melee experience goes (melee rework spec §3). */
+  stance: text().notNull().$type<Stance>().default(STARTING_STANCE),
+  /** Where ranged experience goes; a save from before Ranged's stances starts Steady (Ranged spec §6). */
+  rangedStance: text("ranged_stance")
+    .notNull()
+    .$type<RangedStance>()
+    .default(STARTING_RANGED_STANCE),
+  /** The shortcuts this player has rigged with a rope, in the order rigged (Agility spec §3). */
+  riggedShortcuts: text("rigged_shortcuts", { mode: "json" })
+    .notNull()
+    .$type<string[]>()
+    .default([]),
 });
 
 /**

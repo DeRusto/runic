@@ -1,6 +1,7 @@
 import {
   GEAR_SLOTS,
   PIN_INTENT,
+  STANCE_INTENT,
   TAKE_OFF_INTENT,
   xpForLevel,
 } from "@runic/shared";
@@ -59,8 +60,10 @@ const press = (key: string, more: object = {}) =>
 
 const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
   ({
-    combatXp: 0,
+    attackXp: 0,
+    strengthXp: 0,
     defenseXp: 0,
+    rangedXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
     miningXp: 0,
@@ -75,6 +78,7 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
     leatherworkingXp: 0,
     jewelsmithingXp: 0,
     thievingXp: 0,
+    agilityXp: 0,
     blockingXp: 0,
     masteryXp: 0,
     pinnedSkills,
@@ -82,12 +86,12 @@ const me = (pinnedSkills: string[], xp: Partial<SyncedPlayer> = {}) =>
   }) as unknown as SyncedPlayer;
 
 const TODAY = [
-  "Combat",
+  "Attack",
+  "Strength",
   "Defense",
   "Herblaw",
   "Hitpoints",
   "Mining",
-  "Smithing",
 ];
 
 let room: { send: ReturnType<typeof vi.fn> };
@@ -143,7 +147,7 @@ describe("the Gear tab", () => {
     return el("tooltip").hidden ? undefined : shown(el("tooltip").children);
   };
 
-  test("lays out all ten slots as a body", () => {
+  test("lays out all eleven slots as a body, the ammo slot among them", () => {
     expect(el("gear-slots").children.map((b: any) => b.style.gridArea)).toEqual(
       GEAR_SLOTS,
     );
@@ -226,6 +230,60 @@ describe("the Gear tab", () => {
     expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "legs");
   });
 
+  test("the ammo slot shows its arrows and how many, and says the count too (Ranged spec §2)", () => {
+    wearing("", "", { ammo: "copperArrow", ammoCount: 17 });
+    expect(box("ammo").dataset.item).toBe("copperArrow");
+    expect(box("ammo").dataset.count).toBe("17");
+    expect(box("ammo").style.backgroundImage).toBe(
+      'url("/icons/copperArrow.png")',
+    );
+    expect(box("ammo").attributes["aria-label"]).toBe(
+      "Ammo: 17 Copper arrow. Adds 100 to a bow shot's minimum and maximum hit",
+    );
+    expect(pointAt("ammo")).toMatch(
+      /^\[tip-name common\]Copper arrow\[tip-kind\]Ammo, needs Ranged 1/,
+    );
+  });
+
+  test("an empty ammo slot says Empty and shows no count", () => {
+    wearing("");
+    expect(box("ammo").textContent).toBe("Ammo");
+    expect(box("ammo").dataset.count).toBe("");
+    expect(box("ammo").attributes["aria-label"]).toBe("Ammo: Empty");
+  });
+
+  test("a sword shows no count, as one item never does", () => {
+    wearing("ironSword", "", { weaponCount: 1 });
+    expect(box().dataset.count).toBe("");
+  });
+
+  test("a stack of throwing knives in the weapon slot shows how many, and says the count too (#279)", () => {
+    wearing("ironThrowingKnife", "", { weaponCount: 12 });
+    expect(box().dataset.count).toBe("12");
+    expect(box().attributes["aria-label"]).toBe(
+      "Weapon: 12 Iron throwing knife. Adds 200 to a throw's minimum and maximum hit",
+    );
+    wearing("ironThrowingKnife", "", { weaponCount: 11 });
+    expect(box().dataset.count).toBe("11");
+    wearing("ironThrowingKnife", "", { weaponCount: 1 });
+    expect(box().dataset.count).toBe("1");
+    expect(box().attributes["aria-label"]).toMatch(
+      /^Weapon: 1 Iron throwing knife\./,
+    );
+  });
+
+  test("a change in the ammo count alone redraws it", () => {
+    wearing("", "", { ammo: "copperArrow", ammoCount: 17 });
+    wearing("", "", { ammo: "copperArrow", ammoCount: 16 });
+    expect(box("ammo").dataset.count).toBe("16");
+  });
+
+  test("a left-click on the ammo slot takes the stack off", () => {
+    wearing("", "", { ammo: "copperArrow", ammoCount: 3 });
+    box("ammo").onclick();
+    expect(room.send).toHaveBeenCalledWith(TAKE_OFF_INTENT, "ammo");
+  });
+
   test("patches with no change to the gear don't redraw", () => {
     wearing("ironSword");
     box().style.backgroundImage = "untouched";
@@ -258,12 +316,50 @@ describe("the Gear tab's stats", () => {
     ]);
   });
 
+  test("with a bow, the hit rows are a shot's: Ranged and the bow's Accuracy, and the arrow's hit bonus", () => {
+    expect(
+      stats({
+        attackXp: xpForLevel(20),
+        rangedXp: xpForLevel(3),
+        weapon: "birchBow",
+        ammo: "copperArrow",
+        ammoCount: 10,
+      }).slice(1, 4),
+    ).toEqual([
+      "Hit chance 46%",
+      "Min hit 200 (+100/+100)",
+      "Max hit 300 (+200/+100)",
+    ]);
+  });
+
+  test("with throwing knives, the hit rows are a throw's: Ranged with no Accuracy, and the knife's hit bonus, not the arrow's", () => {
+    expect(
+      stats({
+        rangedXp: xpForLevel(3),
+        weapon: "steelThrowingKnife",
+        weaponCount: 10,
+        ammo: "copperArrow",
+        ammoCount: 10,
+      }).slice(1, 4),
+    ).toEqual([
+      "Hit chance 41%",
+      "Min hit 350 (+100/+250)",
+      "Max hit 450 (+200/+250)",
+    ]);
+  });
+
+  test("the critical chance rises on the sheet as Agility levels up", () => {
+    expect(stats({ agilityXp: xpForLevel(30) })).toContain(
+      "Critical 12.9% ×1.5",
+    );
+  });
+
   test("each row splits into skill and gear where both add to it, as in issue #216's examples", () => {
     expect(
       stats({
         health: 850,
         maxHealth: 1040,
-        combatXp: xpForLevel(11),
+        attackXp: xpForLevel(11),
         defenseXp: xpForLevel(12),
         blockingXp: xpForLevel(11),
         weapon: "emberiteSword",
@@ -286,9 +382,116 @@ describe("the Gear tab's stats", () => {
 
   test("the rows follow health and experience on each draw", () => {
     stats({});
-    expect(stats({ health: 600, combatXp: xpForLevel(2) }).slice(0, 2)).toEqual(
+    expect(stats({ health: 600, attackXp: xpForLevel(2) }).slice(0, 2)).toEqual(
       ["Health 600 / 1000", "Hit chance 40.5%"],
     );
+  });
+
+  test("Strength raises the max hit and Attack the hit chance", () => {
+    expect(stats({ strengthXp: xpForLevel(20) }).slice(1, 4)).toEqual([
+      "Hit chance 40%",
+      "Min hit 100",
+      "Max hit 300",
+    ]);
+  });
+});
+
+describe("the stance", () => {
+  const buttons = () => el("stance").children;
+  const drawn = (stance: string) =>
+    sheet.drawStance({ stance } as unknown as SyncedPlayer);
+
+  test("offers Balanced, Precise and Forceful, each saying what it trains", () => {
+    drawn("balanced");
+    expect(buttons().map((button: any) => button.textContent)).toEqual([
+      "Balanced",
+      "Precise",
+      "Forceful",
+    ]);
+    expect(el("stance").attributes["aria-label"]).toBe("Stance");
+    expect(
+      buttons().map((button: any) => button.attributes["aria-label"]),
+    ).toEqual([
+      "Balanced: Trains Attack and Strength evenly",
+      "Precise: Trains Attack",
+      "Forceful: Trains Strength",
+    ]);
+    expect(buttons().map(tipOf)).toEqual([
+      "Trains Attack and Strength evenly",
+      "Trains Attack",
+      "Trains Strength",
+    ]);
+  });
+
+  test("shows the player's stance as pressed, and what it trains under the buttons", () => {
+    drawn("precise");
+    expect(
+      buttons().map((button: any) => button.attributes["aria-pressed"]),
+    ).toEqual(["false", "true", "false"]);
+    expect(el("stance-trains").textContent).toBe("Trains Attack");
+    expect(el("stance").attributes["aria-describedby"]).toBe("stance-trains");
+  });
+
+  test("a click sends the stance chosen", () => {
+    drawn("balanced");
+    buttons()[2].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(STANCE_INTENT, "forceful");
+  });
+
+  /** Draws the stances for a player holding `weapon`, with these saved stances. */
+  const holding = (
+    weapon: string,
+    stance = "balanced",
+    rangedStance = "steady",
+  ) =>
+    sheet.drawStance({
+      weapon,
+      stance,
+      rangedStance,
+    } as unknown as SyncedPlayer);
+  const names = () => buttons().map((button: any) => button.textContent);
+  const pressed = () =>
+    buttons().map((button: any) => button.attributes["aria-pressed"]);
+
+  test("a sword or bare hands show Balanced, Precise and Forceful", () => {
+    holding("copperSword");
+    expect(names()).toEqual(["Balanced", "Precise", "Forceful"]);
+    holding("");
+    expect(names()).toEqual(["Balanced", "Precise", "Forceful"]);
+  });
+
+  test("a bow or knives show Steady, Rapid and Longrange, each saying what it does", () => {
+    for (const weapon of ["birchBow", "ironThrowingKnife"]) {
+      holding(weapon);
+      expect(names()).toEqual(["Steady", "Rapid", "Longrange"]);
+    }
+    expect(buttons().map(tipOf)).toEqual([
+      "Trains Ranged",
+      "Trains Ranged, and attacks 2 ticks sooner",
+      "Trains Ranged and Defense evenly, and reaches 2 tiles further",
+    ]);
+    expect(buttons()[2].attributes["aria-label"]).toBe(
+      "Longrange: Trains Ranged and Defense evenly, and reaches 2 tiles further",
+    );
+  });
+
+  test("each style shows its own saved stance as pressed, across a swap", () => {
+    holding("birchBow", "forceful", "rapid");
+    expect(pressed()).toEqual(["false", "true", "false"]);
+    expect(el("stance-trains").textContent).toBe(
+      "Trains Ranged, and attacks 2 ticks sooner",
+    );
+    holding("copperSword", "forceful", "rapid");
+    expect(pressed()).toEqual(["false", "false", "true"]);
+    expect(el("stance-trains").textContent).toBe("Trains Strength");
+    holding("birchBow", "forceful", "rapid");
+    expect(pressed()).toEqual(["false", "true", "false"]);
+  });
+
+  test("a click on a Ranged stance sends it", () => {
+    holding("birchBow");
+    buttons()[2].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(STANCE_INTENT, "longrange");
   });
 });
 
@@ -391,8 +594,10 @@ describe("the Skills tab", () => {
     sheet.drawPins(me(TODAY));
     sheet.drawSkills(me(TODAY, { miningXp: 75 }));
     expect(rows().map(({ name }) => name.textContent)).toEqual([
-      "Combat 1",
+      "Attack 1",
+      "Strength 1",
       "Defense 1",
+      "Ranged 1",
       "Herblaw 1",
       "Hitpoints 10",
       "Mining 2",
@@ -407,6 +612,7 @@ describe("the Skills tab", () => {
       "Leatherworking 1",
       "Jewelsmithing 1",
       "Thieving 1",
+      "Agility 1",
       "Blocking 1",
       "Mastery 1",
     ]);
@@ -421,18 +627,18 @@ describe("the Skills tab", () => {
     const [combat] = el("sheet-skills").children;
     sheet.drawSkills(me(TODAY));
     expect(combat.textContent).toBe("Combat level 3 · Total level 32");
-    sheet.drawSkills(me(TODAY, { combatXp: 50, miningXp: 50 }));
-    expect(combat.textContent).toBe("Combat level 4 · Total level 33");
+    sheet.drawSkills(me(TODAY, { attackXp: 50, strengthXp: 50, miningXp: 50 }));
+    expect(combat.textContent).toBe("Combat level 4 · Total level 35");
   });
 
   test("at six pins the other pins are disabled, and pinned ones still work", () => {
     sheet.drawPins(me(TODAY));
     expect(row("Blocking").pin.attributes["aria-disabled"]).toBe("true");
-    expect(row("Combat").pin.attributes["aria-disabled"]).toBe("false");
-    expect(row("Combat").pin.attributes["aria-pressed"]).toBe("true");
+    expect(row("Attack").pin.attributes["aria-disabled"]).toBe("false");
+    expect(row("Attack").pin.attributes["aria-pressed"]).toBe("true");
     expect(row("Blocking").pin.attributes["aria-pressed"]).toBe("false");
     expect(tipOf(row("Blocking").pin)).toBe("The bar holds 6: unpin one first");
-    expect(tipOf(row("Combat").pin)).toBe("Unpin from the bar");
+    expect(tipOf(row("Attack").pin)).toBe("Unpin from the bar");
   });
 
   test("under six pins every pin works", () => {
@@ -440,14 +646,14 @@ describe("the Skills tab", () => {
     expect(
       rows().every(({ pin }) => pin.attributes["aria-disabled"] === "false"),
     ).toBe(true);
-    expect(tipOf(row("Combat").pin)).toBe("Pin to the bar");
+    expect(tipOf(row("Attack").pin)).toBe("Pin to the bar");
   });
 
   test("a pin sends what it would become", () => {
     sheet.drawPins(me(TODAY.slice(1)));
-    row("Combat").pin.onclick!();
+    row("Attack").pin.onclick!();
     expect(room.send).toHaveBeenLastCalledWith(PIN_INTENT, {
-      skill: "Combat",
+      skill: "Attack",
       pinned: true,
     });
     row("Defense").pin.onclick!();

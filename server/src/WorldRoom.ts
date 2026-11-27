@@ -33,6 +33,7 @@ import {
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   PIN_INTENT,
+  STANCE_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
   TAKE_INTENT,
@@ -42,6 +43,9 @@ import {
   TICK_MS,
   VISIT_INTENT,
   PICKPOCKET_INTENT,
+  STEAL_INTENT,
+  OPEN_INTENT,
+  CROSS_INTENT,
   WALK_INTENT,
   type ChatLine,
   type GatheringIntent,
@@ -97,6 +101,12 @@ export class WorldRoom extends Room {
     ) => this.sim.queueVisit(client.sessionId, visit?.villager, visit?.then),
     [PICKPOCKET_INTENT]: (client: Client, mark: string) =>
       this.sim.queuePickpocket(client.sessionId, mark),
+    [STEAL_INTENT]: (client: Client, stall: unknown) =>
+      this.sim.queueSteal(client.sessionId, stall),
+    [CROSS_INTENT]: (client: Client, obstacle: unknown) =>
+      this.sim.queueCross(client.sessionId, obstacle),
+    [OPEN_INTENT]: (client: Client, strongbox: unknown) =>
+      this.sim.queueOpen(client.sessionId, strongbox),
     [CHOOSE_INTENT]: (client: Client, choice: number) =>
       this.sim.choose(client.sessionId, choice),
     [END_TALK_INTENT]: (client: Client) => this.sim.endTalk(client.sessionId),
@@ -138,6 +148,8 @@ export class WorldRoom extends Room {
       client: Client,
       intent: { skill: string; pinned: boolean },
     ) => this.sim.pinSkill(client.sessionId, intent),
+    [STANCE_INTENT]: (client: Client, stance: string) =>
+      this.sim.setStance(client.sessionId, stance),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Asked for by the client once it listens, since a message sent during the join would arrive first.
     [LIST_FRIENDS_INTENT]: (client: Client) => sendFriends(this, client),
@@ -222,6 +234,9 @@ export class WorldRoom extends Room {
       readSave(client.auth.id),
       client.auth.username,
     );
+    const emptied = this.sim.emptiedFor(client.sessionId);
+    // Colyseus queues sends during onJoin until the client acknowledges the join.
+    if (emptied.length) client.send(EVENTS, emptied);
     // A take-over is the same player logging in again, so their friends hear nothing.
     if (!loggedInElsewhere) tellFriendedBy(this, client, "logged in");
   }

@@ -5,7 +5,7 @@ import {
   type TileKind,
 } from "@runic/shared";
 import type * as THREE from "three";
-import { HIT_BOX_HEIGHT, newHitBox } from "./hitBoxes.ts";
+import { propClicks } from "./propClicks.ts";
 
 const tilesOf = new Map<StationKind, Tile[]>();
 
@@ -16,24 +16,26 @@ export const stationTile = (kind: StationKind, near: Tile) =>
     .reduce((a, b) => (tilesApart(b, near) < tilesApart(a, near) ? b : a));
 
 /**
- * Hit boxes for every station, one per tile. Nothing about them depends on the room, so they stay
- * across rejoins. Returns what finds a station's kind under a click's ray.
+ * Makes every station clickable on its drawn model, from `models` by kind, and on each of its tiles.
+ * Nothing about them depends on the room, so they stay across rejoins. Returns what finds a
+ * station's kind under a click's ray.
  */
-export function addStations(tiles: TileKind[][]) {
-  const hitBoxes = new Map<THREE.Object3D, StationKind>();
+export function addStations(
+  tiles: TileKind[][],
+  models: Partial<Record<StationKind, THREE.Object3D>>,
+) {
+  const own = new Map<StationKind, Tile[]>();
   tiles.forEach((row, y) =>
     row.forEach(({ station }, x) => {
-      if (!station) return;
-      const hitBox = newHitBox();
-      hitBox.position.set(x, HIT_BOX_HEIGHT / 2, y);
-      hitBoxes.set(hitBox, station);
-      tilesOf.set(station, [...(tilesOf.get(station) ?? []), { x, y }]);
+      if (station) own.set(station, [...(own.get(station) ?? []), { x, y }]);
     }),
   );
-  return (raycaster: THREE.Raycaster) => {
-    const hit = raycaster.intersectObjects([...hitBoxes.keys()])[0];
-    return hit && hitBoxes.get(hit.object);
-  };
+  const clicks = propClicks<StationKind>();
+  for (const [station, stationTiles] of own) {
+    tilesOf.set(station, stationTiles);
+    clicks.add(station, stationTiles, models[station]);
+  }
+  return (raycaster: THREE.Raycaster) => clicks.under(raycaster)?.target;
 }
 
 /** Registers a fire's tile as a station, so the panel can find and reach it while it burns (#224). */

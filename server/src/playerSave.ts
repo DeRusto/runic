@@ -2,6 +2,9 @@ import { ArraySchema } from "@colyseus/schema";
 import {
   BANK_SLOTS,
   EMPTY_SLOT,
+  gearCountField,
+  STACKING_GEAR_SLOTS,
+  wornCountOf,
   INVENTORY_SLOTS,
   QUEST_DONE,
   STARTING_HEALTH,
@@ -13,7 +16,7 @@ import {
 import { getTableColumns } from "drizzle-orm";
 import { players } from "./schema.ts";
 import type { PlayerSave } from "./saves.ts";
-import type { Player } from "./simulation.ts";
+import type { Player } from "./worldState.ts";
 
 /** Every column of the save, so a new column is saved without touching this file. */
 const SAVED_FIELDS = Object.keys(getTableColumns(players)).filter(
@@ -46,6 +49,7 @@ export function syncedOf(save: PlayerSave) {
     inventoryCounts = [],
     pinnedSkills = STARTING_PINNED_SKILLS,
     tools = [],
+    riggedShortcuts = [],
     bank = [],
     bankCounts = [],
     quests: questProgress = {},
@@ -54,8 +58,16 @@ export function syncedOf(save: PlayerSave) {
   void questProgress;
   return {
     ...fields,
+    // A worn weapon from before slot counts is one; an empty slot holds none (Ranged spec §2).
+    ...Object.fromEntries(
+      STACKING_GEAR_SLOTS.map((slot) => [
+        gearCountField(slot),
+        wornCountOf(fields, slot),
+      ]),
+    ),
     pinnedSkills: new ArraySchema(...pinnedSkills),
     tools: new ArraySchema(...tools),
+    riggedShortcuts: new ArraySchema(...riggedShortcuts),
     inventory: new ArraySchema(...inventory),
     // A filled slot with no count is a stack of 1: every existing save's food (spec §6).
     inventoryCounts: new ArraySchema(

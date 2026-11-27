@@ -11,7 +11,11 @@ import regionMap from "../../maps/region.tmj?raw";
 import regionTileset from "../../maps/region.tsj?raw";
 import { showBankWindow } from "./bankWindow.ts";
 import { addBarButtons } from "./barButtons.ts";
+import { addObstacles } from "./obstacles.ts";
 import { addMarks } from "./marks.ts";
+import { addStalls } from "./stalls.ts";
+import { showEmptied } from "./emptied.ts";
+import { addStrongboxes } from "./strongboxes.ts";
 import { addVillagers } from "./villagers.ts";
 import { showBottomBar } from "./bottomBar.ts";
 import { loadCharacters, loadEnemies } from "./characters.ts";
@@ -55,15 +59,18 @@ const spots = pools.flatMap(({ skill, kind, spots }) =>
     return siteId({ x, y });
   }),
 );
+const strongboxes = addStrongboxes(tiles);
+const obstacleUnder = addObstacles(tiles);
 const respawn = respawnTile(tiles);
 focusOn(respawn.x, respawn.y);
-const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder] =
+const [newFigure, newEnemy, regionMeshes, villagerUnder, markUnder, stalls] =
   await Promise.all([
     loadCharacters(),
     loadEnemies(),
     addRegionMeshes(scene, tiles),
     addVillagers(tiles),
     addMarks(tiles),
+    addStalls(tiles),
   ])
     // Loads still in flight after a failure would look for a bar that is gone.
     .finally(() => (DefaultLoadingManager.onProgress = () => {}))
@@ -74,10 +81,11 @@ const [newFigure, newEnemy, setSiteLook, villagerUnder, markUnder] =
       loading.textContent = "Could not load the game. Reload to try again.";
       throw error;
     });
-for (const id of spots) setSiteLook(id, "gone");
+for (const id of spots) regionMeshes.setSiteLook(id, "gone");
 // The splash stays behind the login form until the first join settles.
 loading.remove();
-const stationUnder = addStations(tiles);
+const { setSiteLook, siteModel, stationModels } = regionMeshes;
+const stationUnder = addStations(tiles, stationModels);
 watchPanels();
 
 const status = document.getElementById("status")!;
@@ -88,19 +96,23 @@ addBarButtons();
 /** Everything that shows a room tidies up after itself in that room's onLeave. */
 function enterWorld(room: WorldConnection) {
   status.textContent = "";
-  const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure);
+  const { sayOverhead, otherPlayerUnder } = showPlayers(room, newFigure, tiles);
   const openMenu = showBottomBar(room, sayOverhead, tiles);
+  const enemyUnder = showEnemies(room, newEnemy);
   walkOnClick(
     room,
     tiles,
-    showEnemies(room, newEnemy),
-    showGatheringSites(room, tiles, spots, setSiteLook),
+    enemyUnder,
+    showGatheringSites(room, tiles, spots, setSiteLook, siteModel),
     stationUnder,
     showFires(room),
     showSmithingPanel(room),
     villagerUnder,
     markUnder,
-    showGroundItems(room),
+    stalls.stallUnder,
+    strongboxes.strongboxUnder,
+    obstacleUnder,
+    showGroundItems(room, enemyUnder),
     // It opens only with the player on the pile, which the following camera settles at the screen's
     // centre; projecting the pile now would use the camera still on its way there.
     showPileWindow(room, () => ({ x: innerWidth / 2, y: innerHeight / 2 })),
@@ -111,6 +123,10 @@ function enterWorld(room: WorldConnection) {
   showJournal(room);
   showFights(room);
   showBuffs(room);
+  showEmptied(room, {
+    stall: stalls.wares,
+    strongbox: strongboxes.closedLooks,
+  });
   showDialogueBox(room);
   showStoreWindow(room, openMenu);
   showBankWindow(room, openMenu);

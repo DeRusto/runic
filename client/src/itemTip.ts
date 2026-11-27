@@ -61,6 +61,7 @@ const SLOT_KINDS = {
   cape: "Cape",
   neck: "Amulet",
   ring: "Ring",
+  ammo: "Ammo",
 };
 
 function kindOf(item: string) {
@@ -81,7 +82,7 @@ function kindOf(item: string) {
 /** `item`'s tip, with the refusal to equip it when `player` is given. */
 export function itemTip(
   item: string,
-  player?: { combatXp: number; defenseXp: number },
+  player?: Parameters<typeof gearRefusal>[1],
 ): ItemTip {
   const does = gearOf(item)?.does;
   const potion = potionOf(itemParts(item).base);

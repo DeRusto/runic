@@ -5,13 +5,21 @@ import {
   combatLevel,
   gearOf,
   GEAR_SLOTS,
+  gearCountField,
   hitOf,
+  rangedHitOf,
+  rangedWeaponOf,
+  ITEMS,
+  itemParts,
+  STACKING_GEAR_SLOTS,
+  wornCountOf,
+  type WornGear,
   levelFor,
   maxHealthOf,
   levelProgress,
   MAX_PINNED_SKILLS,
   PIN_INTENT,
-  PLAYER_CRIT_CHANCE,
+  playerCritChance,
   PLAYER_CRIT_MULTIPLIER,
   SKILLS,
   TAKE_OFF_INTENT,
@@ -24,6 +32,7 @@ import { iconUrl } from "./itemIcons.ts";
 import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
+import { showStances } from "./stances.ts";
 import { addTip } from "./tooltip.ts";
 
 export type SyncedPlayer = NonNullable<
@@ -88,12 +97,20 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   let toolsDrawn = "";
 
   // Laid out as a body by the grid's areas; each box is only an icon, and its tooltip and name say what it holds.
-  let worn: Partial<Record<GearSlot, string>> = {};
+  let worn: WornGear = {};
+  /** What a slot shows over its icon: the count of anything that stacks, even a stack of 1, so a player sees their last arrow, and nothing for gear that never stacks (Ranged spec §2). */
+  const countShown = (gearSlot: GearSlot) => {
+    const item = worn[gearSlot] ?? "";
+    return item && ITEMS[itemParts(item).base].stack > 1
+      ? String(wornCountOf(worn, gearSlot))
+      : "";
+  };
   const describe = (gearSlot: GearSlot) => {
     const item = worn[gearSlot] ?? "";
     const does = gearOf(item)?.does;
     const virtue = virtueDoes(item);
-    return `${itemName(gearSlot)}: ${item ? itemName(item) : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
+    const count = countShown(gearSlot);
+    return `${itemName(gearSlot)}: ${item ? `${count && `${count} `}${itemName(item)}` : "Empty"}${does ? `. ${does}` : ""}${virtue ? `. ${virtue}` : ""}`;
   };
   const gearSlots = GEAR_SLOTS.map((gearSlot) => {
     // Not disabled when empty, or it couldn't be pointed at to read "Empty".
@@ -120,6 +137,8 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     .replaceChildren(...gearSlots.map(({ box }) => box));
   let gearDrawn: string | undefined;
   const stats = document.getElementById("gear-stats")!;
+
+  const drawStance = showStances(room);
 
   const combat = document.createElement("p");
   const note = document.createElement("p");
@@ -161,9 +180,19 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     /** Only redraws when the gear changes, as with the tools. */
     drawGear(me: SyncedPlayer) {
       const items = GEAR_SLOTS.map((gearSlot) => me[gearSlot]);
-      if (items.join() === gearDrawn) return;
-      gearDrawn = items.join();
-      worn = Object.fromEntries(GEAR_SLOTS.map((slot, i) => [slot, items[i]]));
+      const counts = STACKING_GEAR_SLOTS.map(
+        (slot) => me[gearCountField(slot)],
+      );
+      const drawn = [...items, ...counts].join();
+      if (drawn === gearDrawn) return;
+      gearDrawn = drawn;
+      worn = Object.fromEntries([
+        ...GEAR_SLOTS.map((slot, i) => [slot, items[i]]),
+        ...STACKING_GEAR_SLOTS.map((slot, i) => [
+          gearCountField(slot),
+          counts[i],
+        ]),
+      ]);
       for (const { gearSlot, box } of gearSlots) {
         const item = me[gearSlot];
         box.dataset.item = item;
@@ -171,11 +200,13 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         box.setAttribute("aria-label", describe(gearSlot));
         box.style.backgroundImage = item && `url("${iconUrl(item)}")`;
         box.textContent = item ? "" : itemName(gearSlot);
+        box.dataset.count = countShown(gearSlot);
       }
     },
     /** In raw numbers, as the bottom bar's health is (issue #216). */
     drawStats(me: SyncedPlayer) {
-      const hit = hitOf(me);
+      // A bow's rows are a shot's (Ranged spec §4).
+      const hit = rangedWeaponOf(me) ? rangedHitOf(me) : hitOf(me);
       const avoidance = avoidanceOf(me);
       const block = blockOf(me);
       const health = maxHealthOf(me);
@@ -184,7 +215,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         `Hit chance ${percent(hit.chance)}`,
         `Min hit ${withSplit(hit.min, hit.gear)}`,
         `Max hit ${withSplit(hit.max, hit.gear)}`,
-        `Critical ${percent(PLAYER_CRIT_CHANCE)} ×${PLAYER_CRIT_MULTIPLIER}`,
+        `Critical ${percent(playerCritChance(me.agilityXp))} ×${PLAYER_CRIT_MULTIPLIER}`,
         `Avoidance ${withSplit(avoidance.skill, avoidance.gear, (points) => points.toFixed(1))}`,
         `Block ${block ? withSplit(block.skill, block.shield, percent) : percent(0)}`,
         `Armour ${armourPercentOf(me)}%`,
@@ -194,6 +225,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
         stats.replaceChildren(...lines.map(() => document.createElement("li")));
       lines.forEach((line, i) => (stats.children[i]!.textContent = line));
     },
+    drawStance,
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {
       const count = me.pinnedSkills.length;

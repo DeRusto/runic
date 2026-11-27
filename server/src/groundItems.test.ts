@@ -14,7 +14,6 @@ function world() {
   const save = {
     x: 1,
     y: 1,
-    combatXp: 0,
     defenseXp: 0,
     herblawXp: 0,
     hitpointsXp: 4050,
@@ -52,15 +51,15 @@ test("dropping a slot leaves its whole stack on the player's tile, and empties t
   expect(alice.inventoryCounts[0]).toBe(0);
 });
 
-test("several drops on one tile stay separate ground items", () => {
+test("several drops of the same item on one tile stay separate ground items", () => {
   const sim = world();
+  sim.queueDrop("a", 0, 5);
+  sim.tick();
   sim.queueDrop("a", 0, 20);
   sim.tick();
-  sim.queueDrop("a", 1, 20);
-  sim.tick();
   expect(groundItems(sim)).toEqual([
-    { x: 1, y: 1, item: "copperOre", count: 12 },
-    { x: 1, y: 1, item: "copperSword", count: 1 },
+    { x: 1, y: 1, item: "copperOre", count: 5 },
+    { x: 1, y: 1, item: "copperOre", count: 7 },
   ]);
 });
 

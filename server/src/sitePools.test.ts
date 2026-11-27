@@ -61,7 +61,6 @@ function addAt(who: string, { x, y }: Tile) {
       y,
       miningXp: 0,
       tools: ["pickaxe"],
-      combatXp: 0,
       defenseXp: 0,
       herblawXp: 0,
       hitpointsXp: 4050,

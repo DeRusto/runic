@@ -1,369 +1,57 @@
-import { ArraySchema, schema, t } from "@colyseus/schema";
+import { ArraySchema } from "@colyseus/schema";
 import {
-  addItems,
-  addXp,
-  AUGMENTATIONS,
-  attemptChance,
-  COMBAT_LOCK_TICKS,
-  COINS,
-  dealRefusal,
-  dealTotals,
-  DELICIOUS_BUFF_INTERVAL_TICKS,
-  DELICIOUS_BUFF_PERCENT,
-  DELICIOUS_BUFF_TICKS,
-  DOUBLE_YIELD,
-  EAT_INTERVAL_TICKS,
-  EAT_SWING_DELAY_TICKS,
-  EMPTY_SLOT,
-  FIGHT_BACK_DELAY_TICKS,
-  FIRES,
-  FOOD_HEALS,
-  gatheringSource,
-  gatherRefusal,
-  GATHERING,
   GATHERING_SKILLS,
-  gearOf,
-  GEAR_SLOTS,
-  gearRefusal,
-  HEALING_POOL_INTERVAL_TICKS,
-  INVENTORY_SLOTS,
-  ITEMS,
-  levelFor,
-  LIGHTING_TICKS,
-  lightRefusal,
   logoutRefusal,
-  maxHealthOf,
-  makeRefusal,
-  make,
-  makingOf,
-  makingSkillOf,
-  stationOf,
-  type MakeItem,
-  moveStack,
-  MASTERY_SHARE_PERCENT,
   MAX_PINNED_SKILLS,
-  pickIntervalTicks,
-  potionFromPlant,
-  potionOf,
-  POTIONS,
-  POTION_BUFF_TICKS,
-  AVOIDANCE_POTION_POINTS,
-  FORTITUDE_POTION_PERCENT,
-  MIGHT_POTION_HIT,
-  mixRefusal,
-  removeItems,
-  PLAYER_DEAD_TICKS,
-  RECIPES,
-  REGEN_INTERVAL_TICKS,
-  REGEN_PERCENT_OF_MAX_HEALTH,
-  groundBlocks,
   respawnTile,
-  rollCatch,
-  rollFinds,
-  findItemOf,
-  identifyEssence,
   siteId,
-  SHELF_SLOTS,
   SKILLS,
-  slotFor,
-  takeRefusal,
-  stationRefusal,
-  tilesApart,
-  SWING_INTERVAL_TICKS,
-  BANK_SLOTS,
-  bankRefusal,
-  bankSlotFor,
-  depositRefusal,
-  itemParts,
-  aTool,
-  VILLAGERS,
-  WALK_TICKS_PER_TILE,
-  choicesNodeOf,
-  countOf,
-  QUEST_DONE,
-  currentQuestOf,
-  openingNodeOf,
-  stageOf,
-  turnInsOf,
-  ENEMIES,
-  QUESTS,
-  type QuestId,
   type Deal,
-  type DealLine,
-  offers,
-  type DialogueAction,
-  nodesOf,
-  type Quest,
-  type QuestTurnIn,
-  type Tool,
-  type Villager,
-  type VillagerId,
-  type GatheringLeftField,
   type GatheringSkill,
-  type PlayerAction,
-  type FireLog,
   type GearSlot,
-  type ItemId,
   type SitePool,
-  type StationKind,
-  type Virtue,
   type Tile,
   type TileKind,
   type WorldEvent,
-  type XpField,
-  enemyHit,
-  itemTag,
-  lightTileAt,
-  playerHit,
-  type LootWon,
-  PICKPOCKET_INTERVAL_TICKS,
-  PICKPOCKETS,
-  pickpocketRefusal,
-  type MarkId,
-  type PickpocketTarget,
 } from "@runic/shared";
-import { canBeHit, isBusy, type Busy } from "./busy.ts";
-import { Enemies, Enemy } from "./enemies.ts";
-import { GroundItem, GroundItems } from "./groundItems.ts";
+import { Agility } from "./agility.ts";
+import { Bank } from "./banking.ts";
+import { dropFromSlot } from "./dropping.ts";
+import { Eating } from "./eating.ts";
+import { Enemies } from "./enemies.ts";
+import { Fighting } from "./fighting.ts";
+import { Firemaking } from "./firemaking.ts";
+import { Gathering } from "./gathering.ts";
+import { GatheringSites } from "./gatheringSites.ts";
+import { Gear } from "./gear.ts";
+import { GeneralStore } from "./generalStore.ts";
+import { Inventory } from "./inventory.ts";
+import { Making } from "./making.ts";
+import { mixPotion } from "./mixing.ts";
+import type { QueuedAction } from "./playerActions.ts";
 import { newSave, saveOf, syncedOf } from "./playerSave.ts";
-import { Shelf } from "./shelf.ts";
-import { pickpocket } from "./thieving.ts";
-import {
-  findPath,
-  legalSteps,
-  nextTo,
-  pathNextTo,
-  tilesNextTo,
-} from "./pathfinding.ts";
+import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
-import type { QuestProgress } from "@runic/shared";
-
-/** What opens and closes each kind of villager window, and what a hit makes the villager do. */
-const WINDOWS = {
-  talk: { closed: "talkEnded", hit: "stops talking" },
-  store: { opened: "storeOpened", closed: "storeClosed", hit: "stops trading" },
-  bank: { opened: "bankOpened", closed: "bankClosed", hit: "shuts the bank" },
-} as const;
-type VillagerWindow = keyof typeof WINDOWS;
-
-/** The Hitpoints level × 100, plus the Fortitude of every worn piece (spec §2). */
-const maxHealthTotal = (
-  player: { hitpointsXp: number } & Partial<Record<GearSlot, string>>,
-) => {
-  const { skill, gear } = maxHealthOf(player);
-  return skill + gear;
-};
-
-/**
- * A tray's lines copied out of an untrusted payload, or undefined if it isn't a list of at most
- * `max` items, each with a whole count above 0.
- */
-function dealLines(list: unknown, max: number) {
-  if (!Array.isArray(list) || list.length > max) return undefined;
-  const lines = list.map((line) => ({ item: line?.item, count: line?.count }));
-  return lines.every(
-    (line) => typeof line.item === "string" && isAmount(line.count),
-  )
-    ? (lines as DealLine[])
-    : undefined;
-}
-
-const isInventorySlot = (slot: number) =>
-  Number.isInteger(slot) && slot >= 0 && slot < INVENTORY_SLOTS;
-const isBankSlot = (slot: number) =>
-  Number.isInteger(slot) && slot >= 0 && slot < BANK_SLOTS;
-const isAmount = (amount: number) => Number.isInteger(amount) && amount > 0;
-
-const xpField = () => t.uint32().default(0);
-/** One synced experience field per skill, so a new row in `SKILLS` needs no edit here. */
-const XP_FIELDS = Object.fromEntries(
-  SKILLS.map(([, field]) => [field, xpField()]),
-) as Record<(typeof SKILLS)[number][1], ReturnType<typeof xpField>>;
-
-export const Player = schema(
-  {
-    username: t.string(),
-    x: t.uint8(),
-    y: t.uint8(),
-    ...XP_FIELDS,
-    /** The fraction of a point of Mastery not yet earned, so small gains add up. */
-    masteryHundredths: t.uint8().default(0),
-    /** Each started quest's id, in the order they were started (#231). */
-    quests: t.array("string"),
-    /** Parallel to `quests`: the stage it's on, or "done" (#231). */
-    questStages: t.array("string"),
-    /** The quest points finished quests have awarded (#231). */
-    questPoints: t.uint16().default(0),
-    /** Whether the player knows the veins' strange material for rune essence, taught by Odo's second quest (#232). */
-    identifiesEssence: t.boolean().default(false),
-    /** In any order; the sheet's order decides how they show. */
-    pinnedSkills: t.array("string"),
-    health: t.uint16(),
-    maxHealth: t.uint16(),
-    inventory: t.array("string"),
-    /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
-    inventoryCounts: t.array("uint32"),
-    tools: t.array("string"),
-    /** Like `inventory`, `BANK_SLOTS` long. Tagged for views: the room adds each player to their own view only, so nobody else sees it. */
-    bank: t.array("string").view(),
-    /** Parallel to `bank`, and uncapped. */
-    bankCounts: t.array("uint32").view(),
-    /** The item id worn in each gear slot, or "". */
-    weapon: t.string().default(""),
-    shield: t.string().default(""),
-    head: t.string().default(""),
-    body: t.string().default(""),
-    legs: t.string().default(""),
-    hands: t.string().default(""),
-    feet: t.string().default(""),
-    cape: t.string().default(""),
-    neck: t.string().default(""),
-    ring: t.string().default(""),
-    /** The id of the enemy this player is after, or "". */
-    target: t.string().default(""),
-    action: t.string<PlayerAction>().default(""),
-    dead: t.boolean().default(false),
-  },
-  "Player",
-);
-
-export const Bush = schema({ picksLeft: t.uint8() }, "Bush");
-
-export const Vein = schema({ minesLeft: t.uint8() }, "Vein");
-
-export const Tree = schema({ chopsLeft: t.uint8() }, "Tree");
-
-export const FishingSpot = schema({ catchesLeft: t.uint8() }, "FishingSpot");
-
-/** A fire a player has lit, keyed in state by its tile: the log it burns, which sets its tier, and the tick it despawns on (#224). */
-export const Fire = schema(
-  { log: t.string<FireLog>(), endTick: t.uint32() },
-  "Fire",
-);
-
-const SITE_SCHEMAS = {
-  bushes: Bush,
-  veins: Vein,
-  trees: Tree,
-  fishingSpots: FishingSpot,
-};
-
-export const WorldState = schema(
-  {
-    tick: t.uint32().default(0),
-    players: t.map(Player),
-    enemies: t.map(Enemy),
-    bushes: t.map(Bush),
-    veins: t.map(Vein),
-    trees: t.map(Tree),
-    fishingSpots: t.map(FishingSpot),
-    /** Every burning fire, keyed by its tile, visible to everyone (#224). */
-    fires: t.map(Fire),
-    /** Tagged for views: the room adds each one to the views of the players who can see it. */
-    groundItems: t.map(GroundItem).view(),
-    /** The general store's shelf, the same for every player: item ids, and parallel to them how many. */
-    shelf: t.array("string"),
-    shelfCounts: t.array("uint32"),
-  },
-  "WorldState",
-);
-
-/** A site pool, with the ticks its run-out sites come back on, soonest first. */
-type SitePoolState = SitePool & { comebackTicks: number[] };
-
-/** A gathering site: where it is and what it is, its synced entry, and when it grows back or which pool it comes back in. */
-type GatheringSite = Tile & {
-  skill: GatheringSkill;
-  kind: string;
-  synced: Partial<Record<GatheringLeftField, number>>;
-  regrowTick?: number;
-  pool?: SitePoolState;
-};
-
-/** What a player is doing, beyond walking. Each kind but visiting is also its synced `PlayerAction`. */
-type UnsyncedAction =
-  | { kind: "fighting"; enemy: string }
-  | { kind: GatheringSkill; site: string }
-  | {
-      kind: "visiting";
-      villager: VillagerId;
-      then?: Exclude<DialogueAction, "quest">;
-    }
-  | { kind: "taking"; groundItem: string }
-  | { kind: "following"; player: string }
-  /** One attempt on arrival, once the attempt interval allows (#250). */
-  | { kind: "pickpocketing"; target: PickpocketTarget }
-  /**
-   * `item` is a recipe's product or an augmentation (#225), `all` for Make all, and `at` names
-   * the fire a range recipe cooks at (#224). `doneTick` stays unset until arrival starts the
-   * first wait.
-   */
-  | {
-      kind: "making";
-      item: MakeItem;
-      all: boolean;
-      at?: Tile;
-      doneTick?: number;
-    }
-  /** The log is already burnt: a new click or a death during the lighting loses it (#224). */
-  | { kind: "lighting"; log: FireLog; doneTick: number };
-
-/** A click waiting for the next tick, named for the action it starts. */
-type QueuedAction =
-  | { kind: "walking"; to: Tile }
-  | { kind: "fighting"; enemy: string }
-  | { kind: "gathering"; skill: GatheringSkill; site: string }
-  | {
-      kind: "visiting";
-      villager: VillagerId;
-      then?: Exclude<DialogueAction, "quest">;
-    }
-  | { kind: "making"; item: MakeItem; all: boolean; at?: Tile }
-  | { kind: "lighting"; slot: number }
-  | { kind: "taking"; groundItem: string }
-  | { kind: "following"; player: string }
-  | { kind: "pickpocketing"; target: PickpocketTarget };
+import { Taking } from "./taking.ts";
+import { ThievingTargets } from "./thievingTargets.ts";
+import { VillagerWindows } from "./villagerWindows.ts";
+import { Walking } from "./walking.ts";
+import {
+  isAmount,
+  isInventorySlot,
+  maxHealthTotal,
+  World,
+} from "./worldContext.ts";
+import { Player } from "./worldState.ts";
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
-  state = new WorldState();
+  private readonly world: World;
+  readonly state: World["state"];
+  /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
+  readonly events: WorldEvent[];
   /** Only the latest click per player counts, so a flood of them costs one path per tick. */
   private queuedActions = new Map<string, QueuedAction>();
-  /** What a player's action and timers need that clients don't. */
-  private unsyncedPlayers = new Map<
-    string,
-    {
-      path: Tile[];
-      nextStepTick: number;
-      nextSwingTick: number;
-      action?: UnsyncedAction;
-      /** Outlives the action, so clicking again can't beat the attempt interval. */
-      nextAttemptTick: number;
-      nextEatTick: number;
-      /** What each healing tick still to come gives, in eating order. Not saved, so leaving loses it (spec §6). */
-      healingPool: number[];
-      /** A Delicious fish's buff, or none: its fish's per-tick heal, when it next heals and the tick it runs out on. Not saved (spec §6, #221). */
-      delicious?: { perTick: number; nextHealTick: number; endTick: number };
-      /**
-       * A Virtue potion's buff, or none: its Virtue, the tick it runs out on and the health
-       * a Fortitude one added, which the hit and Avoidance read from too. Not saved
-       * (spec §6, #222).
-       */
-      potion?: { virtue: Virtue; endTick: number; bonus: number };
-      /** The combat lock runs until this tick. */
-      lockEndTick: number;
-      /** A stun, or later Agility's crossing (#236). Not saved: leaving ends it. */
-      busy?: Busy;
-      respawnTick: number;
-      /** Each started quest's progress, by quest id, kept for the save (#231). */
-      quests: Map<string, { stage: string; turns: number }>;
-      dropped?: boolean;
-    }
-  >();
-  /** Apart from the action, which eating doesn't replace (spec §4). */
-  private queuedEats = new Map<string, number>();
-  /** Apart from the action too, which dropping doesn't replace (spec §4). */
-  private queuedDrops = new Map<string, { slot: number; amount: number }>();
   /** By username, so joining again can't beat the attempt or eat interval. */
   private timersOfLeavers = new Map<
     string,
@@ -371,114 +59,68 @@ export class Simulation {
   >();
   /** Every enemy, which fights on its own and tells the world its swings and loot. */
   private enemies: Enemies;
-  /** Every gathering site, by the tile that keys it. */
-  private sites = new Map<string, GatheringSite>();
-  private villagers = new Map<VillagerId, Tile>();
-  private marks = new Map<MarkId, Tile>();
-  /**
-   * Each player's open villager window, the villager they must stay beside, and for a
-   * conversation the node whose choices they can pick from, if any. A player has at most one.
-   */
-  private windows = new Map<
-    string,
-    { kind: VillagerWindow; villager: VillagerId; node?: string }
-  >();
-  /** What each choice's action but a quest's does, with the villager who offered it; the choice has already been checked. A quest's runs in `choose`, where it decides where the talk moves to (#231). */
-  private readonly dialogueActions: Record<
-    Exclude<DialogueAction, "quest">,
-    (id: string, villager: VillagerId) => void
-  > = {
-    giveTools: (id, villager) => this.giveTools(id, villager),
-    openStore: (id, villager) => this.openWindow(id, "store", villager),
-    openBank: (id, villager) => this.openWindow(id, "bank", villager),
-  };
-  private readonly shelf = new Shelf(this.state.shelf, this.state.shelfCounts);
-  /** Each station's tiles: the furnace covers four. */
-  private stations: Partial<Record<StationKind, Tile[]>> = {};
+  private readonly sites: GatheringSites;
+  private readonly gathering: Gathering;
+  private readonly firemaking: Firemaking;
+  private readonly making: Making;
+  private readonly quests: Quests;
+  private readonly windows: VillagerWindows;
+  private readonly bank: Bank;
+  private readonly store: GeneralStore;
+  private readonly gear: Gear;
+  private readonly eating: Eating;
+  private readonly fighting: Fighting;
+  private readonly thieving: ThievingTargets;
+  private readonly walking: Walking;
+  private readonly agility: Agility;
+  private readonly inventory: Inventory;
+  private readonly taking: Taking;
   private queuedLogouts = new Set<string>();
   /** Players whose log out intent was accepted, for the room to disconnect. */
   readonly loggedOut: string[] = [];
-  private readonly groundItems = new GroundItems(this.state.groundItems);
-  /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
-  readonly events: WorldEvent[] = [];
-
-  /** The region's tiles, copied so that a pooled site can block its spot only while it's there. */
-  private tiles: TileKind[][];
-  /** Each site pool, with the ticks its run-out sites come back on, soonest first. Not saved: a restart picks again. */
-  private pools: SitePoolState[];
 
   constructor(
     tiles: TileKind[][],
     readonly random: () => number,
     pools: SitePool[] = [],
   ) {
-    this.tiles = tiles.map((row) => row.map((tile) => ({ ...tile })));
-    tiles.forEach((row, y) =>
-      row.forEach((kind, x) => {
-        const { villager, mark, station } = kind;
-        if (villager) this.villagers.set(villager, { x, y });
-        if (mark) this.marks.set(mark, { x, y });
-        if (station) (this.stations[station] ??= []).push({ x, y });
-        for (const skill of GATHERING_SKILLS) {
-          const siteKind = kind[GATHERING[skill].site];
-          if (siteKind) this.addSite(skill, siteKind, { x, y });
-        }
-      }),
+    // Through `this.random` at each roll, so a test can stub it after construction.
+    this.world = new World(tiles, () => this.random());
+    this.state = this.world.state;
+    this.events = this.world.events;
+    this.quests = new Quests(this.world);
+    this.windows = new VillagerWindows(this.world, this.quests);
+    this.bank = new Bank(this.world, this.windows);
+    this.store = new GeneralStore(this.world, this.windows);
+    this.gear = new Gear(this.world);
+    this.eating = new Eating(this.world);
+    this.inventory = new Inventory(this.world);
+    this.taking = new Taking(this.world);
+    this.sites = new GatheringSites(this.world);
+    this.firemaking = new Firemaking(this.world);
+    this.making = new Making(this.world);
+    this.gathering = new Gathering(this.world, this.sites, this.quests);
+    this.enemies = new Enemies(
+      this.world.tiles,
+      this.state.enemies,
+      this.random,
     );
-    this.enemies = new Enemies(this.tiles, this.state.enemies, this.random);
-    this.pools = pools.map((pool) => ({ ...pool, comebackTicks: [] }));
-    for (const pool of this.pools)
-      for (let i = 0; i < pool.active; i++) this.placePooledSite(pool);
-  }
-
-  /** A full site on `tile`, which blocks while it's there. */
-  private addSite(
-    skill: GatheringSkill,
-    kind: string,
-    { x, y }: Tile,
-    pool?: SitePoolState,
-  ) {
-    const { site, stateField, leftField } = GATHERING[skill];
-    const id = siteId({ x, y });
-    const synced = Object.assign(new SITE_SCHEMAS[stateField](), {
-      [leftField]: gatheringSource(skill, kind).holds,
-    });
-    // The row keeps the schema and its map together, which the types can't follow.
-    this.state[stateField].set(id, synced as never);
-    this.sites.set(id, { x, y, skill, kind, synced, pool });
-    Object.assign(this.tiles[y]![x]!, { [site]: kind, blocks: true });
-  }
-
-  /** A full site on a free spot of `pool`, picked at random: false if every spot has a site, a player, an enemy or a ground item on it. */
-  private placePooledSite(pool: SitePoolState) {
-    const standing = [
-      ...this.state.players.values(),
-      ...this.state.enemies.values(),
-      ...this.state.groundItems.values(),
-    ];
-    const free = pool.spots.filter(
-      (spot) =>
-        !this.sites.has(siteId(spot)) &&
-        !standing.some(({ x, y }) => x === spot.x && y === spot.y),
+    this.fighting = new Fighting(
+      this.world,
+      this.enemies,
+      this.windows,
+      this.quests,
     );
-    if (!free.length) return false;
-    const spot = free[Math.floor(this.random() * free.length)]!;
-    this.addSite(pool.skill, pool.kind, spot, pool);
-    return true;
-  }
-
-  /** Takes a run-out pooled site off its spot, to come back somewhere in its pool after its regrow time. */
-  private removePooledSite(site: GatheringSite, pool: SitePoolState) {
-    const { site: field, stateField } = GATHERING[site.skill];
-    const id = siteId(site);
-    this.sites.delete(id);
-    this.state[stateField].delete(id);
-    const tile = this.tiles[site.y]![site.x]!;
-    delete tile[field];
-    tile.blocks = groundBlocks(tile.ground);
-    pool.comebackTicks.push(
-      this.state.tick + gatheringSource(site.skill, site.kind).regrowTicks,
+    this.thieving = new ThievingTargets(this.world, this.fighting);
+    this.agility = new Agility(this.world);
+    this.walking = new Walking(
+      this.world,
+      this.sites,
+      this.thieving,
+      this.firemaking,
+      this.agility,
     );
+    this.sites.placePools(pools);
   }
 
   /** `saved` is the account's last save; without one, this is a new account. */
@@ -500,8 +142,9 @@ export class Simulation {
     player.questStages = new ArraySchema(
       ...Object.values(questProgress).map(({ stage }) => stage),
     );
+    Object.assign(player, this.agility.strandedExit(player));
     this.state.players.set(id, player);
-    this.unsyncedPlayers.set(id, {
+    this.world.unsyncedPlayers.set(id, {
       path: [],
       nextStepTick: 0,
       nextSwingTick: 0,
@@ -517,36 +160,15 @@ export class Simulation {
   }
 
   private loginSave(saved: PlayerSave | undefined): PlayerSave {
-    const respawn = respawnTile(this.tiles);
+    const respawn = respawnTile(this.world.tiles);
     if (!saved) return newSave(respawn);
-    const tile = this.tiles[saved.y]?.[saved.x];
+    const tile = this.world.tiles[saved.y]?.[saved.x];
     if (tile && !tile.blocks) return saved;
     // A pooled site may have come back on the spot they logged out on.
     const nearest = this.sites.has(siteId(saved))
-      ? this.nearestPastSites(saved)
+      ? this.sites.nearestPastSites(saved)
       : undefined;
     return { ...saved, ...(nearest ?? respawn) };
-  }
-
-  /** The fewest steps from `from` to a walkable tile, walking through sites as if they had run out: undefined if nothing else is in reach. */
-  private nearestPastSites(from: Tile): Tile | undefined {
-    const throughSites = this.tiles.map((row, y) =>
-      row.map((tile, x) =>
-        this.sites.has(siteId({ x, y })) ? { ...tile, blocks: false } : tile,
-      ),
-    );
-    const seen = new Set([siteId(from)]);
-    const queue = [from];
-    // Breadth-first, so the first walkable tile found is the fewest steps away.
-    for (const tile of queue) {
-      if (!this.tiles[tile.y]![tile.x]!.blocks) return tile;
-      for (const next of legalSteps(throughSites, tile)) {
-        if (seen.has(siteId(next))) continue;
-        seen.add(siteId(next));
-        queue.push(next);
-      }
-    }
-    return undefined;
   }
 
   /** What to write to the database for this player, if they're in the region. */
@@ -555,111 +177,72 @@ export class Simulation {
     if (!player) return undefined;
     return {
       ...saveOf(player),
-      // Each quest's stage and repeat turn-ins done, beside the xp columns (#231). The generic
-      // save writes `quests` as a plain array of ids, so the progress record replaces it.
-      quests: Object.fromEntries(
-        [...player.quests].map((quest, at) => [
-          quest,
-          {
-            stage: player.questStages[at]!,
-            turns: this.unsyncedPlayers.get(id)?.quests.get(quest)?.turns ?? 0,
-          },
-        ]),
-      ),
+      // The generic save writes `quests` as a plain array of ids, so the progress record replaces it.
+      quests: this.quests.progressOf(id),
       // Or a save during death could bring someone back with 0 health (D13).
-      ...(player.dead && this.respawned(player)),
+      ...(player.dead && this.fighting.respawned(player)),
     };
-  }
-
-  /** What dying changes, once it's over. */
-  private respawned(player: InstanceType<typeof Player>) {
-    return { ...respawnTile(this.tiles), health: player.maxHealth };
   }
 
   removePlayer(id: string) {
     const username = this.state.players.get(id)?.username;
-    const unsynced = this.unsyncedPlayers.get(id);
+    const unsynced = this.world.unsyncedPlayers.get(id);
     if (username && unsynced) {
       const { nextAttemptTick, nextEatTick } = unsynced;
       this.timersOfLeavers.set(username, { nextAttemptTick, nextEatTick });
     }
     this.state.players.delete(id);
-    this.unsyncedPlayers.delete(id);
+    this.world.unsyncedPlayers.delete(id);
     this.queuedActions.delete(id);
-    this.queuedEats.delete(id);
-    this.queuedDrops.delete(id);
+    this.world.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
-    this.windows.delete(id);
-    this.stopFollowersOf(id);
+    this.windows.forget(id);
+    this.world.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
     this.enemies.forget(id);
   }
 
   /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
   dropPlayer(id: string) {
-    this.clearAction(id);
-    this.unsyncedPlayers.get(id)!.dropped = true;
-    this.windows.delete(id);
+    this.world.clearAction(id);
+    this.world.unsyncedPlayers.get(id)!.dropped = true;
+    this.windows.forget(id);
     this.queuedActions.delete(id);
-    this.queuedEats.delete(id);
-    this.queuedDrops.delete(id);
+    this.world.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
     this.queuedLogouts.delete(id);
   }
 
-  /** Death or logout on the target's side ends following too. */
-  private stopFollowersOf(target: string) {
-    for (const [id, { action }] of this.unsyncedPlayers) {
-      if (action?.kind === "following" && action.player === target)
-        this.clearAction(id);
-    }
-  }
-
-  private clearAction(id: string) {
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    unsynced.path = [];
-    unsynced.action = undefined;
-    Object.assign(this.state.players.get(id)!, { target: "", action: "" });
-  }
-
   reconnectPlayer(id: string) {
-    this.unsyncedPlayers.get(id)!.dropped = false;
+    this.world.unsyncedPlayers.get(id)!.dropped = false;
   }
 
   lockRunning(id: string) {
-    return this.state.tick < (this.unsyncedPlayers.get(id)?.lockEndTick ?? 0);
+    return this.world.lockRunning(id);
+  }
+
+  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
+  lock(id: string) {
+    this.world.lock(id);
   }
 
   queueLogout(id: string) {
-    if (this.state.players.has(id)) this.queuedLogouts.add(id);
-  }
-
-  /** Checked as an intent arrives. Enough, since death comes after intents apply in a tick. */
-  private alive(id: string) {
-    const player = this.state.players.get(id);
-    return player !== undefined && !player.dead;
-  }
-
-  /**
-   * Alive and not busy: a busy player's clicks are ignored, not saved for later (#236). Checked as
-   * an intent arrives, like `alive`, against the next tick, the one it would apply on: not the
-   * current one, or a click sent just after the stun's last tick would be lost too.
-   */
-  private canAct(id: string) {
-    const busy = this.unsyncedPlayers.get(id)?.busy;
-    return this.alive(id) && !isBusy(busy, this.state.tick + 1);
+    if (this.state.players.has(id) && !this.world.isCrossing(id))
+      this.queuedLogouts.add(id);
   }
 
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
   queueWalk(id: string, to: Tile) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!Number.isInteger(to?.x) || !Number.isInteger(to?.y)) return;
-    if (!this.tiles[to.y]?.[to.x]) return;
+    if (!this.world.tiles[to.y]?.[to.x]) return;
     this.queuedActions.set(id, { kind: "walking", to: { x: to.x, y: to.y } });
   }
 
   /** `enemy` comes straight off the network, so anything but a live enemy's id is ignored. */
   queueTarget(id: string, enemy: string) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     const target = this.state.enemies.get(enemy);
     if (!target || target.state === "dead") return;
     this.queuedActions.set(id, { kind: "fighting", enemy });
@@ -667,7 +250,7 @@ export class Simulation {
 
   /** `target` is a player's session id, checked by the room's /follow command. */
   follow(id: string, target: string) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     this.queuedActions.set(id, { kind: "following", player: target });
   }
 
@@ -675,69 +258,24 @@ export class Simulation {
   following(id: string) {
     const queued = this.queuedActions.get(id);
     if (queued) return queued.kind === "following" ? queued.player : undefined;
-    const action = this.unsyncedPlayers.get(id)?.action;
+    const action = this.world.unsyncedPlayers.get(id)?.action;
     return action?.kind === "following" ? action.player : undefined;
   }
 
   unfollow(id: string) {
     if (!this.following(id)) return;
     this.queuedActions.delete(id);
-    this.clearAction(id);
+    this.world.clearAction(id);
   }
 
-  /** `site` comes straight off the network, so anything but the id of this skill's site is ignored, as is a click the rules refuse. */
+  /** `site` comes straight off the network; see `GatheringSites.gatherIntent`. */
   queueGather(id: string, skill: GatheringSkill, site: string) {
-    const player = this.state.players.get(id);
-    const found = this.sites.get(site);
-    if (!player || found?.skill !== skill || !this.canAct(id)) return;
-    if (this.siteRefusal(found, player)) return;
-    this.queuedActions.set(id, { kind: "gathering", skill, site });
+    this.queue(id, () => this.sites.gatherIntent(id, skill, site));
   }
 
-  private siteRefusal(
-    { skill, kind, synced }: GatheringSite,
-    player: InstanceType<typeof Player>,
-  ) {
-    const left = synced[GATHERING[skill].leftField]!;
-    return gatherRefusal(skill, kind, left, player);
-  }
-
-  /**
-   * Comes straight off the network, so anything but a recipe's product or an augmentation is
-   * ignored, as is choosing an anvil recipe with no hammer. `at` names the fire to cook at
-   * instead of the range, and is refused unless one burns there. Level and materials wait for
-   * arrival (spec §4, #225).
-   */
+  /** Comes straight off the network; see `Making.makeIntent`. */
   queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
-    const player = this.state.players.get(id);
-    const { item, all, at } = intent ?? {};
-    // A string first: an array of one would pass hasOwn by turning into its element.
-    if (!player || !this.canAct(id) || typeof item !== "string") return;
-    if (!Object.hasOwn(RECIPES, item) && !Object.hasOwn(AUGMENTATIONS, item))
-      return;
-    const wanted = item as MakeItem;
-    const station = stationOf(wanted);
-    // `at` names the fire to make at, for a Making skill made over one (#224).
-    let fire: Tile | undefined;
-    if (at) {
-      const { x, y } = at as Partial<Tile>;
-      if (
-        !makingSkillOf(wanted).places.includes("fire") ||
-        !Number.isInteger(x) ||
-        !Number.isInteger(y) ||
-        !this.state.fires.has(siteId({ x, y } as Tile))
-      )
-        return;
-      fire = { x: x!, y: y! };
-    } else if (!this.stations[station] || stationRefusal(station, player)) {
-      return;
-    }
-    this.queuedActions.set(id, {
-      kind: "making",
-      item: wanted,
-      all: all === true,
-      at: fire,
-    });
+    this.queue(id, () => this.making.makeIntent(id, intent));
   }
 
   /**
@@ -746,482 +284,128 @@ export class Simulation {
    * standing on the tile already (#224).
    */
   queueLight(id: string, slot: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
     this.queuedActions.set(id, { kind: "lighting", slot });
   }
 
-  /**
-   * Both come straight off the network, so a villager who isn't standing in this region is
-   * ignored, as is a `then` their conversation doesn't offer.
-   */
+  /** Both come straight off the network; see `VillagerWindows.visitIntent`. */
   queueVisit(id: string, villager: string, then?: string) {
-    if (!this.canAct(id) || !this.villagers.has(villager as VillagerId)) return;
-    const visit = {
-      kind: "visiting",
-      villager: villager as VillagerId,
-    } as const;
-    if (then === undefined) this.queuedActions.set(id, visit);
-    else if (offers(visit.villager, then))
-      this.queuedActions.set(id, {
-        ...visit,
-        then: then as Exclude<DialogueAction, "quest">,
-      });
+    this.queue(id, () => this.windows.visitIntent(villager, then));
   }
 
-  /** `target` comes straight off the network, so anything but a mark standing in this region is ignored, as is a click the rules refuse (#250). */
+  /** Queues a click for the next tick, if the player can act and it asks for anything. Nothing in the payload is read until the player is known to act. */
+  private queue(id: string, intentOf: () => QueuedAction | undefined) {
+    if (!this.world.canAct(id)) return;
+    const action = intentOf();
+    if (action) this.queuedActions.set(id, action);
+  }
+
+  /** `target` comes straight off the network; see `ThievingTargets.pickpocketIntent`. */
   queuePickpocket(id: string, target: unknown) {
-    const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || typeof target !== "string") return;
-    if (!this.marks.has(target as MarkId)) return;
-    const mark = target as MarkId;
-    if (pickpocketRefusal(PICKPOCKETS[mark], player.thievingXp)) return;
-    this.queuedActions.set(id, { kind: "pickpocketing", target: mark });
+    this.queue(id, () => this.thieving.pickpocketIntent(id, target));
   }
 
-  /** Whether the player is busy this tick: stunned, or later crossing an Agility obstacle (#236). */
+  /** `stall` comes straight off the network; see `ThievingTargets.stealIntent`. */
+  queueSteal(id: string, stall: unknown) {
+    this.queue(id, () => this.thieving.stealIntent(id, stall));
+  }
+
+  /** `strongbox` comes straight off the network; see `ThievingTargets.openIntent`. */
+  queueOpen(id: string, strongbox: unknown) {
+    this.queue(id, () => this.thieving.openIntent(id, strongbox));
+  }
+
+  /** Queues a crossing for an obstacle named by the client. */
+  queueCross(id: string, obstacle: unknown) {
+    this.queue(id, () => this.agility.crossIntent(id, obstacle));
+  }
+
+  /** Whether the player is busy this tick: stunned or crossing an Agility obstacle (#236). */
   isBusy(id: string) {
-    return isBusy(this.unsyncedPlayers.get(id)?.busy, this.state.tick);
+    return this.world.isBusy(id);
   }
 
   /** Makes the player busy for `ticks` from now: whatever they were doing stops, and their clicks are ignored until it ends (#236). */
-  makeBusy(id: string, ticks: number, { hittable }: { hittable: boolean }) {
-    this.clearAction(id);
-    this.unsyncedPlayers.get(id)!.busy = {
-      endTick: this.state.tick + ticks,
-      hittable,
-    };
+  makeBusy(id: string, ticks: number, busy: { hittable: boolean }) {
+    this.world.makeBusy(id, ticks, busy);
   }
 
-  /** `choice` comes straight off the network, so anything but the index of one of the current choices is ignored, as is a player no longer beside the villager. */
+  /** `choice` comes straight off the network; see `VillagerWindows.choose`. */
   choose(id: string, choice: number) {
-    if (!this.canAct(id)) return;
-    const talk = this.windowOf(id, "talk");
-    if (!talk?.node || !Number.isInteger(choice)) return;
-    const picked = nodesOf(talk.villager)[talk.node]!.choices![choice];
-    if (!picked || !this.beside(id, talk.villager)) return;
-    // A quest choice is the server's check: a turn-in it refuses keeps the node, which the box shows again from its first line (#231).
-    if (picked.action === "quest") {
-      if (!this.advanceQuest(id, talk.villager)) {
-        this.moveTalk(id, talk.villager, talk.node);
-        return;
-      }
-      this.moveTalk(id, talk.villager, picked.to);
-      return;
-    }
-    this.moveTalk(id, talk.villager, picked.to);
-    if (picked.action) this.dialogueActions[picked.action](id, talk.villager);
+    this.windows.choose(id, choice);
   }
 
   /** The player closed the conversation, so walking away later says nothing. */
   endTalk(id: string) {
-    this.closeWindow(id, "talk");
-  }
-
-  /**
-   * A conversation with no choices left stays open, with no node, until the box has shown its
-   * last lines and sends endTalk, so walking away or a hit still closes the box.
-   */
-  private moveTalk(id: string, villager: VillagerId, node: string) {
-    this.replaceWindow(id, "talk");
-    this.events.push({ type: "talk", player: id, villager, node });
-    this.windows.set(id, {
-      kind: "talk",
-      villager,
-      node: choicesNodeOf(villager, node),
-    });
-  }
-
-  /** Opens a store or bank window. */
-  private openWindow(id: string, kind: "store" | "bank", villager: VillagerId) {
-    this.replaceWindow(id, kind);
-    this.windows.set(id, { kind, villager });
-    this.events.push({ type: WINDOWS[kind].opened, player: id });
-  }
-
-  /** A window of another kind still open closes quietly, so the client shuts it (village spec §2). */
-  private replaceWindow(id: string, kind: VillagerWindow) {
-    const open = this.windows.get(id);
-    if (open && open.kind !== kind)
-      this.events.push({ type: WINDOWS[open.kind].closed, player: id });
-  }
-
-  /** The player's window, if it is of this kind. */
-  private windowOf(id: string, kind: VillagerWindow) {
-    const open = this.windows.get(id);
-    return open?.kind === kind ? open : undefined;
-  }
-
-  /** The player closed it, so walking away later says nothing. */
-  private closeWindow(id: string, kind: VillagerWindow) {
-    if (this.windowOf(id, kind)) this.windows.delete(id);
-  }
-
-  /** The node this villager's conversation opens with: the chain's current quest's stage-appropriate one, or their own start (#231, #232). */
-  private openingNode(id: string, villager: VillagerId) {
-    return openingNodeOf(villager, this.unsyncedPlayers.get(id)!.quests);
-  }
-
-  /** Closes the player's window from the server's side, with the line saying why. */
-  private shutWindow(id: string, line: string) {
-    const open = this.windows.get(id);
-    if (!open) return;
-    this.windows.delete(id);
-    this.events.push({ type: "told", player: id, line });
-    this.events.push({ type: WINDOWS[open.kind].closed, player: id });
-  }
-
-  private beside(id: string, villager: VillagerId) {
-    const player = this.state.players.get(id)!;
-    return tilesNextTo(this.tiles, this.villagers.get(villager)!).some(
-      ({ x, y }) => x === player.x && y === player.y,
-    );
+    this.windows.close(id, "talk");
   }
 
   closeBank(id: string) {
-    this.closeWindow(id, "bank");
+    this.windows.close(id, "bank");
   }
 
-  /** The player, if their bank is open and no combat lock refuses it; the refusal is told. */
-  private playerAtBank(id: string) {
-    if (!this.windowOf(id, "bank") || !this.canAct(id)) return undefined;
-    const refusal = bankRefusal(this.lockRunning(id));
-    if (refusal) this.events.push({ type: "told", player: id, line: refusal });
-    return refusal ? undefined : this.state.players.get(id)!;
-  }
-
-  /**
-   * Both come straight off the network, so anything but an inventory slot's index and a whole
-   * number above 0 is ignored. Like equip it skips the queue and touches no action.
-   */
+  /** Both come straight off the network; see `Bank.deposit`. */
   deposit(id: string, slot: number, amount: number) {
-    if (!isInventorySlot(slot) || !isAmount(amount)) return;
-    const player = this.playerAtBank(id);
-    const line = player && this.depositSlot(id, player, slot, amount);
-    if (line) this.events.push({ type: "told", player: id, line });
+    this.bank.deposit(id, slot, amount);
   }
 
-  /** Whatever fits goes in, and one line says when anything didn't (village spec §6). */
   depositInventory(id: string) {
-    const player = this.playerAtBank(id);
-    if (!player) return;
-    const refusals = Array.from({ length: INVENTORY_SLOTS }, (_, slot) =>
-      this.depositSlot(id, player, slot, Infinity),
-    );
-    const line = refusals.find(Boolean);
-    if (line) this.events.push({ type: "told", player: id, line });
+    this.bank.depositInventory(id);
   }
 
-  /** Returns why the slot's item stays where it is, if it does. */
-  private depositSlot(
-    id: string,
-    player: InstanceType<typeof Player>,
-    slot: number,
-    amount: number,
-  ) {
-    const item = player.inventory[slot]!;
-    if (item === EMPTY_SLOT) return undefined;
-    const refusal = depositRefusal(item, player.bank);
-    if (refusal) return refusal;
-    const to = bankSlotFor(item, player.bank);
-    const count = Math.min(amount, player.inventoryCounts[slot]!);
-    player.bank[to] = item;
-    player.bankCounts[to]! += count;
-    player.inventoryCounts[slot]! -= count;
-    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
-    if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
-    return undefined;
-  }
-
-  /**
-   * Both come straight off the network, as for deposit. Takes as many as fit, topping up the
-   * inventory's stacks before filling free slots, and the rest stays in the bank (village spec §6).
-   */
+  /** Both come straight off the network; see `Bank.withdraw`. */
   withdraw(id: string, slot: number, amount: number) {
-    if (!isBankSlot(slot) || !isAmount(amount)) return;
-    const player = this.playerAtBank(id);
-    const item = player?.bank[slot];
-    if (!player || !item) return;
-    const refusal = takeRefusal(item, player);
-    if (refusal) {
-      this.events.push({ type: "told", player: id, line: refusal });
-      return;
-    }
-    const { inventory, inventoryCounts } = player;
-    const count = Math.min(amount, player.bankCounts[slot]!);
-    player.bankCounts[slot]! -=
-      count - addItems(inventory, inventoryCounts, item, count);
-    if (!player.bankCounts[slot]) player.bank[slot] = EMPTY_SLOT;
+    this.bank.withdraw(id, slot, amount);
   }
 
-  /** A drag in the bank, under the inventory's rules; both come straight off the network. */
+  /** Both come straight off the network; see `Bank.moveBankItem`. */
   moveBankItem(id: string, from: number, to: number) {
-    if (!this.canAct(id) || !isBankSlot(from) || !isBankSlot(to)) return;
-    const player = this.windowOf(id, "bank") && this.state.players.get(id);
-    if (player) moveStack(player.bank, player.bankCounts, from, to);
-  }
-
-  private giveTools(id: string, villager: VillagerId, given?: readonly Tool[]) {
-    const player = this.state.players.get(id)!;
-    const { name, tools = [] }: Villager = VILLAGERS[villager];
-    const lacking = (given ?? tools).filter(
-      (tool) => !player.tools.includes(tool),
-    );
-    if (!lacking.length) return;
-    player.tools.push(...lacking);
-    const line = `${name} gives you ${lacking.map(aTool).join(" and ")}.`;
-    this.events.push({ type: "told", player: id, line });
-  }
-
-  /** Rewrites the player's synced quest arrays from their unsynced progress (#231). */
-  private syncQuests(id: string) {
-    const player = this.state.players.get(id)!;
-    const quests = this.unsyncedPlayers.get(id)!.quests;
-    player.quests = new ArraySchema(...quests.keys());
-    player.questStages = new ArraySchema(
-      ...[...quests.values()].map(({ stage }) => stage),
-    );
-  }
-
-  /**
-   * Runs the quest of this villager's chain that the player is on, for the choice picked:
-   * starting it, or turning in the stage's or a repeat's items. False when what it asks for
-   * isn't there yet, so the talk stays on the node (#231, #232).
-   */
-  private advanceQuest(id: string, villager: VillagerId) {
-    const quest = currentQuestOf(
-      villager,
-      this.unsyncedPlayers.get(id)!.quests,
-    );
-    if (!quest) return false;
-    const player = this.state.players.get(id)!;
-    const progress = this.unsyncedPlayers.get(id)!.quests.get(quest.id);
-    return progress
-      ? this.advanceStage(id, player, quest, progress)
-      : this.startQuest(id, player, quest);
-  }
-
-  /** Sets the first stage, and hands over the work's tools. It fails only while a quest it needs isn't done. */
-  private startQuest(
-    id: string,
-    player: InstanceType<typeof Player>,
-    quest: Quest,
-  ) {
-    const { needs } = quest;
-    if (
-      needs &&
-      this.unsyncedPlayers.get(id)!.quests.get(needs.quest)?.stage !==
-        QUEST_DONE
-    ) {
-      this.events.push({ type: "told", player: id, line: needs.line });
-      return false;
-    }
-    this.unsyncedPlayers
-      .get(id)!
-      .quests.set(quest.id, { stage: quest.stages[0]!.id, turns: 0 });
-    if (quest.gives) this.giveTools(id, quest.villager, quest.gives);
-    this.syncQuests(id);
-    return true;
-  }
-
-  /** Moves a started quest on one stage, taking its turn-in or a repeat's, and finishes it with its points. */
-  private advanceStage(
-    id: string,
-    player: InstanceType<typeof Player>,
-    quest: Quest,
-    progress: { stage: string; turns: number },
-  ) {
-    if (progress.stage === QUEST_DONE) {
-      const repeat = quest.repeat;
-      if (!repeat || progress.turns >= repeat.turns) return false;
-      if (!this.takeTurnIn(id, player, repeat.turnIn)) return false;
-      progress.turns++;
-      // Quest experience earns no Mastery share (glossary: Mastery).
-      player[repeat.xpField] = addXp(player[repeat.xpField], repeat.xp);
-      return true;
-    }
-    const stage = stageOf(quest, progress.stage)!;
-    if (!this.takeTurnIn(id, player, ...turnInsOf(stage))) return false;
-    const next = quest.stages[quest.stages.indexOf(stage) + 1];
-    if (next) progress.stage = next.id;
-    else {
-      progress.stage = QUEST_DONE;
-      player.questPoints += quest.points;
-      // Odo's teaching sets the flag at once, and every strange material the player holds,
-      // bank included, turns with it (#232).
-      if (quest.teaches === "essence") {
-        player.identifiesEssence = true;
-        identifyEssence(player);
-      }
-      this.events.push({
-        type: "told",
-        player: id,
-        line: `You finish ${quest.title}. You earn ${quest.points} quest point${quest.points === 1 ? "" : "s"}.`,
-      });
-    }
-    this.syncQuests(id);
-    return true;
-  }
-
-  /** Takes every turn-in out of the inventory together, or none and says the first that's missing. */
-  private takeTurnIn(
-    id: string,
-    player: InstanceType<typeof Player>,
-    ...turnIns: QuestTurnIn[]
-  ) {
-    const missing = turnIns.find(
-      ({ item, count }) => countOf(item, player) < count,
-    );
-    if (missing) {
-      this.events.push({
-        type: "told",
-        player: id,
-        line: `You have no ${itemTag(missing.item)} to hand over.`,
-        items: [missing.item],
-      });
-      return false;
-    }
-    for (const { item, count } of turnIns)
-      removeItems(player.inventory, player.inventoryCounts, item, count);
-    return true;
-  }
-
-  /** The quest stages this player is on now. */
-  private currentStages(id: string) {
-    return [...this.unsyncedPlayers.get(id)!.quests].flatMap(
-      ([questId, { stage }]) =>
-        stageOf(QUESTS[questId as QuestId], stage) ?? [],
-    );
-  }
-
-  /** Whether a stage this player is on still asks for more of `item` than they hold: its turn-in's count, or 1 for an item it only finds. */
-  private questWants(id: string, item: ItemId) {
-    const held = countOf(item, this.state.players.get(id)!);
-    return this.currentStages(id).some((stage) => {
-      const asked = turnInsOf(stage).find((turnIn) => turnIn.item === item);
-      const finds = stage.veinFinds?.some((roll) => roll.item === item);
-      return (asked || finds) && held < (asked?.count ?? 1);
-    });
-  }
-
-  /** The quest items a successful mine on a vein of `vein` gives this player, from the stages they're on, while each still wants more (Runestone Hollow spec §4). */
-  private questVeinFinds(id: string, vein: string) {
-    return this.currentStages(id).flatMap((stage) =>
-      (stage.veinFinds ?? []).flatMap((roll) =>
-        roll.vein === vein &&
-        this.questWants(id, roll.item) &&
-        this.random() < roll.chance
-          ? [roll.item]
-          : [],
-      ),
-    );
+    this.bank.moveBankItem(id, from, to);
   }
 
   closeStore(id: string) {
-    this.closeWindow(id, "store");
+    this.windows.close(id, "store");
   }
 
-  /**
-   * Settles both trays at once, sales first so their coins pay for the buys (village spec §5). It comes
-   * straight off the network, so anything of the wrong shape, or from a player without the
-   * store open, is ignored. Like a drag it skips the queue and touches no action.
-   */
+  /** Comes straight off the network; see `GeneralStore.deal`. */
   deal(id: string, intent: Deal) {
-    const player = this.state.players.get(id);
-    if (!player || !this.canAct(id) || !this.windowOf(id, "store")) return;
-    const buy = dealLines(intent?.buy, SHELF_SLOTS);
-    const sell = dealLines(intent?.sell, INVENTORY_SLOTS);
-    if (!buy || !sell || (!buy.length && !sell.length)) return;
-    const deal = { buy, sell };
-    const tell = (line: string) =>
-      this.events.push({ type: "told", player: id, line });
-    const answer = (done: boolean) =>
-      this.events.push({ type: "dealAnswered", player: id, done });
-    const refusal = dealRefusal(deal, player, this.state);
-    if (refusal) {
-      tell(refusal);
-      return answer(false);
-    }
-    const { inventory, inventoryCounts } = player;
-    const { tick } = this.state;
-    for (const { item, count } of sell) {
-      removeItems(inventory, inventoryCounts, item, count);
-      this.shelf.stock(item, count, tick);
-    }
-    const { pay, get } = dealTotals(deal);
-    addItems(inventory, inventoryCounts, COINS, get);
-    removeItems(inventory, inventoryCounts, COINS, pay);
-    for (const { item, count } of buy) {
-      this.shelf.take(item, count, tick);
-      addItems(inventory, inventoryCounts, item, count);
-    }
-    // What waited on a slot meant what was there before.
-    this.queuedDrops.delete(id);
-    this.queuedEats.delete(id);
-    tell(`Deal done: you paid ${pay} coins and got ${get}.`);
-    answer(true);
+    this.store.deal(id, intent);
   }
 
-  /** `groundItem` comes straight off the network, so anything but the id of one this player can see is ignored. */
+  /** `groundItem` comes straight off the network; see `Taking.takeIntent`. */
   queueTake(id: string, groundItem: string) {
-    if (typeof groundItem !== "string") return;
-    if (!this.canAct(id) || !this.canSee(id, groundItem)) return;
-    this.queuedActions.set(id, { kind: "taking", groundItem });
+    this.queue(id, () => this.taking.takeIntent(id, groundItem));
   }
 
   /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
   queueEat(id: string, slot: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
-    this.queuedEats.set(id, slot);
+    this.world.queuedEats.set(id, slot);
   }
 
   /** Both come straight off the network, so anything but a slot's index and a whole number above 0 is ignored. */
   queueDrop(id: string, slot: number, amount: number) {
-    if (!this.canAct(id)) return;
+    if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
     if (!isAmount(amount)) return;
-    this.queuedDrops.set(id, { slot, amount });
+    this.world.queuedDrops.set(id, { slot, amount });
   }
 
-  /** A drag; both come straight off the network. Like equip it skips the queue and touches no action (village spec §4). */
+  /** A drag; both come straight off the network. See `Inventory.moveItem`. */
   moveItem(id: string, from: number, to: number) {
-    if (!this.canAct(id)) return;
-    if (!isInventorySlot(from) || !isInventorySlot(to)) return;
-    const player = this.state.players.get(id)!;
-    moveStack(player.inventory, player.inventoryCounts, from, to);
-    // What waited on a slot meant what was there before.
-    const drop = this.queuedDrops.get(id)?.slot;
-    if (drop === from || drop === to) this.queuedDrops.delete(id);
-    const eat = this.queuedEats.get(id);
-    if (eat === from || eat === to) this.queuedEats.delete(id);
+    this.inventory.moveItem(id, from, to);
   }
 
-  /**
-   * Mixing a potion: `slot` comes straight off the network, so anything but a slot holding a
-   * mixable plant is ignored. Like a move it skips the queue and touches no action, as
-   * nothing waits on it (#222).
-   */
+  /** `slot` comes straight off the network; see `mixPotion`. */
   mix(id: string, slot: number) {
-    if (!this.canAct(id) || !isInventorySlot(slot)) return;
-    const player = this.state.players.get(id)!;
-    const potion = potionFromPlant(player.inventory[slot]!);
-    if (!potion) return;
-    const refusal = mixRefusal(potion, player);
-    if (refusal) {
-      this.events.push({ type: "told", player: id, line: refusal });
-      return;
-    }
-    // One vial and one plant become one potion, wherever each was (#222).
-    const { inventory, inventoryCounts } = player;
-    removeItems(inventory, inventoryCounts, "vial", 1);
-    removeItems(inventory, inventoryCounts, POTIONS[potion].plant, 1);
-    addItems(inventory, inventoryCounts, potion, 1);
-    this.earnXp(player, "herblawXp", POTIONS[potion].xp);
+    mixPotion(this.world, id, slot);
   }
 
   /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
   pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
+    if (this.world.isCrossing(id)) return;
     const pins = this.state.players.get(id)?.pinnedSkills;
     const { skill, pinned } = intent ?? {};
     if (!pins || !SKILLS.some(([name]) => name === skill)) return;
@@ -1231,287 +415,64 @@ export class Simulation {
       pins.push(skill);
   }
 
-  /**
-   * `slot` comes straight off the network, so anything but a slot holding gear is ignored.
-   * Like pins it skips the queue, so a second click within the tick isn't lost, and it
-   * touches no action or timer (spec §4).
-   */
+  /** `stance` comes straight off the network; see `Fighting.setStance`. */
+  setStance(id: string, stance: string) {
+    this.fighting.setStance(id, stance);
+  }
+
+  /** `slot` comes straight off the network; see `Gear.equip`. */
   equip(id: string, slot: number) {
-    if (!this.canAct(id)) return;
-    if (!isInventorySlot(slot)) return;
-    const player = this.state.players.get(id)!;
-    const item = player.inventory[slot]!;
-    const gear = gearOf(item);
-    if (!gear) return;
-    const refusal = gearRefusal(item, player);
-    if (refusal) {
-      this.events.push({ type: "told", player: id, line: refusal });
-      return;
-    }
-    // Whatever was worn lands where this came from, so swapping always works (spec §4).
-    this.placeGear(id, slot, player[gear.slot]);
-    player[gear.slot] = item;
-    this.fitHealth(id);
+    this.gear.equip(id, slot);
   }
 
-  /** After gear changes or a Fortitude potion starts or ends: max health follows worn Fortitude and an active potion's, and health drops to it but never rises (spec §2, #222). */
-  private fitHealth(id: string) {
-    const player = this.state.players.get(id)!;
-    player.maxHealth =
-      maxHealthTotal(player) +
-      (this.unsyncedPlayers.get(id)!.potion?.bonus ?? 0);
-    player.health = Math.min(player.health, player.maxHealth);
-  }
-
-  /** `gearSlot` comes straight off the network, so anything but a gear slot is ignored. */
+  /** `gearSlot` comes straight off the network; see `Gear.takeOff`. */
   takeOff(id: string, gearSlot: GearSlot) {
-    if (!this.canAct(id) || !GEAR_SLOTS.includes(gearSlot)) return;
-    const player = this.state.players.get(id)!;
-    const worn = player[gearSlot];
-    if (!worn) return;
-    const slot = player.inventory.indexOf(EMPTY_SLOT);
-    if (slot < 0) {
-      const line = "You have no empty slot to take that off into.";
-      this.events.push({ type: "told", player: id, line });
-      return;
-    }
-    this.placeGear(id, slot, worn);
-    player[gearSlot] = "";
-    this.fitHealth(id);
-  }
-
-  /** Puts gear, or "", in a slot. A drop waiting on the slot meant what was there, not this. */
-  private placeGear(id: string, slot: number, item: string) {
-    const player = this.state.players.get(id)!;
-    player.inventory[slot] = item;
-    player.inventoryCounts[slot] = item ? 1 : 0;
-    if (this.queuedDrops.get(id)?.slot === slot) this.queuedDrops.delete(id);
-  }
-
-  /** Adds one `item` to the slot `slotFor` chose. */
-  private addToSlot(
-    player: InstanceType<typeof Player>,
-    slot: number,
-    item: string,
-  ) {
-    player.inventory[slot] = item;
-    player.inventoryCounts[slot]!++;
-  }
-
-  /** How many more of `item` fit: spaces in its stacks, plus one per empty slot. Counted before any land, so a double with a single free slot and no stack leaves its second ore on the ground (#152). */
-  private roomFor(item: ItemId, player: InstanceType<typeof Player>) {
-    let room = 0;
-    player.inventory.forEach((held, slot) => {
-      if (held === EMPTY_SLOT) room++;
-      else if (held === item)
-        room += ITEMS[item].stack - player.inventoryCounts[slot]!;
-    });
-    return room;
-  }
-
-  /** A part drop is one ground item, and the rest stays in the slot. */
-  private drop(id: string, slot: number, amount = Infinity) {
-    const player = this.state.players.get(id)!;
-    const item = player.inventory[slot]!;
-    if (!item) return;
-    const count = Math.min(amount, player.inventoryCounts[slot]!);
-    const { username } = player;
-    this.groundItems.spawn(player, item, count, username, this.state.tick);
-    player.inventoryCounts[slot]! -= count;
-    if (!player.inventoryCounts[slot]) player.inventory[slot] = EMPTY_SLOT;
-  }
-
-  private eat(id: string, slot: number) {
-    const player = this.state.players.get(id)!;
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    const parts = itemParts(player.inventory[slot]);
-    const food = FOOD_HEALS.get(parts.base);
-    const potion = potionOf(parts.base);
-    if (
-      (food === undefined && !potion) ||
-      this.state.tick < unsynced.nextEatTick
-    )
-      return;
-    unsynced.nextEatTick = this.state.tick + EAT_INTERVAL_TICKS;
-    // From now if no swing is waiting, or a past timer would swallow the delay.
-    unsynced.nextSwingTick =
-      Math.max(unsynced.nextSwingTick, this.state.tick) + EAT_SWING_DELAY_TICKS;
-    if (--player.inventoryCounts[slot]! === 0)
-      player.inventory[slot] = EMPTY_SLOT;
-    // Not at full health, or a swing later this tick could save it from being lost.
-    if (food && player.health < player.maxHealth) {
-      unsynced.healingPool.push(
-        ...Array<number>(food.ticks).fill(food.perTick),
-      );
-    }
-    // A Delicious fish heals on its own afterwards, and another one only refreshes it (#221).
-    if (parts.quality === "delicious") {
-      unsynced.delicious = {
-        perTick: food!.perTick,
-        nextHealTick: this.state.tick + DELICIOUS_BUFF_INTERVAL_TICKS,
-        endTick: this.state.tick + DELICIOUS_BUFF_TICKS,
-      };
-      this.events.push({
-        type: "delicious",
-        player: id,
-        ticks: DELICIOUS_BUFF_TICKS,
-      });
-    }
-    // A potion's Virtue replaces the heal: two minutes of it, refreshed never stacked (#222).
-    if (potion) {
-      const { virtue } = POTIONS[potion];
-      unsynced.potion = {
-        virtue,
-        endTick: this.state.tick + POTION_BUFF_TICKS,
-        // A Fortitude potion's quarter is worked out once, on the normal max.
-        bonus:
-          virtue === "fortitude"
-            ? Math.round(
-                (maxHealthTotal(player) * FORTITUDE_POTION_PERCENT) / 100,
-              )
-            : 0,
-      };
-      this.fitHealth(id);
-      this.events.push({
-        type: "potion",
-        player: id,
-        virtue,
-        ticks: POTION_BUFF_TICKS,
-      });
-    }
-    this.events.push({ type: "eaten", player: id });
+    this.gear.takeOff(id, gearSlot);
   }
 
   /** Whether this player can see the ground item with this id; the room sends them only those. */
   canSee(id: string, groundItem: string) {
-    const player = this.state.players.get(id);
-    return (
-      player !== undefined &&
-      this.groundItems.canSee(player.username, groundItem)
-    );
+    return this.taking.canSee(id, groundItem);
+  }
+
+  /** Restores the stalls and strongboxes this player emptied before leaving, as the events that emptied them. */
+  emptiedFor(id: string) {
+    return this.thieving.emptiedFor(id);
   }
 
   /** One tick, in the order of spec §6. */
   tick() {
     this.state.tick++;
     this.applyIntents();
-    this.advancePlayers();
-    for (const skill of GATHERING_SKILLS) this.advanceGathering(skill);
-    this.advanceFires();
-    this.advanceMaking();
-    this.advanceLighting();
-    this.advanceVisits();
-    this.advancePickpocketing();
-    this.advanceTakes();
-    this.advancePlayerSwings();
-    this.enemies.advance({
-      tick: this.state.tick,
-      players: () =>
-        [...this.unsyncedPlayers].map(([id, { dropped, busy }]) => ({
-          id,
-          player: this.state.players.get(id)!,
-          dropped: !!dropped,
-          hittable: canBeHit(busy, this.state.tick),
-        })),
-      player: (id) => this.state.players.get(id),
-      swing: (enemyId, playerId) => {
-        if (canBeHit(this.unsyncedPlayers.get(playerId)?.busy, this.state.tick))
-          this.enemySwing(enemyId, playerId);
-      },
-    });
+    this.walking.advance();
+    this.agility.advance();
+    for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
+    this.firemaking.advanceFires();
+    this.making.advance();
+    this.firemaking.advanceLighting();
+    this.windows.advanceVisits();
+    this.thieving.advance();
+    this.taking.advance();
+    this.fighting.advancePlayerSwings();
+    this.walking.syncActions();
+    this.fighting.advanceEnemies();
     this.advancePlayerTimers();
-    this.advanceSites();
+    this.sites.advance();
     for (const enemy of this.enemies.returnDead(this.state.tick))
       this.events.push({ type: "enemyReturned", enemy });
-    this.groundItems.advance(this.state.tick);
-    this.shelf.advance(this.state.tick);
+    this.world.groundItems.advance(this.state.tick);
+    this.store.advance(this.state.tick);
   }
 
   private applyIntents() {
-    for (const [id, intent] of this.queuedActions) {
-      const unsynced = this.unsyncedPlayers.get(id)!;
-      const player = this.state.players.get(id)!;
-      // With no way there, the old action still ends, and nothing replaces it.
-      const goNextTo = (action: UnsyncedAction) => {
-        const path = pathNextTo(this.tiles, player, this.nextToOf(action)!);
-        unsynced.path = path ?? [];
-        unsynced.action = path && action;
-      };
-      switch (intent.kind) {
-        case "fighting":
-          unsynced.action = { kind: "fighting", enemy: intent.enemy };
-          break;
-        case "making": {
-          const { kind, item, all, at } = intent;
-          const action: UnsyncedAction = { kind, item, all, at };
-          // A fire the player is standing on or beside needs no walk (#224).
-          if (at && tilesApart(player, at) <= 1) {
-            unsynced.action = action;
-            unsynced.path = [];
-          } else {
-            goNextTo(action);
-          }
-          break;
-        }
-        case "lighting": {
-          const log = player.inventory[intent.slot]!;
-          const refusal = lightRefusal(log, this.lightTileAt(player), player);
-          if (refusal) {
-            this.events.push({ type: "told", player: id, line: refusal });
-            break;
-          }
-          // The log is consumed at once, so a new click during the lighting loses it (#224).
-          removeItems(player.inventory, player.inventoryCounts, log, 1);
-          // Or a walk in progress would carry them off the tile the fire was checked for.
-          unsynced.path = [];
-          unsynced.action = {
-            kind: "lighting",
-            log: log as FireLog,
-            doneTick: this.state.tick + LIGHTING_TICKS,
-          };
-          this.events.push({
-            type: "make",
-            player: id,
-            station: "fire",
-            ticks: LIGHTING_TICKS,
-          });
-          break;
-        }
-        case "visiting":
-        case "pickpocketing":
-          goNextTo(intent);
-          break;
-        case "taking": {
-          // Onto its tile, not next to it. It may have gone since the intent arrived.
-          const groundItem = this.state.groundItems.get(intent.groundItem);
-          unsynced.path = groundItem
-            ? findPath(this.tiles, player, groundItem)
-            : [];
-          unsynced.action = groundItem && intent;
-          break;
-        }
-        case "following":
-          // The target may have left or died since the intent arrived.
-          unsynced.action = this.alive(intent.player) ? intent : undefined;
-          unsynced.path = [];
-          break;
-        case "gathering":
-          goNextTo({ kind: intent.skill, site: intent.site });
-          break;
-        case "walking":
-          unsynced.action = undefined;
-          unsynced.path = findPath(this.tiles, player, intent.to);
-          break;
-        default:
-          intent satisfies never;
-      }
-    }
+    for (const [id, intent] of this.queuedActions)
+      this.walking.start(id, intent);
     this.queuedActions.clear();
-    for (const [id, slot] of this.queuedEats) this.eat(id, slot);
-    this.queuedEats.clear();
-    for (const [id, { slot, amount }] of this.queuedDrops)
-      this.drop(id, slot, amount);
-    this.queuedDrops.clear();
+    for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
+    this.world.queuedEats.clear();
+    for (const [id, { slot, amount }] of this.world.queuedDrops)
+      dropFromSlot(this.world, id, slot, amount);
+    this.world.queuedDrops.clear();
     for (const id of this.queuedLogouts) {
       const refusal = logoutRefusal(this.lockRunning(id));
       if (refusal)
@@ -1521,594 +482,11 @@ export class Simulation {
     this.queuedLogouts.clear();
   }
 
-  /** The tiles a walk for this action ends next to, for the actions whose target stays put. */
-  private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
-    if (action?.kind === "making")
-      return action.at ?? this.stations[stationOf(action.item)];
-    if (action?.kind === "visiting") return this.villagers.get(action.villager);
-    if (action?.kind === "pickpocketing") return this.marks.get(action.target);
-    if (action && "site" in action) return this.sites.get(action.site);
-    return undefined;
-  }
-
-  private advancePlayers() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      // nextStepTick outlives each walk, so clicking again can't beat the walking speed.
-      if (this.state.tick < unsynced.nextStepTick) continue;
-      const player = this.state.players.get(id)!;
-      if (unsynced.action?.kind === "fighting") {
-        // Re-pathed every step since it can move. A path's last step lands on its tile, so
-        // stopping short of that is exactly "next to" (spec D1).
-        const enemy = this.state.enemies.get(unsynced.action.enemy)!;
-        unsynced.path = findPath(this.tiles, player, enemy).slice(0, -1);
-      } else if (unsynced.action?.kind === "following") {
-        // Next to, never on, the target's tile: so a follower on it steps off.
-        const target = this.state.players.get(unsynced.action.player)!;
-        unsynced.path = pathNextTo(this.tiles, player, target) ?? [];
-      }
-      const next = unsynced.path[0];
-      // A pooled site may have come back on the way since the path was found,
-      // perhaps on the tile the walk ends on, so head for the target again.
-      if (
-        next &&
-        !legalSteps(this.tiles, player).some(
-          ({ x, y }) => x === next.x && y === next.y,
-        )
-      ) {
-        const nextTo = this.nextToOf(unsynced.action);
-        unsynced.path = nextTo
-          ? (pathNextTo(this.tiles, player, nextTo) ?? [])
-          : findPath(this.tiles, player, unsynced.path.at(-1)!);
-      }
-      if (!unsynced.path.length) continue;
-      Object.assign(player, unsynced.path.shift());
-      unsynced.nextStepTick = this.state.tick + WALK_TICKS_PER_TILE;
-    }
-  }
-
-  /** After the steps, so the first attempt lands on the tick of arrival (D5). Every skill shares one timer, so swapping between them can't beat it. */
-  private advanceGathering(skill: GatheringSkill) {
-    const { xpField, verb, leftField } = GATHERING[skill];
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== skill || unsynced.path.length) continue;
-      const player = this.state.players.get(id)!;
-      // A pooled site that ran out is gone from its spot.
-      const site = this.sites.get(action.site);
-      // A site that came back may have left no way to stand next to it.
-      if (
-        !site ||
-        this.siteRefusal(site, player) ||
-        !tilesNextTo(this.tiles, site).some(
-          ({ x, y }) => x === player.x && y === player.y,
-        )
-      ) {
-        unsynced.action = undefined;
-        continue;
-      }
-      if (this.state.tick < unsynced.nextAttemptTick) continue;
-      const level = levelFor(player[xpField]);
-      unsynced.nextAttemptTick = this.state.tick + pickIntervalTicks(level);
-      const source = gatheringSource(skill, site.kind);
-      const success = this.random() < attemptChance(source.level, level);
-      const count: 1 | 2 =
-        success &&
-        source.doubleChance !== undefined &&
-        this.random() < source.doubleChance
-          ? DOUBLE_YIELD
-          : 1;
-      const finds = success
-        ? [
-            ...rollFinds(source, this.random).map((found) =>
-              findItemOf(found, player.identifiesEssence),
-            ),
-            ...(skill === "mining" ? this.questVeinFinds(id, site.kind) : []),
-          ]
-        : [];
-      this.events.push(
-        success
-          ? { type: verb, player: id, success, count, finds }
-          : { type: verb, player: id, success },
-      );
-      if (!success) continue;
-      // An essence rock's own item is essence, unmasked like a find for a player who identifies it.
-      const caught = rollCatch(source, level, this.random);
-      const item = findItemOf(caught.item, player.identifiesEssence);
-      const { xp } = caught;
-      this.earnXp(player, xpField, xp);
-      // Room is counted before either lands, so the second ore goes on the
-      // ground, owned by the miner, when the first took the last of it.
-      const room = this.roomFor(item, player);
-      for (let i = 0; i < count; i++) {
-        if (i < room) this.addToSlot(player, slotFor(item, player), item);
-        else
-          this.groundItems.spawn(
-            player,
-            item,
-            1,
-            player.username,
-            this.state.tick,
-          );
-      }
-      // Each find rolls on its own; one with no room goes to the ground, owned
-      // by the miner, like the second ore.
-      for (const found of finds) {
-        if (this.roomFor(found, player) > 0)
-          this.addToSlot(player, slotFor(found, player), found);
-        else
-          this.groundItems.spawn(
-            player,
-            found,
-            1,
-            player.username,
-            this.state.tick,
-          );
-      }
-      if (--site.synced[leftField]! === 0) {
-        if (site.pool) this.removePooledSite(site, site.pool);
-        else site.regrowTick = this.state.tick + source.regrowTicks;
-      }
-      unsynced.action = undefined;
-    }
-  }
-
-  /** After the steps, so the first wait starts on the tick of arrival. */
-  private advanceMaking() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action: making } = unsynced;
-      if (making?.kind !== "making" || unsynced.path.length) continue;
-      // A fire can burn out mid-job, ending the cooking on it (#224).
-      if (making.at && !this.state.fires.has(siteId(making.at))) {
-        unsynced.action = undefined;
-        continue;
-      }
-      if (making.doneTick !== undefined) {
-        if (this.state.tick < making.doneTick) continue;
-        if (!this.finishItem(id, making) || !making.all) {
-          unsynced.action = undefined;
-          continue;
-        }
-      }
-      const player = this.state.players.get(id)!;
-      const refusal = makeRefusal(making.item, player);
-      if (refusal) {
-        unsynced.action = undefined;
-        this.events.push({ type: "told", player: id, line: refusal });
-        continue;
-      }
-      const { ticks } = makingOf(making.item);
-      making.doneTick = this.state.tick + ticks;
-      this.events.push({
-        type: "make",
-        player: id,
-        station: stationOf(making.item),
-        ticks,
-      });
-    }
-  }
-
-  /** Swaps materials for the item and experience, all at once or, with a line saying why, not at all. */
-  private finishItem(id: string, { item, at }: { item: MakeItem; at?: Tile }) {
-    const player = this.state.players.get(id)!;
-    // A fire burns more than the range, by the points of the log it burns (#224).
-    const fire = at ? this.state.fires.get(siteId(at)) : undefined;
-    const outcome = make(
-      item,
-      player,
-      this.random,
-      fire ? FIRES[fire.log].burnPercent : 0,
-    );
-    if ("refused" in outcome) {
-      this.events.push({ type: "told", player: id, line: outcome.refused });
-      return false;
-    }
-    outcome.inventory.forEach((held, i) => {
-      player.inventory[i] = held;
-      player.inventoryCounts[i] = outcome.inventoryCounts[i]!;
-    });
-    for (const [field, gained] of outcome.xp)
-      this.earnXp(player, field, gained);
-    if (outcome.told)
-      this.events.push({ type: "told", player: id, ...outcome.told });
-    if (outcome.made)
-      this.events.push({ type: "made", player: id, item: outcome.made });
-    return true;
-  }
-
-  /**
-   * What the player's tile is like for lighting a fire on it (#224). The tile kind gives the
-   * ground and any prop; a fire of their own and an enemy standing there come from state.
-   */
-  private lightTileAt(tile: Tile) {
-    return lightTileAt(tile, {
-      tiles: this.tiles,
-      fires: this.state.fires,
-      enemies: this.state.enemies.values(),
-    });
-  }
-
-  /** A fire of `log`'s tier on the player's own tile, and a station of kind "fire" while it burns (#224). */
-  private placeFire({ x, y }: Tile, log: FireLog) {
-    this.state.fires.set(
-      siteId({ x, y }),
-      Object.assign(new Fire(), {
-        log,
-        endTick: this.state.tick + FIRES[log].ticks,
-      }),
-    );
-    (this.stations.fire ??= []).push({ x, y });
-  }
-
-  /** Fires despawn silently when their time is up, and stop being stations (#224). */
-  private advanceFires() {
-    for (const [id, fire] of this.state.fires) {
-      if (this.state.tick < fire.endTick) continue;
-      this.state.fires.delete(id);
-      const [x, y] = id.split(",").map(Number) as [number, number];
-      const tiles = this.stations.fire!;
-      tiles.splice(
-        tiles.findIndex((tile) => tile.x === x && tile.y === y),
-        1,
-      );
-    }
-  }
-
-  /** When the lighting is over, the fire appears and pays its experience (#224). */
-  private advanceLighting() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "lighting" || this.state.tick < action.doneTick)
-        continue;
-      unsynced.action = undefined;
-      const player = this.state.players.get(id)!;
-      // A rival may have lit one here first; the log already burnt, so nothing is placed.
-      if (this.lightTileAt(player).fire) continue;
-      this.placeFire(player, action.log);
-      this.earnXp(player, "firemakingXp", FIRES[action.log].xp);
-    }
-  }
-
-  /** Mastery's share is of what lands, so experience lost to the cap earns none. */
-  private earnXp(
-    player: InstanceType<typeof Player>,
-    field: XpField,
-    gained: number,
-  ) {
-    const before = player[field];
-    player[field] = addXp(before, gained);
-    const hundredths =
-      player.masteryHundredths +
-      (player[field] - before) * MASTERY_SHARE_PERCENT;
-    player.masteryXp = addXp(player.masteryXp, Math.floor(hundredths / 100));
-    player.masteryHundredths = hundredths % 100;
-  }
-
-  /**
-   * After the steps, so the take lands on the tick of arrival. Visibility is checked again, and
-   * the first player to arrive takes what fits; a second on the same tick gets none, even of a remainder.
-   */
-  private advanceTakes() {
-    const takenThisTick = new Set<string>();
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "taking" || unsynced.path.length) continue;
-      unsynced.action = undefined;
-      const player = this.state.players.get(id)!;
-      const groundItem = this.state.groundItems.get(action.groundItem);
-      if (!groundItem || !this.canSee(id, action.groundItem)) continue;
-      if (takenThisTick.has(action.groundItem)) continue;
-      // With no way there, the path ran out short of the tile.
-      if (player.x !== groundItem.x || player.y !== groundItem.y) continue;
-      const { item } = groundItem;
-      const line = takeRefusal(item, player);
-      if (line) {
-        this.events.push({ type: "told", player: id, line });
-        continue;
-      }
-      // In one go, as a pile of coins can run to millions.
-      const { inventory, inventoryCounts } = player;
-      const taken =
-        groundItem.count -
-        addItems(inventory, inventoryCounts, item, groundItem.count);
-      this.groundItems.take(action.groundItem, taken);
-      takenThisTick.add(action.groundItem);
-    }
-  }
-
-  /** After the steps, so a conversation opens on the tick of arrival, and one walked away from ends on the tick of the step. */
-  private advanceVisits() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "visiting" || unsynced.path.length) continue;
-      unsynced.action = undefined;
-      if (action.then) this.dialogueActions[action.then](id, action.villager);
-      else
-        this.moveTalk(
-          id,
-          action.villager,
-          this.openingNode(id, action.villager),
-        );
-    }
-    for (const [id, { villager }] of this.windows) {
-      if (!this.beside(id, villager))
-        this.shutWindow(id, `You walk away from ${VILLAGERS[villager].name}.`);
-    }
-  }
-
-  /** After the steps, so the attempt lands on the tick of arrival, or as soon after as the attempt interval allows (#250). */
-  private advancePickpocketing() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "pickpocketing" || unsynced.path.length) continue;
-      if (this.state.tick < unsynced.nextAttemptTick) continue;
-      unsynced.action = undefined;
-      unsynced.nextAttemptTick = this.state.tick + PICKPOCKET_INTERVAL_TICKS;
-      const player = this.state.players.get(id)!;
-      pickpocket(action.target, {
-        random: this.random,
-        thievingXp: player.thievingXp,
-        health: player.health,
-        earnXp: (gained) => this.earnXp(player, "thievingXp", gained),
-        give: (item, count) =>
-          addItems(player.inventory, player.inventoryCounts, item, count),
-        drop: (item, count) =>
-          this.groundItems.spawn(
-            player,
-            item,
-            count,
-            player.username,
-            this.state.tick,
-          ),
-        stun: (ticks, damage) => {
-          player.health -= damage;
-          this.makeBusy(id, ticks, { hittable: true });
-          this.events.push({ type: "stunned", player: id, damage });
-        },
-        tell: (line) => this.events.push({ type: "told", player: id, line }),
-      });
-    }
-  }
-
-  private advanceSites() {
-    for (const site of this.sites.values()) {
-      if (this.state.tick !== site.regrowTick) continue;
-      const { leftField } = GATHERING[site.skill];
-      site.synced[leftField] = gatheringSource(site.skill, site.kind).holds;
-      site.regrowTick = undefined;
-    }
-    // One with no free spot waits, and tries again next tick.
-    for (const pool of this.pools)
-      while (
-        pool.comebackTicks[0]! <= this.state.tick &&
-        this.placePooledSite(pool)
-      )
-        pool.comebackTicks.shift();
-  }
-
-  /** After the moves, so the first swing lands on the tick the player arrives. */
-  private advancePlayerSwings() {
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const { action } = unsynced;
-      if (action?.kind !== "fighting") continue;
-      const player = this.state.players.get(id)!;
-      const enemy = this.state.enemies.get(action.enemy)!;
-      if (this.state.tick < unsynced.nextSwingTick) continue;
-      if (!nextTo(this.tiles, player, enemy)) continue;
-      unsynced.nextSwingTick = this.state.tick + SWING_INTERVAL_TICKS;
-      this.playerSwing(id, player, action.enemy, enemy);
-    }
-    for (const [id, { action, path }] of this.unsyncedPlayers) {
-      const player = this.state.players.get(id)!;
-      player.target = action?.kind === "fighting" ? action.enemy : "";
-      player.action =
-        action &&
-        action.kind !== "visiting" &&
-        action.kind !== "taking" &&
-        action.kind !== "following" &&
-        action.kind !== "pickpocketing"
-          ? action.kind
-          : path.length
-            ? "walking"
-            : "";
-    }
-  }
-
-  private playerSwing(
-    id: string,
-    player: InstanceType<typeof Player>,
-    enemyId: string,
-    enemy: InstanceType<typeof Enemy>,
-  ) {
-    this.lock(id);
-    // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
-    const might =
-      this.unsyncedPlayers.get(id)!.potion?.virtue === "might"
-        ? MIGHT_POTION_HIT
-        : 0;
-    const { damage, critical, xp } = playerHit(
-      player,
-      might,
-      enemy.health,
-      this.random,
-    );
-    for (const [field, gained] of xp) this.earnXp(player, field, gained);
-    this.fitHealth(id);
-    this.events.push({
-      type: "playerSwing",
-      player: id,
-      enemy: enemyId,
-      damage,
-      critical,
-    });
-    const loot = this.enemies.takeHit(this.state.tick, enemyId, id, damage);
-    if (!loot) return;
-    this.events.push({ type: "enemyDied", enemy: enemyId });
-    // A quest-category drop lands only for a winner whose quest stage still asks for it.
-    const questLoot = new Set(
-      ENEMIES[enemy.kind].loot
-        .filter(({ category }) => category === "quest")
-        .flatMap(({ items }) => items.map(({ item }) => item)),
-    );
-    for (const won of loot)
-      if (!questLoot.has(won.item) || this.questWants(won.player, won.item))
-        this.placeLoot(enemy, won);
-    for (const unsynced of this.unsyncedPlayers.values()) {
-      const { action } = unsynced;
-      if (action?.kind !== "fighting" || action.enemy !== enemyId) continue;
-      unsynced.action = undefined;
-      unsynced.path = [];
-    }
-  }
-
-  /** One winner's loot, on the enemy's tile and theirs for the first minute, with a line saying so. */
-  private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
-    const { username } = this.state.players.get(id)!;
-    this.groundItems.spawn(at, item, count, username, this.state.tick);
-    // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
-    const amount =
-      count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
-    this.events.push({
-      type: "told",
-      player: id,
-      line: `You find ${amount} ${itemTag(item)}. It is on the ground.`,
-      items: [item],
-    });
-  }
-
-  /** A swing an enemy is due, rolled against the player's Avoidance and shield, then applied. */
-  private enemySwing(enemyId: string, playerId: string) {
-    const enemy = this.state.enemies.get(enemyId)!;
-    const player = this.state.players.get(playerId)!;
-    this.lock(playerId);
-    // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
-    const avoidance =
-      this.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
-        ? AVOIDANCE_POTION_POINTS
-        : 0;
-    const { damage, blocked, hit, xp } = enemyHit(
-      enemy.kind,
-      player,
-      avoidance,
-      this.random,
-    );
-    player.health -= damage;
-    for (const [field, gained] of xp) this.earnXp(player, field, gained);
-    this.events.push({
-      type: "enemySwing",
-      enemy: enemyId,
-      player: playerId,
-      damage,
-      blocked,
-    });
-    // A blocked swing still hits; only a miss leaves the window open.
-    const open = this.windows.get(playerId);
-    if (hit && open) {
-      const { name } = VILLAGERS[open.villager];
-      this.shutWindow(
-        playerId,
-        `You're hit, and ${name} ${WINDOWS[open.kind].hit}.`,
-      );
-    }
-    if (player.health === 0) this.die(playerId, player);
-    else if (player.action === "") this.fightBack(playerId, player, enemyId);
-  }
-
-  /** An action of "" is idle, but a dropped player has gone and shouldn't fight (spec D5). */
-  private fightBack(
-    id: string,
-    player: InstanceType<typeof Player>,
-    enemyId: string,
-  ) {
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    if (unsynced.dropped || this.isBusy(id)) return;
-    unsynced.action = { kind: "fighting", enemy: enemyId };
-    unsynced.nextSwingTick = Math.max(
-      unsynced.nextSwingTick,
-      this.state.tick + FIGHT_BACK_DELAY_TICKS,
-    );
-    // Now, as a second enemy swinging this tick must find them busy.
-    Object.assign(player, { target: enemyId, action: "fighting" });
-  }
-
-  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
-  lock(id: string) {
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    if (!unsynced.dropped)
-      unsynced.lockEndTick = this.state.tick + COMBAT_LOCK_TICKS;
-  }
-
-  private die(id: string, player: InstanceType<typeof Player>) {
-    player.dead = true;
-    this.clearAction(id);
-    this.stopFollowersOf(id);
-    // Drop on death (#119): the Toolbelt stays.
-    player.inventory.forEach((_, slot) => this.drop(id, slot));
-    for (const gearSlot of GEAR_SLOTS) {
-      const worn = player[gearSlot];
-      if (!worn) continue;
-      this.groundItems.spawn(player, worn, 1, player.username, this.state.tick);
-      player[gearSlot] = "";
-    }
-    const unsynced = this.unsyncedPlayers.get(id)!;
-    unsynced.healingPool.length = 0;
-    unsynced.delicious = undefined;
-    unsynced.potion = undefined;
-    unsynced.busy = undefined;
-    this.fitHealth(id);
-    unsynced.respawnTick = this.state.tick + PLAYER_DEAD_TICKS;
-    this.events.push({ type: "playerDied", player: id });
-  }
-
+  /** Each player's respawn once their death is over, or else their healing (spec §6). */
   private advancePlayerTimers() {
-    const regenerates = this.state.tick % REGEN_INTERVAL_TICKS === 0;
-    const poolGives = this.state.tick % HEALING_POOL_INTERVAL_TICKS === 0;
-    for (const [id, unsynced] of this.unsyncedPlayers) {
-      const player = this.state.players.get(id)!;
-      if (player.dead) {
-        if (this.state.tick < unsynced.respawnTick) continue;
-        Object.assign(player, this.respawned(player), { dead: false });
-        unsynced.lockEndTick = 0;
-        this.events.push({ type: "playerRespawned", player: id });
-        continue;
-      }
-      if (regenerates && this.state.tick >= unsynced.lockEndTick) {
-        const heals = Math.ceil(
-          (player.maxHealth * REGEN_PERCENT_OF_MAX_HEALTH) / 100,
-        );
-        player.health = Math.min(player.health + heals, player.maxHealth);
-      }
-      if (poolGives && unsynced.healingPool.length > 0) {
-        const amount = Math.min(
-          unsynced.healingPool.shift()!,
-          player.maxHealth - player.health,
-        );
-        player.health += amount;
-        if (amount > 0)
-          this.events.push({ type: "healed", player: id, amount });
-      }
-      // A Delicious fish heals through a fight, where regeneration pauses (#221).
-      const { delicious, potion } = unsynced;
-      if (delicious) {
-        if (this.state.tick >= delicious.nextHealTick) {
-          delicious.nextHealTick += DELICIOUS_BUFF_INTERVAL_TICKS;
-          const amount = Math.min(
-            Math.round((delicious.perTick * DELICIOUS_BUFF_PERCENT) / 100),
-            player.maxHealth - player.health,
-          );
-          player.health += amount;
-          if (amount > 0)
-            this.events.push({ type: "healed", player: id, amount });
-        }
-        if (this.state.tick >= delicious.endTick)
-          unsynced.delicious = undefined;
-      }
-      // A potion's Virtue runs out like the Delicious buff's healing does (#222): the
-      // unspent Fortitude bonus is lost, and health settles on the normal max.
-      if (potion && this.state.tick >= potion.endTick) {
-        unsynced.potion = undefined;
-        this.fitHealth(id);
-      }
-      if (player.health === player.maxHealth) unsynced.healingPool.length = 0;
+    for (const id of this.world.unsyncedPlayers.keys()) {
+      if (this.world.player(id).dead) this.fighting.respawnIfDue(id);
+      else this.eating.heal(id, this.state.tick);
     }
   }
 }

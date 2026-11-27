@@ -434,7 +434,7 @@ test("the Emberite rows show both materials, greyed until the player qualifies",
   expect(tipOf(sword)).toBe(
     [
       "Emberite sword",
-      "Weapon, needs Combat 20",
+      "Weapon, needs Attack 20",
       "Adds 300 to your minimum and maximum hit.",
       "3 Emberite bar (have 3), 2 Emberbone (have 1)",
       "108 Smithing experience",
@@ -466,7 +466,7 @@ test("a row shows its icon, piece and short cost, with the full cost and experie
   expect(tipOf(sword)).toBe(
     [
       "Copper sword",
-      "Weapon, needs Combat 1",
+      "Weapon, needs Attack 1",
       "Adds 100 to your minimum and maximum hit.",
       "3 Copper bar (have 5)",
       "18 Smithing experience",

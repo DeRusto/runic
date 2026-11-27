@@ -1,6 +1,7 @@
 import {
   GATHERING,
   GATHERING_SKILLS,
+  rangedWeaponOf,
   TICK_MS,
   WALK_TICKS_PER_TILE,
   type EnemyKind,
@@ -113,6 +114,12 @@ const UNARMED_SWING = {
   clip: "Melee_Unarmed_Attack_Punch_A",
   contactMs: 550,
 };
+/**
+ * A bow shot: the cast's overhand release, as the adventurer every player wears has no bow clip,
+ * with the blow landing at the enemy once the arrow has flown (Ranged spec §4). Not the General
+ * pack's Throw: the adventurer plays only its own clips.
+ */
+const BOW_SHOT = { clip: "Fishing_Cast", contactMs: 1000 };
 /** A blocked hit (spec §7). */
 export const BLOCK_CLIP = "Melee_Block_Hit";
 /** The clips that bring out what's worn, even with no fight going on. */
@@ -139,8 +146,9 @@ export function armedSwing(id: string, tick: number) {
   return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
 }
 
-/** A swing follows the weapon, so a shield with no sword punches (spec §7). */
+/** A swing follows the weapon, so a shield with no sword punches (spec §7), and a bow shoots. */
 export function swingFor(weapon: string, id: string, tick: number) {
+  if (rangedWeaponOf({ weapon })) return BOW_SHOT;
   return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }
 
@@ -150,15 +158,16 @@ type EnemyFit = { height: number } | { width: number };
 /**
  * How each enemy looks and moves on the client. `file` is its model, sized by `fit`. Its clips
  * are its own model's or the players' shared packs.
- * `held` is a weapon model put in a hand slot, and `armed` keeps it out in every stance. The
+ * `held` lists models put in hand slots, and `armed` keeps it out in every stance. The
  * clips it plays that aren't in its gait follow, and `hit` is played when a blow lands, if any.
  */
 type EnemyLook = {
+  name?: string;
   file: string;
   fit: EnemyFit;
   clips: "own" | "players";
   gait?: typeof PLAYER_GAIT;
-  held?: { file: string; slot: string };
+  held?: { file: string; slot: string }[];
   armed?: true;
   swing: (id: string, tick: number) => { clip: string; contactMs: number };
   death: string;
@@ -188,12 +197,50 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     death: "Spider_Death",
     returns: "reappear",
   },
+  thornling: {
+    name: "Thornling",
+    file: "Thornling.glb",
+    fit: { height: HEIGHT * 0.45 },
+    clips: "own",
+    gait: { idle: "Idle", move: "Walk", moveSpeed: 1.5, fight: "Idle" },
+    swing: () => ({ clip: "Bite_InPlace", contactMs: 650 }),
+    hit: "HitRecieve",
+    death: "Death",
+    returns: "reappear",
+  },
+  fenwing: {
+    name: "Fenwing",
+    file: "Fenwing.glb",
+    fit: { height: HEIGHT * 0.72 },
+    clips: "own",
+    gait: { idle: "idle", move: "walk", moveSpeed: 1.5, fight: "idle" },
+    swing: () => ({ clip: "attack", contactMs: 350 }),
+    hit: "hit",
+    death: "dead",
+    returns: "reappear",
+  },
+  gorger: {
+    name: "Gorger",
+    file: "Gorger.glb",
+    fit: { width: 1.25 },
+    clips: "own",
+    gait: {
+      idle: "Slime_Idle",
+      move: "Slime_Walk",
+      moveSpeed: 1.4,
+      fight: "Slime_Idle",
+    },
+    swing: () => ({ clip: "Slime_Attack", contactMs: 330 }),
+    hit: "Slime_Hit",
+    death: "Slime_Death",
+    returns: "reappear",
+  },
   // On the players' rig, so it shares their clips (spec D16), with its blade always out.
   skeleton: {
     file: "Skeleton_Warrior.glb",
     fit: { height: HEIGHT },
     clips: "players",
-    held: { file: "Skeleton_Blade.gltf", slot: "handslotr" },
+    held: [{ file: "Skeleton_Blade.gltf", slot: "handslotr" }],
     armed: true,
     swing: armedSwing,
     death: "Death_A",
@@ -206,11 +253,33 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
     file: "Skeleton_Mage.glb",
     fit: { height: HEIGHT },
     clips: "players",
-    held: { file: "Skeleton_Staff.gltf", slot: "handslotr" },
+    held: [{ file: "Skeleton_Staff.gltf", slot: "handslotr" }],
     armed: true,
-    swing: armedSwing,
+    // The staff uses the same overhand release as a bow shot.
+    swing: () => BOW_SHOT,
     death: "Death_A",
     hit: "Hit_A",
+    returns: "respawn",
+  },
+  cairnWarden: {
+    name: "Cairn warden",
+    file: "CairnWarden.glb",
+    fit: { height: HEIGHT * 1.15 },
+    clips: "players",
+    gait: {
+      idle: "Idle_B",
+      move: "Walking_B",
+      moveSpeed: 1.8,
+      fight: "Melee_Blocking",
+    },
+    held: [
+      { file: "Skeleton_Axe.gltf", slot: "handslotr" },
+      { file: "Skeleton_Shield_Large_A.gltf", slot: "handslotl" },
+    ],
+    armed: true,
+    swing: () => ({ clip: "Melee_1H_Attack_Chop", contactMs: 580 }),
+    hit: "Hit_B",
+    death: "Death_B",
     returns: "respawn",
   },
   imp: {
@@ -249,12 +318,22 @@ export const ENEMY_LOOKS: Record<EnemyKind, EnemyLook> = {
   },
 };
 
+/** Gives every elite a name, including kinds that have no ordinary pointer label. */
+export function eliteNameOf(kind: EnemyKind) {
+  const name =
+    ENEMY_LOOKS[kind].name ??
+    kind[0]!.toUpperCase() + kind.slice(1).replace(/[A-Z]/g, " $&");
+  return `Elite ${name}`;
+}
+
 /** A model standing on a schema tile: slides between tiles, faces its way, and plays its clips. */
 export class Figure {
   readonly mixer: THREE.AnimationMixer;
   private from: THREE.Vector3;
   private to: THREE.Vector3;
   private slideStart = -Infinity;
+  private slideMs = SLIDE_MS;
+  private crossingStart?: THREE.Vector3;
   private yaw = 0;
   private lastFrame = 0;
   private running = false;
@@ -267,11 +346,15 @@ export class Figure {
   private sinking = false;
   private sunk = 0;
   private growth = 1;
-  private fullScale: number;
+  private readonly fullScale: number;
+  private readonly fittedY: number;
+  private sizeMultiplier = 1;
   private kick = new THREE.Vector3();
   private flashTimer?: ReturnType<typeof setTimeout>;
   /** The tile of whoever this figure is fighting. It sets the stance, and faces them between moves. */
   fightTile?: Tile;
+  /** What the clip playing now attacks, set by `face`. */
+  private attackAt?: Tile;
   /** The synced action, so a gathering tool stays in hand between attempts. */
   action = "";
   private tools: [GatheringSkill, THREE.Object3D][] = [];
@@ -298,6 +381,7 @@ export class Figure {
     this.from = model.position.clone();
     this.to = model.position.clone();
     this.fullScale = model.scale.x;
+    this.fittedY = model.position.y;
     for (const [skill, name] of HELD_TOOLS) {
       const tool = model.getObjectByName(inHand(name));
       if (tool) this.tools.push([skill, tool]);
@@ -380,6 +464,7 @@ export class Figure {
 
   private endShot() {
     this.shot = undefined;
+    this.attackAt = undefined;
     this.playBase();
   }
 
@@ -403,6 +488,7 @@ export class Figure {
     this.from.copy(to);
     this.slideStart = -Infinity;
     this.shot = undefined;
+    this.attackAt = undefined;
     this.held = this.sinks = this.sinking = false;
     this.sunk = 0;
   }
@@ -420,6 +506,17 @@ export class Figure {
     this.growth = 0;
     this.model.visible = true;
     this.playBase();
+  }
+
+  /** Changes the fitted size while preserving the current return animation. */
+  setSizeMultiplier(multiplier: number) {
+    // The initial fit offsets the model's origin so its base rests on the tile.
+    const dy = this.fittedY * (multiplier - this.sizeMultiplier);
+    this.from.y += dy;
+    this.to.y += dy;
+    this.model.position.y += dy;
+    this.sizeMultiplier = multiplier;
+    this.model.scale.setScalar(this.fullScale * multiplier * this.growth);
   }
 
   /** A red flash. The materials must be this figure's own. */
@@ -441,31 +538,53 @@ export class Figure {
       .multiplyScalar(NUDGE);
   }
 
+  /** Faces `at` while the attack's clip plays, for an attack whose target the fight may already have cleared. */
+  face(at: Tile) {
+    this.attackAt = { x: at.x, y: at.y };
+  }
+
   /** Call once a frame, with the frame's timestamp in ms. */
-  update(now: number) {
+  update(now: number, crossing?: { landing: Tile; ms: number }) {
     const { tile, model, from, to, fightTile } = this;
-    const faces = fightTile ?? this.work?.tile;
-    const dx = tile.x - to.x;
-    const dz = tile.y - to.z;
+    const faces =
+      fightTile ?? this.work?.tile ?? (this.shot ? this.attackAt : undefined);
+    const destination = crossing?.landing ?? tile;
+    const dx = destination.x - to.x;
+    const dz = destination.y - to.z;
     if (dx || dz) {
       from.copy(model.position);
-      to.set(tile.x, to.y, tile.y);
+      to.set(destination.x, to.y, destination.y);
       this.slideStart = now;
+      this.slideMs = crossing?.ms ?? SLIDE_MS;
+      // The final step onto the start and the crossing can arrive in the same patch.
+      this.crossingStart =
+        crossing && (from.x !== tile.x || from.z !== tile.y)
+          ? new THREE.Vector3(tile.x, to.y, tile.y)
+          : undefined;
       this.yaw = Math.atan2(dx, dz);
     } else if (
       faces &&
-      now - this.slideStart >= SLIDE_MS &&
+      now - this.slideStart >= this.slideMs &&
       (faces.x !== tile.x || faces.y !== tile.y)
     ) {
       this.yaw = Math.atan2(faces.x - tile.x, faces.y - tile.y);
     }
-    model.position.lerpVectors(
-      from,
-      to,
-      Math.min((now - this.slideStart) / SLIDE_MS, 1),
-    );
+    const elapsed = now - this.slideStart;
+    const start = this.crossingStart;
+    if (start && elapsed < TICK_MS) {
+      model.position.lerpVectors(from, start, elapsed / TICK_MS);
+      this.yaw = Math.atan2(start.x - from.x, start.z - from.z);
+    } else if (start) {
+      const progress = (elapsed - TICK_MS) / (this.slideMs - TICK_MS);
+      model.position.lerpVectors(start, to, Math.min(progress, 1));
+      if (!faces || elapsed < this.slideMs)
+        this.yaw = Math.atan2(to.x - start.x, to.z - start.z);
+    } else {
+      model.position.lerpVectors(from, to, Math.min(elapsed / this.slideMs, 1));
+    }
 
-    const running = now - this.slideStart < RUN_HOLD_MS;
+    const running =
+      now - this.slideStart < this.slideMs + RUN_HOLD_MS - SLIDE_MS;
     const walkingOff =
       running &&
       !this.running &&
@@ -497,7 +616,10 @@ export class Figure {
       !this.held &&
       !this.tools.some(([, tool]) => tool.visible) &&
       !this.hammer?.visible &&
-      (GEAR_CLIPS.has(clip!) || (!!fightTile && !running));
+      // An attack `face` set counts too: a bow's cast is also Fishing's clip, which shows nothing.
+      (GEAR_CLIPS.has(clip!) ||
+        (!!clip && !!this.attackAt) ||
+        (!!fightTile && !running));
     for (const [item, held] of this.gear)
       held.visible = inFight && (item === this.weapon || item === this.shield);
     for (const piece of this.clothing)
@@ -520,7 +642,7 @@ export class Figure {
     }
     if (this.growth < 1) {
       this.growth = Math.min(1, this.growth + dt * GROW_SPEED);
-      model.scale.setScalar(this.fullScale * this.growth);
+      model.scale.setScalar(this.fullScale * this.sizeMultiplier * this.growth);
     }
   }
 }
@@ -821,6 +943,8 @@ async function loadKayKitFigure(tile: Tile, file: string, held?: string) {
 /** Each mark's KayKit model, one no player or villager wears (#250). */
 const MARK_MODELS: Record<MarkId, string> = {
   drunk: "Barbarian",
+  // A hooded traveller, empty-handed where Bram, in the same cloak, carries his axe.
+  pedlar: "Rogue_Hooded",
 };
 
 /** A mark on their tile (#250). */
@@ -846,7 +970,7 @@ export async function loadEnemies(loadModel: LoadModel = fetchModel) {
       const look = ENEMY_LOOKS[kind];
       const [{ scene, animations }, held, shared] = await Promise.all([
         loadModel(look.file),
-        look.held && loadModel(look.held.file),
+        Promise.all((look.held ?? []).map(({ file }) => loadModel(file))),
         look.clips === "players" ? loadClips(loadModel) : undefined,
       ]);
       const { fit: size } = look;
@@ -855,9 +979,9 @@ export async function loadEnemies(loadModel: LoadModel = fetchModel) {
           ? size.height / box.y
           : size.width / Math.max(box.x, box.z),
       );
-      if (held) {
-        castShadows(held.scene);
-        scene.getObjectByName(look.held!.slot)!.add(held.scene);
+      for (const [index, model] of held.entries()) {
+        castShadows(model.scene);
+        scene.getObjectByName(look.held![index]!.slot)!.add(model.scene);
       }
       const own = new Map(animations.map((c) => [c.name, c]));
       const clips = shared ?? own;

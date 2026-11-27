@@ -1,5 +1,4 @@
-import { itemParts, VIRTUES, type Virtue } from "./items.ts";
-import { TIERS } from "./region.ts";
+import { itemParts } from "./items.ts";
 import { levelFor } from "./skills.ts";
 
 /** The names of a player's synced gear fields, which are also their save columns. */
@@ -14,30 +13,50 @@ export const GEAR_SLOTS = [
   "cape",
   "neck",
   "ring",
+  "ammo",
 ] as const;
 export type GearSlot = (typeof GEAR_SLOTS)[number];
+
+/** The gear slots that hold a stack with a count, synced and saved as `<slot>Count`: arrows in the ammo slot, and the weapon slot for throwing knives (Ranged spec §2). Every other slot holds one item. */
+export const STACKING_GEAR_SLOTS = ["weapon", "ammo"] as const;
+export type StackingGearSlot = (typeof STACKING_GEAR_SLOTS)[number];
+
+/** The synced and saved field holding how many a stacking slot holds, 0 when it is empty. */
+export const gearCountField = (slot: StackingGearSlot) =>
+  `${slot}Count` as const;
+
+export const isStackingGearSlot = (slot: GearSlot): slot is StackingGearSlot =>
+  (STACKING_GEAR_SLOTS as readonly string[]).includes(slot);
+
+/** Where a player keeps worn gear and the counts of its stacking slots. */
+export type WornGear = Partial<
+  Record<GearSlot, string> & Record<ReturnType<typeof gearCountField>, number>
+>;
+
+/** How many `slot` holds: its count for a stacking slot, and 1 or 0 for any other. */
+export const wornCountOf = (player: WornGear, slot: GearSlot) =>
+  !player[slot]
+    ? 0
+    : isStackingGearSlot(slot)
+      ? player[gearCountField(slot)] || 1
+      : 1;
 
 /** Avoidance is held in tenths of a point off an enemy's chance to hit. */
 export const AVOIDANCE_TENTHS_PER_POINT = 10;
 
-const DEFENSE = { skill: "Defense", xp: "defenseXp" } as const;
-/** The skill that decides who can use what goes in each slot (spec §5): every maker's pieces gate on Defense but a weapon's (#217). */
-const GATES = {
-  weapon: { skill: "Combat", xp: "combatXp" },
-  shield: DEFENSE,
-  head: DEFENSE,
-  body: DEFENSE,
-  legs: DEFENSE,
-  hands: DEFENSE,
-  feet: DEFENSE,
-  cape: DEFENSE,
-  neck: DEFENSE,
-  ring: DEFENSE,
+/** The skills gear gates on, with their synced experience fields. */
+const GATE_SKILLS = {
+  Attack: "attackXp",
+  Defense: "defenseXp",
+  Ranged: "rangedXp",
 } as const;
+type GateSkill = keyof typeof GATE_SKILLS;
 
 type Gear = {
-  slot: keyof typeof GATES;
-  /** The level of the slot's gating skill needed to equip it. */
+  slot: GearSlot;
+  /** The skill that decides who can equip it: Attack for a sword, Ranged for a bow or arrows, and Defense for every maker's other pieces (spec §5, #217, Ranged spec §2). */
+  gate: GateSkill;
+  /** The level of `gate` needed to equip it. */
   level: number;
   /** What the Gear tab says it does. */
   does: string;
@@ -50,20 +69,67 @@ type Gear = {
   armourPercent?: number;
   /** The tenths of a point of Avoidance the piece itself gives, an amulet's (#217). */
   avoidanceTenths?: number;
+  /** A ranged weapon's reach, in 8-way tiles; a weapon without one fights in melee (Ranged spec §4). */
+  reachTiles?: number;
+  /** A ranged weapon's ticks between shots (Ranged spec §4). */
+  intervalTicks?: number;
+  /** A ranged weapon that is its own ammo, a throwing knife: each throw spends one from the weapon slot's stack (#279). */
+  thrown?: boolean;
 };
 
 const sword = (level: number, hitBonus: number): Gear => ({
   slot: "weapon",
+  gate: "Attack",
   level,
   does: `Adds ${hitBonus} to your minimum and maximum hit`,
   hitBonus,
 });
 
-/** A bow mirrors the sword ladder's hit bonuses (#228). They are placeholders: Phase 8 re-gates bows on Ranged and tunes them. */
-const bow = sword;
+/** How far a bow shoots, in 8-way tiles (#270, Ranged spec §4). */
+export const BOW_REACH_TILES = 6;
+/** How often a bow fires, a melee swing's pace (#270, Ranged spec §4). */
+export const BOW_INTERVAL_TICKS = 8;
+
+/** A bow gates on Ranged and carries Accuracy, never a hit bonus: the arrow decides how hard a shot hits (Ranged spec §2). It shoots from its reach (§4). */
+const bow = (level: number, accuracy: number): Gear => ({
+  slot: "weapon",
+  gate: "Ranged",
+  level,
+  does: `Adds ${accuracy} points to your chance to hit`,
+  accuracy,
+  reachTiles: BOW_REACH_TILES,
+  intervalTicks: BOW_INTERVAL_TICKS,
+});
+
+/** How far throwing knives reach, in 8-way tiles (#270, Ranged spec §5). */
+export const KNIFE_REACH_TILES = 4;
+/** How often throwing knives are thrown (#270, Ranged spec §5). */
+export const KNIFE_INTERVAL_TICKS = 6;
+
+/** A stack of throwing knives is a weapon of its own: it gates on Ranged, carries the throw's hit bonus and no Accuracy, and spends itself (Ranged spec §5). */
+const throwingKnife = (level: number, hitBonus: number): Gear => ({
+  slot: "weapon",
+  gate: "Ranged",
+  level,
+  does: `Adds ${hitBonus} to a throw's minimum and maximum hit`,
+  hitBonus,
+  reachTiles: KNIFE_REACH_TILES,
+  intervalTicks: KNIFE_INTERVAL_TICKS,
+  thrown: true,
+});
+
+/** Arrows go in the ammo slot and carry a shot's hit bonus (Ranged spec §2). They do nothing unless a bow is wielded. */
+const arrow = (level: number, hitBonus: number): Gear => ({
+  slot: "ammo",
+  gate: "Ranged",
+  level,
+  does: `Adds ${hitBonus} to a bow shot's minimum and maximum hit`,
+  hitBonus,
+});
 
 const shield = (level: number, blockPercent: number): Gear => ({
   slot: "shield",
+  gate: "Defense",
   level,
   does: `Starts at a ${blockPercent}% chance to block a hit`,
   blockChance: blockPercent / 100,
@@ -75,6 +141,7 @@ const armour = (
   armourPercent: number,
 ): Gear => ({
   slot,
+  gate: "Defense",
   level,
   does: `Takes ${armourPercent}% off each hit you take`,
   armourPercent,
@@ -83,6 +150,7 @@ const armour = (
 /** A cape is small armour on the hands' line (#217), and the slot reagent augmentation works on. */
 const cape = (level: number, armourPercent: number): Gear => ({
   slot: "cape",
+  gate: "Defense",
   level,
   does: `Takes ${armourPercent}% off each hit you take`,
   armourPercent,
@@ -95,6 +163,7 @@ const leather = (
   armourPercent: number,
 ): Gear => ({
   slot,
+  gate: "Defense",
   level,
   does: `Takes ${armourPercent}% off each hit you take`,
   armourPercent,
@@ -103,6 +172,7 @@ const leather = (
 /** Jewelsmithing's amulet of a tier: Avoidance in tenths of a point off an enemy's chance to hit (#217). */
 const amulet = (level: number, avoidanceTenths: number): Gear => ({
   slot: "neck",
+  gate: "Defense",
   level,
   does: `Takes ${avoidanceTenths / AVOIDANCE_TENTHS_PER_POINT} points off an enemy's chance to hit you.`,
   avoidanceTenths,
@@ -111,6 +181,7 @@ const amulet = (level: number, avoidanceTenths: number): Gear => ({
 /** Jewelsmithing's ring of a tier: Accuracy in points, which add to the wearer's own chance to hit (#238; 1 point is a percentage point, spec §5). */
 const ring = (level: number, accuracy: number): Gear => ({
   slot: "ring",
+  gate: "Defense",
   level,
   does: `Adds ${accuracy} points to your chance to hit`,
   accuracy,
@@ -119,15 +190,13 @@ const ring = (level: number, accuracy: number): Gear => ({
 /** A starter piece: worn by anyone, and does nothing but cover the wearer. */
 const clothes = (slot: "body" | "legs" | "feet"): Gear => ({
   slot,
+  gate: "Defense",
   level: 1,
   does: "No bonuses",
 });
 
 /** Added to a shield's chance per Blocking level above 1 (spec §5). */
 export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
-
-/** Each wood's tier number, at the metal tier its bow's Combat gate matches (#228). */
-const WOOD_TIERS = { birch: 1, oak: 3, charwood: 5 } as const;
 
 /** Spec §5, with Bronze and Steel at the midpoints (rebalance spec §3 Gear), by item id. Anything in here can be equipped. */
 export const GEAR = new Map<string, Gear>([
@@ -136,10 +205,22 @@ export const GEAR = new Map<string, Gear>([
   ["ironSword", sword(10, 200)],
   ["steelSword", sword(15, 250)],
   ["emberiteSword", sword(20, 300)],
-  // #228's bows, at the Combat levels their woods' Woodcutting gates sit at: 1, 10, 20.
-  ["birchBow", bow(1, 100)],
-  ["oakBow", bow(10, 200)],
-  ["charwoodBow", bow(20, 300)],
+  // #228's bows, at the Ranged levels their woods' Woodcutting gates sit at: 1, 10, 20 (#268).
+  ["birchBow", bow(1, 5)],
+  ["oakBow", bow(10, 10)],
+  ["charwoodBow", bow(20, 15)],
+  // #228's arrows, on the sword ladder's gates and hit bonuses (#268, #269).
+  ["copperArrow", arrow(1, 100)],
+  ["bronzeArrow", arrow(5, 150)],
+  ["ironArrow", arrow(10, 200)],
+  ["steelArrow", arrow(15, 250)],
+  ["emberiteArrow", arrow(20, 300)],
+  // #228's throwing knives, on the arrows' gates and hit bonuses (#269).
+  ["copperThrowingKnife", throwingKnife(1, 100)],
+  ["bronzeThrowingKnife", throwingKnife(5, 150)],
+  ["ironThrowingKnife", throwingKnife(10, 200)],
+  ["steelThrowingKnife", throwingKnife(15, 250)],
+  ["emberiteThrowingKnife", throwingKnife(20, 300)],
   ["copperShield", shield(1, 10)],
   ["bronzeShield", shield(5, 15)],
   ["ironShield", shield(10, 20)],
@@ -207,6 +288,12 @@ export const GEAR = new Map<string, Gear>([
 /** The gear an item id is, improved or not, or undefined if it isn't gear. An improved piece has its common form's stats and gate (spec §2). */
 export const gearOf = (item: string) => GEAR.get(itemParts(item).base);
 
+/** Whether making `item` can roll an improved version: any gear but what a shot spends, arrows and throwing knives, which no decision made improvable (Ranged spec §2, §5). */
+export const canBeImproved = (item: string) => {
+  const gear = GEAR.get(item);
+  return !!gear && gear.slot !== "ammo" && !gear.thrown;
+};
+
 /** The percentage all worn armour takes off a hit. */
 export const armourPercentOf = (player: Partial<Record<GearSlot, string>>) =>
   GEAR_SLOTS.reduce(
@@ -214,84 +301,18 @@ export const armourPercentOf = (player: Partial<Record<GearSlot, string>>) =>
     0,
   );
 
-/** Each Virtue's unit, its size on an uncommon Copper piece (spec §3), and what the Gear tab says it does at a size (spec §5). Fortitude is in health, Might in the sword bonus's units, and Avoidance in tenths of a point. */
-const VIRTUE_EFFECTS: Record<
-  Virtue,
-  { unit: number; does: (size: number) => string }
-> = {
-  fortitude: { unit: 20, does: (size) => `Adds ${size} to your max health.` },
-  might: {
-    unit: 3,
-    does: (size) => `Adds ${size} to your minimum and maximum hit.`,
-  },
-  avoidance: {
-    unit: 1,
-    does: (tenths) =>
-      `Takes ${tenths / AVOIDANCE_TENTHS_PER_POINT} points off an enemy's chance to hit you.`,
-  },
-};
-
-/**
- * #217's ½-uncommon Virtue ladder for capes, as whole units by tier, lowest first: a common
- * cape carries its Virtue at half the size spec §3's units give an uncommon one (Fortitude
- * 20×tier, Might 3×tier, Avoidance tier tenths), an uncommon one at full, and a rare one at
- * double. Might's half rounds down and Avoidance's up, because a cape never carries less
- * than 1 tenth — which is also all an uncommon Copper cape carries, so common and uncommon
- * meet at 1 there; at every other Virtue and tier common is strictly below uncommon.
- */
-const CAPE_COMMON_VIRTUES: Record<
-  Virtue,
-  [number, number, number, number, number]
-> = {
-  fortitude: [10, 20, 30, 40, 50],
-  might: [1, 3, 4, 6, 7],
-  avoidance: [1, 1, 2, 2, 3],
-};
-
-/** The size of `item`'s Virtue, 0 for a common piece. Its unit is multiplied by the tier number, read from the base id's prefix, and rare is double uncommon (spec §3). A bow is sized by the wood tier at the metal tier its Combat gate matches (#228), and a cape carries its Virtue at every Quality, on the ½-uncommon ladder above (#217). */
-function virtueSize(item: string) {
-  const { base, quality, virtue } = itemParts(item);
-  if (!virtue) return 0;
-  const wood = Object.entries(WOOD_TIERS).find(([name]) =>
-    base.startsWith(name),
-  );
-  const tier = wood
-    ? wood[1]
-    : TIERS.findIndex((name) => base.startsWith(name)) + 1;
-  const uncommon = VIRTUE_EFFECTS[virtue].unit * tier;
-  if (GEAR.get(base)?.slot === "cape")
-    return quality === "common"
-      ? CAPE_COMMON_VIRTUES[virtue][tier - 1]!
-      : uncommon * (quality === "rare" ? 2 : 1);
-  return uncommon * (quality === "rare" ? 2 : 1);
-}
-
-/** The total of one Virtue over every worn piece, as armour adds up, in that Virtue's unit. */
-export const virtueOf = (
-  player: Partial<Record<GearSlot, string>>,
-  virtue: Virtue,
-) =>
-  GEAR_SLOTS.reduce((total, slot) => {
-    const item = player[slot] ?? "";
-    return total + (itemParts(item).virtue === virtue ? virtueSize(item) : 0);
-  }, 0);
-
-/** What the Gear tab says `item`'s Virtue does, after its base stat, or undefined for a common piece (spec §5). */
-export function virtueDoes(item: string) {
-  const { virtue } = itemParts(item);
-  return virtue ? VIRTUE_EFFECTS[virtue].does(virtueSize(item)) : undefined;
-}
-
 /** The skill and level needed to equip `item`, or undefined if it isn't gear. */
 export function gateOf(item: string) {
   const gear = gearOf(item);
-  return gear && { ...GATES[gear.slot], level: gear.level };
+  return (
+    gear && { skill: gear.gate, xp: GATE_SKILLS[gear.gate], level: gear.level }
+  );
 }
 
 /** Why this gear can't be equipped, or undefined if it can or isn't gear. The bar greys it, and the server tells the player. */
 export function gearRefusal(
   item: string,
-  player: { combatXp: number; defenseXp: number },
+  player: Record<(typeof GATE_SKILLS)[GateSkill], number>,
 ) {
   const gate = gateOf(item);
   if (!gate) return undefined;
@@ -300,14 +321,7 @@ export function gearRefusal(
     : undefined;
 }
 
-/** The tenths of Avoidance a gossamer cloak adds to its cape (§217, tunable at build). */
-export const GOSSAMER_AVOIDANCE_TENTHS = 2;
-
-/** The tenths of Avoidance `item`'s reagent variant adds, 0 for a plain id (#217). */
-export const variantAvoidanceTenths = (item: string) =>
-  itemParts(item).variant === "gossamer" ? GOSSAMER_AVOIDANCE_TENTHS : 0;
-
-/** The tenths of Avoidance every worn piece gives as its own stat, an amulet's (#217), over all ten slots. */
+/** The tenths of Avoidance every worn piece gives as its own stat, an amulet's (#217), over every slot. */
 export const baseAvoidanceTenthsOf = (
   player: Partial<Record<GearSlot, string>>,
 ) =>
@@ -316,31 +330,9 @@ export const baseAvoidanceTenthsOf = (
     0,
   );
 
-/** The points of Accuracy every worn piece gives, a ring's (#238), over all ten slots. */
+/** The points of Accuracy every worn piece gives, a ring's (#238), over every slot. */
 export const wornAccuracyOf = (player: Partial<Record<GearSlot, string>>) =>
   GEAR_SLOTS.reduce(
     (total, slot) => total + (gearOf(player[slot] ?? "")?.accuracy ?? 0),
     0,
   );
-
-/** The total of every worn piece's reagent variant's Avoidance, in tenths of a point (#217). */
-export const variantAvoidanceOf = (player: Partial<Record<GearSlot, string>>) =>
-  GEAR_SLOTS.reduce(
-    (total, slot) => total + variantAvoidanceTenths(player[slot] ?? ""),
-    0,
-  );
-
-/** What the Gear tab says `item`'s reagent variant adds, or undefined for a plain one (#217). */
-export function variantDoes(item: string) {
-  const tenths = variantAvoidanceTenths(item);
-  return tenths ? VIRTUE_EFFECTS.avoidance.does(tenths) : undefined;
-}
-
-/** The id of `cape`'s gossamer cloak: the cape's full id with the `gossamer` variant on the end, which keeps its Quality and Virtue (#217, ADR 0004). */
-export const gossamerItem = (cape: string) => `${cape}:gossamer`;
-
-/** The cape `item`'s gossamer cloak was made from, without the variant, or undefined if it isn't one (ADR 0004). */
-export const capeOfGossamer = (item: string) =>
-  itemParts(item).variant === "gossamer"
-    ? item.split(":").slice(0, -1).join(":")
-    : undefined;

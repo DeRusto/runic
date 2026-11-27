@@ -20,11 +20,14 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { BUILDING_LOOKS, HOUSE_MODELS, houseParts } from "./houseParts.ts";
 import { flameLook } from "./flame.ts";
+import { instancesModel } from "./instancesModel.ts";
 import { STATION_LOOKS, type StationPart } from "./stationLooks.ts";
 
 const STATION_KINDS = Object.keys(STATIONS) as FixedStation[];
 
 const SLAB_HEIGHT = 0.2;
+/** How high a ground's top stands, in tiles, for what stands on it. */
+export const groundTop = (ground: GroundKind) => GROUND[ground].top;
 const GROUND: Record<GroundKind, { color: number; top: number }> = {
   grass: { color: 0x5d9e3c, top: 0 },
   thicket: { color: 0x3f7a35, top: -0.02 },
@@ -78,6 +81,8 @@ export type SiteLook = "full" | "runOut" | "gone" | "spent";
 /** How long a spent site stays at its run-out look, then how long it takes to fade, in ms. */
 const SPENT_HOLD_MS = 1200;
 const SPENT_FADE_MS = 800;
+/** How long a spent site stays in sight, until its copy has faded out. */
+export const SPENT_MS = SPENT_HOLD_MS + SPENT_FADE_MS;
 // A tint can only multiply, so "grey" evens out the green texture's channels; above 1 is fine, it's a float.
 const RUN_OUT_TINT = new THREE.Color().setRGB(1.3, 0.65, 3.4);
 // The ore's rock colour, so a run-out vein reads as plain rock.
@@ -140,55 +145,20 @@ const NATURE_PROPS = {
   standingStone: { scale: 1.3, models: ["stoneTallB", "stoneTallE"] },
 };
 /**
- * The goods outside the general store: textured models drawn whole, as a station's parts are,
- * rather than baked to vertex colours like the props above. Each faces the road, to the south.
+ * Textured props drawn whole, as a station's parts are. The store's goods face south toward the road.
  */
-// Kenney's green stall's counter, in tiles up from the ground.
-const COUNTER = 0.366;
-const GOODS = {
+const TEXTURED_PROPS = {
+  burialMound: { parts: [{ file: "BurialMound.glb", width: 0.95 }] },
   appleBarrel: { parts: [{ file: "Barrel_Apples.glb", width: 0.55 }] },
   carrotCrate: { parts: [{ file: "FarmCrate_Carrot.glb", width: 0.75 }] },
   fruitBasket: { parts: [{ file: "display-fruit.glb", width: 0.6 }] },
-  // Turned off the grid, so it reads as set down rather than built in; Food Kit wares on its counter.
-  marketStall: {
-    yaw: 0.45,
-    parts: [
-      { file: "stall-green.glb", width: 1 },
-      { file: "cheese.glb", width: 0.2, at: [-0.24, 0.12], y: COUNTER },
-      {
-        file: "bread.glb",
-        width: 0.22,
-        at: [0.02, 0.18],
-        y: COUNTER,
-        yaw: 0.6,
-      },
-      { file: "pumpkin.glb", width: 0.22, at: [0.25, 0.1], y: COUNTER },
-      { file: "apple.glb", width: 0.08, at: [-0.05, -0.05], y: COUNTER },
-      { file: "apple.glb", width: 0.08, at: [0.04, -0.08], y: COUNTER },
-      { file: "pear.glb", width: 0.08, at: [-0.12, -0.12], y: COUNTER },
-      {
-        file: "grapes.glb",
-        width: 0.14,
-        at: [0.2, -0.15],
-        y: COUNTER,
-        yaw: -0.4,
-      },
-      {
-        file: "carrot.glb",
-        width: 0.2,
-        at: [-0.27, -0.15],
-        y: COUNTER,
-        yaw: 0.3,
-        lay: true,
-      },
-    ],
-  },
-} satisfies Partial<Record<PropKind, { parts: StationPart[]; yaw?: number }>>;
-type Goods = keyof typeof GOODS;
-const isGoods = (prop: PropKind): prop is Goods => Object.hasOwn(GOODS, prop);
+} satisfies Partial<Record<PropKind, { parts: StationPart[] }>>;
+type TexturedProp = keyof typeof TEXTURED_PROPS;
+const isTexturedProp = (prop: PropKind): prop is TexturedProp =>
+  Object.hasOwn(TEXTURED_PROPS, prop);
 
 const PROP_MODELS: Record<
-  Exclude<PropKind, Goods>,
+  Exclude<PropKind, TexturedProp>,
   {
     scale: number | [number, number, number];
     models: string[];
@@ -293,7 +263,7 @@ export async function loadPart({ file, width, lay }: StationPart) {
 }
 
 /** A station's look: its parts and flame in one group, centred on the middle of its tiles. */
-async function loadStation({
+export async function loadStation({
   parts,
   flame,
 }: (typeof STATION_LOOKS)[FixedStation]) {
@@ -324,7 +294,12 @@ export function oreParts(ore: THREE.Object3D) {
   };
 }
 
-/** A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites: returns how to show one full, run out or gone. A run-out tree is a stump. */
+/**
+ * A slab per tile and the props, houses, sites and stations on them, all fixed but for the sites.
+ * Returns how to show a site full, run out or gone (a run-out tree is a stump), which says whether
+ * a spent one leaves a fading copy in sight, and each site's and
+ * station's model, for clicks to find.
+ */
 export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const [
     [
@@ -536,7 +511,7 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
   const color = new THREE.Color();
   const up = new THREE.Vector3(0, 1, 0);
 
-  const goods: { prop: Goods; at: THREE.Vector3 }[] = [];
+  const texturedProps: { prop: TexturedProp; at: THREE.Vector3 }[] = [];
   tiles.forEach((row, y) =>
     row.forEach((tile, x) => {
       const hash = tileHash(x, y);
@@ -620,12 +595,13 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
             }),
           ),
         );
-      } else if (isGoods(prop!)) {
-        goods.push({ prop: prop as Goods, at });
+      } else if (isTexturedProp(prop!)) {
+        texturedProps.push({ prop: prop as TexturedProp, at });
       } else {
         const options = propVariants[prop!];
         const geometry = options[((hash >>> 8) & 255) % options.length]!;
-        const { scale, fixed } = PROP_MODELS[prop as Exclude<PropKind, Goods>];
+        const { scale, fixed } =
+          PROP_MODELS[prop as Exclude<PropKind, TexturedProp>];
         place(
           geometry,
           new THREE.Matrix4().compose(
@@ -640,26 +616,26 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
     }),
   );
   scene.add(slabs);
-  const goodsModels = new Map(
+  const texturedModels = new Map(
     await Promise.all(
-      Object.entries(GOODS).map(async ([kind, look]) => {
-        const model = await loadStation(look);
-        model.rotation.y = "yaw" in look ? look.yaw : 0;
-        return [kind, model] as const;
-      }),
+      Object.entries(TEXTURED_PROPS).map(
+        async ([kind, look]) => [kind, await loadStation(look)] as const,
+      ),
     ),
   );
-  for (const { prop, at } of goods) {
-    const model = goodsModels.get(prop)!.clone();
+  for (const { prop, at } of texturedProps) {
+    const model = texturedModels.get(prop)!.clone();
     model.position.add(at);
     scene.add(model);
   }
   // One model per station, at the middle of the tiles it covers.
+  const placedStations: Partial<Record<FixedStation, THREE.Object3D>> = {};
   for (const [kind, tilesUnder] of Object.entries(footprints)) {
     if (!tilesUnder.length) continue;
     const model = stations[kind as FixedStation];
     new THREE.Box3().setFromPoints(tilesUnder).getCenter(model.position);
     scene.add(model);
+    placedStations[kind as FixedStation] = model;
   }
 
   const meshes = new Map<THREE.BufferGeometry, THREE.InstancedMesh>();
@@ -744,10 +720,19 @@ export async function addRegionMeshes(scene: THREE.Scene, tiles: TileKind[][]) {
       instances.instanceColor!.needsUpdate = true;
     }
     if (copies.length) fadeOut(id, copies);
+    return copies.length > 0;
   };
   // A tree's stump is hidden until it runs out.
   tiles.forEach((row, y) =>
     row.forEach(({ tree }, x) => tree && setLook(siteId({ x, y }), "full")),
   );
-  return setLook;
+  /** A site's parts as drawn now, its fading copies too, for clicks to find. */
+  const siteModel = (id: string) =>
+    instancesModel(
+      runOutSlots
+        .get(id)!
+        .map(({ geometry, slot }) => ({ mesh: meshes.get(geometry)!, slot })),
+      () => fading.get(id) ?? [],
+    );
+  return { setSiteLook: setLook, siteModel, stationModels: placedStations };
 }

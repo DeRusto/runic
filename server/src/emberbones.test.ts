@@ -10,6 +10,9 @@ const LOSE = 0.25;
 /** The hit roll, the damage roll and the crit roll of a swing doing 100 damage. */
 const SWING = [HIT, HIT, MISS];
 
+/** One damager's Emberbone roll followed by a losing roll for the Skeleton's bones. */
+const skeletonLootRolls = (emberboneRoll: number) => [emberboneRoll, MISS];
+
 // The Skeleton's home is (8,1), with players either side of it.
 const CORRIDOR = [
   "TTTTTTTTTTTTTTTTTTTT",
@@ -21,7 +24,6 @@ const SPIDER = ["TTTTTTTTTT", "TR......ST", "TTTTTTTTTT"];
 const SAVE: PlayerSave = {
   x: 7,
   y: 1,
-  combatXp: 0,
   defenseXp: 0,
   herblawXp: 0,
   hitpointsXp: 4050,
@@ -58,12 +60,16 @@ function run(s: Simulation, ticks = 1) {
 const toldTo = (events: WorldEvent[], id: string) =>
   events.flatMap((e) => (e.type === "told" && e.player === id ? [e.line] : []));
 
-/** "a" swings once and "b" lands the killing blow, each doing 1 damage. */
-function killedByTwo(rolls: number[], s: Simulation, ...bones: number[]) {
+/** "a" swings once and "b" lands the killing blow, each doing 100 damage. */
+function killedByTwo(
+  rolls: number[],
+  s: Simulation,
+  ...emberboneRolls: number[]
+) {
   s.addPlayer("a", SAVE, "a");
   s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 200;
-  rolls.push(...SWING, ...SWING, ...bones);
+  rolls.push(...SWING, ...SWING, ...emberboneRolls.flatMap(skeletonLootRolls));
   s.queueTarget("a", "0");
   s.queueTarget("b", "0");
 }
@@ -107,8 +113,8 @@ test("a swing that missed doesn't count", () => {
   s.addPlayer("a", SAVE, "a");
   s.addPlayer("b", { ...SAVE, x: 9 }, "b");
   enemy(s).health = 1;
-  // "a" misses, "b" kills, and the only roll left would win for anyone.
-  rolls.push(MISS, ...SWING, WIN, WIN);
+  // "a" misses, "b" kills, and the only Emberbone roll is a win.
+  rolls.push(MISS, ...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("a", "0");
   s.queueTarget("b", "0");
   run(s);
@@ -127,7 +133,7 @@ test("a dead player still rolls", () => {
   run(s);
   // "a" is dead by the time "b" lands the killing blow.
   Object.assign(s.state.players.get("a")!, { dead: true, health: 0 });
-  rolls.push(...SWING, WIN, LOSE);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN), ...skeletonLootRolls(LOSE));
   s.queueTarget("b", "0");
   run(s);
   expect(enemy(s).state).toBe("dead");
@@ -144,8 +150,8 @@ test("a player who has left doesn't roll", () => {
   s.queueTarget("a", "0");
   run(s);
   s.removePlayer("a");
-  // Only "b" rolls, so the one winning roll is theirs and nothing else is drawn.
-  rolls.push(...SWING, WIN);
+  // Only "b" rolls, so only they can win the Emberbone.
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("b", "0");
   const events = run(s, 8);
   expect(enemy(s).state).toBe("dead");
@@ -161,7 +167,7 @@ test("a full inventory still gets it on the ground, with the same line", () => {
     "a",
   );
   enemy(s).health = 1;
-  rolls.push(...SWING, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("a", "0");
   const events = run(s);
   expect(bones(s, "a")).toBe(1);
@@ -186,7 +192,7 @@ test("recovering forgets who damaged it", () => {
   // "b" comes back and kills it alone, so "a"'s old hit gets no roll.
   enemy(s).health = 1;
   Object.assign(s.state.players.get("b")!, { x: 9 });
-  rolls.push(...SWING, WIN, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("b", "0");
   run(s, 8);
   expect(enemy(s).state).toBe("dead");
@@ -198,7 +204,7 @@ test("returning forgets who damaged it", () => {
   const { s, rolls } = world(CORRIDOR);
   s.addPlayer("a", SAVE, "a");
   enemy(s).health = 1;
-  rolls.push(...SWING, LOSE);
+  rolls.push(...SWING, ...skeletonLootRolls(LOSE));
   s.queueTarget("a", "0");
   run(s);
   expect(enemy(s).state).toBe("dead");
@@ -208,7 +214,7 @@ test("returning forgets who damaged it", () => {
   // "a" stands next to it, but only "b" hits it this time.
   Object.assign(s.state.players.get("a")!, { x: 1 });
   enemy(s).health = 1;
-  rolls.push(...SWING, WIN, WIN);
+  rolls.push(...SWING, ...skeletonLootRolls(WIN));
   s.queueTarget("b", "0");
   run(s, 8);
   expect(enemy(s).state).toBe("dead");
@@ -216,7 +222,7 @@ test("returning forgets who damaged it", () => {
   expect(bones(s, "b")).toBe(1);
 });
 
-test("Spiders still give nothing, and draw no roll", () => {
+test("Spiders give no Emberbone, only their silk", () => {
   const { s, rolls } = world(SPIDER);
   s.addPlayer("a", SAVE, "a");
   enemy(s).health = 1;
@@ -225,8 +231,9 @@ test("Spiders still give nothing, and draw no roll", () => {
   const events = run(s);
   expect(enemy(s).state).toBe("dead");
   expect(bones(s, "a")).toBe(0);
-  expect(toldTo(events, "a")).toEqual([]);
-  expect(rolls).toEqual([WIN]);
+  expect(toldTo(events, "a")).toEqual([
+    "You find a [Spider silk]. It is on the ground.",
+  ]);
 });
 
 test("who damaged what isn't in the save", () => {

@@ -2,8 +2,10 @@ export const MAX_LEVEL = 99;
 
 /** Every skill a player can train and its synced experience field, in the character sheet's order. */
 export const SKILLS = [
-  ["Combat", "combatXp"],
+  ["Attack", "attackXp"],
+  ["Strength", "strengthXp"],
   ["Defense", "defenseXp"],
+  ["Ranged", "rangedXp"],
   ["Herblaw", "herblawXp"],
   ["Hitpoints", "hitpointsXp"],
   ["Mining", "miningXp"],
@@ -18,6 +20,7 @@ export const SKILLS = [
   ["Leatherworking", "leatherworkingXp"],
   ["Jewelsmithing", "jewelsmithingXp"],
   ["Thieving", "thievingXp"],
+  ["Agility", "agilityXp"],
   ["Blocking", "blockingXp"],
   ["Mastery", "masteryXp"],
 ] as const;
@@ -29,30 +32,24 @@ export const MASTERY_SHARE_PERCENT = 7;
 
 /** Moves up to `SKILLS` when its content lands, which builds its synced field and save column; then run `npm run db:generate -w server`. Until then its experience is 0. */
 const UPCOMING_SKILLS = [
-  ["Attack", "attackXp"],
-  ["Strength", "strengthXp"],
-  ["Ranged", "rangedXp"],
   ["Prayer", "prayerXp"],
   ["Magic", "magicXp"],
-  ["Agility", "agilityXp"],
 ] as const;
 
-/** The 23 skills total level counts. Combat isn't among them: its split replaces it. */
-export const SKILL_REGISTRY = [...SKILLS, ...UPCOMING_SKILLS].filter(
-  ([skill]) => skill !== "Combat",
-);
+/** The 23 skills total level counts. */
+export const SKILL_REGISTRY = [...SKILLS, ...UPCOMING_SKILLS];
 
 /** What the bottom bar's skills column fits: two across, three down. */
 export const MAX_PINNED_SKILLS = 6;
 
 /** Any later skill starts unpinned. Also the `pinned_skills` column's default, so changing it needs a migration. */
 export const STARTING_PINNED_SKILLS = [
-  "Combat",
+  "Attack",
+  "Strength",
   "Defense",
   "Herblaw",
   "Hitpoints",
   "Mining",
-  "Smithing",
 ];
 
 /** Total experience needed for a level (spec §5). */
@@ -78,7 +75,7 @@ export const totalLevel = (xp: SkillXp) =>
     0,
   );
 
-/** Base plus the best of the three styles. Combat stands in for Attack and Strength until they have experience of their own. */
+/** Base plus the best of the three styles (#78). */
 export function combatLevel(xp: SkillXp) {
   const level = (field: keyof SkillXp) => levelFor(xp[field] ?? 0);
   const base =
@@ -87,10 +84,7 @@ export function combatLevel(xp: SkillXp) {
       level("blockingXp") +
       level("hitpointsXp") +
       Math.floor(level("prayerXp") / 2));
-  const melee =
-    0.325 *
-    (levelFor(xp.attackXp ?? xp.combatXp ?? 0) +
-      levelFor(xp.strengthXp ?? xp.combatXp ?? 0));
+  const melee = 0.325 * (level("attackXp") + level("strengthXp"));
   const ranged = 0.325 * Math.floor(level("rangedXp") * 1.5);
   const magic = 0.325 * Math.floor(level("magicXp") * 1.5);
   return Math.floor(base + Math.max(melee, ranged, magic));

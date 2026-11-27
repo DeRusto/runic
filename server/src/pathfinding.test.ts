@@ -1,6 +1,6 @@
 import { parseRegion } from "@runic/shared";
 import { expect, test } from "vitest";
-import { pathNextTo, findPath } from "./pathfinding.ts";
+import { pathNextTo, pathToNearest, findPath } from "./pathfinding.ts";
 
 const region = (...rows: string[]) => parseRegion(rows.join("\n"));
 
@@ -84,4 +84,21 @@ test("next to a blocking tile: a clear diagonal counts, so no step is needed", (
 test("next to a blocking tile: none reachable gives no path", () => {
   const walled = region("TTTTTT", "T.TbTT", "TTTTTT");
   expect(pathNextTo(walled, { x: 1, y: 1 }, { x: 3, y: 1 })).toBeUndefined();
+});
+
+test("pathToNearest walks to whichever goal is fewest steps away", () => {
+  expect(
+    pathToNearest(OPEN, { x: 2, y: 1 }, [
+      { x: 5, y: 1 },
+      { x: 1, y: 1 },
+    ]),
+  ).toEqual([{ x: 1, y: 1 }]);
+});
+
+test("pathToNearest gives an empty path on a goal and none when no goal can be reached", () => {
+  const walled = region("TTTTTT", "T.T..T", "TTTTTT");
+  expect(pathToNearest(walled, { x: 1, y: 1 }, [{ x: 1, y: 1 }])).toEqual([]);
+  expect(pathToNearest(walled, { x: 1, y: 1 }, [{ x: 4, y: 1 }])).toBe(
+    undefined,
+  );
 });

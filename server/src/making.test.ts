@@ -59,7 +59,6 @@ function add(
       tools,
       inventory,
       inventoryCounts,
-      combatXp: 0,
       defenseXp: 0,
       herblawXp: 0,
       hitpointsXp: 4050,
@@ -587,7 +586,6 @@ describe("cooking at the range (#221)", () => {
       {
         x,
         y,
-        combatXp: 0,
         defenseXp: 0,
         herblawXp: 0,
         hitpointsXp: 4050,
@@ -754,7 +752,6 @@ describe("crafting at the workbench (#225)", () => {
       {
         x,
         y,
-        combatXp: 0,
         defenseXp: 0,
         herblawXp: 0,
         hitpointsXp: 4050,
@@ -872,7 +869,6 @@ describe("fletching at the workbench (#228)", () => {
       {
         x,
         y,
-        combatXp: 0,
         defenseXp: 0,
         herblawXp: 0,
         hitpointsXp: 4050,
@@ -1064,7 +1060,6 @@ describe("the gossamer cloak's augmentation on the server (#217, #225)", () => {
       {
         x,
         y,
-        combatXp: 0,
         defenseXp: 0,
         herblawXp: 0,
         hitpointsXp: 4050,
@@ -1226,7 +1221,6 @@ describe("runecrafting at the altar (#232)", () => {
       {
         x,
         y,
-        combatXp: 0,
         defenseXp: 0,
         herblawXp: 0,
         hitpointsXp: 4050,

@@ -6,11 +6,11 @@ Open `region.tmj` in Tiled to paint it, or edit it through the `tiled` MCP serve
 
 ## Layers
 
-| Layer        | Type    | Holds                                                       | Rule                        |
-| ------------ | ------- | ----------------------------------------------------------- | --------------------------- |
-| `ground`     | Tiles   | grass, thicket, path, cobble, ashen, water, moss            | Every cell is filled        |
-| `features`   | Tiles   | props, trees, stations, house walls and doors               | At most one per tile        |
-| `placements` | Objects | the respawn, enemy homes, NPCs, marks, site pools and spots | One per tile, snapped to it |
+| Layer        | Type    | Holds                                                              | Rule                        |
+| ------------ | ------- | ------------------------------------------------------------------ | --------------------------- |
+| `ground`     | Tiles   | grass, thicket, path, cobble, ashen, water, moss                   | Every cell is filled        |
+| `features`   | Tiles   | props, trees, stations, stalls, strongboxes, house walls and doors | At most one per tile        |
+| `placements` | Objects | the respawn, enemy homes, NPCs, marks, site pools and spots        | One per tile, snapped to it |
 
 If it's just what stands on a tile, it's a tile in `features`. If it has a name, its own settings, or something refers to it, it's an object in `placements`.
 
@@ -20,6 +20,10 @@ Fishing spots are the one pooled site on water: a `fishingSpot` pool's spots mus
 
 Trees are fixed sites: a Birch, Oak or Charwood tile in `features` always stands there, shows a stump while it's run out, and grows back in place. A `tree` prop is scenery and can't be chopped. The loader refuses a `tree` pool.
 
+Marta's stalls (#252) are feature tiles with a `stall` property (`food`, `fish` or `gem`), one of each outside the general store. They block like a station.
+
+The strongboxes (#253) are feature tiles with a `strongbox` property (`boneyard` or `hollow`), one in the Boneyard and one in Runestone Hollow. They block like a stall, and the loader refuses a second of either kind.
+
 Whether a feature tile blocks walking comes from its `blocks` property in the tileset, so there's no collision layer to keep in step. Ground tiles have no `blocks`: water always blocks, and every other ground never does. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
 
 An object's class is one of these:
@@ -27,9 +31,9 @@ An object's class is one of these:
 | Class       | Needs                                                                                                                                                            |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `respawn`   | Nothing. There's exactly one                                                                                                                                     |
-| `enemyHome` | An `enemy` string property: `spider`, `skeleton`, or a docile creature: `tarnOx`, `bristleback`, `cinderhorn` (#238)                                             |
+| `enemyHome` | An `enemy` string property: `spider`, `thornling`, `fenwing`, `gorger`, `cairnWarden`, `skeleton`, `skeletonMage`, `imp`, `tarnOx`, `bristleback`, `cinderhorn`  |
 | `npc`       | Its name: a villager id, `odo`, `marta`, `aldous`, `bram`, `tamsin`, `hollis`                                                                                    |
-| `mark`      | Its name: a mark id, `drunk`                                                                                                                                     |
+| `mark`      | Its name: a mark id, `drunk`, `pedlar`                                                                                                                           |
 | `sitePool`  | A rectangle with `site` (`vein`, `bush`, `fishingSpot`), `kind` and `active` (an int)                                                                            |
 | `siteSpot`  | A point inside a `sitePool`, on a tile that doesn't block, or on water for a fishing spot. Where pools overlap, its name is the `kind` of the pool it belongs to |
 

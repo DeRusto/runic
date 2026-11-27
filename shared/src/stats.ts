@@ -1,22 +1,23 @@
+import { ELITE_ACCURACY_POINTS } from "./elites.ts";
 import { ENEMIES, type EnemyKind } from "./enemies.ts";
 import {
   AVOIDANCE_TENTHS_PER_POINT,
   baseAvoidanceTenthsOf,
   BLOCK_CHANCE_PER_BLOCKING_LEVEL,
   gearOf,
-  variantAvoidanceOf,
-  virtueOf,
   wornAccuracyOf,
   type GearSlot,
 } from "./gear.ts";
+import { variantAvoidanceOf, virtueOf } from "./virtues.ts";
 import {
-  COMBAT_LEVELS_PER_DAMAGE,
   HEALTH_PER_HITPOINTS_LEVEL,
   PLAYER_BASE_DAMAGE,
   PLAYER_HIT_CHANCE,
-  PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL,
+  PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL,
+  STRENGTH_LEVELS_PER_DAMAGE,
 } from "./index.ts";
 import { levelFor } from "./skills.ts";
+import { trianglePointsOf, type Style } from "./triangle.ts";
 
 type Worn = Partial<Record<GearSlot, string>>;
 
@@ -43,31 +44,64 @@ export const avoidanceOf = (player: { defenseXp: number } & Worn) => ({
     AVOIDANCE_TENTHS_PER_POINT,
 });
 
-/** An enemy's chance (0..1) to hit a player with `avoidance` points: base + accuracy − Avoidance, floored (spec §5). */
-export const enemyHitChance = (kind: EnemyKind, avoidance: number) =>
-  Math.max(
-    MIN_ENEMY_HIT_CHANCE,
-    ENEMIES[kind].hitChance +
-      (ENEMIES[kind].accuracy - avoidance) / POINTS_PER_HIT_CHANCE,
-  );
+/** Keeps a chance to land on the scale: no more than a whole chance, and no less than `floor`. */
+const onScale = (chance: number, floor: number) =>
+  Math.min(1, Math.max(floor, chance));
 
 /**
- * A player's chance (0..1) to land a swing — its base, per Combat level and worn Accuracy
- * (#238's rings), a point each way being a percentage point (spec §5) — the landed hit's min
- * and max from Combat, and the weapon's hit bonus plus Might, which adds to both.
+ * An enemy's chance (0..1) to hit a player with `avoidance` points who fights in `playerStyle`:
+ * base + Accuracy + the combat triangle's points − Avoidance, floored at 5% (spec §5, #271).
  */
-export function hitOf(player: { combatXp: number } & Worn) {
-  const combat = levelFor(player.combatXp);
+export const enemyHitChance = (
+  kind: EnemyKind,
+  avoidance: number,
+  playerStyle: Style,
+  elite = false,
+) =>
+  onScale(
+    ENEMIES[kind].hitChance +
+      (ENEMIES[kind].accuracy +
+        (elite ? ELITE_ACCURACY_POINTS : 0) +
+        trianglePointsOf(ENEMIES[kind].style, playerStyle) -
+        avoidance) /
+        POINTS_PER_HIT_CHANCE,
+    MIN_ENEMY_HIT_CHANCE,
+  );
+
+/** A player's `chance` (0..1) to land, moved by the combat triangle for a `style` fighter against an `against` one and kept on the scale (#271). */
+export const landChanceOf = (chance: number, style: Style, against: Style) =>
+  onScale(chance + trianglePointsOf(style, against) / POINTS_PER_HIT_CHANCE, 0);
+
+/**
+ * The hit curves every style shares, from the level that lands hits and the level that sets
+ * the max: a chance (0..1) of 40% plus 0.5 points a level above 1 plus worn Accuracy (#238's
+ * rings, a bow's), a point being a percentage point (spec §5), and a landed hit from 100 to
+ * 200 plus 100 every 20 levels (melee rework spec §2, Ranged spec §4).
+ */
+export const hitCurvesOf = (
+  landLevel: number,
+  maxLevel: number,
+  player: Worn,
+) => ({
+  chance:
+    PLAYER_HIT_CHANCE +
+    PLAYER_HIT_CHANCE_PER_ATTACK_LEVEL * (landLevel - 1) +
+    wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
+  min: HEALTH_PER_HITPOINTS_LEVEL,
+  max:
+    PLAYER_BASE_DAMAGE +
+    HEALTH_PER_HITPOINTS_LEVEL *
+      Math.floor(maxLevel / STRENGTH_LEVELS_PER_DAMAGE),
+});
+
+/** A swing's curves, landing on Attack with its max from Strength, and the weapon's hit bonus plus Might, which adds to both ends (melee rework spec §2). */
+export function hitOf(player: { attackXp: number; strengthXp: number } & Worn) {
   return {
-    chance:
-      PLAYER_HIT_CHANCE +
-      PLAYER_HIT_CHANCE_PER_COMBAT_LEVEL * (combat - 1) +
-      wornAccuracyOf(player) / POINTS_PER_HIT_CHANCE,
-    min: HEALTH_PER_HITPOINTS_LEVEL,
-    max:
-      PLAYER_BASE_DAMAGE +
-      HEALTH_PER_HITPOINTS_LEVEL *
-        Math.floor(combat / COMBAT_LEVELS_PER_DAMAGE),
+    ...hitCurvesOf(
+      levelFor(player.attackXp),
+      levelFor(player.strengthXp),
+      player,
+    ),
     gear:
       (gearOf(player.weapon ?? "")?.hitBonus ?? 0) + virtueOf(player, "might"),
   };
