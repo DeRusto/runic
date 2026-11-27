@@ -101,6 +101,11 @@ models/
         Universal Animation Library and Universal Animation Library 2, both
         CC0: see models/LICENSE-Quaternius-Universal-Animation-Library.txt and
         models/LICENSE-Quaternius-Universal-Animation-Library-2.txt.
+    leafTunic.glb, brownPants.glb, burlapBoots.glb
+        Made for Runic by DeRusto with Meshy: the starter clothes, fitted to
+        Adventurer.glb and skinned to its rig, with their textures scaled down.
+        The owner's own creations, not from a pack. No licence is granted for
+        them here.
     Bristleback.glb, Cinderhorn.glb
         Made for Runic by DeRusto with Meshy (#238) — the owner's own creations,
         not from a pack. No licence is granted for them here. Their skeleton and

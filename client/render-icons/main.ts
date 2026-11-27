@@ -959,15 +959,19 @@ draw(boneSigil(), FLAT);
 pngs.set("boneSigil", await toPng(renderer.domElement));
 // The owner's four rune medallions, rendered from their own models as the runes (#238),
 // shown for the owner's review in place of the Kenney slabs.
-const RUNES = [
-  ["airRune", "Meshy_AI_Air_Rune_Medallion_1113121225_texture.glb"],
-  ["waterRune", "Meshy_AI_Water_Rune_Medallion_1113121244_texture.glb"],
-  ["earthRune", "Meshy_AI_Earth_Rune_Medallion_1113121251_texture.glb"],
-  ["fireRune", "Meshy_AI_Fire_Rune_Medallion_1113121238_texture.glb"],
-] as const;
-for (const [id, file] of RUNES) {
-  const { scene: medallion } = await loader.loadAsync(`/personal/${file}`);
-  draw(medallion, FLAT);
+// The starter clothes are the owner's models too, turned as worn.
+const OWNER_MODELS: [id: string, file: string, turn: Turn][] = [
+  ["airRune", "Meshy_AI_Air_Rune_Medallion_1113121225_texture.glb", FLAT],
+  ["waterRune", "Meshy_AI_Water_Rune_Medallion_1113121244_texture.glb", FLAT],
+  ["earthRune", "Meshy_AI_Earth_Rune_Medallion_1113121251_texture.glb", FLAT],
+  ["fireRune", "Meshy_AI_Fire_Rune_Medallion_1113121238_texture.glb", FLAT],
+  ["leafTunic", "Meshy_AI_Leaf_Tunic_20260917_texture_remesh_tri.glb", WORN],
+  ["brownPants", "Meshy_AI_Low_Poly_Brown_Pants_20261027_texture.glb", WORN],
+  ["burlapBoots", "Meshy_AI_Low_Poly_Burlap_Boot_20261125_texture.glb", WORN],
+];
+for (const [id, file, turn] of OWNER_MODELS) {
+  const { scene: model } = await loader.loadAsync(`/personal/${file}`);
+  draw(model, turn);
   pngs.set(id, await toPng(renderer.domElement));
 }
 

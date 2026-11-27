@@ -152,6 +152,10 @@ export const ITEMS = {
   ironRing: SINGLE,
   steelRing: SINGLE,
   emberiteRing: SINGLE,
+  /** The starter clothes every new character wears, so nobody logs in naked: no bonuses. */
+  leafTunic: SINGLE,
+  brownPants: SINGLE,
+  burlapBoots: SINGLE,
   /** From fishing spots (#210), caught raw: a material until the range cooks it into food (#221). */
   perch: STACKS,
   trout: STACKS,

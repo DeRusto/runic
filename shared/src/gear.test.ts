@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   armourPercentOf,
+  baseAvoidanceTenthsOf,
   canBeImproved,
   GEAR,
   gearOf,
@@ -467,5 +468,25 @@ describe("necks and rings (#238)", () => {
     expect(gearRefusal("emberiteRing", defense(18049))).toBe(
       "You need Defense 20 to equip this.",
     );
+  });
+});
+
+describe("starter clothes", () => {
+  const worn = { body: "leafTunic", legs: "brownPants", feet: "burlapBoots" };
+
+  test("go on the body, legs and feet with no gate and no bonuses", () => {
+    expect(
+      Object.values(worn).map((item) => [
+        gearOf(item)?.slot,
+        gateOf(item)?.level,
+      ]),
+    ).toEqual([
+      ["body", 1],
+      ["legs", 1],
+      ["feet", 1],
+    ]);
+    expect(armourPercentOf(worn)).toBe(0);
+    expect(baseAvoidanceTenthsOf(worn)).toBe(0);
+    expect(wornAccuracyOf(worn)).toBe(0);
   });
 });

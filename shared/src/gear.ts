@@ -187,6 +187,14 @@ const ring = (level: number, accuracy: number): Gear => ({
   accuracy,
 });
 
+/** A starter piece: worn by anyone, and does nothing but cover the wearer. */
+const clothes = (slot: "body" | "legs" | "feet"): Gear => ({
+  slot,
+  gate: "Defense",
+  level: 1,
+  does: "No bonuses",
+});
+
 /** Added to a shield's chance per Blocking level above 1 (spec §5). */
 export const BLOCK_CHANCE_PER_BLOCKING_LEVEL = 0.002;
 
@@ -271,6 +279,10 @@ export const GEAR = new Map<string, Gear>([
   ["ironRing", ring(10, 10)],
   ["steelRing", ring(15, 13)],
   ["emberiteRing", ring(20, 16)],
+  // Every new character's clothes (playerSave's newSave).
+  ["leafTunic", clothes("body")],
+  ["brownPants", clothes("legs")],
+  ["burlapBoots", clothes("feet")],
 ]);
 
 /** The gear an item id is, improved or not, or undefined if it isn't gear. An improved piece has its common form's stats and gate (spec §2). */
