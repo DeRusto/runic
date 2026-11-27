@@ -52,6 +52,9 @@ export function showPlayers(
       // The worn look is the common form's, improved or not (spec §2).
       figure.weapon = itemParts(player?.weapon ?? "").base;
       figure.shield = itemParts(player?.shield ?? "").base;
+      figure.clothes = [player?.body, player?.legs, player?.feet].map(
+        (item) => itemParts(item ?? "").base,
+      );
       const action = player?.action;
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;

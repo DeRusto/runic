@@ -5,6 +5,7 @@ import { describe, expect, it, test, vi } from "vitest";
 import {
   addSeeThroughOutline,
   characterFor,
+  CLOTHES,
   ENEMY_LOOKS,
   Figure,
   loadEnemies,
@@ -1131,4 +1132,37 @@ test("every tier's model and its licence are committed", () => {
       "utf8",
     ),
   ).toContain("Creative Commons Zero");
+});
+
+describe("worn clothes", () => {
+  const dressed = () => {
+    const pieces = CLOTHES.map((name) =>
+      Object.assign(new THREE.Object3D(), { name }),
+    );
+    const model = new THREE.Object3D().add(...pieces);
+    return { pieces, figure: new Figure({ x: 1, y: 1 }, model, CLIPS) };
+  };
+
+  test("shows only the pieces worn, and hides one taken off", () => {
+    const { figure, pieces } = dressed();
+    figure.clothes = ["leafTunic", "burlapBoots"];
+    figure.update(1000);
+    expect(pieces.map((piece) => piece.visible)).toEqual([true, false, true]);
+    figure.clothes = ["burlapBoots"];
+    figure.update(1010);
+    expect(pieces.map((piece) => piece.visible)).toEqual([false, false, true]);
+  });
+
+  test.each(CLOTHES)(
+    "%s.glb is skinned to the Adventurer's own bones",
+    (file) => {
+      const jointNames = (json: {
+        skins: { joints: number[] }[];
+        nodes: { name: string }[];
+      }) => json.skins[0]!.joints.map((joint) => json.nodes[joint]!.name);
+      expect(jointNames(glbJson(file))).toEqual(
+        jointNames(glbJson("Adventurer")),
+      );
+    },
+  );
 });

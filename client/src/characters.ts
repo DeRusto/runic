@@ -60,6 +60,8 @@ const CREATURE_GAIT = {
 };
 
 const CHARACTERS = ["Knight", "Barbarian"] as const;
+/** The worn clothes with a model, each skinned to the Adventurer's rig and named by its item id. */
+export const CLOTHES = ["leafTunic", "brownPants", "burlapBoots"] as const;
 const CLIP_PACKS = [
   "Rig_Medium_General",
   "Rig_Medium_MovementBasic",
@@ -282,6 +284,9 @@ export class Figure {
   /** Takes the armed stance whatever is worn: a Skeleton's blade is part of its model, not gear. */
   alwaysArmed = false;
   private gear: [item: string, model: THREE.Object3D][] = [];
+  /** The body, legs and feet item ids worn. Each with a model shows; the rest of CLOTHES hide. */
+  clothes: string[] = [];
+  private clothing: THREE.Object3D[];
 
   constructor(
     readonly tile: Tile,
@@ -298,6 +303,9 @@ export class Figure {
       if (tool) this.tools.push([skill, tool]);
     }
     this.hammer = model.getObjectByName(HAMMER);
+    this.clothing = CLOTHES.flatMap(
+      (name) => model.getObjectByName(name) ?? [],
+    );
     for (const item of Object.keys(GEAR_LOOKS)) {
       const held = model.getObjectByName(item);
       if (held) this.gear.push([item, held]);
@@ -492,6 +500,8 @@ export class Figure {
       (GEAR_CLIPS.has(clip!) || (!!fightTile && !running));
     for (const [item, held] of this.gear)
       held.visible = inFight && (item === this.weapon || item === this.shield);
+    for (const piece of this.clothing)
+      piece.visible = this.clothes.includes(piece.name);
 
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
@@ -513,6 +523,33 @@ export class Figure {
       model.scale.setScalar(this.fullScale * this.growth);
     }
   }
+}
+
+/**
+ * Binds each of CLOTHES to the Adventurer's own skeleton, beside its body, in a group named by the
+ * item id, so every clone carries them and the outline added under the group hides with it.
+ */
+function wearOn(adventurer: THREE.Object3D, clothes: GLTF[]) {
+  let body: THREE.SkinnedMesh | undefined;
+  adventurer.traverse((o) => {
+    if (o instanceof THREE.SkinnedMesh) body ??= o;
+  });
+  clothes.forEach(({ scene }, i) => {
+    const group = new THREE.Group();
+    group.name = CLOTHES[i]!;
+    group.visible = false;
+    const meshes: THREE.SkinnedMesh[] = [];
+    scene.traverse((o) => {
+      if (o instanceof THREE.SkinnedMesh) meshes.push(o);
+    });
+    for (const mesh of meshes) {
+      // The clothes were exported from the Adventurer's rig, so their vertices share its body's space.
+      mesh.bind(body!.skeleton, body!.bindMatrix);
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+    body!.parent!.add(group);
+  });
 }
 
 function fit(model: THREE.Object3D, scaleFor: (size: THREE.Vector3) => number) {
@@ -639,17 +676,26 @@ export function paintGear(
 /** Loads the characters and clip packs once; every Figure it then makes shares them. */
 export async function loadCharacters() {
   const gearLooks = Object.entries(GEAR_LOOKS);
-  const [adventurer, knight, barbarian, hammer, clips, gear, heldTools] =
-    await Promise.all([
-      // The owner's Meshy adventurer, on the Universal Animation Library's clips under the players' names.
-      load("Adventurer"),
-      load("Knight"),
-      load("Barbarian"),
-      loadGltf("hammer"),
-      loadClips(),
-      Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
-      Promise.all(HELD_TOOLS.map(([, tool]) => loadGltf(tool))),
-    ]);
+  const [
+    adventurer,
+    knight,
+    barbarian,
+    hammer,
+    clips,
+    gear,
+    heldTools,
+    clothes,
+  ] = await Promise.all([
+    // The owner's Meshy adventurer, on the Universal Animation Library's clips under the players' names.
+    load("Adventurer"),
+    load("Knight"),
+    load("Barbarian"),
+    loadGltf("hammer"),
+    loadClips(),
+    Promise.all(gearLooks.map(([, { file }]) => loadGltf(file))),
+    Promise.all(HELD_TOOLS.map(([, tool]) => loadGltf(tool))),
+    Promise.all(CLOTHES.map(load)),
+  ]);
   const models = {
     Knight: knight.scene,
     Barbarian: barbarian.scene,
@@ -659,6 +705,8 @@ export async function loadCharacters() {
     adventurer.animations.map((clip) => [clip.name, clip]),
   );
   Object.values(models).forEach((m) => fit(m, (size) => HEIGHT / size.y));
+  // After the fit, so the clothes don't change the Adventurer's measured height.
+  wearOn(models.Adventurer, clothes);
   // Tools and gear are sized for KayKit's hand slot; a model built at another scale holds them at
   // KayKit's size by their slots' world scales.
   const slotScale = (m: THREE.Object3D) => {
