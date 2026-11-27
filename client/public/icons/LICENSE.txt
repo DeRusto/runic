@@ -1,8 +1,8 @@
 Item icons. These PNGs are not all under one licence: read both parts.
 
 Most are Craftpix files. The rest are rendered by client/render-icons, from the
-CC0 models below, from our own geometry, or from the owner's own rune models
-(part 3).
+CC0 models below, from our own geometry, or from the owner's own rune and
+clothing models (part 3).
 
 ------------------------------------------------------------------------
 1. The Craftpix icons: CRAFTPIX, NOT CC0
@@ -102,10 +102,14 @@ rod.png and tinderbox.png are from no pack: they are Runic's own, drawn by
 three.js geometry in client/render-icons/main.ts.
 
 ------------------------------------------------------------------------
-3. The runes: THE OWNER'S OWN, NOT CC0
+3. The runes and starter clothes: THE OWNER'S OWN, NOT CC0
 ------------------------------------------------------------------------
 
 airRune.png, waterRune.png, earthRune.png, fireRune.png
     Rendered from four rune medallions made for Runic by DeRusto with Meshy.
     The owner's own creations, not from a pack. No licence is granted for them
     here.
+
+leafTunic.png, brownPants.png, burlapBoots.png
+    Rendered from three clothing models made for Runic by DeRusto with Meshy.
+    The same terms as the runes.

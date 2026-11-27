@@ -97,6 +97,10 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ironThrowingKnife: 16,
   steelThrowingKnife: 24,
   emberiteThrowingKnife: 60,
+  // The starter clothes: worth a coin, as nobody makes them.
+  leafTunic: 1,
+  brownPants: 1,
+  burlapBoots: 1,
 };
 
 /** How many times its common version's value an item of each Quality is worth (village spec §5). Delicious food is as rare as a rare piece, and worth the same multiple (#221). */

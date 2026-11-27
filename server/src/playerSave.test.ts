@@ -64,4 +64,13 @@ describe("player save", () => {
       if (skill !== "Hitpoints") expect(save[field], skill).toBe(0);
     expect(save.hitpointsXp).toBeGreaterThan(0);
   });
+
+  it("dresses a new account in the starter clothes, so it isn't naked at first login", () => {
+    const save = saveOf(playerFrom(newSave({ x: 1, y: 2 })));
+    expect([save.body, save.legs, save.feet]).toEqual([
+      "leafTunic",
+      "brownPants",
+      "burlapBoots",
+    ]);
+  });
 });

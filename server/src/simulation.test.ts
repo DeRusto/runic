@@ -317,7 +317,7 @@ const EMPTY_COUNTS = Array<number>(30).fill(0);
 const EMPTY_BANK = Array<string>(96).fill("");
 const EMPTY_BANK_COUNTS = Array<number>(96).fill(0);
 
-test("a new account starts on the respawn tile with an empty inventory, Hitpoints 10 and 1,000 health", () => {
+test("a new account starts on the respawn tile in its starter clothes, with an empty inventory, Hitpoints 10 and 1,000 health", () => {
   expect(sim.saveOf("a")).toEqual({
     x: 1,
     y: 1,
@@ -341,10 +341,10 @@ test("a new account starts on the respawn tile with an empty inventory, Hitpoint
     weapon: "",
     shield: "",
     head: "",
-    body: "",
-    legs: "",
+    body: "leafTunic",
+    legs: "brownPants",
     hands: "",
-    feet: "",
+    feet: "burlapBoots",
     cape: "",
     neck: "",
     ring: "",

@@ -32,6 +32,9 @@ export const newSave = (tile: Tile): PlayerSave => ({
   hitpointsXp: STARTING_HITPOINTS_XP,
   health: STARTING_HEALTH,
   inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
+  body: "leafTunic",
+  legs: "brownPants",
+  feet: "burlapBoots",
 });
 
 /** A save's fields as the synced player holds them, filling in what older saves lack.
