@@ -376,6 +376,8 @@ export class Figure {
   skinTone = "";
   paintLook?: (color: string, skin: string) => void;
   private paintedLook = "";
+  /** Materials this figure alone owns, to free when it leaves; shared ones and textures stay. */
+  ownMaterials: THREE.Material[] = [];
 
   constructor(
     readonly tile: Tile,
@@ -898,6 +900,7 @@ export async function loadCharacters() {
         o.material = look;
     });
     const figure = new Figure(tile, model, clips);
+    figure.ownMaterials.push(look);
     figure.paintLook = (color, skin) => (look.map = mapFor(color, skin));
     return figure;
   };
