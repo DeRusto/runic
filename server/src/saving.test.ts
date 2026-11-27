@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { CloseCode, matchMaker } from "@colyseus/core";
 import { Client, type Room } from "@colyseus/sdk";
 import {
+  APPEARANCE_INTENT,
   EQUIP_INTENT,
   EVENTS,
   LOGOUT_INTENT,
@@ -202,6 +203,36 @@ test("each style's stance, chosen in the room, is synced and survives logging ou
   expect(synced(back)).toMatchObject({
     rangedStance: "longrange",
     stance: "forceful",
+  });
+});
+
+test("a color and skin tone chosen in the room are synced, and survive logging out", async () => {
+  const client = await clientFor("Dyer");
+  const room = await joined(client);
+  const synced = (r: Room) => (r.state as any).players.get(r.sessionId);
+  expect(synced(room)).toMatchObject({
+    knightColor: "crimson",
+    skinTone: "fair",
+  });
+  room.send(APPEARANCE_INTENT, "violet");
+  room.send(APPEARANCE_INTENT, "olive");
+  await vi.waitFor(
+    () =>
+      expect(synced(room)).toMatchObject({
+        knightColor: "violet",
+        skinTone: "olive",
+      }),
+    { timeout: TICK_MS * 3, interval: 20 },
+  );
+
+  const closed = new Promise((resolve) => room.onLeave(resolve));
+  room.send(LOGOUT_INTENT);
+  await closed;
+
+  const back = await joined(client);
+  expect(synced(back)).toMatchObject({
+    knightColor: "violet",
+    skinTone: "olive",
   });
 });
 

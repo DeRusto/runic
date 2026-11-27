@@ -98,7 +98,12 @@ export function knightMaps(map: THREE.Texture) {
   const image = map.image as ImageBitmap;
   const [w, h] = [image.width / 8, image.height / 4];
   const painted = new Map<string, THREE.Texture>();
+  // shortcut: like the gear's grey atlas, a browser without canvas filters (Safari) shows every
+  // Knight in the model's own look, skin included, rather than half a look; paint per pixel if anyone plays there.
+  const filtersWork =
+    document.createElement("canvas").getContext("2d")?.filter !== undefined;
   return (color: string, skin: string) => {
+    if (!filtersWork) return map;
     const filter = KNIGHT_LOOKS[color as KnightColor]?.filter ?? "none";
     const tone = skin === "fair" ? undefined : SKIN_LOOKS[skin as SkinTone];
     if (filter === "none" && !tone) return map;
@@ -109,7 +114,6 @@ export function knightMaps(map: THREE.Texture) {
     canvas.height = image.height;
     const context = canvas.getContext("2d")!;
     context.drawImage(image, 0, 0);
-    // shortcut: like the gear's grey atlas, a browser without canvas filters (Safari) shows only the model's own look.
     context.filter = filter;
     for (const [column, row] of CAPE_SWATCHES)
       context.drawImage(

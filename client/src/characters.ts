@@ -371,11 +371,8 @@ export class Figure {
   /** The body, legs and feet item ids worn. Each with a model shows; the rest of CLOTHES hide. */
   clothes: string[] = [];
   private clothing: THREE.Object3D[];
-  /** The player's Knight color and skin tone; `paintLook` repaints the model when either changes. */
-  knightColor = "";
-  skinTone = "";
-  paintLook?: (color: string, skin: string) => void;
-  private paintedLook = "";
+  /** Set on a player's Knight alone: repaints it in this color and skin tone when either changes. */
+  setLook?: (color: string, skin: string) => void;
   /** Materials this figure alone owns, to free when it leaves; shared ones and textures stay. */
   ownMaterials: THREE.Material[] = [];
 
@@ -632,11 +629,6 @@ export class Figure {
       held.visible = inFight && (item === this.weapon || item === this.shield);
     for (const piece of this.clothing)
       piece.visible = this.clothes.includes(piece.name);
-    const look = `${this.knightColor} ${this.skinTone}`;
-    if (this.paintLook && look !== this.paintedLook) {
-      this.paintLook(this.knightColor, this.skinTone);
-      this.paintedLook = look;
-    }
 
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
@@ -901,7 +893,11 @@ export async function loadCharacters() {
     });
     const figure = new Figure(tile, model, clips);
     figure.ownMaterials.push(look);
-    figure.paintLook = (color, skin) => (look.map = mapFor(color, skin));
+    figure.setLook = (color, skin) => {
+      const map = mapFor(color, skin);
+      if (look.map === map) return;
+      look.map = map;
+    };
     return figure;
   };
 }

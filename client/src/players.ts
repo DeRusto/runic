@@ -60,8 +60,7 @@ export function showPlayers(
         (item) => itemParts(item ?? "").base,
       );
       const action = player?.action;
-      figure.knightColor = player?.knightColor ?? "";
-      figure.skinTone = player?.skinTone ?? "";
+      if (player) figure.setLook?.(player.knightColor, player.skinTone);
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;
       const tile = player && tiles[player.y]?.[player.x];

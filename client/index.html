@@ -1337,6 +1337,7 @@
             id="sheet-tab-gear"
             type="button"
             role="tab"
+            aria-controls="sheet-gear"
             aria-selected="true"
           >
             Gear
@@ -1345,6 +1346,7 @@
             id="sheet-tab-skills"
             type="button"
             role="tab"
+            aria-controls="sheet-skills"
             aria-selected="false"
           >
             Skills
@@ -1353,13 +1355,19 @@
             id="sheet-tab-appearance"
             type="button"
             role="tab"
+            aria-controls="sheet-appearance"
             aria-selected="false"
           >
             Appearance
           </button>
         </div>
         <div id="sheet-panes">
-          <div id="sheet-gear" class="sheet-pane" role="tabpanel">
+          <div
+            id="sheet-gear"
+            class="sheet-pane"
+            role="tabpanel"
+            aria-labelledby="sheet-tab-gear"
+          >
             <div id="gear-slots"></div>
             <ul id="gear-stats" aria-label="Stats"></ul>
             Stance
@@ -1372,9 +1380,16 @@
             id="sheet-skills"
             class="sheet-pane"
             role="tabpanel"
+            aria-labelledby="sheet-tab-skills"
             hidden
           ></div>
-          <div id="sheet-appearance" class="sheet-pane" role="tabpanel" hidden>
+          <div
+            id="sheet-appearance"
+            class="sheet-pane"
+            role="tabpanel"
+            aria-labelledby="sheet-tab-appearance"
+            hidden
+          >
             Color
             <div id="knight-color" role="group"></div>
             Skin tone
