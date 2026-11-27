@@ -334,6 +334,8 @@ test("a new account starts on the respawn tile in its starter clothes, with an e
     ],
     stance: "balanced",
     rangedStance: "steady",
+    knightColor: "crimson",
+    skinTone: "fair",
     riggedShortcuts: [],
     health: 1000,
     inventory: EMPTY_INVENTORY,
@@ -410,6 +412,8 @@ const SAVED = {
   identifiesEssence: true,
   stance: "forceful" as const,
   rangedStance: "rapid" as const,
+  knightColor: "gold" as const,
+  skinTone: "olive" as const,
   riggedShortcuts: ["brambleSwing"],
 };
 

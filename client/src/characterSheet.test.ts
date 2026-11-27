@@ -1,5 +1,6 @@
 import {
   GEAR_SLOTS,
+  APPEARANCE_INTENT,
   PIN_INTENT,
   STANCE_INTENT,
   TAKE_OFF_INTENT,
@@ -393,6 +394,76 @@ describe("the Gear tab's stats", () => {
       "Min hit 100",
       "Max hit 300",
     ]);
+  });
+});
+
+describe("the Appearance tab", () => {
+  const buttons = (group: string) => el(group).children;
+  const drawn = (knightColor: string, skinTone = "fair") =>
+    sheet.drawAppearance({ knightColor, skinTone } as unknown as SyncedPlayer);
+  const names = (group: string) =>
+    buttons(group).map((button: any) => button.textContent);
+  const pressed = (group: string) =>
+    buttons(group).map((button: any) => button.attributes["aria-pressed"]);
+
+  test("offers each color and skin tone by name, in labelled groups", () => {
+    drawn("crimson");
+    expect(names("knight-color")).toEqual([
+      "Crimson",
+      "Azure",
+      "Emerald",
+      "Gold",
+      "Violet",
+      "Onyx",
+      "Ivory",
+    ]);
+    expect(names("skin-tone")).toEqual([
+      "Porcelain",
+      "Fair",
+      "Tan",
+      "Olive",
+      "Brown",
+      "Deep",
+    ]);
+    expect(el("knight-color").attributes["aria-label"]).toBe("Color");
+    expect(el("skin-tone").attributes["aria-label"]).toBe("Skin tone");
+  });
+
+  test("shows the player's color and skin tone as pressed", () => {
+    drawn("onyx", "olive");
+    expect(pressed("knight-color")).toEqual([
+      "false",
+      "false",
+      "false",
+      "false",
+      "false",
+      "true",
+      "false",
+    ]);
+    expect(pressed("skin-tone")).toEqual([
+      "false",
+      "false",
+      "false",
+      "true",
+      "false",
+      "false",
+    ]);
+  });
+
+  test("a click sends the color or skin tone chosen", () => {
+    drawn("crimson");
+    buttons("knight-color")[1].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(APPEARANCE_INTENT, "azure");
+    buttons("skin-tone")[5].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(APPEARANCE_INTENT, "deep");
+  });
+
+  test("it has its own tab beside Gear and Skills", () => {
+    el("sheet-tab-appearance").onclick!();
+    expect(el("sheet-appearance").hidden).toBe(false);
+    expect(el("sheet-gear").hidden).toBe(true);
+    expect(el("sheet-skills").hidden).toBe(true);
+    expect(el("sheet-tab-appearance").attributes["aria-selected"]).toBe("true");
   });
 });
 

@@ -1,10 +1,14 @@
 import {
   SKILLS,
+  STARTING_KNIGHT_COLOR,
   STARTING_PINNED_SKILLS,
+  STARTING_SKIN_TONE,
   STARTING_RANGED_STANCE,
   STARTING_STANCE,
+  type KnightColor,
   type QuestProgress,
   type RangedStance,
+  type SkinTone,
   type Stance,
 } from "@runic/shared";
 import {
@@ -116,6 +120,16 @@ export const players = sqliteTable("players", {
     .notNull()
     .$type<RangedStance>()
     .default(STARTING_RANGED_STANCE),
+  /** The color of the player's Knight; a save from before colors keeps the model's own Crimson. */
+  knightColor: text("knight_color")
+    .notNull()
+    .$type<KnightColor>()
+    .default(STARTING_KNIGHT_COLOR),
+  /** The skin tone of the player's Knight; a save from before skin tones keeps the model's own Fair. */
+  skinTone: text("skin_tone")
+    .notNull()
+    .$type<SkinTone>()
+    .default(STARTING_SKIN_TONE),
   /** The shortcuts this player has rigged with a rope, in the order rigged (Agility spec §3). */
   riggedShortcuts: text("rigged_shortcuts", { mode: "json" })
     .notNull()

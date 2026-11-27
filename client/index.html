@@ -681,7 +681,16 @@
         font-size: 12px;
         opacity: 0.8;
       }
-      #stance button {
+      #knight-color,
+      #skin-tone {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        margin: 2px 0 10px;
+      }
+      #stance button,
+      #knight-color button,
+      #skin-tone button {
         padding: 4px 0;
         border: 0;
         border-radius: 2px;
@@ -691,12 +700,16 @@
         font: inherit;
         font-size: 12px;
       }
-      #stance button[aria-pressed="true"] {
+      #stance button[aria-pressed="true"],
+      #knight-color button[aria-pressed="true"],
+      #skin-tone button[aria-pressed="true"] {
         background: #5a4024;
         outline-color: #ffd27a;
         color: #ffd27a;
       }
-      #stance button:focus-visible {
+      #stance button:focus-visible,
+      #knight-color button:focus-visible,
+      #skin-tone button:focus-visible {
         outline: 2px solid #ffd27a;
       }
       #toolbelt {
@@ -1324,6 +1337,7 @@
             id="sheet-tab-gear"
             type="button"
             role="tab"
+            aria-controls="sheet-gear"
             aria-selected="true"
           >
             Gear
@@ -1332,13 +1346,28 @@
             id="sheet-tab-skills"
             type="button"
             role="tab"
+            aria-controls="sheet-skills"
             aria-selected="false"
           >
             Skills
           </button>
+          <button
+            id="sheet-tab-appearance"
+            type="button"
+            role="tab"
+            aria-controls="sheet-appearance"
+            aria-selected="false"
+          >
+            Appearance
+          </button>
         </div>
         <div id="sheet-panes">
-          <div id="sheet-gear" class="sheet-pane" role="tabpanel">
+          <div
+            id="sheet-gear"
+            class="sheet-pane"
+            role="tabpanel"
+            aria-labelledby="sheet-tab-gear"
+          >
             <div id="gear-slots"></div>
             <ul id="gear-stats" aria-label="Stats"></ul>
             Stance
@@ -1351,8 +1380,21 @@
             id="sheet-skills"
             class="sheet-pane"
             role="tabpanel"
+            aria-labelledby="sheet-tab-skills"
             hidden
           ></div>
+          <div
+            id="sheet-appearance"
+            class="sheet-pane"
+            role="tabpanel"
+            aria-labelledby="sheet-tab-appearance"
+            hidden
+          >
+            Color
+            <div id="knight-color" role="group"></div>
+            Skin tone
+            <div id="skin-tone" role="group"></div>
+          </div>
         </div>
       </section>
       <section id="social" role="dialog" aria-label="Social" hidden>

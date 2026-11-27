@@ -39,7 +39,9 @@ export function showPlayers(
     overheads.set(id, new Overhead(player.username));
   });
   callbacks.onRemove("players", (_, id) => {
-    scene.remove(figures.get(id)!.model, hitBoxes.get(id)!);
+    const figure = figures.get(id)!;
+    scene.remove(figure.model, hitBoxes.get(id)!);
+    for (const material of figure.ownMaterials) material.dispose();
     figures.delete(id);
     hitBoxes.delete(id);
     overheads.get(id)!.remove();
@@ -58,6 +60,7 @@ export function showPlayers(
         (item) => itemParts(item ?? "").base,
       );
       const action = player?.action;
+      if (player) figure.setLook?.(player.knightColor, player.skinTone);
       figure.action = action ?? "";
       if (action !== "making") figure.work = undefined;
       const tile = player && tiles[player.y]?.[player.x];

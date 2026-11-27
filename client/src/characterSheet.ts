@@ -32,6 +32,7 @@ import { iconUrl } from "./itemIcons.ts";
 import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
+import { showAppearance } from "./appearance.ts";
 import { showStances } from "./stances.ts";
 import { addTip } from "./tooltip.ts";
 
@@ -78,7 +79,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     if (key === "c" || key === "C") toggle();
   };
 
-  const tabs = ["gear", "skills"].map((name) => ({
+  const tabs = ["gear", "skills", "appearance"].map((name) => ({
     tab: document.getElementById(`sheet-tab-${name}`)!,
     pane: document.getElementById(`sheet-${name}`)!,
   }));
@@ -139,6 +140,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
   const stats = document.getElementById("gear-stats")!;
 
   const drawStance = showStances(room);
+  const drawAppearance = showAppearance(room);
 
   const combat = document.createElement("p");
   const note = document.createElement("p");
@@ -226,6 +228,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
       lines.forEach((line, i) => (stats.children[i]!.textContent = line));
     },
     drawStance,
+    drawAppearance,
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {
       const count = me.pinnedSkills.length;

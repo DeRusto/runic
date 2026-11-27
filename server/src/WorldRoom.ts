@@ -34,6 +34,7 @@ import {
   MAX_CHAT_LINE_LENGTH,
   PIN_INTENT,
   STANCE_INTENT,
+  APPEARANCE_INTENT,
   TARGET_INTENT,
   SAVE_INTERVAL_TICKS,
   TAKE_INTENT,
@@ -150,6 +151,8 @@ export class WorldRoom extends Room {
     ) => this.sim.pinSkill(client.sessionId, intent),
     [STANCE_INTENT]: (client: Client, stance: string) =>
       this.sim.setStance(client.sessionId, stance),
+    [APPEARANCE_INTENT]: (client: Client, look: string) =>
+      this.sim.setAppearance(client.sessionId, look),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),
     // Asked for by the client once it listens, since a message sent during the join would arrive first.
     [LIST_FRIENDS_INTENT]: (client: Client) => sendFriends(this, client),
