@@ -5,6 +5,8 @@ import {
   MAX_PINNED_SKILLS,
   respawnTile,
   siteId,
+  isKnightColor,
+  isSkinTone,
   SKILLS,
   type Deal,
   type GatheringSkill,
@@ -418,6 +420,17 @@ export class Simulation {
   /** `stance` comes straight off the network; see `Fighting.setStance`. */
   setStance(id: string, stance: string) {
     this.fighting.setStance(id, stance);
+  }
+
+  /**
+   * Comes straight off the network, so anything but a color or a skin tone is ignored. Each sets
+   * its own. A look only, so it skips the queue.
+   */
+  setAppearance(id: string, look: string) {
+    const player = this.state.players.get(id);
+    if (!player) return;
+    if (isKnightColor(look)) player.knightColor = look;
+    else if (isSkinTone(look)) player.skinTone = look;
   }
 
   /** `slot` comes straight off the network; see `Gear.equip`. */

@@ -264,6 +264,7 @@ export function showBottomBar(
     sheet.drawGear(me);
     sheet.drawStats(me);
     sheet.drawStance(me);
+    sheet.drawAppearance(me);
     showHeld = () => {
       shown = me;
       slots.forEach((slot, i) => {

@@ -65,6 +65,8 @@ export const TAKE_OFF_INTENT = "takeOff";
 export const PIN_INTENT = "pin";
 /** The stance intent's message type; its payload is a melee `Stance` or a `RangedStance`, which sets that style's stance. */
 export const STANCE_INTENT = "stance";
+/** The appearance intent's message type; its payload is a `KnightColor` or a `SkinTone`, which sets that one. */
+export const APPEARANCE_INTENT = "appearance";
 /** The log out intent's message type; it has no payload. */
 export const LOGOUT_INTENT = "logout";
 /** The chat intent's message type, payload the line; the server broadcasts a `ChatLine` under it too. */
@@ -280,6 +282,7 @@ export * from "./stalls.ts";
 export * from "./strongboxes.ts";
 export * from "./agility.ts";
 export * from "./stances.ts";
+export * from "./appearance.ts";
 export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";

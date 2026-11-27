@@ -25,6 +25,8 @@ describe("player save", () => {
       pinnedSkills: ["Cooking", "Mining"],
       stance: "forceful",
       rangedStance: "longrange",
+      knightColor: "violet",
+      skinTone: "brown",
       riggedShortcuts: ["cragLine", "brambleSwing"],
       bank: Array.from({ length: BANK_SLOTS }, (_, slot) =>
         slot === 5 ? "coins" : EMPTY_SLOT,

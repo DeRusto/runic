@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), and the Ranged stance (#280).
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), the Ranged stance (#280), and the Knight's color and skin tone.
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -48,11 +48,23 @@ const LATEST_COLUMNS = [
   "weapon_count",
   "ammo_count",
   "ranged_stance",
+  "knight_color",
+  "skin_tone",
 ];
-const LATEST_MIGRATIONS = 22;
+const LATEST_MIGRATIONS = 23;
 
-/** Makes the Ranged stance's migration pending again: its column gone, and its row in the journal. */
+/** Makes the appearance migration pending again: its columns gone, and its row in the journal. */
+function unapplyAppearance(sqlite: DatabaseSync) {
+  sqlite.exec("ALTER TABLE players DROP COLUMN knight_color");
+  sqlite.exec("ALTER TABLE players DROP COLUMN skin_tone");
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+  );
+}
+
+/** Makes the Ranged stance's migration pending again, and the appearance one after it: their columns gone, and their rows in the journal. */
 function unapplyRangedStance(sqlite: DatabaseSync) {
+  unapplyAppearance(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN ranged_stance");
   sqlite.exec(
     "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
@@ -220,6 +232,8 @@ describe("a save from the first slice, written before the stacks migration", () 
       identifiesEssence: false,
       stance: "balanced",
       rangedStance: "steady",
+      knightColor: "crimson",
+      skinTone: "fair",
       riggedShortcuts: [],
     });
     await database.shutdown();
@@ -481,6 +495,27 @@ describe("a save from just before Ranged's stances (#280)", () => {
       weapon: "oakBow",
       ammo: "ironArrow",
       ammoCount: 17,
+    });
+    await database.shutdown();
+  });
+});
+
+describe("a save from before the Knight's colors and skin tones", () => {
+  test("it keeps the model's own Crimson and Fair, and loses nothing", async () => {
+    await boot();
+    const sqlite = new DatabaseSync(path);
+    unapplyAppearance(sqlite);
+    sqlite.exec(`INSERT INTO accounts (id, username, username_lower, password_hash, created_at)
+      VALUES (12, 'Squire', 'squire', 'x', 0)`);
+    sqlite.exec(`INSERT INTO players (account_id, attack_xp, strength_xp, defense_xp, herblaw_xp, hitpoints_xp, x, y, health, inventory, inventory_counts, ranged_stance)
+      VALUES (12, 900, 400, 300, 0, 20000, 4, 1, 900, '[""]', '[0]', 'rapid')`);
+    sqlite.close();
+    const database = await openDatabase();
+    expect(readSave(12)).toMatchObject({
+      knightColor: "crimson",
+      skinTone: "fair",
+      rangedStance: "rapid",
+      attackXp: 900,
     });
     await database.shutdown();
   });

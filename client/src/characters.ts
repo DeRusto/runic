@@ -13,6 +13,7 @@ import {
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
+import { knightMaps } from "./appearance.ts";
 import { GLOW_INTENSITY, TIER_LOOKS, type TierLook } from "./tierLooks.ts";
 
 const HEIGHT = 1.15;
@@ -370,6 +371,11 @@ export class Figure {
   /** The body, legs and feet item ids worn. Each with a model shows; the rest of CLOTHES hide. */
   clothes: string[] = [];
   private clothing: THREE.Object3D[];
+  /** The player's Knight color and skin tone; `paintLook` repaints the model when either changes. */
+  knightColor = "";
+  skinTone = "";
+  paintLook?: (color: string, skin: string) => void;
+  private paintedLook = "";
 
   constructor(
     readonly tile: Tile,
@@ -624,6 +630,11 @@ export class Figure {
       held.visible = inFight && (item === this.weapon || item === this.shield);
     for (const piece of this.clothing)
       piece.visible = this.clothes.includes(piece.name);
+    const look = `${this.knightColor} ${this.skinTone}`;
+    if (this.paintLook && look !== this.paintedLook) {
+      this.paintLook(this.knightColor, this.skinTone);
+      this.paintedLook = look;
+    }
 
     const dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
@@ -871,10 +882,25 @@ export async function loadCharacters() {
     paintGear(held, look, grey!);
     Object.values(models).forEach((m) => holdIn(m, look.hand, held));
   });
-  // shortcut: every player wears the adventurer, to see it in game; was
-  // models[characterFor(name)] on the shared clips, the Knight or the Barbarian by name.
-  return (tile: Tile, _name: string) =>
-    new Figure(tile, cloneSkinned(models.Adventurer), adventurerClips);
+  // shortcut: every player is the Knight on the shared clips while the Adventurer and its clothes
+  // are worked out; the Adventurer is models.Adventurer on adventurerClips.
+  let knightLook: THREE.MeshStandardMaterial | undefined;
+  models.Knight.traverse((o) => {
+    if (o instanceof THREE.Mesh) knightLook ??= o.material;
+  });
+  const mapFor = knightMaps(knightLook!.map!);
+  return (tile: Tile, _name: string) => {
+    const model = cloneSkinned(models.Knight);
+    // Its own copy of the Knight's material, so its color is its own; held gear keeps its own.
+    const look = knightLook!.clone();
+    model.traverse((o) => {
+      if (o instanceof THREE.Mesh && o.material === knightLook)
+        o.material = look;
+    });
+    const figure = new Figure(tile, model, clips);
+    figure.paintLook = (color, skin) => (look.map = mapFor(color, skin));
+    return figure;
+  };
 }
 
 /**

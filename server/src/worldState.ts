@@ -1,9 +1,13 @@
 import { schema, t } from "@colyseus/schema";
 import {
   SKILLS,
+  STARTING_KNIGHT_COLOR,
+  STARTING_SKIN_TONE,
   STARTING_RANGED_STANCE,
   STARTING_STANCE,
   type FireLog,
+  type KnightColor,
+  type SkinTone,
   type PlayerAction,
   type RangedStance,
   type Stance,
@@ -41,6 +45,10 @@ export const Player = schema(
     stance: t.string<Stance>().default(STARTING_STANCE),
     /** Where ranged experience goes, and the reach and fire rate a shot takes (Ranged spec §6). */
     rangedStance: t.string<RangedStance>().default(STARTING_RANGED_STANCE),
+    /** The color of the player's Knight, which everyone sees. */
+    knightColor: t.string<KnightColor>().default(STARTING_KNIGHT_COLOR),
+    /** The skin tone of the player's Knight, which everyone sees. */
+    skinTone: t.string<SkinTone>().default(STARTING_SKIN_TONE),
     health: t.uint16(),
     maxHealth: t.uint16(),
     inventory: t.array("string"),
