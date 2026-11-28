@@ -44,6 +44,7 @@ export function castUtility(
   if (refusal) return world.tell(id, refusal);
   world.clearAction(id);
   if (spell === "coinTurn") {
+    // Never refuses here: coinTurnRefusal has just run this same turn on a copy of the bag.
     turnToCoins(player.inventory, player.inventoryCounts, slot);
   } else {
     for (const [rune, count] of utilityRunesOf(spell))

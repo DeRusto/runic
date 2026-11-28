@@ -156,7 +156,7 @@ export function turnToCoins(items: string[], counts: number[], slot: number) {
 export const villageTeleportTile = (tiles: TileKind[][]): Tile =>
   respawnTile(tiles);
 
-/** Where Hollow teleport lands: the tile west of Hollis, between them and the gap into Runestone Hollow (Magic spec §9). */
+/** Where Hollow teleport lands: the tile west of Hollis, between them and the gap into Runestone Hollow (Magic spec §9). The region must hold Hollis, as the world's does; `region.test.ts` pins the tile. */
 export function hollowTeleportTile(tiles: TileKind[][]): Tile {
   const y = tiles.findIndex((row) =>
     row.some((tile) => tile.villager === "hollis"),
