@@ -37,6 +37,7 @@ import {
   MAX_CHAT_LINE_LENGTH,
   PIN_INTENT,
   SPELL_INTENT,
+  PRAYER_INTENT,
   STANCE_INTENT,
   APPEARANCE_INTENT,
   TARGET_INTENT,
@@ -161,6 +162,8 @@ export class WorldRoom extends Room {
     ) => this.sim.pinSkill(client.sessionId, intent),
     [STANCE_INTENT]: (client: Client, stance: string) =>
       this.sim.setStance(client.sessionId, stance),
+    [PRAYER_INTENT]: (client: Client, prayer: unknown) =>
+      this.sim.togglePrayer(client.sessionId, prayer),
     [SPELL_INTENT]: (client: Client, spell: unknown) =>
       this.sim.pickSpell(client.sessionId, spell),
     [APPEARANCE_INTENT]: (client: Client, look: string) =>

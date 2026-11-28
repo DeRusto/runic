@@ -2,7 +2,6 @@ import {
   AMMO_RECOVERY_CHANCE,
   atRangeOf,
   attackRefusal,
-  AVOIDANCE_POTION_POINTS,
   ENEMIES,
   enemyHit,
   FIGHT_BACK_DELAY_TICKS,
@@ -12,7 +11,6 @@ import {
   isRangedStance,
   isStance,
   magicHit,
-  MIGHT_POTION_HIT,
   PLAYER_DEAD_TICKS,
   playerHit,
   OUT_OF_KNIVES_LINE,
@@ -23,6 +21,7 @@ import {
   SWING_INTERVAL_TICKS,
   type Style,
 } from "@runic/shared";
+import { attackBoostsOf, avoidanceBoostOf } from "./boosts.ts";
 import { canBeHit } from "./busy.ts";
 import { spendRunes } from "./casting.ts";
 import { dropFromSlot } from "./dropping.ts";
@@ -31,6 +30,7 @@ import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import { placeLootOf } from "./loot.ts";
 import { lostWeaponFor } from "./playerActions.ts";
+import { endPrayers } from "./prayers.ts";
 import type { Quests } from "./quests.ts";
 import type { VillagerWindows } from "./villagerWindows.ts";
 import type { SyncedPlayer, World } from "./worldContext.ts";
@@ -110,20 +110,16 @@ export class Fighting {
   ) {
     const ranged = rangedWeaponOf(player);
     this.world.lock(id);
-    // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
-    const might =
-      this.world.unsyncedPlayers.get(id)!.potion?.virtue === "might"
-        ? MIGHT_POTION_HIT
-        : 0;
+    const { might, accuracy } = attackBoostsOf(this.world, id);
     // The enemy's fixed style is the target's side of the combat triangle; the weapon in hand,
     // read now, picks the shot or the swing and so the player's side (#271).
     const against = ENEMIES[enemy.kind].style;
     const { random } = this.world;
     const { damage, critical, xp } =
       style === "magic"
-        ? magicHit(player, against, might, enemy.health, random)
+        ? magicHit(player, against, might, enemy.health, random, accuracy)
         : ranged
-          ? rangedHit(player, against, might, enemy.health, random)
+          ? rangedHit(player, against, might, enemy.health, random, accuracy)
           : playerHit(
               player,
               player.stance,
@@ -131,6 +127,7 @@ export class Fighting {
               might,
               enemy.health,
               random,
+              accuracy,
             );
     for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
     this.world.fitHealth(id);
@@ -209,11 +206,7 @@ export class Fighting {
     const enemy = this.world.state.enemies.get(enemyId)!;
     const player = this.world.state.players.get(playerId)!;
     this.world.lock(playerId);
-    // Worn Avoidance and a potion's point add up per the Virtue rules (#222).
-    const avoidance =
-      this.world.unsyncedPlayers.get(playerId)!.potion?.virtue === "avoidance"
-        ? AVOIDANCE_POTION_POINTS
-        : 0;
+    const avoidance = avoidanceBoostOf(this.world, playerId);
     const { damage, blocked, critical, hit, xp } = enemyHit(
       enemy.kind,
       player,
@@ -282,6 +275,7 @@ export class Fighting {
     unsynced.delicious = undefined;
     unsynced.potion = undefined;
     unsynced.busy = undefined;
+    endPrayers(player);
     this.world.fitHealth(id);
     unsynced.respawnTick = this.world.state.tick + PLAYER_DEAD_TICKS;
     this.world.events.push({ type: "playerDied", player: id });

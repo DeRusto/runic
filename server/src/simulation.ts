@@ -31,6 +31,7 @@ import { pinSkill } from "./pinning.ts";
 import type { QueuedAction } from "./playerActions.ts";
 import { newSave, playerFromSave, saveOf } from "./playerSave.ts";
 import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
+import { togglePrayer } from "./prayers.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
 import { Taking } from "./taking.ts";
@@ -405,6 +406,11 @@ export class Simulation {
   /** `spell` comes straight off the network; see `pickSpell`. */
   pickSpell(id: string, spell: unknown) {
     pickSpell(this.world, id, spell);
+  }
+
+  /** `prayer` comes straight off the network; see `togglePrayer`. */
+  togglePrayer(id: string, prayer: unknown) {
+    togglePrayer(this.world, id, prayer);
   }
 
   /** `stance` comes straight off the network; see `Fighting.setStance`. */

@@ -61,7 +61,7 @@ function rollDamage(
  * (#271); it never touches the damage. Rolls the hit, its damage, then a critical. `mightBonus` is a Might potion's, added to the hit
  * like the gear's while its buff lasts (#222). `xp` is the attack's experience before any split:
  * 6 per 100 damage, rounded once, and none for overkill, as the damage is capped at the enemy's
- * health.
+ * health. `accuracyBonus` is an Accuracy prayer's points to land (Prayer spec §5).
  */
 export function rollPlayerHit(
   { chance, max, gear }: { chance: number; max: number; gear: number },
@@ -70,8 +70,13 @@ export function rollPlayerHit(
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
+  accuracyBonus = 0,
 ) {
-  const rolled = rollDamage(landChanceOf(chance, style, against), max, random);
+  const rolled = rollDamage(
+    landChanceOf(chance, style, against, accuracyBonus),
+    max,
+    random,
+  );
   // Only on a hit, as 0 means a miss.
   const hit = rolled && rolled + gear + mightBonus;
   const critical = hit > 0 && random() < playerCritChance(agilityXp);
@@ -98,6 +103,7 @@ export function playerHit(
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
+  accuracyBonus = 0,
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     hitOf(player),
@@ -106,6 +112,7 @@ export function playerHit(
     mightBonus,
     enemyHealth,
     random,
+    accuracyBonus,
   );
   const { attackXp, strengthXp } = meleeXpOf(stance, xp);
   return {

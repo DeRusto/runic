@@ -118,6 +118,8 @@ export type UnsyncedPlayer = {
    * (spec §6, #222).
    */
   potion?: { virtue: Virtue; endTick: number; bonus: number };
+  /** Drain carried between ticks, in points per `PRAYER_DRAIN_TICKS`, so drain is exact over time. Session only (Prayer spec §5). */
+  prayerDrainCarried?: number;
   /** The combat lock runs until this tick. */
   lockEndTick: number;
   /** A stun or an Agility crossing (#236). Not saved: leaving ends it. */
