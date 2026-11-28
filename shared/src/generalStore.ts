@@ -32,8 +32,8 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ashstone: 25,
   cinderglass: 50,
   heartflame: 100,
-  // #232's essence: the masked find is worth a coin until it is identified, and a rune
-  // outsells the essence it is made of, by its gate.
+  // #232's essence: the masked find is worth a coin until it is identified, and an
+  // elemental rune outsells the essence it is made of, by its gate.
   strangeMaterial: 1,
   runeEssence: 6,
   // Odo's proof pieces are only for him, so the store gives a coin like the masked find.
