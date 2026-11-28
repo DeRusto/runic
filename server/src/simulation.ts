@@ -1,6 +1,5 @@
 import {
   GATHERING_SKILLS,
-  logoutRefusal,
   type Deal,
   type GatheringSkill,
   type GearSlot,
@@ -24,6 +23,7 @@ import { GatheringSites } from "./gatheringSites.ts";
 import { Gear } from "./gear.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Inventory } from "./inventory.ts";
+import { Logouts } from "./logouts.ts";
 import { Making } from "./making.ts";
 import { mixPotion } from "./mixing.ts";
 import { pinSkill } from "./pinning.ts";
@@ -70,9 +70,9 @@ export class Simulation {
   private readonly agility: Agility;
   private readonly inventory: Inventory;
   private readonly taking: Taking;
-  private queuedLogouts = new Set<string>();
+  private readonly logouts: Logouts;
   /** Players whose log out intent was accepted, for the room to disconnect. */
-  readonly loggedOut: string[] = [];
+  readonly loggedOut: string[];
 
   constructor(
     tiles: TileKind[][],
@@ -83,6 +83,8 @@ export class Simulation {
     this.world = new World(tiles, () => this.random());
     this.state = this.world.state;
     this.events = this.world.events;
+    this.logouts = new Logouts(this.world);
+    this.loggedOut = this.logouts.loggedOut;
     this.quests = new Quests(this.world);
     this.windows = new VillagerWindows(this.world, this.quests);
     this.bank = new Bank(this.world, this.windows);
@@ -164,7 +166,7 @@ export class Simulation {
     this.queuedActions.delete(id);
     this.world.queuedEats.delete(id);
     this.world.queuedDrops.delete(id);
-    this.queuedLogouts.delete(id);
+    this.logouts.forget(id);
     this.windows.forget(id);
     this.world.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
@@ -179,7 +181,7 @@ export class Simulation {
     this.queuedActions.delete(id);
     this.world.queuedEats.delete(id);
     this.world.queuedDrops.delete(id);
-    this.queuedLogouts.delete(id);
+    this.logouts.forget(id);
   }
 
   reconnectPlayer(id: string) {
@@ -196,8 +198,7 @@ export class Simulation {
   }
 
   queueLogout(id: string) {
-    if (this.state.players.has(id) && !this.world.isCrossing(id))
-      this.queuedLogouts.add(id);
+    this.logouts.queue(id);
   }
 
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
@@ -463,13 +464,7 @@ export class Simulation {
     for (const [id, { slot, amount }] of this.world.queuedDrops)
       dropFromSlot(this.world, id, slot, amount);
     this.world.queuedDrops.clear();
-    for (const id of this.queuedLogouts) {
-      const refusal = logoutRefusal(this.lockRunning(id));
-      if (refusal)
-        this.events.push({ type: "told", player: id, line: refusal });
-      else this.loggedOut.push(id);
-    }
-    this.queuedLogouts.clear();
+    this.logouts.apply();
   }
 
   /** Each player's respawn once their death is over, or else their healing, then Prayer recovery and burial. */
