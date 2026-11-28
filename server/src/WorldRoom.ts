@@ -37,6 +37,7 @@ import {
   MAX_CHAT_LINE_LENGTH,
   PIN_INTENT,
   SPELL_INTENT,
+  CAST_INTENT,
   PRAYER_INTENT,
   STANCE_INTENT,
   APPEARANCE_INTENT,
@@ -166,6 +167,8 @@ export class WorldRoom extends Room {
       this.sim.togglePrayer(client.sessionId, prayer),
     [SPELL_INTENT]: (client: Client, spell: unknown) =>
       this.sim.pickSpell(client.sessionId, spell),
+    [CAST_INTENT]: (client: Client, intent: unknown) =>
+      this.sim.queueCast(client.sessionId, intent),
     [APPEARANCE_INTENT]: (client: Client, look: string) =>
       this.sim.setAppearance(client.sessionId, look),
     [LOGOUT_INTENT]: (client: Client) => this.sim.queueLogout(client.sessionId),

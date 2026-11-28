@@ -20,6 +20,7 @@ import {
 } from "./pathfinding.ts";
 import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
 import { startBurial } from "./prayer.ts";
+import { castUtility } from "./utilitySpells.ts";
 import type { ThievingTargets } from "./thievingTargets.ts";
 import type { World } from "./worldContext.ts";
 
@@ -107,6 +108,9 @@ export class Walking {
         break;
       case "gathering":
         goNextTo({ kind: intent.skill, site: intent.site });
+        break;
+      case "casting":
+        castUtility(this.world, id, intent);
         break;
       case "walking":
         unsynced.action = undefined;

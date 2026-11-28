@@ -1,8 +1,9 @@
 import { rollPlayerHit } from "./combat.ts";
 import { gearOf, type GearSlot } from "./gear.ts";
-import { heldCount, type ItemId } from "./items.ts";
+import type { ItemId } from "./items.ts";
 import { rangedAttackRefusal, rangedWeaponOf } from "./ranged.ts";
 import { levelFor, type XpField } from "./skills.ts";
+import { holdsRunes, runeCountsOf, runesLineOf } from "./spellRunes.ts";
 import { hitCurvesOf } from "./stats.ts";
 import type { Style } from "./triangle.ts";
 import { virtueOf } from "./virtues.ts";
@@ -102,13 +103,11 @@ export const combatSpellsInGateOrder = () =>
 
 /** Each rune a cast of `spell` spends, with how many. */
 export const runesOf = (spell: CombatSpell) =>
-  Object.entries(COMBAT_SPELLS[spell].runes) as [ItemId, number][];
+  runeCountsOf(COMBAT_SPELLS[spell].runes);
 
 /** A spell's runes as the Spellbook tab reads them: "3 fire, 2 air, 1 focus". */
 export const runesLine = (spell: CombatSpell) =>
-  runesOf(spell)
-    .map(([rune, count]) => `${count} ${rune.replace(/Rune$/, "")}`)
-    .join(", ");
+  runesLineOf(COMBAT_SPELLS[spell].runes);
 
 /** How far a cast reaches, in 8-way tiles (Magic spec §5, #317). */
 export const MAGIC_REACH_TILES = 8;
@@ -150,13 +149,8 @@ export const pickedSpellOf = (player: { combatSpell?: string }) =>
   isCombatSpell(player.combatSpell) ? player.combatSpell : undefined;
 
 /** Whether the bag holds every rune one cast of `spell` spends. */
-export const hasRunesFor = (player: Bag, spell: CombatSpell) => {
-  const items = [...player.inventory];
-  const counts = [...player.inventoryCounts];
-  return runesOf(spell).every(
-    ([rune, count]) => heldCount(items, counts, rune) >= count,
-  );
-};
+export const hasRunesFor = (player: Bag, spell: CombatSpell) =>
+  holdsRunes(player, COMBAT_SPELLS[spell].runes);
 
 /** Why a staff can't cast now: no spell picked, or not its runes (Magic spec §5). Undefined for any other weapon. */
 export function magicAttackRefusal(

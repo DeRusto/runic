@@ -1,0 +1,469 @@
+import {
+  GATHERING_SKILLS,
+  type Deal,
+  type GatheringSkill,
+  type GearSlot,
+  type SitePool,
+  type Tile,
+  type TileKind,
+  type WorldEvent,
+} from "@runic/shared";
+import { Agility } from "./agility.ts";
+import { setAppearance } from "./appearance.ts";
+import { Bank } from "./banking.ts";
+import { pickSpell } from "./casting.ts";
+import { respawned, respawnIfDue } from "./death.ts";
+import { Eating } from "./eating.ts";
+import { Enemies } from "./enemies.ts";
+import { Fighting } from "./fighting.ts";
+import { Firemaking } from "./firemaking.ts";
+import { Gathering } from "./gathering.ts";
+import { GatheringSites } from "./gatheringSites.ts";
+import { Gear } from "./gear.ts";
+import { GeneralStore } from "./generalStore.ts";
+import { Inventory } from "./inventory.ts";
+import { Logouts } from "./logouts.ts";
+import { Making } from "./making.ts";
+import { mixPotion } from "./mixing.ts";
+import { pinSkill } from "./pinning.ts";
+import type { QueuedAction } from "./playerActions.ts";
+import { loginSave, playerFromSave, saveOf } from "./playerSave.ts";
+import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
+import { togglePrayer } from "./prayers.ts";
+import { Quests } from "./quests.ts";
+import type { PlayerSave } from "./saves.ts";
+import { applySlotIntents, queueDrop, queueEat } from "./slotIntents.ts";
+import { Taking } from "./taking.ts";
+import { ThievingTargets } from "./thievingTargets.ts";
+import { VillagerWindows } from "./villagerWindows.ts";
+import { Walking } from "./walking.ts";
+import { isInventorySlot, World } from "./worldContext.ts";
+
+/** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
+export class Simulation {
+  private readonly world: World;
+  readonly state: World["state"];
+  /** This tick's one-shot moments, for the room to broadcast after the patch and empty. */
+  readonly events: WorldEvent[];
+  /** Only the latest click per player counts, so a flood of them costs one path per tick. */
+  private queuedActions = new Map<string, QueuedAction>();
+  /** By username, so joining again can't beat the attempt or eat interval. */
+  private timersOfLeavers = new Map<
+    string,
+    { nextAttemptTick: number; nextEatTick: number }
+  >();
+  /** Every enemy, which fights on its own and tells the world its swings and loot. */
+  private enemies: Enemies;
+  private readonly sites: GatheringSites;
+  private readonly gathering: Gathering;
+  private readonly firemaking: Firemaking;
+  private readonly making: Making;
+  private readonly quests: Quests;
+  private readonly windows: VillagerWindows;
+  private readonly bank: Bank;
+  private readonly store: GeneralStore;
+  private readonly gear: Gear;
+  private readonly eating: Eating;
+  private readonly fighting: Fighting;
+  private readonly thieving: ThievingTargets;
+  private readonly walking: Walking;
+  private readonly agility: Agility;
+  private readonly inventory: Inventory;
+  private readonly taking: Taking;
+  private readonly logouts: Logouts;
+  /** Players whose log out intent was accepted, for the room to disconnect. */
+  readonly loggedOut: string[];
+
+  constructor(
+    tiles: TileKind[][],
+    readonly random: () => number,
+    pools: SitePool[] = [],
+  ) {
+    // Through `this.random` at each roll, so a test can stub it after construction.
+    this.world = new World(tiles, () => this.random());
+    this.state = this.world.state;
+    this.events = this.world.events;
+    this.logouts = new Logouts(this.world);
+    this.loggedOut = this.logouts.loggedOut;
+    this.quests = new Quests(this.world);
+    this.windows = new VillagerWindows(this.world, this.quests);
+    this.bank = new Bank(this.world, this.windows);
+    this.store = new GeneralStore(this.world, this.windows);
+    this.gear = new Gear(this.world);
+    this.eating = new Eating(this.world);
+    this.inventory = new Inventory(this.world);
+    this.taking = new Taking(this.world);
+    this.sites = new GatheringSites(this.world);
+    this.firemaking = new Firemaking(this.world);
+    this.making = new Making(this.world);
+    this.gathering = new Gathering(this.world, this.sites, this.quests);
+    this.enemies = new Enemies(
+      this.world.tiles,
+      this.state.enemies,
+      this.random,
+    );
+    this.fighting = new Fighting(
+      this.world,
+      this.enemies,
+      this.windows,
+      this.quests,
+    );
+    this.thieving = new ThievingTargets(this.world);
+    this.agility = new Agility(this.world);
+    this.walking = new Walking(
+      this.world,
+      this.sites,
+      this.thieving,
+      this.firemaking,
+      this.agility,
+    );
+    this.sites.placePools(pools);
+  }
+
+  /** `saved` is the account's last save; without one, this is a new account. */
+  addPlayer(id: string, saved?: PlayerSave, username = "") {
+    const login = loginSave(this.world.tiles, this.sites, saved);
+    const player = playerFromSave(login, username);
+    Object.assign(player, this.agility.strandedExit(player));
+    this.state.players.set(id, player);
+    this.world.unsyncedPlayers.set(id, {
+      path: [],
+      nextStepTick: 0,
+      nextSwingTick: 0,
+      nextAttemptTick: 0,
+      nextEatTick: 0,
+      healingPool: [],
+      lockEndTick: 0,
+      respawnTick: 0,
+      quests: new Map(Object.entries(login.quests ?? {})),
+      ...this.timersOfLeavers.get(username),
+    });
+    this.timersOfLeavers.delete(username);
+  }
+
+  /** What to write to the database for this player, if they're in the region. */
+  saveOf(id: string): PlayerSave | undefined {
+    const player = this.state.players.get(id);
+    if (!player) return undefined;
+    return {
+      ...saveOf(player),
+      // The generic save writes `quests` as a plain array of ids, so the progress record replaces it.
+      quests: this.quests.progressOf(id),
+      // Or a save during death could bring someone back with 0 health (D13).
+      ...(player.dead && respawned(this.world, player)),
+    };
+  }
+
+  removePlayer(id: string) {
+    const username = this.state.players.get(id)?.username;
+    const unsynced = this.world.unsyncedPlayers.get(id);
+    if (username && unsynced) {
+      const { nextAttemptTick, nextEatTick } = unsynced;
+      this.timersOfLeavers.set(username, { nextAttemptTick, nextEatTick });
+    }
+    this.state.players.delete(id);
+    this.world.unsyncedPlayers.delete(id);
+    this.queuedActions.delete(id);
+    this.world.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
+    this.logouts.forget(id);
+    this.windows.forget(id);
+    this.world.stopFollowersOf(id);
+    // A leaver has no inventory to fill (spec D8).
+    this.enemies.forget(id);
+  }
+
+  /** Lost connection but stays in the world: idle (D9), and still there to be hit. */
+  dropPlayer(id: string) {
+    this.world.clearAction(id);
+    this.world.unsyncedPlayers.get(id)!.dropped = true;
+    this.windows.forget(id);
+    this.queuedActions.delete(id);
+    this.world.queuedEats.delete(id);
+    this.world.queuedDrops.delete(id);
+    this.logouts.forget(id);
+  }
+
+  reconnectPlayer(id: string) {
+    this.world.unsyncedPlayers.get(id)!.dropped = false;
+  }
+
+  lockRunning(id: string) {
+    return this.world.lockRunning(id);
+  }
+
+  /** Not refreshed while dropped, or an enemy's swings would hold them here until killed (Q3). */
+  lock(id: string) {
+    this.world.lock(id);
+  }
+
+  queueLogout(id: string) {
+    this.logouts.queue(id);
+  }
+
+  /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
+  queueWalk(id: string, to: Tile) {
+    if (!this.world.canAct(id)) return;
+    if (!Number.isInteger(to?.x) || !Number.isInteger(to?.y)) return;
+    if (!this.world.tiles[to.y]?.[to.x]) return;
+    this.queuedActions.set(id, { kind: "walking", to: { x: to.x, y: to.y } });
+  }
+
+  /** `enemy` comes straight off the network, so anything but a live enemy's id is ignored. */
+  queueTarget(id: string, enemy: string) {
+    if (!this.world.canAct(id)) return;
+    const target = this.state.enemies.get(enemy);
+    if (!target || target.state === "dead") return;
+    this.queuedActions.set(id, { kind: "fighting", enemy });
+  }
+
+  /** `target` is a player's session id, checked by the room's /follow command. */
+  follow(id: string, target: string) {
+    if (!this.world.canAct(id)) return;
+    this.queuedActions.set(id, { kind: "following", player: target });
+  }
+
+  /** The session id of the player this one follows, if any. A queued intent counts already, since it replaces the action on the next tick. */
+  following(id: string) {
+    const queued = this.queuedActions.get(id);
+    if (queued) return queued.kind === "following" ? queued.player : undefined;
+    const action = this.world.unsyncedPlayers.get(id)?.action;
+    return action?.kind === "following" ? action.player : undefined;
+  }
+
+  unfollow(id: string) {
+    if (!this.following(id)) return;
+    this.queuedActions.delete(id);
+    this.world.clearAction(id);
+  }
+
+  /** `site` comes straight off the network; see `GatheringSites.gatherIntent`. */
+  queueGather(id: string, skill: GatheringSkill, site: string) {
+    this.queue(id, () => this.sites.gatherIntent(id, skill, site));
+  }
+
+  /** Comes straight off the network; see `Making.makeIntent`. */
+  queueMake(id: string, intent: { item: string; all: boolean; at?: Tile }) {
+    this.queue(id, () => this.making.makeIntent(id, intent));
+  }
+
+  /**
+   * `slot` comes straight off the network, so anything but an inventory slot's index is
+   * ignored. The log, the tinderbox and the tile all wait for the tick, since the player is
+   * standing on the tile already (#224).
+   */
+  queueLight(id: string, slot: number) {
+    if (!this.world.canAct(id)) return;
+    if (!isInventorySlot(slot)) return;
+    this.queuedActions.set(id, { kind: "lighting", slot });
+  }
+
+  /** `slot` comes straight off the network; see `buryIntent`. */
+  queueBury(id: string, slot: number) {
+    this.queue(id, () => buryIntent(this.world, id, slot));
+  }
+
+  /** `at` comes straight off the network; see `shrineIntent`. */
+  queuePray(id: string, at: Tile) {
+    this.queue(id, () => shrineIntent(this.world, id, "praying", at));
+  }
+
+  queueOfferBones(id: string, at: Tile) {
+    this.queue(id, () => shrineIntent(this.world, id, "offering", at));
+  }
+
+  /** Both come straight off the network; see `VillagerWindows.visitIntent`. */
+  queueVisit(id: string, villager: string, then?: string) {
+    this.queue(id, () => this.windows.visitIntent(villager, then));
+  }
+
+  /** Queues a click for the next tick, if the player can act and it asks for anything. Nothing in the payload is read until the player is known to act. */
+  private queue(id: string, intentOf: () => QueuedAction | undefined) {
+    if (!this.world.canAct(id)) return;
+    const action = intentOf();
+    if (action) this.queuedActions.set(id, action);
+  }
+
+  /** `target` comes straight off the network; see `ThievingTargets.pickpocketIntent`. */
+  queuePickpocket(id: string, target: unknown) {
+    this.queue(id, () => this.thieving.pickpocketIntent(id, target));
+  }
+
+  /** `stall` comes straight off the network; see `ThievingTargets.stealIntent`. */
+  queueSteal(id: string, stall: unknown) {
+    this.queue(id, () => this.thieving.stealIntent(id, stall));
+  }
+
+  /** `strongbox` comes straight off the network; see `ThievingTargets.openIntent`. */
+  queueOpen(id: string, strongbox: unknown) {
+    this.queue(id, () => this.thieving.openIntent(id, strongbox));
+  }
+
+  /** Queues a crossing for an obstacle named by the client. */
+  queueCross(id: string, obstacle: unknown) {
+    this.queue(id, () => this.agility.crossIntent(id, obstacle));
+  }
+
+  /** Whether the player is busy this tick: stunned or crossing an Agility obstacle (#236). */
+  isBusy(id: string) {
+    return this.world.isBusy(id);
+  }
+
+  /** Makes the player busy for `ticks` from now: whatever they were doing stops, and their clicks are ignored until it ends (#236). */
+  makeBusy(id: string, ticks: number, busy: { hittable: boolean }) {
+    this.world.makeBusy(id, ticks, busy);
+  }
+
+  /** `choice` comes straight off the network; see `VillagerWindows.choose`. */
+  choose(id: string, choice: number) {
+    this.windows.choose(id, choice);
+  }
+
+  /** The player closed the conversation, so walking away later says nothing. */
+  endTalk(id: string) {
+    this.windows.close(id, "talk");
+  }
+
+  closeBank(id: string) {
+    this.windows.close(id, "bank");
+  }
+
+  /** Both come straight off the network; see `Bank.deposit`. */
+  deposit(id: string, slot: number, amount: number) {
+    this.bank.deposit(id, slot, amount);
+  }
+
+  depositInventory(id: string) {
+    this.bank.depositInventory(id);
+  }
+
+  /** Both come straight off the network; see `Bank.withdraw`. */
+  withdraw(id: string, slot: number, amount: number) {
+    this.bank.withdraw(id, slot, amount);
+  }
+
+  /** Both come straight off the network; see `Bank.moveBankItem`. */
+  moveBankItem(id: string, from: number, to: number) {
+    this.bank.moveBankItem(id, from, to);
+  }
+
+  closeStore(id: string) {
+    this.windows.close(id, "store");
+  }
+
+  /** Comes straight off the network; see `GeneralStore.deal`. */
+  deal(id: string, intent: Deal) {
+    this.store.deal(id, intent);
+  }
+
+  /** `groundItem` comes straight off the network; see `Taking.takeIntent`. */
+  queueTake(id: string, groundItem: string) {
+    this.queue(id, () => this.taking.takeIntent(id, groundItem));
+  }
+
+  /** `slot` comes straight off the network; see `queueEat`. */
+  queueEat(id: string, slot: number) {
+    queueEat(this.world, id, slot);
+  }
+
+  /** Both come straight off the network; see `queueDrop`. */
+  queueDrop(id: string, slot: number, amount: number) {
+    queueDrop(this.world, id, slot, amount);
+  }
+
+  /** A drag; both come straight off the network. See `Inventory.moveItem`. */
+  moveItem(id: string, from: number, to: number) {
+    this.inventory.moveItem(id, from, to);
+  }
+
+  /** `slot` comes straight off the network; see `mixPotion`. */
+  mix(id: string, slot: number) {
+    mixPotion(this.world, id, slot);
+  }
+
+  /** Comes straight off the network; see `pinSkill`. */
+  pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
+    pinSkill(this.world, id, intent);
+  }
+
+  /** `spell` comes straight off the network; see `pickSpell`. */
+  pickSpell(id: string, spell: unknown) {
+    pickSpell(this.world, id, spell);
+  }
+
+  /** `prayer` comes straight off the network; see `togglePrayer`. */
+  togglePrayer(id: string, prayer: unknown) {
+    togglePrayer(this.world, id, prayer);
+  }
+
+  /** `stance` comes straight off the network; see `Fighting.setStance`. */
+  setStance(id: string, stance: string) {
+    this.fighting.setStance(id, stance);
+  }
+
+  /** `look` comes straight off the network; see `setAppearance`. */
+  setAppearance(id: string, look: string) {
+    setAppearance(this.world, id, look);
+  }
+
+  /** `slot` comes straight off the network; see `Gear.equip`. */
+  equip(id: string, slot: number) {
+    this.gear.equip(id, slot);
+  }
+
+  /** `gearSlot` comes straight off the network; see `Gear.takeOff`. */
+  takeOff(id: string, gearSlot: GearSlot) {
+    this.gear.takeOff(id, gearSlot);
+  }
+
+  /** Whether this player can see the ground item with this id; the room sends them only those. */
+  canSee(id: string, groundItem: string) {
+    return this.taking.canSee(id, groundItem);
+  }
+
+  /** Restores the stalls and strongboxes this player emptied before leaving, as the events that emptied them. */
+  emptiedFor(id: string) {
+    return this.thieving.emptiedFor(id);
+  }
+
+  /** One tick, in the order of spec §6. */
+  tick() {
+    this.state.tick++;
+    this.applyIntents();
+    this.walking.advance();
+    this.agility.advance();
+    for (const skill of GATHERING_SKILLS) this.gathering.advance(skill);
+    this.firemaking.advanceFires();
+    this.making.advance();
+    this.firemaking.advanceLighting();
+    this.windows.advanceVisits();
+    this.thieving.advance();
+    this.taking.advance();
+    this.fighting.advancePlayerSwings();
+    this.walking.syncActions();
+    this.fighting.advanceEnemies();
+    this.advancePlayerTimers();
+    this.sites.advance();
+    for (const enemy of this.enemies.returnDead(this.state.tick))
+      this.events.push({ type: "enemyReturned", enemy });
+    this.world.groundItems.advance(this.state.tick);
+    this.store.advance(this.state.tick);
+  }
+
+  private applyIntents() {
+    for (const [id, intent] of this.queuedActions)
+      this.walking.start(id, intent);
+    this.queuedActions.clear();
+    applySlotIntents(this.world, this.eating);
+    this.logouts.apply();
+  }
+
+  /** Each player's respawn once their death is over, or else their healing, then Prayer recovery and burial. */
+  private advancePlayerTimers() {
+    for (const id of this.world.unsyncedPlayers.keys()) {
+      if (this.world.player(id).dead) respawnIfDue(this.world, id);
+      else this.eating.heal(id, this.state.tick);
+      advancePrayer(this.world, id);
+    }
+  }
+}

@@ -34,6 +34,7 @@ import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
 import { applySlotIntents, queueDrop, queueEat } from "./slotIntents.ts";
 import { Taking } from "./taking.ts";
+import { castIntent } from "./utilitySpells.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Walking } from "./walking.ts";
@@ -389,6 +390,11 @@ export class Simulation {
   /** `spell` comes straight off the network; see `pickSpell`. */
   pickSpell(id: string, spell: unknown) {
     pickSpell(this.world, id, spell);
+  }
+
+  /** Comes straight off the network; see `castIntent`. */
+  queueCast(id: string, intent: unknown) {
+    this.queue(id, () => castIntent(intent));
   }
 
   /** `prayer` comes straight off the network; see `togglePrayer`. */

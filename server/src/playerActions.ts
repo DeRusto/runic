@@ -10,6 +10,7 @@ import type {
   StrongboxKind,
   Style,
   Tile,
+  UtilitySpell,
   VillagerId,
   Virtue,
 } from "@runic/shared";
@@ -97,7 +98,9 @@ export type QueuedAction =
   | { kind: "following"; player: string }
   | { kind: "pickpocketing"; target: PickpocketTarget }
   | { kind: "stealing"; stall: StallKind }
-  | { kind: "opening"; strongbox: StrongboxKind };
+  | { kind: "opening"; strongbox: StrongboxKind }
+  /** A utility spell, cast on the tick it applies; `slot` is Coin-turn's item (Magic spec §9). */
+  | { kind: "casting"; spell: UtilitySpell; slot: number };
 
 /** What a player's action and timers need that clients don't. */
 export type UnsyncedPlayer = {
