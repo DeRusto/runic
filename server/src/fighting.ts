@@ -11,7 +11,6 @@ import {
   wornCountOf,
   isRangedStance,
   isStance,
-  itemTag,
   magicHit,
   MIGHT_POTION_HIT,
   PLAYER_DEAD_TICKS,
@@ -22,9 +21,7 @@ import {
   rangedWeaponOf,
   respawnTile,
   SWING_INTERVAL_TICKS,
-  type LootWon,
   type Style,
-  type Tile,
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
 import { spendRunes } from "./casting.ts";
@@ -32,6 +29,7 @@ import { dropFromSlot } from "./dropping.ts";
 import { spendArrow, spendKnife, wear } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
+import { placeLootOf } from "./loot.ts";
 import { lostWeaponFor } from "./playerActions.ts";
 import type { Quests } from "./quests.ts";
 import type { VillagerWindows } from "./villagerWindows.ts";
@@ -175,18 +173,7 @@ export class Fighting {
     );
     if (!loot) return;
     this.world.events.push({ type: "enemyDied", enemy: enemyId });
-    // A quest-category drop lands only for a winner whose quest stage still asks for it.
-    const questLoot = new Set(
-      ENEMIES[enemy.kind].loot
-        .filter(({ category }) => category === "quest")
-        .flatMap(({ items }) => items.map(({ item }) => item)),
-    );
-    for (const won of loot)
-      if (
-        !questLoot.has(won.item) ||
-        this.quests.questWants(won.player, won.item)
-      )
-        this.placeLoot(enemy, won);
+    placeLootOf(this.world, this.quests, enemy, loot);
     for (const unsynced of this.world.unsyncedPlayers.values()) {
       if (unsynced.ranDryAgainst === enemyId)
         unsynced.ranDryAgainst = undefined;
@@ -195,31 +182,6 @@ export class Fighting {
       unsynced.action = undefined;
       unsynced.path = [];
     }
-  }
-
-  /** One winner's loot, on the enemy's tile and theirs for the first minute, with a line saying so. */
-  private placeLoot(at: Tile, { player: id, item, count }: LootWon) {
-    const { username } = this.world.state.players.get(id)!;
-    this.world.groundItems.spawn(
-      at,
-      item,
-      count,
-      username,
-      this.world.state.tick,
-    );
-    // shortcut: a vowel letter stands for a vowel sound, which holds for every loot item today; upgrade if one starts otherwise.
-    const amount =
-      count > 1 ? String(count) : /^[aeiou]/i.test(item) ? "an" : "a";
-    const found =
-      item === "bones" || item === "heavyBones"
-        ? itemTag(item)
-        : `${amount} ${itemTag(item)}`;
-    this.world.events.push({
-      type: "told",
-      player: id,
-      line: `You find ${found}. It is on the ground.`,
-      items: [item],
-    });
   }
 
   /** Every enemy's moves and swings; a busy player who can't be hit is left alone (#236). */
