@@ -5,8 +5,6 @@ import {
   respawnTile,
   burialXp,
   siteId,
-  isKnightColor,
-  isSkinTone,
   SKILLS,
   type Deal,
   type GatheringSkill,
@@ -17,7 +15,9 @@ import {
   type WorldEvent,
 } from "@runic/shared";
 import { Agility } from "./agility.ts";
+import { setAppearance } from "./appearance.ts";
 import { Bank } from "./banking.ts";
+import { pickSpell } from "./casting.ts";
 import { dropFromSlot } from "./dropping.ts";
 import { Eating } from "./eating.ts";
 import { Enemies } from "./enemies.ts";
@@ -407,20 +407,19 @@ export class Simulation {
       pins.push(skill);
   }
 
+  /** `spell` comes straight off the network; see `pickSpell`. */
+  pickSpell(id: string, spell: unknown) {
+    pickSpell(this.world, id, spell);
+  }
+
   /** `stance` comes straight off the network; see `Fighting.setStance`. */
   setStance(id: string, stance: string) {
     this.fighting.setStance(id, stance);
   }
 
-  /**
-   * Comes straight off the network, so anything but a color or a skin tone is ignored. Each sets
-   * its own. A look only, so it skips the queue.
-   */
+  /** `look` comes straight off the network; see `setAppearance`. */
   setAppearance(id: string, look: string) {
-    const player = this.state.players.get(id);
-    if (!player) return;
-    if (isKnightColor(look)) player.knightColor = look;
-    else if (isSkinTone(look)) player.skinTone = look;
+    setAppearance(this.world, id, look);
   }
 
   /** `slot` comes straight off the network; see `Gear.equip`. */

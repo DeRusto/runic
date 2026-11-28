@@ -1,14 +1,14 @@
 # Runic: Magic
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 9 map (#89). The spec issue #325 gathers the owner's decisions (#317, #318, #319, #320, #324), and each build ticket records here the part it builds. The first ticket (#327) makes Magic a trained skill, adds the three staves Crafting makes, and adds the focus and fury runes the spells will spend. Casting, the spellbook and the spells come in later tickets.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 9 map (#89). The spec issue #325 gathers the owner's decisions (#317, #318, #319, #320, #324), and each build ticket records here the part it builds. The first ticket (#327) makes Magic a trained skill, adds the three staves Crafting makes, and adds the focus and fury runes the spells spend. The second (#329) adds the Spellbook tab and casting the eight combat spells for their damage. Spell effects, utility spells and the ability bar come in later tickets.
 
-The values live in `shared/src/skills.ts` (the skill list), `shared/src/weapons.ts` and `shared/src/gear.ts` (a staff's gate and Accuracy), `shared/src/making.ts` (the staff and rune recipes), `shared/src/runecrafting.ts` (the rune list), `shared/src/strongboxes.ts` (the strongboxes' rune picks) and `shared/src/generalStore.ts` (store values); where this page and those files disagree, the files win and this page is fixed.
+The values live in `shared/src/skills.ts` (the skill list), `shared/src/weapons.ts` and `shared/src/gear.ts` (a staff's gate and Accuracy), `shared/src/making.ts` (the staff and rune recipes), `shared/src/runecrafting.ts` (the rune list), `shared/src/strongboxes.ts` (the strongboxes' rune picks), `shared/src/magic.ts` (the combat spells, reach, cast rate, refusals and the magic hit) and `shared/src/generalStore.ts` (store values); where this page and those files disagree, the files win and this page is fixed.
 
 ## 1. The Magic skill
 
 Magic moves from the upcoming skills to the trained ones, after Ranged on the character sheet. It has its own synced experience field and save column, and counts toward total level as it already did at level 1. Mastery takes its usual 7% share of Magic experience (#80). The combat level formula already read Magic at 1.5 times (#78), so it needs no change; it now reads a real level. A save from before this build loads with 0 Magic experience and loses nothing else.
 
-Nothing pays Magic experience until casting comes.
+Casting pays Magic experience (§5).
 
 ## 2. Staves
 
@@ -26,7 +26,7 @@ The weapon slot's gate stays per item: swords gate on Attack, bows and throwing 
 
 Staves roll improved versions, and the improved chance reads the recipe's skill, Crafting, as a bow's reads Fletching. Their Virtues size like any weapon's.
 
-Until casting comes, a staff has no reach of its own, so a player with one in hand fights in melee: the swing trains Attack and Strength as the stance directs, takes the staff's Accuracy on its chance to hit, and adds no hit bonus. The magic style comes with casting.
+A staff in hand puts its wielder in the magic style and casts the picked combat spell (§5). Before #329 a staff fought in melee; it no longer swings.
 
 ## 3. The migration
 
@@ -46,3 +46,44 @@ The store pays 8 coins for a focus rune and 24 coins for a fury rune and keeps b
 Both strongboxes' rune picks grow from the four elementals to all six runes, an even pick, with today's counts: 2 to 5 of one rune from the Boneyard's, and 4 to 10 from Runestone Hollow's.
 
 The focus and fury rune icons are the air and fire medallions with their glyphs and gems recoloured, until the owner has medallions for them.
+
+## 5. Casting the combat spells
+
+A player's style is the weapon in hand, so a staff puts them in the magic style (#271, #317). The combat triangle's magic side then applies unchanged: a cast lands 10 points more often on a melee enemy and 10 points less often on a ranged one, and the triangle never moves the damage.
+
+The spellbook opens with eight combat spells, a dart and a surge for each element (#318):
+
+| Spell | Magic gate | Hit bonus | Base experience | Runes per cast | Effect, from a later ticket |
+| --- | --- | --- | --- | --- | --- |
+| Air dart | 1 | 100 | 2 | 1 air, 1 focus | 5 points off Accuracy for 20 ticks |
+| Water dart | 5 | 150 | 3 | 1 water, 1 air, 1 focus | Next swing 4 ticks late |
+| Earth dart | 10 | 200 | 4 | 2 earth, 1 air, 1 focus | Held for 6 ticks |
+| Air surge | 15 | 250 | 5 | 1 air, 1 fury | 10 points off Accuracy for 20 ticks |
+| Fire dart | 20 | 300 | 6 | 3 fire, 2 air, 1 focus | Burns for 3 hits of 10% over 6 ticks |
+| Water surge | 25 | 350 | 7 | 1 water, 1 air, 1 fury | Next swing 8 ticks late |
+| Earth surge | 30 | 400 | 8 | 2 earth, 1 air, 1 fury | Held for 12 ticks |
+| Fire surge | 35 | 450 | 9 | 3 fire, 2 air, 1 fury | Burns for 3 hits of 20% over 6 ticks |
+
+This ticket casts each spell for its damage only. The effects in the last column are listed on the Spellbook tab and arrive in a later ticket.
+
+The player's picked combat spell is saved with the player. A new player, and every save from before casting, has none picked. Picking a spell above the player's Magic level is refused with a line naming the gate, such as "You need Magic level 5 to cast Water dart.", and changes nothing.
+
+A cast reaches 8 tiles, a diagonal step counting as one, under the same sight check and tall tiles as a shot (#270). An attack on an enemy out of reach or out of sight walks the player to the nearest tile with both, as a bow's does. A player casts every 10 ticks. Magic has no stances, so nothing changes the reach or the rate, and the Gear tab shows no stance buttons for a staff.
+
+Every cast spends its spell's runes from the inventory, hit or miss, and none come back. With no spell picked, an attack with a staff is refused with "Choose a combat spell first." Without the runes, at the click or when a cast falls due mid-fight, the attack stops with "You have run out of runes." The enemy keeps fighting as usual. Taking the staff off mid-fight ends the attack, as taking a bow off does (#277).
+
+A cast's chance to land and its max hit use the shared hit curves on the Magic level: 40% plus 0.5 points per Magic level above 1, plus worn Accuracy (the staff's and the ring's), and a max of 200 plus 100 every 20 Magic levels. A landed cast deals a whole number from 100 to that max, plus the spell's hit bonus and Might (worn and from a Might potion). Agility's crit chance applies, and a critical cast deals 1.5 times its hit.
+
+Each cast pays its spell's base experience to Magic, hit or miss, plus 6 per 100 damage dealt, rounded once, with none for overkill. Hitpoints gets the damage part again; Defense, Attack and Strength get nothing.
+
+An idle mage who is hit fights back with the picked spell under the same reach and sight rules. With no spell picked or no runes, they stay idle.
+
+A cast plays the Use_Item clip on the caster, and the hit shows at the enemy once the clip reaches it, as a shot's does.
+
+## 6. The Spellbook tab
+
+The character sheet has a fourth tab, Spellbook, beside Gear, Skills and Appearance. It lists the eight combat spells in gate order, each with its Magic gate, runes, hit bonus and effect. Spells above the player's Magic level show greyed. The picked spell shows highlighted. Clicking a spell picks it; clicking one above the player's level prints its refusal in the chat and sends nothing.
+
+## 7. The combat spell's migration
+
+One migration adds the picked combat spell's column with a default of "", so every existing save loads with none picked and no row needs converting.

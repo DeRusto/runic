@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `combat_spell` text DEFAULT '' NOT NULL;

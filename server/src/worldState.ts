@@ -45,6 +45,8 @@ export const Player = schema(
     stance: t.string<Stance>().default(STARTING_STANCE),
     /** Where ranged experience goes, and the reach and fire rate a shot takes (Ranged spec §6). */
     rangedStance: t.string<RangedStance>().default(STARTING_RANGED_STANCE),
+    /** The combat spell a staff casts, a `CombatSpell`, or "" for none picked (Magic spec §5). */
+    combatSpell: t.string().default(""),
     /** The color of the player's Knight, which everyone sees. */
     knightColor: t.string<KnightColor>().default(STARTING_KNIGHT_COLOR),
     /** The skin tone of the player's Knight, which everyone sees. */

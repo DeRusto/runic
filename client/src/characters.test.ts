@@ -920,6 +920,14 @@ describe("swingFor", () => {
     );
   });
 
+  test("a staff casts with its own clip, its blow landing at the enemy as a shot's does", () => {
+    const cast = swingFor("birchStaff", "a", 8);
+    expect(cast).toEqual({ clip: "Use_Item", contactMs: 700 });
+    expect(swingFor("charwoodStaff", "b", 9)).toEqual(cast);
+    expect(cast.clip).not.toBe(swingFor("birchBow", "a", 8).clip);
+    expect(clipsOf("Adventurer")).toContain(cast.clip);
+  });
+
   test("the adventurer every player wears has the bow shot's clip among its animations", () => {
     expect(clipsOf("Adventurer")).toContain(swingFor("birchBow", "a", 8).clip);
   });

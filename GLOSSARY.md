@@ -297,7 +297,7 @@ The skill that gates bows, arrows and throwing knives and sets how often and how
 _Avoid_: Archery, Range
 
 **Magic**:
-The skill that gates staves (Magic spec §2). Casting, which will train it and set how a spell lands, comes in a later build ticket; until then nothing pays Magic experience. A save from before it starts at 0 experience.
+The skill that gates staves and combat spells and sets how often and how hard a cast lands (Magic spec §2, §5). Each cast pays its combat spell's base experience, hit or miss, plus 6 per 100 damage dealt with none for overkill; Hitpoints gets the damage part again. A save from before it starts at 0 experience.
 _Avoid_: Spellcraft, sorcery, Runecrafting (that makes the runes)
 
 **Hitpoints**:
@@ -321,7 +321,7 @@ Points an entity adds to its own chance to hit, against a player's Avoidance. Th
 _Avoid_: Precision, attack bonus
 
 **Style**:
-How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee and a bow or throwing knives at range. Each enemy has one fixed style in its stats (#271). The Skeleton Mage and Thornling fight at range (#298, #299). Nothing fights with magic until Phase 9.
+How a fighter fights: melee, ranged or magic. A player's style is the weapon in hand when the hit resolves, so a sword or bare hands fight in melee, a bow or throwing knives at range, and a staff with magic (#271, #317). Each enemy has one fixed style in its stats (#271). The Skeleton Mage and Thornling fight at range (#298, #299); no enemy fights with magic yet.
 _Avoid_: Combat style, attack type, stance (each style has its own stances)
 
 **Ranged enemy**:
@@ -331,7 +331,7 @@ An enemy with a shot reach in its stats. While fighting, it stands and shoots wh
 Runestone Hollow's ranged enemy. It shoots from up to 5 tiles and chases players it notices within 3 tiles by a walking route. It can leave a bone sigil for Hollis's quest.
 
 **Combat triangle**:
-The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy's chance to hit still never falls below 5%.
+The rule that melee beats ranged, ranged beats magic and magic beats melee (#72, #271). A player with a staff fights on its magic side, so a cast lands 10 points more often on a melee enemy and 10 less often on a ranged one (#317). A fighter whose style beats the other side's gains 10 points to land each hit, and one whose style is beaten loses 10, on the Accuracy and Avoidance scale. It applies to both sides of every swing and shot, changes how often a hit lands and never how hard, and leaves armour alone. An enemy's chance to hit still never falls below 5%.
 _Avoid_: Rock-paper-scissors, style bonus, counter
 
 **Blocking**:
@@ -667,8 +667,24 @@ A weapon fletched at the workbench from a log and a rope: the birch bow, the oak
 _Avoid_: Ranged weapon, longbow
 
 **Staff**:
-A weapon crafted at the workbench: the birch staff from a birch log, the oak staff from an oak log and an ashstone, and the charwood staff from a charwood log and a cinderglass, at Crafting 1, 10 and 20. It goes in the weapon slot, gated on Magic at 1, 10 and 20, adds 5, 10 or 15 points of Accuracy, and carries no hit bonus. A shield can be worn with it. Staves roll improved versions on Crafting. Until casting comes, a staff fights in melee (Magic spec §2).
+A weapon crafted at the workbench: the birch staff from a birch log, the oak staff from an oak log and an ashstone, and the charwood staff from a charwood log and a cinderglass, at Crafting 1, 10 and 20. It goes in the weapon slot, gated on Magic at 1, 10 and 20, adds 5, 10 or 15 points of Accuracy, and carries no hit bonus, since the combat spell carries it. A shield can be worn with it. Staves roll improved versions on Crafting. A staff in hand fights in the magic style, casting the picked combat spell from up to 8 tiles every 10 ticks (Magic spec §2, §5).
 _Avoid_: Wand, rod (that is the fishing tool)
+
+**Spellbook**:
+The character sheet's fourth tab, beside Gear, Skills and Appearance. It lists the combat spells in gate order with each one's Magic gate, runes, hit bonus and effect, greys those above the player's Magic level, and highlights the picked one. Clicking a spell picks it (Magic spec §6).
+_Avoid_: Spell list, magic tab
+
+**Combat spell**:
+A spell a staff casts at an enemy: a dart or a surge of air, water, earth or fire, eight in all. Each has a Magic gate, a hit bonus a landed cast adds, base experience every cast pays, and the runes every cast spends, hit or miss. A player picks one on the Spellbook, and it stays picked, through logging out, until they pick another; a new player has none (Magic spec §5).
+_Avoid_: Attack spell, offensive spell, spell (alone, once utility spells come)
+
+**Dart**:
+The lesser combat spell of an element, spending a focus rune with its elemental runes: air dart at Magic 1, water dart at 5, earth dart at 10 and fire dart at 20 (Magic spec §5).
+_Avoid_: Bolt, strike
+
+**Surge**:
+The greater combat spell of an element, spending a fury rune with its elemental runes, with a higher gate and hit bonus than its dart: air surge at Magic 15, water surge at 25, earth surge at 30 and fire surge at 35 (Magic spec §5).
+_Avoid_: Blast, wave
 
 **Focus rune**:
 A rune for Magic spells, made at the altar from rune essence at Runecrafting 1 for 5 experience, two to an essence from Runecrafting 2 (Magic spec §4).

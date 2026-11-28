@@ -55,6 +55,7 @@ export function syncedOf(save: PlayerSave) {
     prayerXp = 0,
     prayerPoints = maxPrayerPoints(prayerXp),
     riggedShortcuts = [],
+    combatSpell = "",
     bank = [],
     bankCounts = [],
     quests: questProgress = {},
@@ -65,6 +66,7 @@ export function syncedOf(save: PlayerSave) {
     ...fields,
     prayerXp,
     prayerPoints,
+    combatSpell,
     // A worn weapon from before slot counts is one; an empty slot holds none (Ranged spec §2).
     ...Object.fromEntries(
       STACKING_GEAR_SLOTS.map((slot) => [

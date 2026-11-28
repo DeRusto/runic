@@ -124,6 +124,8 @@ export const players = sqliteTable("players", {
     .notNull()
     .$type<RangedStance>()
     .default(STARTING_RANGED_STANCE),
+  /** The combat spell a staff casts, or ""; a save from before casting has none picked (Magic spec §5). */
+  combatSpell: text("combat_spell").notNull().default(""),
   /** The color of the player's Knight; a save from before colors keeps the model's own Crimson. */
   knightColor: text("knight_color")
     .notNull()

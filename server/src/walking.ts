@@ -1,8 +1,9 @@
 import {
+  atRangeOf,
+  attackRefusal,
   canShootAt,
   NO_CLEAR_SHOT_LINE,
-  rangedAttackRefusal,
-  rangedWeaponOf,
+  playerStyleOf,
   stationOf,
   tilesApart,
   WALK_TICKS_PER_TILE,
@@ -45,8 +46,8 @@ export class Walking {
     };
     switch (intent.kind) {
       case "fighting": {
-        // A bow with no arrows can't start an attack (Ranged spec §4).
-        const refusal = rangedAttackRefusal(player);
+        // A bow with no arrows, or a staff with no spell or runes, can't start an attack (Ranged spec §4, Magic spec §5).
+        const refusal = attackRefusal(player);
         if (refusal) {
           this.world.clearAction(id);
           this.world.tell(id, refusal);
@@ -54,7 +55,7 @@ export class Walking {
           unsynced.action = {
             kind: "fighting",
             enemy: intent.enemy,
-            ranged: !!rangedWeaponOf(player),
+            style: playerStyleOf(player),
           };
         break;
       }
@@ -136,9 +137,9 @@ export class Walking {
         // Re-pathed every step since it can move. A path's last step lands on its tile, so
         // stopping short of that is exactly "next to" (spec D1).
         const enemy = this.world.state.enemies.get(unsynced.action.enemy)!;
-        const ranged = rangedWeaponOf(player);
-        if (ranged) {
-          if (!this.walkIntoShot(id, enemy, ranged.reachTiles)) continue;
+        const atRange = atRangeOf(player);
+        if (atRange) {
+          if (!this.walkIntoShot(id, enemy, atRange.reachTiles)) continue;
         } else {
           const path = findPath(this.world.tiles, player, enemy);
           unsynced.path = path.slice(0, -1);
@@ -169,7 +170,7 @@ export class Walking {
   }
 
   /**
-   * Paths a bow to the nearest tile with the enemy in reach and in sight, which a walk toward the
+   * Paths a bow or staff to the nearest tile with the enemy in reach and in sight, which a walk toward the
    * enemy's own tile may never cross (#270). With none to walk to, the attack is cancelled and
    * the chat says why, so the player never walks forever (#278); false then.
    */

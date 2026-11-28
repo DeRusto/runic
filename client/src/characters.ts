@@ -2,6 +2,7 @@ import {
   GATHERING,
   GATHERING_SKILLS,
   rangedWeaponOf,
+  wieldsStaff,
   TICK_MS,
   WALK_TICKS_PER_TILE,
   type EnemyKind,
@@ -121,6 +122,8 @@ const UNARMED_SWING = {
  * pack's Throw: the adventurer plays only its own clips.
  */
 const BOW_SHOT = { clip: "Fishing_Cast", contactMs: 1000 };
+/** A cast: the staff raised to send the spell, with the blow landing at the enemy as a shot's does (Magic spec §5). */
+const STAFF_CAST = { clip: "Use_Item", contactMs: 700 };
 /** A blocked hit (spec §7). */
 export const BLOCK_CLIP = "Melee_Block_Hit";
 /** The clips that bring out what's worn, even with no fight going on. */
@@ -147,8 +150,9 @@ export function armedSwing(id: string, tick: number) {
   return ARMED_SWINGS[hashOf(`${id}:${tick}`) % ARMED_SWINGS.length]!;
 }
 
-/** A swing follows the weapon, so a shield with no sword punches (spec §7), and a bow shoots. */
+/** A swing follows the weapon, so a shield with no sword punches (spec §7), a bow shoots and a staff casts. */
 export function swingFor(weapon: string, id: string, tick: number) {
+  if (wieldsStaff({ weapon })) return STAFF_CAST;
   if (rangedWeaponOf({ weapon })) return BOW_SHOT;
   return weapon ? armedSwing(id, tick) : UNARMED_SWING;
 }

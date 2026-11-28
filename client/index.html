@@ -689,6 +689,46 @@
         font-size: 12px;
         opacity: 0.8;
       }
+      #spellbook-note {
+        margin: 0 0 8px;
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      #spellbook {
+        display: grid;
+        gap: 4px;
+      }
+      #spellbook .spell {
+        display: grid;
+        gap: 1px;
+        padding: 5px 8px;
+        border: 0;
+        border-radius: 2px;
+        background: #2a1f14;
+        outline: 1px solid #8a6a44;
+        color: inherit;
+        font: inherit;
+        font-size: 12px;
+        text-align: left;
+      }
+      #spellbook .spell span:first-child {
+        font-size: 13px;
+        font-weight: bold;
+      }
+      #spellbook .spell span:not(:first-child) {
+        opacity: 0.85;
+      }
+      #spellbook .spell[aria-pressed="true"] {
+        background: #5a4024;
+        outline-color: #ffd27a;
+        color: #ffd27a;
+      }
+      #spellbook .spell[aria-disabled="true"] {
+        opacity: 0.45;
+      }
+      #spellbook .spell:focus-visible {
+        outline: 2px solid #ffd27a;
+      }
       #knight-color,
       #skin-tone {
         display: grid;
@@ -1360,6 +1400,15 @@
             Skills
           </button>
           <button
+            id="sheet-tab-spellbook"
+            type="button"
+            role="tab"
+            aria-controls="sheet-spellbook"
+            aria-selected="false"
+          >
+            Spellbook
+          </button>
+          <button
             id="sheet-tab-appearance"
             type="button"
             role="tab"
@@ -1391,6 +1440,17 @@
             aria-labelledby="sheet-tab-skills"
             hidden
           ></div>
+          <div
+            id="sheet-spellbook"
+            class="sheet-pane"
+            role="tabpanel"
+            aria-labelledby="sheet-tab-spellbook"
+            hidden
+          >
+            Combat spells
+            <p id="spellbook-note">A staff in hand casts the picked spell.</p>
+            <div id="spellbook" role="group" aria-label="Combat spells"></div>
+          </div>
           <div
             id="sheet-appearance"
             class="sheet-pane"
