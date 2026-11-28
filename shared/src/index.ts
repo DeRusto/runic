@@ -35,8 +35,6 @@ export const END_TALK_INTENT = "endTalk";
 export const DEAL_INTENT = "deal";
 /** The close store intent's message type, for closing the store window; it has no payload. */
 export const CLOSE_STORE_INTENT = "closeStore";
-export * from "./prayer.ts";
-
 /** The bury intent carries the inventory slot of the bone to bury. */
 export const BURY_INTENT = "bury";
 
@@ -280,6 +278,7 @@ export * from "./items.ts";
 export * from "./tools.ts";
 export * from "./making.ts";
 export * from "./potions.ts";
+export * from "./prayer.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./regionMap.ts";

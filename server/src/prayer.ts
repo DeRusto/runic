@@ -24,7 +24,7 @@ export function startBurial(
   };
 }
 
-/** Advances a living player's recovery and completes a burial if its bone is still there. */
+/** Recovers prayer points and completes a living player's burial if its bone is still there. */
 export function advancePrayer(world: World, id: string) {
   const player = world.player(id);
   const { tick } = world.state;
@@ -33,8 +33,8 @@ export function advancePrayer(world: World, id: string) {
     player.prayerXp,
     tick,
   );
-  const unsynced = world.unsynced(id);
-  const { action } = unsynced;
+  if (player.dead) return;
+  const { action } = world.unsynced(id);
   if (action?.kind !== "burying" || tick < action.doneTick) return;
 
   world.clearAction(id);

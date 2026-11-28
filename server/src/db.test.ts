@@ -22,7 +22,7 @@ async function boot() {
   await (await openDatabase()).shutdown();
 }
 
-// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), the Ranged stance (#280), the Knight's color and skin tone, and Magic's experience (#327).
+// The newest migrations: Mastery's columns, the health rescale, which adds none, the eight new gear slots, the friends table, the ignores table, the bank, Herblaw, which renames Foraging's column, Woodcutting, Fishing, Cooking, Firemaking, Crafting, Fletching, the quests, Runecrafting, #238's two skills' columns, Thieving's (#250), the melee split, which turns Combat's column into Attack's and Strength's, Agility's (#234), its rigged shortcuts, Ranged's experience with the ammo slot and gear counts (#276), the Ranged stance (#280), the Knight's color and skin tone, Magic's experience (#327), and Prayer's experience and points (#328).
 const LATEST_COLUMNS = [
   "mastery_xp",
   "mastery_hundredths",
@@ -56,22 +56,25 @@ const LATEST_COLUMNS = [
 ];
 const LATEST_MIGRATIONS = 25;
 
+/** Forgets the newest migration's journal row after its schema changes are undone. */
+function forgetNewestMigration(sqlite: DatabaseSync) {
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+  );
+}
+
 /** Makes the Prayer migration pending again. */
 function unapplyPrayer(sqlite: DatabaseSync) {
   sqlite.exec("ALTER TABLE players DROP COLUMN prayer_xp");
   sqlite.exec("ALTER TABLE players DROP COLUMN prayer_points");
-  sqlite.exec(
-    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
-  );
+  forgetNewestMigration(sqlite);
 }
 
 /** Makes the Magic and Prayer migrations pending again. */
 function unapplyMagic(sqlite: DatabaseSync) {
   unapplyPrayer(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN magic_xp");
-  sqlite.exec(
-    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
-  );
+  forgetNewestMigration(sqlite);
 }
 
 /** Makes the appearance migration pending again, and the Magic one after it: their columns gone, and their rows in the journal. */
@@ -79,18 +82,14 @@ function unapplyAppearance(sqlite: DatabaseSync) {
   unapplyMagic(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN knight_color");
   sqlite.exec("ALTER TABLE players DROP COLUMN skin_tone");
-  sqlite.exec(
-    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
-  );
+  forgetNewestMigration(sqlite);
 }
 
 /** Makes the Ranged stance's migration pending again, and the appearance one after it: their columns gone, and their rows in the journal. */
 function unapplyRangedStance(sqlite: DatabaseSync) {
   unapplyAppearance(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN ranged_stance");
-  sqlite.exec(
-    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
-  );
+  forgetNewestMigration(sqlite);
 }
 
 /** Makes the Ranged migration pending again, and the Ranged stance's after it: their columns gone, and their rows in the journal. */
@@ -98,9 +97,7 @@ function unapplyRanged(sqlite: DatabaseSync) {
   unapplyRangedStance(sqlite);
   for (const column of ["ranged_xp", "ammo", "weapon_count", "ammo_count"])
     sqlite.exec(`ALTER TABLE players DROP COLUMN ${column}`);
-  sqlite.exec(
-    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
-  );
+  forgetNewestMigration(sqlite);
 }
 
 /** Makes the melee split pending again: Combat's column back, and Attack's, Strength's and the stance gone. */

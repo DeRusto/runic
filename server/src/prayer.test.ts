@@ -110,9 +110,35 @@ test("a living player can finish burying even when an enemy swings at them", () 
   sim.queueTarget("a", "0");
   for (let i = 0; i < 3; i++) sim.tick();
   sim.queueBury("a", 0);
-  for (let i = 0; i < 3; i++) sim.tick();
+  sim.tick();
+  const player = sim.state.players.get("a")!;
+  expect(player).toMatchObject({ action: "burying", prayerXp: 0 });
+  sim.events.length = 0;
+  sim.tick(); // The Spider's first swing is four ticks after the attack starts.
   expect(sim.events).toContainEqual(
     expect.objectContaining({ type: "enemySwing", player: "a" }),
   );
-  expect(sim.state.players.get("a")!.prayerXp).toBe(5);
+  expect(player).toMatchObject({ action: "burying", prayerXp: 0, dead: false });
+  sim.tick();
+  expect(player.prayerXp).toBe(5);
+});
+
+test("Prayer points still recover when a player falls on the recovery tick", () => {
+  const rolls: number[] = [];
+  const sim = new Simulation(
+    parseRegion("TTTTT\nTRS.T\nTTTTT"),
+    () => rolls.shift() ?? 0.99,
+  );
+  for (let i = 0; i < 15; i++) sim.tick();
+  rolls.push(0.99, 0, 0.999);
+  sim.addPlayer("a", {
+    ...newSave({ x: 3, y: 1 }),
+    health: 100,
+    prayerPoints: 8,
+  });
+  sim.queueTarget("a", "0");
+  for (let i = 0; i < 5; i++) sim.tick();
+  const player = sim.state.players.get("a")!;
+  expect(player.dead).toBe(true);
+  expect(player.prayerPoints).toBe(9);
 });

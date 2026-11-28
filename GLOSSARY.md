@@ -629,10 +629,10 @@ A pool of ten points per Prayer level. New players start full. The current amoun
 An inventory action that takes two ticks and consumes one bone on completion. Bones give 5 Prayer experience and heavy bones give 13. A new action can interrupt the burial.
 
 **Bones**:
-A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. Burying one gives 5 Prayer experience. The general store buys them for 4 coins each.
+A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. Burying one gives 5 Prayer experience. Each bone has a store value of 4 coins and sells to the store for 1.
 
 **Heavy bones**:
-A stackable material left by Skeleton Mages, Cinderhorns and Cairn wardens at the same chance as bones. Burying one gives 13 Prayer experience. The general store buys them for 8 coins each.
+A stackable material left by Skeleton Mages, Cinderhorns and Cairn wardens at the same chance as bones. Burying one gives 13 Prayer experience. Each heavy bone has a store value of 8 coins and sells to the store for 3.
 
 **Spider silk**:
 A thread a Spider leaves behind, needed to make rope and to augment capes. Every Spider kill leaves 1 or 2, at even odds, for each player who damaged it (#272).

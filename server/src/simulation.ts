@@ -485,14 +485,12 @@ export class Simulation {
     this.queuedLogouts.clear();
   }
 
-  /** Each player's respawn once their death is over, or else their healing (spec §6). */
+  /** Each player's respawn once their death is over, or else their healing, then Prayer recovery and burial. */
   private advancePlayerTimers() {
     for (const id of this.world.unsyncedPlayers.keys()) {
       if (this.world.player(id).dead) this.fighting.respawnIfDue(id);
-      else {
-        this.eating.heal(id, this.state.tick);
-        advancePrayer(this.world, id);
-      }
+      else this.eating.heal(id, this.state.tick);
+      advancePrayer(this.world, id);
     }
   }
 }
