@@ -13,7 +13,6 @@ import { setAppearance } from "./appearance.ts";
 import { Bank } from "./banking.ts";
 import { pickSpell } from "./casting.ts";
 import { respawned, respawnIfDue } from "./death.ts";
-import { dropFromSlot } from "./dropping.ts";
 import { Eating } from "./eating.ts";
 import { Enemies } from "./enemies.ts";
 import { Fighting } from "./fighting.ts";
@@ -33,11 +32,12 @@ import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
 import { togglePrayer } from "./prayers.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
+import { applySlotIntents, queueDrop, queueEat } from "./slotIntents.ts";
 import { Taking } from "./taking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Walking } from "./walking.ts";
-import { isAmount, isInventorySlot, World } from "./worldContext.ts";
+import { isInventorySlot, World } from "./worldContext.ts";
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -361,19 +361,14 @@ export class Simulation {
     this.queue(id, () => this.taking.takeIntent(id, groundItem));
   }
 
-  /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
+  /** `slot` comes straight off the network; see `queueEat`. */
   queueEat(id: string, slot: number) {
-    if (!this.world.canAct(id)) return;
-    if (!isInventorySlot(slot)) return;
-    this.world.queuedEats.set(id, slot);
+    queueEat(this.world, id, slot);
   }
 
-  /** Both come straight off the network, so anything but a slot's index and a whole number above 0 is ignored. */
+  /** Both come straight off the network; see `queueDrop`. */
   queueDrop(id: string, slot: number, amount: number) {
-    if (!this.world.canAct(id)) return;
-    if (!isInventorySlot(slot)) return;
-    if (!isAmount(amount)) return;
-    this.world.queuedDrops.set(id, { slot, amount });
+    queueDrop(this.world, id, slot, amount);
   }
 
   /** A drag; both come straight off the network. See `Inventory.moveItem`. */
@@ -459,11 +454,7 @@ export class Simulation {
     for (const [id, intent] of this.queuedActions)
       this.walking.start(id, intent);
     this.queuedActions.clear();
-    for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
-    this.world.queuedEats.clear();
-    for (const [id, { slot, amount }] of this.world.queuedDrops)
-      dropFromSlot(this.world, id, slot, amount);
-    this.world.queuedDrops.clear();
+    applySlotIntents(this.world, this.eating);
     this.logouts.apply();
   }
 
