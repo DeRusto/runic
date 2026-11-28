@@ -17,7 +17,7 @@ import {
   type VillagerId,
   type WorldEvent,
 } from "@runic/shared";
-import type { Fighting } from "./fighting.ts";
+import { die } from "./death.ts";
 import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
 import { PlayerTimers } from "./playerTimers.ts";
 import { openStrongbox, pickpocket, stealFromStall } from "./thieving.ts";
@@ -36,10 +36,7 @@ export class ThievingTargets {
   /** The strongboxes each player has emptied, by username (#253). Not saved: a restart refills them. */
   private strongboxesEmptied = new PlayerTimers();
 
-  constructor(
-    private readonly world: World,
-    private readonly fighting: Fighting,
-  ) {
+  constructor(private readonly world: World) {
     world.tiles.forEach((row, y) =>
       row.forEach(({ mark, stall, strongbox }, x) => {
         if (mark) this.marks.set(mark, { x, y });
@@ -191,7 +188,7 @@ export class ThievingTargets {
             const damage = Math.min(hit, player.health);
             player.health -= damage;
             this.world.events.push({ type: "trapSprung", player: id, damage });
-            if (player.health === 0) this.fighting.die(id, player);
+            if (player.health === 0) die(this.world, id, player);
             else this.world.makeBusy(id, ticks, { hittable: true });
           },
         });

@@ -1,3 +1,5 @@
+import { respawnTile, siteId, type TileKind } from "@runic/shared";
+import type { GatheringSites } from "./gatheringSites.ts";
 import { ArraySchema } from "@colyseus/schema";
 import {
   BANK_SLOTS,
@@ -133,4 +135,21 @@ export function saveOf(player: InstanceType<typeof Player>): PlayerSave {
     );
   }
   return saved as unknown as PlayerSave;
+}
+
+/** Chooses a walkable login tile without changing the rest of the save. */
+export function loginSave(
+  tiles: TileKind[][],
+  sites: GatheringSites,
+  saved: PlayerSave | undefined,
+): PlayerSave {
+  const respawn = respawnTile(tiles);
+  if (!saved) return newSave(respawn);
+  const tile = tiles[saved.y]?.[saved.x];
+  if (tile && !tile.blocks) return saved;
+  // A pooled site may have come back on the spot they logged out on.
+  const nearest = sites.has(siteId(saved))
+    ? sites.nearestPastSites(saved)
+    : undefined;
+  return { ...saved, ...(nearest ?? respawn) };
 }

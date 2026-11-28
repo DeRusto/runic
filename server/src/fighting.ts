@@ -5,32 +5,27 @@ import {
   ENEMIES,
   enemyHit,
   FIGHT_BACK_DELAY_TICKS,
-  GEAR_SLOTS,
   canShootAt,
-  wornCountOf,
   isRangedStance,
   isStance,
   magicHit,
-  PLAYER_DEAD_TICKS,
   playerHit,
   OUT_OF_KNIVES_LINE,
   playerStyleOf,
   rangedHit,
   rangedWeaponOf,
-  respawnTile,
   SWING_INTERVAL_TICKS,
   type Style,
 } from "@runic/shared";
 import { attackBoostsOf, avoidanceBoostOf } from "./boosts.ts";
 import { canBeHit } from "./busy.ts";
+import { die } from "./death.ts";
 import { spendRunes } from "./casting.ts";
-import { dropFromSlot } from "./dropping.ts";
-import { spendArrow, spendKnife, wear } from "./gear.ts";
+import { spendArrow, spendKnife } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
 import { placeLootOf } from "./loot.ts";
 import { lostWeaponFor } from "./playerActions.ts";
-import { endPrayers } from "./prayers.ts";
 import type { Quests } from "./quests.ts";
 import type { VillagerWindows } from "./villagerWindows.ts";
 import type { SyncedPlayer, World } from "./worldContext.ts";
@@ -225,7 +220,7 @@ export class Fighting {
       critical,
     });
     if (hit) this.windows.hit(playerId);
-    if (player.health === 0) this.die(playerId, player);
+    if (player.health === 0) die(this.world, playerId, player);
     else if (player.action === "") this.fightBack(playerId, player, enemyId);
   }
 
@@ -248,51 +243,5 @@ export class Fighting {
     );
     // Now, as a second enemy swinging this tick must find them busy.
     Object.assign(player, { target: enemyId, action: "fighting" });
-  }
-
-  die(id: string, player: SyncedPlayer) {
-    player.dead = true;
-    this.world.clearAction(id);
-    this.world.stopFollowersOf(id);
-    // Drop on death (#119): the Toolbelt stays.
-    player.inventory.forEach((_, slot) => dropFromSlot(this.world, id, slot));
-    for (const gearSlot of GEAR_SLOTS) {
-      const worn = player[gearSlot];
-      if (!worn) continue;
-      // A stacking slot drops its whole stack as one ground item (Ranged spec §2).
-      this.world.groundItems.spawn(
-        player,
-        worn,
-        wornCountOf(player, gearSlot),
-        player.username,
-        this.world.state.tick,
-      );
-      wear(player, gearSlot, "", 0);
-    }
-    const unsynced = this.world.unsyncedPlayers.get(id)!;
-    unsynced.ranDryAgainst = undefined;
-    unsynced.healingPool.length = 0;
-    unsynced.delicious = undefined;
-    unsynced.potion = undefined;
-    unsynced.busy = undefined;
-    endPrayers(player);
-    this.world.fitHealth(id);
-    unsynced.respawnTick = this.world.state.tick + PLAYER_DEAD_TICKS;
-    this.world.events.push({ type: "playerDied", player: id });
-  }
-
-  /** What dying changes, once it's over. */
-  respawned(player: SyncedPlayer) {
-    return { ...respawnTile(this.world.tiles), health: player.maxHealth };
-  }
-
-  /** Brings a dead player back on the respawn tile once their death is over. */
-  respawnIfDue(id: string) {
-    const player = this.world.player(id);
-    const unsynced = this.world.unsynced(id);
-    if (this.world.state.tick < unsynced.respawnTick) return;
-    Object.assign(player, this.respawned(player), { dead: false });
-    unsynced.lockEndTick = 0;
-    this.world.events.push({ type: "playerRespawned", player: id });
   }
 }
