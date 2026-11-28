@@ -273,6 +273,7 @@ export function showBottomBar(
     sheet.drawStance(me);
     sheet.drawAppearance(me);
     sheet.drawSpellbook(me);
+    sheet.drawPrayers(me);
     showHeld = () => {
       shown = me;
       slots.forEach((slot, i) => {

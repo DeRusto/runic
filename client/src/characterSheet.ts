@@ -35,6 +35,7 @@ import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { showAppearance } from "./appearance.ts";
+import { showPrayerTab } from "./prayerTab.ts";
 import { showSpellbook } from "./spellbook.ts";
 import { showStances } from "./stances.ts";
 import { addTip } from "./tooltip.ts";
@@ -87,10 +88,12 @@ export function showCharacterSheet(
     if (key === "c" || key === "C") toggle();
   };
 
-  const tabs = ["gear", "skills", "spellbook", "appearance"].map((name) => ({
-    tab: document.getElementById(`sheet-tab-${name}`)!,
-    pane: document.getElementById(`sheet-${name}`)!,
-  }));
+  const tabs = ["gear", "skills", "spellbook", "prayer", "appearance"].map(
+    (name) => ({
+      tab: document.getElementById(`sheet-tab-${name}`)!,
+      pane: document.getElementById(`sheet-${name}`)!,
+    }),
+  );
   for (const chosen of tabs) {
     chosen.tab.onclick = () => {
       for (const { tab, pane } of tabs) {
@@ -150,6 +153,7 @@ export function showCharacterSheet(
   const drawStance = showStances(room);
   const drawAppearance = showAppearance(room);
   const drawSpellbook = showSpellbook(room, say);
+  const drawPrayers = showPrayerTab(room, say);
 
   const combat = document.createElement("p");
   const note = document.createElement("p");
@@ -243,6 +247,7 @@ export function showCharacterSheet(
     drawStance,
     drawAppearance,
     drawSpellbook,
+    drawPrayers,
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {
       const count = me.pinnedSkills.length;

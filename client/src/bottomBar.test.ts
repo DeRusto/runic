@@ -119,6 +119,7 @@ const stateHolding = (...stacks: [string, number][]) => ({
         maxHealth: 1000,
         prayerXp: 0,
         prayerPoints: 10,
+        prayers: [],
         attackXp: 0,
         strengthXp: 0,
         defenseXp: 0,

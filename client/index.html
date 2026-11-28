@@ -93,6 +93,14 @@
         max-width: 240px;
         overflow-wrap: anywhere;
       }
+      .praying {
+        color: #8ec7ff;
+        font-size: 14px;
+        line-height: 1;
+        text-shadow:
+          0 0 4px #8ec7ff,
+          0 0 2px #000;
+      }
       .said {
         color: #ffeb3b;
         font-weight: 600;
@@ -728,6 +736,51 @@
       }
       #spellbook .spell:focus-visible {
         outline: 2px solid #ffd27a;
+      }
+      #prayer-tab-points {
+        margin: 0 0 4px;
+      }
+      #prayer-tab-bar {
+        width: 100%;
+        height: 8px;
+        margin: 0 0 8px;
+        accent-color: #8ec7ff;
+      }
+      #prayers {
+        display: grid;
+        gap: 4px;
+      }
+      #prayers .prayer {
+        display: grid;
+        gap: 1px;
+        padding: 5px 8px;
+        border: 0;
+        border-radius: 2px;
+        background: #2a1f14;
+        outline: 1px solid #8a6a44;
+        color: inherit;
+        font: inherit;
+        font-size: 12px;
+        text-align: left;
+      }
+      #prayers .prayer span:first-child {
+        font-size: 13px;
+        font-weight: bold;
+      }
+      #prayers .prayer span:not(:first-child) {
+        opacity: 0.85;
+      }
+      #prayers .prayer[aria-pressed="true"] {
+        background: #1f3550;
+        outline-color: #8ec7ff;
+        color: #cfe8ff;
+        box-shadow: 0 0 6px #8ec7ff88;
+      }
+      #prayers .prayer[aria-disabled="true"] {
+        opacity: 0.45;
+      }
+      #prayers .prayer:focus-visible {
+        outline: 2px solid #8ec7ff;
       }
       #knight-color,
       #skin-tone {
@@ -1409,6 +1462,15 @@
             Spellbook
           </button>
           <button
+            id="sheet-tab-prayer"
+            type="button"
+            role="tab"
+            aria-controls="sheet-prayer"
+            aria-selected="false"
+          >
+            Prayer
+          </button>
+          <button
             id="sheet-tab-appearance"
             type="button"
             role="tab"
@@ -1450,6 +1512,20 @@
             Combat spells
             <p id="spellbook-note">A staff in hand casts the picked spell.</p>
             <div id="spellbook" role="group" aria-label="Combat spells"></div>
+          </div>
+          <div
+            id="sheet-prayer"
+            class="sheet-pane"
+            role="tabpanel"
+            aria-labelledby="sheet-tab-prayer"
+            hidden
+          >
+            <p id="prayer-tab-points"></p>
+            <progress
+              id="prayer-tab-bar"
+              aria-labelledby="prayer-tab-points"
+            ></progress>
+            <div id="prayers" role="group" aria-label="Prayers"></div>
           </div>
           <div
             id="sheet-appearance"

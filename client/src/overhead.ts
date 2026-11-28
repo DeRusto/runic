@@ -5,12 +5,13 @@ import { camera } from "./scene.ts";
 const HEAD_HEIGHT = 1.25;
 const point = new THREE.Vector3();
 
-/** The HTML over a player's head: their username, and whatever they just said. */
+/** The HTML over a player's head: their username, a mark while any prayer is on, and whatever they just said. */
 export class Overhead {
   private element = document.createElement("div");
   private said = document.createElement("div");
   private bar = document.createElement("div");
   private fill = document.createElement("i");
+  private praying = document.createElement("div");
   private clearSaid?: ReturnType<typeof setTimeout>;
   /** Blows the server has decided but the clips haven't reached yet, so the bar doesn't show them. */
   private pendingDamage = 0;
@@ -22,7 +23,12 @@ export class Overhead {
     this.bar.className = "bar";
     this.bar.hidden = true;
     this.bar.append(this.fill);
-    this.element.append(this.said, this.bar, name);
+    // A small glowing star; its look is the Prayer tab ticket's choice (Prayer spec §6).
+    this.praying.className = "praying";
+    this.praying.textContent = "✦";
+    this.praying.title = "Praying";
+    this.praying.hidden = true;
+    this.element.append(this.said, this.bar, this.praying, name);
     document.getElementById("overheads")!.append(this.element);
   }
 
@@ -31,6 +37,11 @@ export class Overhead {
     const shown = health + this.pendingDamage;
     this.bar.hidden = shown >= max || shown <= 0;
     this.fill.style.width = `${(shown / max) * 100}%`;
+  }
+
+  /** Call once a frame: the mark shows while the player has any prayer on. */
+  showPraying(praying: boolean) {
+    this.praying.hidden = !praying;
   }
 
   /** Keeps a blow off the bar until `showBlow`, when its clip connects. */
