@@ -322,6 +322,7 @@ test("a new account starts on the respawn tile in its starter clothes, with an e
     x: 1,
     y: 1,
     ...NO_EXPERIENCE,
+    prayerPoints: 10,
     hitpointsXp: 4050,
     masteryHundredths: 0,
     pinnedSkills: [
@@ -370,6 +371,8 @@ const SAVED = {
   defenseXp: 2,
   rangedXp: 26,
   magicXp: 27,
+  prayerXp: 52,
+  prayerPoints: 13,
   herblawXp: 3,
   hitpointsXp: 4100,
   miningXp: 4,

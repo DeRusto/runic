@@ -1,5 +1,6 @@
 import {
   CHAT,
+  BURY_INTENT,
   DROP_INTENT,
   EAT_INTENT,
   EMPTY_SLOT,
@@ -51,6 +52,7 @@ const element = () => ({
 const slotsBox = element();
 const menu = element();
 const skillsBox = element();
+const prayer = element();
 const chatLines = element();
 const tip = element();
 const fakeDocument = {
@@ -65,7 +67,9 @@ const fakeDocument = {
             ? menu
             : id === "skills"
               ? skillsBox
-              : element(),
+              : id === "prayer-points"
+                ? prayer
+                : element(),
   createElement: (tagName: string) => Object.assign(element(), { tagName }),
   onpointerdown: undefined as undefined | ((event: unknown) => void),
 };
@@ -113,6 +117,8 @@ const stateHolding = (...stacks: [string, number][]) => ({
       {
         health: 1000,
         maxHealth: 1000,
+        prayerXp: 0,
+        prayerPoints: 10,
         attackXp: 0,
         strengthXp: 0,
         defenseXp: 0,
@@ -766,4 +772,23 @@ describe("lighting a fire from a log's slot (#224)", () => {
       expect(chatLines.children.at(-1)?.children.join("")).toBe(line);
     },
   );
+});
+
+test("Prayer shows synced current points beside the maximum for its level", () => {
+  expect(prayer.textContent).toBe("Prayer 10 / 10");
+  const state = stateWith();
+  Object.assign(state.players.get("me")!, { prayerXp: 50, prayerPoints: 7 });
+  room.onStateChange.invoke(state);
+  expect(prayer.textContent).toBe("Prayer 7 / 20");
+});
+
+test("clicking bones or choosing Bury sends only the selected slot", () => {
+  room.onStateChange.invoke(stateWith("bones", "heavyBones"));
+  nextFrame();
+  slot().onclick!();
+  expect(room.send).toHaveBeenLastCalledWith(BURY_INTENT, 0);
+  rightClick(1);
+  expect(menuChoices()).toEqual(["Bury", "Drop"]);
+  menu.children[0]!.onclick!();
+  expect(room.send).toHaveBeenLastCalledWith(BURY_INTENT, 1);
 });

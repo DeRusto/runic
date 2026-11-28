@@ -619,11 +619,20 @@ _Avoid_: Talisman (there are none), magic stone
 A material needed to make Emberite gear. Each player who damages a Skeleton has a one-in-four chance to find an Emberbone when it dies. It can also come from a Gorger's bag, at one chance in a hundred per pick (#301).
 _Avoid_: Trophy, token
 
+**Prayer**:
+A combat skill trained by burying bones. Its level adds to Combat level at half weight and sets the maximum number of prayer points.
+
+**Prayer points**:
+A pool of ten points per Prayer level. New players start full. The current amount is saved, and one point returns every twenty ticks while no prayer is active.
+
+**Bury**:
+An inventory action that takes two ticks and consumes one bone on completion. Bones give 5 Prayer experience and heavy bones give 13. A new action can interrupt the burial.
+
 **Bones**:
-A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. They can sell or bank it until Prayer arrives in Phase 9.
+A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. Burying one gives 5 Prayer experience. Each bone has a store value of 4 coins and sells to the store for 1.
 
 **Heavy bones**:
-A stackable material left by Skeleton Mages and Cinderhorns at the same chance as bones. The general store pays more for heavy bones.
+A stackable material left by Skeleton Mages, Cinderhorns and Cairn wardens at the same chance as bones. Burying one gives 13 Prayer experience. Each heavy bone has a store value of 8 coins and sells to the store for 3.
 
 **Spider silk**:
 A thread a Spider leaves behind, needed to make rope and to augment capes. Every Spider kill leaves 1 or 2, at even odds, for each player who damaged it (#272).

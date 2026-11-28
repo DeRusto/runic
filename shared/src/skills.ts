@@ -23,6 +23,7 @@ export const SKILLS = [
   ["Thieving", "thievingXp"],
   ["Agility", "agilityXp"],
   ["Blocking", "blockingXp"],
+  ["Prayer", "prayerXp"],
   ["Mastery", "masteryXp"],
 ] as const;
 /** Where experience is paid. Mastery isn't paid any: it only gets its share of the rest. */
@@ -30,12 +31,6 @@ export type XpField = Exclude<(typeof SKILLS)[number][1], "masteryXp">;
 
 /** Of the experience that lands in any other skill. The migration that backfilled Mastery has its own copy. */
 export const MASTERY_SHARE_PERCENT = 7;
-
-/** Moves up to `SKILLS` when its content lands, which builds its synced field and save column; then run `npm run db:generate -w server`. Until then its experience is 0. */
-const UPCOMING_SKILLS = [["Prayer", "prayerXp"]] as const;
-
-/** The 23 skills total level counts. */
-export const SKILL_REGISTRY = [...SKILLS, ...UPCOMING_SKILLS];
 
 /** What the bottom bar's skills column fits: two across, three down. */
 export const MAX_PINNED_SKILLS = 6;
@@ -64,14 +59,11 @@ export const addXp = (xp: number, gained: number) =>
 export const levelFor = (xp: number) =>
   Math.min(Math.floor(Math.sqrt(xp / 50)) + 1, MAX_LEVEL);
 
-type SkillXp = Partial<Record<(typeof SKILL_REGISTRY)[number][1], number>>;
+type SkillXp = Partial<Record<(typeof SKILLS)[number][1], number>>;
 
 /** The sum of every registered skill's level; a skill with no experience yet is level 1. */
 export const totalLevel = (xp: SkillXp) =>
-  SKILL_REGISTRY.reduce(
-    (total, [, field]) => total + levelFor(xp[field] ?? 0),
-    0,
-  );
+  SKILLS.reduce((total, [, field]) => total + levelFor(xp[field] ?? 0), 0);
 
 /** Base plus the best of the three styles (#78). */
 export function combatLevel(xp: SkillXp) {

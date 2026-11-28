@@ -1,9 +1,9 @@
-import { ArraySchema } from "@colyseus/schema";
 import {
   GATHERING_SKILLS,
   logoutRefusal,
   MAX_PINNED_SKILLS,
   respawnTile,
+  burialXp,
   siteId,
   isKnightColor,
   isSkinTone,
@@ -31,20 +31,15 @@ import { Inventory } from "./inventory.ts";
 import { Making } from "./making.ts";
 import { mixPotion } from "./mixing.ts";
 import type { QueuedAction } from "./playerActions.ts";
-import { newSave, saveOf, syncedOf } from "./playerSave.ts";
+import { newSave, playerFromSave, saveOf } from "./playerSave.ts";
+import { advancePrayer } from "./prayer.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
 import { Taking } from "./taking.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Walking } from "./walking.ts";
-import {
-  isAmount,
-  isInventorySlot,
-  maxHealthTotal,
-  World,
-} from "./worldContext.ts";
-import { Player } from "./worldState.ts";
+import { isAmount, isInventorySlot, World } from "./worldContext.ts";
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -128,22 +123,7 @@ export class Simulation {
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
     const login = this.loginSave(saved);
-    const fields = syncedOf(login);
-    const maxHealth = maxHealthTotal(fields);
-    const player = Object.assign(new Player(), fields, {
-      username,
-      maxHealth,
-      // Health saved under a Fortitude potion can be above the maximum it logs back in to.
-      health: Math.min(fields.health, maxHealth),
-    });
-    // A save from before the quests has none, so nobody starts with progress (#231). The
-    // record isn't a synced field — syncedOf excludes it; the player holds the quest ids
-    // with the stages parallel, and the unsynced side keeps the repeat turn-ins.
-    const questProgress = login.quests ?? {};
-    player.quests = new ArraySchema(...Object.keys(questProgress));
-    player.questStages = new ArraySchema(
-      ...Object.values(questProgress).map(({ stage }) => stage),
-    );
+    const player = playerFromSave(login, username);
     Object.assign(player, this.agility.strandedExit(player));
     this.state.players.set(id, player);
     this.world.unsyncedPlayers.set(id, {
@@ -155,7 +135,7 @@ export class Simulation {
       healingPool: [],
       lockEndTick: 0,
       respawnTick: 0,
-      quests: new Map(Object.entries(questProgress)),
+      quests: new Map(Object.entries(login.quests ?? {})),
       ...this.timersOfLeavers.get(username),
     });
     this.timersOfLeavers.delete(username);
@@ -289,6 +269,16 @@ export class Simulation {
     if (!this.world.canAct(id)) return;
     if (!isInventorySlot(slot)) return;
     this.queuedActions.set(id, { kind: "lighting", slot });
+  }
+
+  /** Queues burial only for a slot that holds a bone. */
+  queueBury(id: string, slot: number) {
+    this.queue(id, () => {
+      if (!isInventorySlot(slot)) return;
+      const item = this.world.player(id).inventory[slot];
+      if (item && burialXp(item) !== undefined)
+        return { kind: "burying", slot, item };
+    });
   }
 
   /** Both come straight off the network; see `VillagerWindows.visitIntent`. */
@@ -495,11 +485,12 @@ export class Simulation {
     this.queuedLogouts.clear();
   }
 
-  /** Each player's respawn once their death is over, or else their healing (spec §6). */
+  /** Each player's respawn once their death is over, or else their healing, then Prayer recovery and burial. */
   private advancePlayerTimers() {
     for (const id of this.world.unsyncedPlayers.keys()) {
       if (this.world.player(id).dead) this.fighting.respawnIfDue(id);
       else this.eating.heal(id, this.state.tick);
+      advancePrayer(this.world, id);
     }
   }
 }
