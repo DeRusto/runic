@@ -93,6 +93,28 @@
         max-width: 240px;
         overflow-wrap: anywhere;
       }
+      .enemy-effects > span {
+        display: inline-block;
+        margin: 0 1px 2px;
+        padding: 1px 5px;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        background: #171824;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .enemy-effects > [hidden] {
+        display: none;
+      }
+      .enemy-effects > [data-element="air"] {
+        color: #d8c9ff;
+      }
+      .enemy-effects > [data-element="water"] {
+        color: #9cdbfa;
+      }
+      .enemy-effects > [data-element="earth"] {
+        color: #f5cc95;
+      }
       .prayer-mark {
         color: #8ec7ff;
         font-size: 14px;

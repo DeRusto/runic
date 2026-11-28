@@ -133,6 +133,7 @@ export function showEnemies(
         .copy(figure.model.position)
         .setY((HIT_BOX_HEIGHT * size) / 2);
       const overhead = enemyOverheads.get(id)!;
+      overhead.showEnemyEffects(enemy);
       overhead.showHealth(enemy.health, enemy.maxHealth);
       overhead.place(figure.model.position, size);
     }

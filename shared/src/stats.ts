@@ -50,20 +50,23 @@ const onScale = (chance: number, floor: number) =>
 
 /**
  * An enemy's chance (0..1) to hit a player with `avoidance` points who fights in `playerStyle`:
- * base + Accuracy + the combat triangle's points − Avoidance, floored at 5% (spec §5, #271).
+ * base plus Accuracy and triangle points, less Avoidance and any Accuracy penalty,
+ * floored at 5% (spec §5, #271, Magic spec §8).
  */
 export const enemyHitChance = (
   kind: EnemyKind,
   avoidance: number,
   playerStyle: Style,
   elite = false,
+  accuracyPenalty = 0,
 ) =>
   onScale(
     ENEMIES[kind].hitChance +
       (ENEMIES[kind].accuracy +
         (elite ? ELITE_ACCURACY_POINTS : 0) +
         trianglePointsOf(ENEMIES[kind].style, playerStyle) -
-        avoidance) /
+        avoidance -
+        accuracyPenalty) /
         POINTS_PER_HIT_CHANCE,
     MIN_ENEMY_HIT_CHANCE,
   );

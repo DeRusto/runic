@@ -9,6 +9,7 @@ import {
   isRangedStance,
   isStance,
   magicHit,
+  pickedSpellOf,
   playerHit,
   OUT_OF_KNIVES_LINE,
   playerStyleOf,
@@ -30,7 +31,7 @@ import type { Quests } from "./quests.ts";
 import type { VillagerWindows } from "./villagerWindows.ts";
 import type { SyncedPlayer, World } from "./worldContext.ts";
 
-/** Players' swings at enemies and enemies' at players, loot, and death and respawn. Enemies decide for themselves when to swing; this applies what each swing does. */
+/** Players' swings at enemies and enemies' at players, and loot. Enemies decide for themselves when to swing; this applies what each swing does. */
 export class Fighting {
   constructor(
     private readonly world: World,
@@ -162,6 +163,7 @@ export class Fighting {
       id,
       damage,
       player,
+      style === "magic" ? pickedSpellOf(player) : undefined,
     );
     if (!loot) return;
     this.world.events.push({ type: "enemyDied", enemy: enemyId });
@@ -208,6 +210,7 @@ export class Fighting {
       avoidance,
       this.world.random,
       enemy.elite,
+      this.enemies.accuracyPenalty(enemyId),
     );
     player.health -= damage;
     for (const [field, gained] of xp) this.world.earnXp(player, field, gained);

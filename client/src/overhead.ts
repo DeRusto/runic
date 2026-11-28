@@ -1,9 +1,15 @@
-import { CHAT_OVERHEAD_MS } from "@runic/shared";
+import { CHAT_OVERHEAD_MS, type SpellElement } from "@runic/shared";
 import * as THREE from "three";
 import { camera } from "./scene.ts";
 
 const HEAD_HEIGHT = 1.25;
 const point = new THREE.Vector3();
+const EFFECT_LABELS = {
+  air: "Weakened",
+  water: "Slowed",
+  earth: "Held",
+} satisfies Record<SpellElement, string>;
+const elements = Object.keys(EFFECT_LABELS) as SpellElement[];
 
 /** The HTML over a player's head: their username, a mark while any prayer is on, and whatever they just said. */
 export class Overhead {
@@ -12,6 +18,7 @@ export class Overhead {
   private bar = document.createElement("div");
   private fill = document.createElement("i");
   private prayerMark = document.createElement("div");
+  private effectLabels?: Record<SpellElement, HTMLSpanElement>;
   private clearSaid?: ReturnType<typeof setTimeout>;
   /** Blows the server has decided but the clips haven't reached yet, so the bar doesn't show them. */
   private pendingDamage = 0;
@@ -42,6 +49,32 @@ export class Overhead {
   /** Call once a frame: the mark shows while the player has any prayer on. */
   showPrayerMark(prayerOn: boolean) {
     this.prayerMark.hidden = !prayerOn;
+  }
+
+  /** Shows the server's active spell effects above an enemy. */
+  showEnemyEffects(enemy: Record<SpellElement, boolean>) {
+    if (!this.effectLabels) {
+      if (!elements.some((element) => enemy[element])) return;
+      const row = document.createElement("div");
+      row.className = "enemy-effects";
+      this.effectLabels = {
+        air: document.createElement("span"),
+        water: document.createElement("span"),
+        earth: document.createElement("span"),
+      };
+      for (const element of elements) {
+        const label = this.effectLabels[element];
+        label.textContent = EFFECT_LABELS[element];
+        label.dataset.element = element;
+        row.append(label);
+      }
+      this.element.prepend(row);
+    }
+    for (const element of elements) {
+      const label = this.effectLabels[element];
+      const hidden = !enemy[element];
+      if (label.hidden !== hidden) label.hidden = hidden;
+    }
   }
 
   /** Keeps a blow off the bar until `showBlow`, when its clip connects. */

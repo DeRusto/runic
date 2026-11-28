@@ -1,34 +1,22 @@
-import { schema, t } from "@colyseus/schema";
 import {
   canShootAt,
   ELITE_HEALTH_MULTIPLIER,
   ELITE_RETURN_CHANCE,
   ENEMIES,
+  effectOf,
+  type CombatSpell,
   rollLoot,
   tilesApart,
   WALK_TICKS_PER_TILE,
-  type EnemyKind,
-  type EnemyState,
   type LootWon,
   type Tile,
   type TileKind,
 } from "@runic/shared";
+import { EnemyEffects } from "./enemyEffects.ts";
+import { Enemy, type EnemyWorld, type SyncedEnemy } from "./enemyState.ts";
 import { findPath, legalSteps, nextTo, pathToFirst } from "./pathfinding.ts";
 
-export const Enemy = schema(
-  {
-    x: t.uint8(),
-    y: t.uint8(),
-    kind: t.string<EnemyKind>(),
-    health: t.uint16(),
-    maxHealth: t.uint16(),
-    elite: t.boolean().default(false),
-    target: t.string().default(""),
-    state: t.string<EnemyState>().default("idle"),
-  },
-  "Enemy",
-);
-type SyncedEnemy = InstanceType<typeof Enemy>;
+export { Enemy, type EnemyWorld } from "./enemyState.ts";
 
 /** What an enemy remembers that clients don't: its home tile, timers and who has damaged it. */
 type Memory = {
@@ -36,29 +24,10 @@ type Memory = {
   nextStepTick: number;
   nextSwingTick: number;
   returnTick: number;
+  effects: EnemyEffects;
   leashOrigin: Tile;
   /** Who has damaged it since it last recovered or returned. Not saved (spec §6). */
   damagers: Set<string>;
-};
-
-/** A player as an enemy sees one: where they are and how much health they have, read live. */
-type Fighter = Tile & { health: number; dead: boolean };
-
-/** What `advance` needs from the world on one tick. */
-export type EnemyWorld = {
-  tick: number;
-  /** Every player in join order, as noticing checks them: a tie stays with the first. */
-  players(): Iterable<{
-    id: string;
-    player: Fighter;
-    dropped: boolean;
-    /** False while busy in a way enemies can't hit, such as Agility's crossing (#236). */
-    hittable: boolean;
-  }>;
-  /** A player, live, so a swing's damage shows at once; undefined once they have left. */
-  player(id: string): Fighter | undefined;
-  /** Rolls a swing that is due and applies it to the player. It may change their health. */
-  swing(enemyId: string, playerId: string): void;
 };
 
 /**
@@ -83,6 +52,7 @@ export class Enemies {
           nextStepTick: 0,
           nextSwingTick: 0,
           returnTick: 0,
+          effects: new EnemyEffects(),
           leashOrigin: { x, y },
           damagers: new Set(),
         });
@@ -111,6 +81,7 @@ export class Enemies {
     playerId: string,
     damage: number,
     attacker: Tile,
+    spell?: CombatSpell,
   ): LootWon[] | undefined {
     const enemy = this.synced.get(enemyId)!;
     const memory = this.memories.get(enemyId)!;
@@ -122,7 +93,13 @@ export class Enemies {
     }
     if (damage) memory.damagers.add(playerId);
     enemy.health -= damage;
-    if (enemy.health > 0) return undefined;
+    if (enemy.health > 0) {
+      const effect = damage && spell ? effectOf(spell) : undefined;
+      if (effect)
+        memory.effects.apply(enemy, effect, tick, memory.nextSwingTick);
+      return undefined;
+    }
+    memory.effects.clear(enemy);
     enemy.state = "dead";
     enemy.target = "";
     memory.returnTick = tick + returnTicks;
@@ -132,11 +109,17 @@ export class Enemies {
     return won;
   }
 
+  /** Accuracy points a running air spell takes from this enemy. */
+  accuracyPenalty(id: string) {
+    return this.memories.get(id)!.effects.accuracyPenalty;
+  }
+
   /** One tick of every enemy, in order, so a swing's result shows to the enemies after it. */
   advance(world: EnemyWorld) {
     const { tick } = world;
     for (const [id, memory] of this.memories) {
       const enemy = this.synced.get(id)!;
+      memory.effects.advance(enemy, tick);
       const stats = ENEMIES[enemy.kind];
       // A docile creature stands: no noticing, wandering or fighting, dead or alive (#238).
       if (stats.docile) continue;
@@ -156,7 +139,11 @@ export class Enemies {
           tilesApart(target, memory.leashOrigin) <= stats.leashTiles &&
           this.chase(tick, enemy, memory, target)
         ) {
-          if (tick >= memory.nextSwingTick && this.canAttack(enemy, target)) {
+          if (
+            !enemy.water &&
+            tick >= memory.nextSwingTick &&
+            this.canAttack(enemy, target)
+          ) {
             memory.nextSwingTick = tick + stats.swingIntervalTicks;
             world.swing(id, enemy.target);
           }
@@ -171,10 +158,12 @@ export class Enemies {
           enemy.health = enemy.maxHealth;
           enemy.state = "idle";
           memory.damagers.clear();
+          memory.effects.clear(enemy);
         }
         continue;
       }
-      if (enemy.state !== "idle" || tick < memory.nextStepTick) continue;
+      if (enemy.state !== "idle" || enemy.earth || tick < memory.nextStepTick)
+        continue;
       if (this.random() >= stats.wanderChance) continue;
       const steps = legalSteps(this.tiles, enemy).filter(
         (step) => tilesApart(step, memory.home) <= stats.wanderTiles,
@@ -271,7 +260,7 @@ export class Enemies {
     memory: Memory,
     target: Tile,
   ) {
-    if (tick < memory.nextStepTick) return true;
+    if (enemy.earth || tick < memory.nextStepTick) return true;
     if (
       ENEMIES[enemy.kind].reachTiles !== undefined &&
       this.canAttack(enemy, target)
@@ -284,7 +273,7 @@ export class Enemies {
   }
 
   private goHome(tick: number, enemy: SyncedEnemy, memory: Memory) {
-    if (tick < memory.nextStepTick) return;
+    if (enemy.earth || tick < memory.nextStepTick) return;
     const [step] = findPath(this.tiles, enemy, memory.home);
     if (step) this.step(tick, enemy, memory, step);
   }
