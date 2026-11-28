@@ -99,6 +99,9 @@ export function utilitySpellRefusal(
   return holdsRunes(player, runes) ? undefined : runesLine(spell);
 }
 
+/** What Coin-turn says while it waits for an item, and to a click on an empty slot (Magic spec §9). */
+export const COIN_TURN_CHOOSE_LINE = "Choose an item to turn into coins.";
+
 /** Quest items, which Coin-turn never turns: Odo's proof essences, the Hollow essence and the bone sigil (Magic spec §9). */
 export const QUEST_ITEMS: ReadonlySet<string> = new Set<ItemId>([
   "copperEssence",
@@ -122,7 +125,7 @@ export function coinTurnRefusal(player: Caster, slot: number) {
   const items = [...player.inventory];
   const counts = [...player.inventoryCounts];
   const item = items[slot] ?? EMPTY_SLOT;
-  if (item === EMPTY_SLOT) return "Choose an item to turn into coins.";
+  if (item === EMPTY_SLOT) return COIN_TURN_CHOOSE_LINE;
   const notBought = sellRefusal(item);
   if (notBought) return notBought;
   if (QUEST_ITEMS.has(item)) return "Coin-turn can't turn a quest item.";

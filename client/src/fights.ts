@@ -187,6 +187,8 @@ export function showFights(room: WorldConnection) {
         );
       } else if (event.type === "playerRespawned") {
         playerFigures.get(event.player)?.respawn();
+      } else if (event.type === "teleported") {
+        playerFigures.get(event.player)?.teleport();
       } else if (event.type === "enemyReturned") {
         enemyFigures.get(event.enemy)![clipsOf(event.enemy).returns]();
       } else if ("success" in event) {
