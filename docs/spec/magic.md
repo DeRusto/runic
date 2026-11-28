@@ -1,8 +1,8 @@
 # Runic: Magic
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 9 map (#89). The spec issue #325 gathers the owner's decisions (#317, #318, #319, #320, #324), and each build ticket records here the part it builds. The first ticket (#327) makes Magic a trained skill, adds the three staves Crafting makes, and adds the focus and fury runes the spells spend. The second (#329) adds the Spellbook tab and casting the eight combat spells for their damage. The third (#332) adds the effects of air, water and earth spells. Fire’s burn, utility spells and the ability bar come in later tickets.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 9 map (#89). The spec issue #325 gathers the owner's decisions (#317, #318, #319, #320, #324), and each build ticket records here the part it builds. The first ticket (#327) makes Magic a trained skill, adds the three staves Crafting makes, and adds the focus and fury runes the spells spend. The second (#329) adds the Spellbook tab and casting the eight combat spells for their damage. The third (#332) adds the effects of air, water and earth spells. The fourth (#333) adds the three utility spells. Fire’s burn and the ability bar come in later tickets.
 
-The values live in `shared/src/skills.ts` (the skill list), `shared/src/weapons.ts` and `shared/src/gear.ts` (a staff's gate and Accuracy), `shared/src/making.ts` (the staff and rune recipes), `shared/src/runecrafting.ts` (the rune list), `shared/src/strongboxes.ts` (the strongboxes' rune picks), `shared/src/magic.ts` (the combat spells, reach, cast rate, refusals and the magic hit) and `shared/src/generalStore.ts` (store values); where this page and those files disagree, the files win and this page is fixed.
+The values live in `shared/src/skills.ts` (the skill list), `shared/src/weapons.ts` and `shared/src/gear.ts` (a staff's gate and Accuracy), `shared/src/making.ts` (the staff and rune recipes), `shared/src/runecrafting.ts` (the rune list), `shared/src/strongboxes.ts` (the strongboxes' rune picks), `shared/src/magic.ts` (the combat spells, reach, cast rate, refusals and the magic hit), `shared/src/utilitySpells.ts` (the utility spells, their refusals, Coin-turn's price and the teleports' landing tiles) and `shared/src/generalStore.ts` (store values); where this page and those files disagree, the files win and this page is fixed.
 
 ## 1. The Magic skill
 
@@ -82,7 +82,7 @@ A cast plays the Use_Item clip on the caster, and the hit shows at the enemy onc
 
 ## 6. The Spellbook tab
 
-The character sheet has a fourth tab, Spellbook, beside Gear, Skills and Appearance. It lists the eight combat spells in gate order, each with its Magic gate, runes, hit bonus and effect. Spells above the player's Magic level show greyed. The picked spell shows highlighted. Clicking a spell picks it; clicking one above the player's level prints its refusal in the chat and sends nothing.
+The character sheet has a fourth tab, Spellbook, beside Gear, Skills and Appearance. It lists the eight combat spells in gate order, each with its Magic gate, runes, hit bonus and effect, then the utility spells (§9). Spells above the player's Magic level show greyed. The picked spell shows highlighted. Clicking a spell picks it; clicking one above the player's level prints its refusal in the chat and sends nothing.
 
 ## 7. The combat spell's migration
 
@@ -98,3 +98,33 @@ A landed cast applies its effect to the enemy it hits, including elites and doci
 - Earth holds the enemy for 6 ticks for a dart or 12 for a surge. It stops every step, whether the enemy would wander, chase or return home. The enemy still attacks a player in reach. The label reads **Held**.
 
 Effects clear on death or when the enemy reaches home after leashing. The labels reflect the server's state, and several labels can appear together.
+
+## 9. Utility spells
+
+Three utility spells list after the combat spells on the Spellbook tab, in gate order, each with its Magic gate, runes and what it does (#319). They cast with any weapon in hand, a sword, a bow, a staff or bare hands.
+
+| Spell | Magic gate | Runes per cast | Experience | What it does |
+| --- | --- | --- | --- | --- |
+| Village teleport | 12 | 3 air, 1 fury | 15 | Moves the caster to the village square |
+| Coin-turn | 20 | 3 fire, 1 focus | 10 | Turns one item into the store's price in coins |
+| Hollow teleport | 28 | 3 earth, 1 air, 1 fury | 25 | Moves the caster just inside Runestone Hollow's gap, beside Hollis |
+
+Spells above the player's Magic level show greyed. Clicking one casts it, and the server decides the outcome on the next tick. A cast spends its runes, pays its experience to Magic and replaces the player's current action, as a click does. Casting is refused during an Agility crossing, like other clicks.
+
+Village teleport lands on the respawn tile, which stands in the village square beside the pedlar, at (18,42) on today's region. Hollow teleport lands on the tile west of Hollis, between them and the gap at x 95, at (96,42). The build picked both, as #325 left them to it. The figure appears on the landing tile at once and rises from the ground, as it does on a respawn.
+
+Coin-turn asks for an item: the player clicks the spell, which shows pressed and says "Choose an item to turn into coins.", then clicks an inventory slot. One item leaves that slot (one from a stack), and the general store's buy price for it goes into the inventory's coins, 40% of its value as a sale would pay. Clicking the spell again, or Cancel on a slot's menu, stops asking. An open store or bank gets the slots back afterwards.
+
+Every refusal says why in the chat and spends nothing:
+
+- Below the gate: "You need Magic level 12 to cast Village teleport."
+- Without the runes: "You don't have the runes to cast Village teleport."
+- Hollow teleport before Hollis's quest is done: "You must finish Hollis's quest to cast Hollow teleport."
+- A teleport while the combat lock runs (34 ticks after a hit): "You can't teleport until 10 seconds after a fight." Coin-turn moves nobody, so the lock does not refuse it.
+- Coin-turn on anything the store does not buy: today only coins, with the store's own line, "The store doesn't buy coins."
+- Coin-turn on a quest item (the copper, iron and emberite proof essences, the Hollow essence and the bone sigil): "Coin-turn can't turn a quest item."
+- Coin-turn whose turned item is one of the runes the cast needs, leaving too few: the runes line.
+- Coin-turn with no room for the coins, when one from a stack leaves no free slot and no coins are held: "You don't have room for the coins."
+
+A teleport sends a `teleported` event after the patch that moves the player, so the client shows the landing instead of a walk across the region. The intent's payload is the spell and, for Coin-turn, the inventory slot; anything else is dropped.
+
