@@ -24,11 +24,21 @@ type ApproachObstacle = CrossObstacle & { from: Tile };
 /** A crossing under way: it lands on `landing`, or back on `from` if it fails. */
 export type Crossing = { obstacle: ObstacleKind; from: Tile; landing: Tile };
 
+/** Praying or offering bones at the shrine on `shrine`, which the player walks next to first. */
+export type ShrineAction = { kind: "praying" | "offering"; shrine: Tile };
+/** An offering under way: the next bone goes on `nextOfferTick`, set on arrival. */
+export type OfferingAction = ShrineAction & {
+  kind: "offering";
+  nextOfferTick?: number;
+};
+
 /**
  * What a player is doing, beyond walking. Fighting, gathering, making and lighting are also
  * their synced `PlayerAction`; the rest show as walking while a path remains, and idle after.
  */
 export type UnsyncedAction =
+  | { kind: "praying"; shrine: Tile }
+  | OfferingAction
   | ApproachObstacle
   | { kind: "burying"; slot: number; item: string; doneTick: number }
   /** `style` is the weapon in hand's when it began, so taking a bow or staff off ends it rather than turning it to melee (#277). */
@@ -70,6 +80,7 @@ export const lostWeaponFor = (
 
 /** A click waiting for the next tick, named for the action it starts. */
 export type QueuedAction =
+  | ShrineAction
   | CrossObstacle
   | { kind: "burying"; slot: number; item: string }
   | { kind: "walking"; to: Tile }

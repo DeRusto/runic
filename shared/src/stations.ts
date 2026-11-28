@@ -17,8 +17,14 @@ export const STATIONS = {
   workbench: {},
   // Runestone Hollow's runekeeper opens it (Runestone Hollow spec §4).
   altar: { quest: "hollisRunes" },
+  villageShrine: {},
+  cairnsShrine: {},
 } as const satisfies Record<string, StationRow>;
 export type FixedStation = keyof typeof STATIONS;
+
+/** Whether a fixed place offers Prayer actions. */
+export const isShrine = (station: StationKind | undefined) =>
+  station === "villageShrine" || station === "cairnsShrine";
 /** A fixed station, or a fire, which a player places and which burns out, so no tile is one (#224). */
 export type StationKind = FixedStation | "fire";
 

@@ -13,6 +13,7 @@ import {
   OPEN_INTENT,
   strongboxRefusal,
   stationRefusal,
+  isShrine,
   TAKE_INTENT,
   attackRefusal,
   TARGET_INTENT,
@@ -38,6 +39,7 @@ import { camera, renderer, scene } from "./scene.ts";
 import type { showEnemies } from "./enemies.ts";
 import type { showFires } from "./fires.ts";
 import type { showSmithingPanel } from "./smithingPanel.ts";
+import { shrineMenuChoices } from "./shrineMenu.ts";
 import { stationTile, type addStations } from "./stations.ts";
 import type { addMarks } from "./marks.ts";
 import type { addStalls } from "./stalls.ts";
@@ -87,6 +89,19 @@ export function walkOnClick(
     clearTimeout(hideMarker);
     hideMarker = setTimeout(() => (marker.visible = false), MARKER_MS);
   };
+
+  /** A shrine's Pray and Offer bones, each marking the shrine as it is chosen (Prayer spec §4). */
+  const openShrineMenu = (event: MouseEvent, at: { x: number; y: number }) =>
+    openMenu(
+      event,
+      shrineMenuChoices(room, at).map(([label, choose]) => [
+        label,
+        () => {
+          showMarker(at.x, at.y);
+          choose();
+        },
+      ]),
+    );
 
   /**
    * One Thieving attempt on a target at (x, y): `refusal` says why the rules refuse it, which the
@@ -199,6 +214,10 @@ export function walkOnClick(
       return openMenu(event, [
         ["Pickpocket", () => pickpocket(mark.mark, mark.x, mark.y)],
       ]);
+    const shrine = stationUnder(raycaster);
+    const me = room.state.players.get(room.sessionId);
+    if (shrine && me && isShrine(shrine))
+      return openShrineMenu(event, stationTile(shrine, me));
     const stall = stallUnder(raycaster);
     if (stall)
       return openMenu(event, [
@@ -249,6 +268,8 @@ export function walkOnClick(
       return;
     }
     const station = stationUnder(raycaster);
+    if (station && me && isShrine(station))
+      return openShrineMenu(event, stationTile(station, me));
     if (station && me) {
       const refusal = stationRefusal(station, me);
       if (refusal) {

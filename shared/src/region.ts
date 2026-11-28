@@ -111,6 +111,9 @@ export const TILE_KINDS = {
   G: { ground: "grass", station: "range", blocks: true },
   w: { ground: "grass", station: "workbench", blocks: true },
   O: { ground: "grass", station: "altar", blocks: true },
+  // The two shrines (#330): the village square's (p) on grass, and the Cairns' (+) on moss.
+  p: { ground: "grass", station: "villageShrine", blocks: true },
+  "+": { ground: "moss", station: "cairnsShrine", blocks: true },
   B: { ground: "grass", villager: "odo", blocks: true },
   M: { ground: "grass", villager: "marta", blocks: true },
   $: { ground: "grass", villager: "aldous", blocks: true },
