@@ -664,7 +664,7 @@ describe("the Toolbelt", () => {
 describe("the Skills tab", () => {
   test("shows every skill, with its level and progress, in the sheet's order", () => {
     sheet.drawPins(me(TODAY));
-    sheet.drawSkills(me(TODAY, { miningXp: 75 }));
+    sheet.drawSkills(me(TODAY, { miningXp: 75, prayerXp: 55 }));
     expect(rows().map(({ name }) => name.textContent)).toEqual([
       "Attack 1",
       "Strength 1",
@@ -687,11 +687,13 @@ describe("the Skills tab", () => {
       "Thieving 1",
       "Agility 1",
       "Blocking 1",
+      "Prayer 2",
       "Mastery 1",
     ]);
     // Level 2 runs from 50 to 200 experience.
     expect(row("Mining").bar.value).toBeCloseTo(25 / 150);
     expect(tipOf(row("Mining").bar)).toBe("75 XP");
+    expect(tipOf(row("Prayer").bar)).toBe("55 XP");
     sheet.drawSkills(me(TODAY, { miningXp: 12345 }));
     expect(tipOf(row("Mining").bar)).toBe("12,345 XP");
   });

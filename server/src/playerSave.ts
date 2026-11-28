@@ -1,6 +1,7 @@
 import { ArraySchema } from "@colyseus/schema";
 import {
   BANK_SLOTS,
+  maxPrayerPoints,
   EMPTY_SLOT,
   gearCountField,
   STACKING_GEAR_SLOTS,
@@ -16,7 +17,8 @@ import {
 import { getTableColumns } from "drizzle-orm";
 import { players } from "./schema.ts";
 import type { PlayerSave } from "./saves.ts";
-import type { Player } from "./worldState.ts";
+import { maxHealthTotal } from "./worldContext.ts";
+import { Player } from "./worldState.ts";
 
 /** Every column of the save, so a new column is saved without touching this file. */
 const SAVED_FIELDS = Object.keys(getTableColumns(players)).filter(
@@ -34,6 +36,7 @@ export const newSave = (tile: Tile): PlayerSave => ({
   ...NO_EXPERIENCE,
   hitpointsXp: STARTING_HITPOINTS_XP,
   health: STARTING_HEALTH,
+  prayerPoints: maxPrayerPoints(0),
   inventory: Array<string>(INVENTORY_SLOTS).fill(EMPTY_SLOT),
   body: "leafTunic",
   legs: "brownPants",
@@ -49,6 +52,8 @@ export function syncedOf(save: PlayerSave) {
     inventoryCounts = [],
     pinnedSkills = STARTING_PINNED_SKILLS,
     tools = [],
+    prayerXp = 0,
+    prayerPoints = maxPrayerPoints(prayerXp),
     riggedShortcuts = [],
     bank = [],
     bankCounts = [],
@@ -58,6 +63,8 @@ export function syncedOf(save: PlayerSave) {
   void questProgress;
   return {
     ...fields,
+    prayerXp,
+    prayerPoints,
     // A worn weapon from before slot counts is one; an empty slot holds none (Ranged spec §2).
     ...Object.fromEntries(
       STACKING_GEAR_SLOTS.map((slot) => [
@@ -86,6 +93,23 @@ export function syncedOf(save: PlayerSave) {
       ...Array.from({ length: BANK_SLOTS }, (_, slot) => bankCounts[slot] ?? 0),
     ),
   };
+}
+
+/** Builds the synced player at login, with derived health and the quest list. */
+export function playerFromSave(save: PlayerSave, username: string) {
+  const fields = syncedOf(save);
+  const maxHealth = maxHealthTotal(fields);
+  const questProgress = save.quests ?? {};
+  return Object.assign(new Player(), fields, {
+    username,
+    maxHealth,
+    // A Fortitude potion can leave saved health above the normal maximum.
+    health: Math.min(fields.health, maxHealth),
+    quests: new ArraySchema(...Object.keys(questProgress)),
+    questStages: new ArraySchema(
+      ...Object.values(questProgress).map(({ stage }) => stage),
+    ),
+  });
 }
 
 /** What to write to the database for this player: every column, read from the synced player.

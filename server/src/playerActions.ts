@@ -28,6 +28,7 @@ export type Crossing = { obstacle: ObstacleKind; from: Tile; landing: Tile };
  */
 export type UnsyncedAction =
   | ApproachObstacle
+  | { kind: "burying"; slot: number; item: string; doneTick: number }
   /** `ranged` when it began with a bow, so taking the bow off ends it rather than turning it to melee (#277). */
   | { kind: "fighting"; enemy: string; ranged: boolean }
   | { kind: GatheringSkill; site: string }
@@ -62,6 +63,7 @@ export type UnsyncedAction =
 /** A click waiting for the next tick, named for the action it starts. */
 export type QueuedAction =
   | CrossObstacle
+  | { kind: "burying"; slot: number; item: string }
   | { kind: "walking"; to: Tile }
   | { kind: "fighting"; enemy: string }
   | { kind: "gathering"; skill: GatheringSkill; site: string }

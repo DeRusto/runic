@@ -1,4 +1,6 @@
 import {
+  burialXp,
+  BURY_INTENT,
   CHAT,
   COINS,
   DROP_INTENT,
@@ -15,6 +17,7 @@ import {
   LIGHT_INTENT,
   lightRefusal,
   lightTileAt,
+  maxPrayerPoints,
   MAX_CHAT_LENGTH,
   MAX_CHAT_LINE_LENGTH,
   MAX_LEVEL,
@@ -128,6 +131,7 @@ export function showBottomBar(
   const slots = Array.from({ length: INVENTORY_SLOTS }, (_, i) => {
     const slot = document.createElement("button");
     slot.type = "button";
+    const bury = () => room.send(BURY_INTENT, i);
     const eat = () => room.send(EAT_INTENT, i);
     const equip = () => room.send(EQUIP_INTENT, i);
     const mix = () => room.send(MIX_INTENT, { slot: i });
@@ -142,7 +146,6 @@ export function showBottomBar(
       if (refusal) printChatLine(refusal);
       else room.send(LIGHT_INTENT, i);
     };
-    // Only food, potions and gear do anything on a left-click, so a material's slot sends nothing.
     // Not the slot's text, which shows coins in short form.
     const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
@@ -150,6 +153,7 @@ export function showBottomBar(
       if (takeover) return item && takeover.click(i, item);
       if (FOOD_HEALS.has(itemParts(item).base) || potionOf(item)) eat();
       if (gearOf(item)) equip();
+      if (burialXp(item) !== undefined) bury();
     };
     slot.oncontextmenu = (event) => {
       event.preventDefault();
@@ -160,6 +164,7 @@ export function showBottomBar(
         ...(FOOD_HEALS.has(itemParts(item).base)
           ? ([["Eat", eat]] as const)
           : []),
+        ...(burialXp(item) !== undefined ? ([["Bury", bury]] as const) : []),
         ...(potionOf(item) ? ([["Drink", eat]] as const) : []),
         ...(potionFromPlant(item) ? ([["Mix potion", mix]] as const) : []),
         ...(fireOf(itemParts(item).base)
@@ -242,6 +247,7 @@ export function showBottomBar(
     .replaceChildren(...skills.map((skill) => skill.row), noPins);
   const sheet = showCharacterSheet(room, openMenu);
 
+  const prayer = document.getElementById("prayer-points")!;
   const health = document.getElementById("health")!;
   const bar = document.getElementById("bar")!;
   bar.hidden = false;
@@ -255,6 +261,7 @@ export function showBottomBar(
     const me = state.players.get(room.sessionId);
     if (!me) return;
     health.textContent = `Health ${me.health} / ${me.maxHealth}`;
+    prayer.textContent = `Prayer ${me.prayerPoints} / ${maxPrayerPoints(me.prayerXp)}`;
     // Pins aren't a pick's result, so they never wait for its clip.
     for (const { name, row } of skills)
       row.hidden = !me.pinnedSkills.includes(name);

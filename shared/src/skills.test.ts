@@ -4,7 +4,6 @@ import {
   levelFor,
   levelProgress,
   MAX_XP,
-  SKILL_REGISTRY,
   SKILLS,
   totalLevel,
   xpForLevel,
@@ -49,7 +48,7 @@ test("progress is how far through the current level", () => {
 });
 
 test("the registry holds 23 different skills, with Attack and Strength where Combat was", () => {
-  const names = SKILL_REGISTRY.map(([skill]) => skill);
+  const names = SKILLS.map(([skill]) => skill);
   expect(new Set(names).size).toBe(23);
   expect(names).toContain("Attack");
   expect(names).toContain("Strength");
@@ -81,6 +80,7 @@ test("only the skills that can be trained reach the sheet, the bar and pinning, 
     "Thieving",
     "Agility",
     "Blocking",
+    "Prayer",
     "Mastery",
   ]);
 });
@@ -102,9 +102,7 @@ test("total level counts experience held, Attack's and Strength's each", () => {
 });
 
 test("total level tops out at 2,277", () => {
-  const maxed = Object.fromEntries(
-    SKILL_REGISTRY.map(([, field]) => [field, MAX_XP]),
-  );
+  const maxed = Object.fromEntries(SKILLS.map(([, field]) => [field, MAX_XP]));
   expect(totalLevel(maxed)).toBe(2277);
 });
 
@@ -129,9 +127,7 @@ test("a player maxed in everything trainable is 138 by hand", () => {
 
 test("a player maxed in all of it is 150 by hand", () => {
   // 0.25 × (99 + 99 + 99 + 49) + 0.325 × (99 + 99) = 86.5 + 64.35
-  const maxed = Object.fromEntries(
-    SKILL_REGISTRY.map(([, field]) => [field, MAX_XP]),
-  );
+  const maxed = Object.fromEntries(SKILLS.map(([, field]) => [field, MAX_XP]));
   expect(combatLevel(maxed)).toBe(150);
 });
 

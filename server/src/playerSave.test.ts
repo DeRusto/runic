@@ -19,6 +19,7 @@ describe("player save", () => {
       ) as Record<(typeof SKILLS)[number][1], number>),
       masteryHundredths: 42,
       health: 1500,
+      prayerPoints: 0,
       inventory: ["copperOre", EMPTY_SLOT, "cookedPerch"],
       inventoryCounts: [3, 0, 2],
       tools: ["pickaxe", "tinderbox"],

@@ -51,6 +51,7 @@ export const Player = schema(
     skinTone: t.string<SkinTone>().default(STARTING_SKIN_TONE),
     health: t.uint16(),
     maxHealth: t.uint16(),
+    prayerPoints: t.uint16(),
     inventory: t.array("string"),
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint32"),

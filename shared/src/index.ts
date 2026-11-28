@@ -35,6 +35,11 @@ export const END_TALK_INTENT = "endTalk";
 export const DEAL_INTENT = "deal";
 /** The close store intent's message type, for closing the store window; it has no payload. */
 export const CLOSE_STORE_INTENT = "closeStore";
+export * from "./prayer.ts";
+
+/** The bury intent carries the inventory slot of the bone to bury. */
+export const BURY_INTENT = "bury";
+
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";
 /** The drop intent's message type; its payload is `{ slot, amount }`, and an amount over the stack drops it all. */
@@ -171,6 +176,7 @@ export type PlayerAction =
   | "walking"
   | GatheringSkill
   | "making"
+  | "burying"
   | "lighting"
   | "crossing"
   | "fighting";

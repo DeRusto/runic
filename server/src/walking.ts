@@ -18,6 +18,7 @@ import {
   pathToFirst,
 } from "./pathfinding.ts";
 import type { QueuedAction, UnsyncedAction } from "./playerActions.ts";
+import { startBurial } from "./prayer.ts";
 import type { ThievingTargets } from "./thievingTargets.ts";
 import type { World } from "./worldContext.ts";
 
@@ -69,6 +70,9 @@ export class Walking {
         }
         break;
       }
+      case "burying":
+        startBurial(this.world, id, intent.slot, intent.item);
+        break;
       case "lighting":
         this.firemaking.startLighting(id, intent.slot);
         break;

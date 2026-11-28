@@ -1,4 +1,5 @@
 import {
+  PRAYER_POINTS_PER_LEVEL,
   SKILLS,
   STARTING_KNIGHT_COLOR,
   STARTING_PINNED_SKILLS,
@@ -65,6 +66,9 @@ export const players = sqliteTable("players", {
   x: integer().notNull(),
   y: integer().notNull(),
   health: integer().notNull(),
+  prayerPoints: integer("prayer_points")
+    .notNull()
+    .default(PRAYER_POINTS_PER_LEVEL),
   inventory: text({ mode: "json" }).notNull().$type<string[]>(),
   // Every column below has a default, so a row from before them needs no conversion (spec D9).
   /** The fraction of a point of Mastery not yet earned, so small gains add up. */

@@ -275,6 +275,14 @@
         gap: 4px;
         min-width: 0;
       }
+      #vitals {
+        display: flex;
+        flex-wrap: wrap;
+        column-gap: 10px;
+      }
+      #vitals span {
+        white-space: nowrap;
+      }
       #bar-buttons {
         display: flex;
         align-items: center;
@@ -1516,7 +1524,10 @@
       <div id="slots" aria-label="Inventory"></div>
       <div id="slot-menu" role="menu" hidden></div>
       <div id="player-panel">
-        <div id="health"></div>
+        <div id="vitals">
+          <span id="health"></span>
+          <span id="prayer-points"></span>
+        </div>
         <p id="buff" hidden role="timer"></p>
         <p id="potion-buff" hidden role="timer"></p>
         <div id="skills"></div>

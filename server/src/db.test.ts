@@ -51,11 +51,23 @@ const LATEST_COLUMNS = [
   "knight_color",
   "skin_tone",
   "magic_xp",
+  "prayer_xp",
+  "prayer_points",
 ];
-const LATEST_MIGRATIONS = 24;
+const LATEST_MIGRATIONS = 25;
 
-/** Makes the Magic migration pending again: its column gone, and its row in the journal. */
+/** Makes the Prayer migration pending again. */
+function unapplyPrayer(sqlite: DatabaseSync) {
+  sqlite.exec("ALTER TABLE players DROP COLUMN prayer_xp");
+  sqlite.exec("ALTER TABLE players DROP COLUMN prayer_points");
+  sqlite.exec(
+    "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
+  );
+}
+
+/** Makes the Magic and Prayer migrations pending again. */
 function unapplyMagic(sqlite: DatabaseSync) {
+  unapplyPrayer(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN magic_xp");
   sqlite.exec(
     "DELETE FROM __drizzle_migrations WHERE id = (SELECT MAX(id) FROM __drizzle_migrations)",
@@ -199,6 +211,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       accountId: 7,
       // Every skill the old row had no column for starts at 0.
       ...NO_EXPERIENCE,
+      prayerPoints: 10,
       attackXp: 1234,
       strengthXp: 1234,
       defenseXp: 567,
@@ -572,4 +585,54 @@ test("only the last five copies are kept", async () => {
     names.push(added);
   }
   expect(copies().sort()).toEqual(names.slice(-5).sort());
+});
+
+test("a pre-Prayer save gains a full pool and keeps all its progress", async () => {
+  const database = await openDatabase();
+  db.insert(accounts)
+    .values({ username: "Knight", usernameLower: "knight", passwordHash: "x" })
+    .run();
+  writeSave(1, {
+    ...NO_EXPERIENCE,
+    x: 4,
+    y: 1,
+    health: 900,
+    hitpointsXp: 4050,
+    magicXp: 200,
+    masteryXp: 99,
+    inventory: ["bones"],
+    inventoryCounts: [4],
+    bank: ["coins"],
+    bankCounts: [18],
+  });
+  const baseline = readSave(1);
+  await database.shutdown();
+
+  const sqlite = new DatabaseSync(path);
+  unapplyPrayer(sqlite);
+  sqlite.close();
+
+  const upgraded = await openDatabase();
+  try {
+    const saved = readSave(1)!;
+    expect(saved).toEqual({ ...baseline, prayerXp: 0, prayerPoints: 10 });
+    const region = parseRegion("TTTTTTT\nTR....T\nTTTTTTT");
+    const sim = new Simulation(region, () => 0);
+    sim.addPlayer("a", saved, "Knight");
+    expect(sim.state.players.get("a")).toMatchObject({
+      prayerXp: 0,
+      prayerPoints: 10,
+    });
+
+    sim.addPlayer("b", { ...saved, prayerXp: 50, prayerPoints: 0 });
+    writeSave(1, sim.saveOf("b")!);
+    const restarted = new Simulation(region, () => 0);
+    restarted.addPlayer("a", readSave(1), "Knight");
+    expect(restarted.state.players.get("a")).toMatchObject({
+      prayerXp: 50,
+      prayerPoints: 0,
+    });
+  } finally {
+    await upgraded.shutdown();
+  }
 });
