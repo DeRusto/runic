@@ -82,7 +82,7 @@ export function showPlayers(
       const player = room.state.players.get(id);
       if (player) {
         overhead.showHealth(player.health, player.maxHealth);
-        overhead.showPraying(player.prayers.length > 0);
+        overhead.showPrayerMark(player.prayers.length > 0);
       }
       overhead.place(figures.get(id)!.model.position);
     }

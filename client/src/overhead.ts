@@ -11,7 +11,7 @@ export class Overhead {
   private said = document.createElement("div");
   private bar = document.createElement("div");
   private fill = document.createElement("i");
-  private praying = document.createElement("div");
+  private prayerMark = document.createElement("div");
   private clearSaid?: ReturnType<typeof setTimeout>;
   /** Blows the server has decided but the clips haven't reached yet, so the bar doesn't show them. */
   private pendingDamage = 0;
@@ -24,11 +24,11 @@ export class Overhead {
     this.bar.hidden = true;
     this.bar.append(this.fill);
     // A small glowing star; its look is the Prayer tab ticket's choice (Prayer spec §6).
-    this.praying.className = "praying";
-    this.praying.textContent = "✦";
-    this.praying.title = "Praying";
-    this.praying.hidden = true;
-    this.element.append(this.said, this.bar, this.praying, name);
+    this.prayerMark.className = "prayer-mark";
+    this.prayerMark.textContent = "✦";
+    this.prayerMark.title = "Prayer on";
+    this.prayerMark.hidden = true;
+    this.element.append(this.said, this.bar, this.prayerMark, name);
     document.getElementById("overheads")!.append(this.element);
   }
 
@@ -40,8 +40,8 @@ export class Overhead {
   }
 
   /** Call once a frame: the mark shows while the player has any prayer on. */
-  showPraying(praying: boolean) {
-    this.praying.hidden = !praying;
+  showPrayerMark(prayerOn: boolean) {
+    this.prayerMark.hidden = !prayerOn;
   }
 
   /** Keeps a blow off the bar until `showBlow`, when its clip connects. */
