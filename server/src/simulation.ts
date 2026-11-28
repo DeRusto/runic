@@ -1,8 +1,6 @@
 import {
   GATHERING_SKILLS,
   logoutRefusal,
-  respawnTile,
-  siteId,
   type Deal,
   type GatheringSkill,
   type GearSlot,
@@ -15,6 +13,7 @@ import { Agility } from "./agility.ts";
 import { setAppearance } from "./appearance.ts";
 import { Bank } from "./banking.ts";
 import { pickSpell } from "./casting.ts";
+import { respawned, respawnIfDue } from "./death.ts";
 import { dropFromSlot } from "./dropping.ts";
 import { Eating } from "./eating.ts";
 import { Enemies } from "./enemies.ts";
@@ -29,7 +28,7 @@ import { Making } from "./making.ts";
 import { mixPotion } from "./mixing.ts";
 import { pinSkill } from "./pinning.ts";
 import type { QueuedAction } from "./playerActions.ts";
-import { newSave, playerFromSave, saveOf } from "./playerSave.ts";
+import { loginSave, playerFromSave, saveOf } from "./playerSave.ts";
 import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
 import { togglePrayer } from "./prayers.ts";
 import { Quests } from "./quests.ts";
@@ -107,7 +106,7 @@ export class Simulation {
       this.windows,
       this.quests,
     );
-    this.thieving = new ThievingTargets(this.world, this.fighting);
+    this.thieving = new ThievingTargets(this.world);
     this.agility = new Agility(this.world);
     this.walking = new Walking(
       this.world,
@@ -121,7 +120,7 @@ export class Simulation {
 
   /** `saved` is the account's last save; without one, this is a new account. */
   addPlayer(id: string, saved?: PlayerSave, username = "") {
-    const login = this.loginSave(saved);
+    const login = loginSave(this.world.tiles, this.sites, saved);
     const player = playerFromSave(login, username);
     Object.assign(player, this.agility.strandedExit(player));
     this.state.players.set(id, player);
@@ -140,18 +139,6 @@ export class Simulation {
     this.timersOfLeavers.delete(username);
   }
 
-  private loginSave(saved: PlayerSave | undefined): PlayerSave {
-    const respawn = respawnTile(this.world.tiles);
-    if (!saved) return newSave(respawn);
-    const tile = this.world.tiles[saved.y]?.[saved.x];
-    if (tile && !tile.blocks) return saved;
-    // A pooled site may have come back on the spot they logged out on.
-    const nearest = this.sites.has(siteId(saved))
-      ? this.sites.nearestPastSites(saved)
-      : undefined;
-    return { ...saved, ...(nearest ?? respawn) };
-  }
-
   /** What to write to the database for this player, if they're in the region. */
   saveOf(id: string): PlayerSave | undefined {
     const player = this.state.players.get(id);
@@ -161,7 +148,7 @@ export class Simulation {
       // The generic save writes `quests` as a plain array of ids, so the progress record replaces it.
       quests: this.quests.progressOf(id),
       // Or a save during death could bring someone back with 0 health (D13).
-      ...(player.dead && this.fighting.respawned(player)),
+      ...(player.dead && respawned(this.world, player)),
     };
   }
 
@@ -488,7 +475,7 @@ export class Simulation {
   /** Each player's respawn once their death is over, or else their healing, then Prayer recovery and burial. */
   private advancePlayerTimers() {
     for (const id of this.world.unsyncedPlayers.keys()) {
-      if (this.world.player(id).dead) this.fighting.respawnIfDue(id);
+      if (this.world.player(id).dead) respawnIfDue(this.world, id);
       else this.eating.heal(id, this.state.tick);
       advancePrayer(this.world, id);
     }

@@ -1,6 +1,6 @@
 # Runic: Magic
 
-**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 9 map (#89). The spec issue #325 gathers the owner's decisions (#317, #318, #319, #320, #324), and each build ticket records here the part it builds. The first ticket (#327) makes Magic a trained skill, adds the three staves Crafting makes, and adds the focus and fury runes the spells spend. The second (#329) adds the Spellbook tab and casting the eight combat spells for their damage. Spell effects, utility spells and the ability bar come in later tickets.
+**Status: building.** Terms are defined in `GLOSSARY.md`. This is the second milestone of the Phase 9 map (#89). The spec issue #325 gathers the owner's decisions (#317, #318, #319, #320, #324), and each build ticket records here the part it builds. The first ticket (#327) makes Magic a trained skill, adds the three staves Crafting makes, and adds the focus and fury runes the spells spend. The second (#329) adds the Spellbook tab and casting the eight combat spells for their damage. The third (#332) adds the effects of air, water and earth spells. Fire’s burn, utility spells and the ability bar come in later tickets.
 
 The values live in `shared/src/skills.ts` (the skill list), `shared/src/weapons.ts` and `shared/src/gear.ts` (a staff's gate and Accuracy), `shared/src/making.ts` (the staff and rune recipes), `shared/src/runecrafting.ts` (the rune list), `shared/src/strongboxes.ts` (the strongboxes' rune picks), `shared/src/magic.ts` (the combat spells, reach, cast rate, refusals and the magic hit) and `shared/src/generalStore.ts` (store values); where this page and those files disagree, the files win and this page is fixed.
 
@@ -53,7 +53,7 @@ A player's style is the weapon in hand, so a staff puts them in the magic style 
 
 The spellbook opens with eight combat spells, a dart and a surge for each element (#318):
 
-| Spell | Magic gate | Hit bonus | Base experience | Runes per cast | Effect, from a later ticket |
+| Spell | Magic gate | Hit bonus | Base experience | Runes per cast | Effect |
 | --- | --- | --- | --- | --- | --- |
 | Air dart | 1 | 100 | 2 | 1 air, 1 focus | 5 points off Accuracy for 20 ticks |
 | Water dart | 5 | 150 | 3 | 1 water, 1 air, 1 focus | Next swing 4 ticks late |
@@ -64,7 +64,7 @@ The spellbook opens with eight combat spells, a dart and a surge for each elemen
 | Earth surge | 30 | 400 | 8 | 2 earth, 1 air, 1 fury | Held for 12 ticks |
 | Fire surge | 35 | 450 | 9 | 3 fire, 2 air, 1 fury | Burns for 3 hits of 20% over 6 ticks |
 
-This ticket casts each spell for its damage only. The effects in the last column are listed on the Spellbook tab and arrive in a later ticket.
+The Spellbook tab lists every effect. Air, water and earth apply their effects on landed hits (§8). Fire deals its cast damage and will gain its burn in #334.
 
 The player's picked combat spell is saved with the player. A new player, and every save from before casting, has none picked. Picking a spell above the player's Magic level is refused with a line naming the gate, such as "You need Magic level 5 to cast Water dart.", and changes nothing.
 
@@ -87,3 +87,14 @@ The character sheet has a fourth tab, Spellbook, beside Gear, Skills and Appeara
 ## 7. The combat spell's migration
 
 One migration adds the picked combat spell's column with a default of "", so every existing save loads with none picked and no row needs converting.
+
+
+## 8. Air, water and earth effects
+
+A landed cast applies its effect to the enemy it hits, including elites and docile creatures. Each element has its own timer. A repeat cast restarts that element's effect at full length. A surge replaces a dart, and a dart refreshes a running surge at surge strength.
+
+- Air lowers the enemy's Accuracy by 5 points for a dart or 10 for a surge, for 20 ticks. The enemy's chance to hit still has a 5% floor. The label above the enemy reads **Weakened**.
+- Water delays the enemy's next swing by 4 ticks for a dart or 8 for a surge. On each cast, the delay starts at the later of the cast tick and the tick the enemy could swing without water. A recast keeps the stronger running delay, and the delays never add together. The label reads **Slowed** while the delay runs.
+- Earth holds the enemy for 6 ticks for a dart or 12 for a surge. It stops every step, whether the enemy would wander, chase or return home. The enemy still attacks a player in reach. The label reads **Held**.
+
+Effects clear on death or when the enemy reaches home after leashing. The labels reflect the server's state, and several labels can appear together.

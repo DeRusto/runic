@@ -310,3 +310,5 @@ export * from "./stations.ts";
 export * from "./woodcutting.ts";
 export * from "./fishing.ts";
 export * from "./triangle.ts";
+
+export * from "./spellEffects.ts";

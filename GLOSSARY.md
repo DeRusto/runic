@@ -706,6 +706,15 @@ _Avoid_: Bolt, strike
 The greater combat spell of an element, spending a fury rune with its elemental runes, with a higher gate and hit bonus than its dart: air surge at Magic 15, water surge at 25, earth surge at 30 and fire surge at 35 (Magic spec §5).
 _Avoid_: Blast, wave
 
+**Hold**:
+The effect of a landed earth spell. The enemy stays on its tile for 6 ticks from a dart or 12 from a surge, and can still attack in reach. The label above it reads Held (Magic spec §8).
+
+**Weaken**:
+The effect of a landed air spell. The enemy loses 5 Accuracy points from a dart or 10 from a surge, for 20 ticks. The label above it reads Weakened (Magic spec §8).
+
+**Slow**:
+The effect of a landed water spell. The enemy's next swing comes 4 ticks late from a dart or 8 from a surge. The label above it reads Slowed (Magic spec §8).
+
 **Focus rune**:
 A rune for Magic spells, made at the altar from rune essence at Runecrafting 1 for 5 experience, two to an essence from Runecrafting 2 (Magic spec §4).
 _Avoid_: Mind rune

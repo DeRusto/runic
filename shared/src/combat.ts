@@ -139,6 +139,7 @@ export function enemyHit(
   avoidanceBonus: number,
   random: () => number,
   elite = false,
+  accuracyPenalty = 0,
 ) {
   const avoidance = avoidanceOf(player);
   const { maxDamage } = ENEMIES[kind];
@@ -148,6 +149,7 @@ export function enemyHit(
       avoidance.skill + avoidance.gear + avoidanceBonus,
       playerStyleOf(player),
       elite,
+      accuracyPenalty,
     ),
     elite ? Math.round(maxDamage * ELITE_MAX_HIT_MULTIPLIER) : maxDamage,
     random,
