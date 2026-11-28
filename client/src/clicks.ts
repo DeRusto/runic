@@ -14,7 +14,7 @@ import {
   strongboxRefusal,
   stationRefusal,
   TAKE_INTENT,
-  rangedAttackRefusal,
+  attackRefusal,
   TARGET_INTENT,
   TICK_MS,
   VISIT_INTENT,
@@ -160,9 +160,7 @@ export function walkOnClick(
 
   const attack = (enemy: NonNullable<ReturnType<typeof enemyUnder>>) => {
     if (crossing()) return;
-    const refused = rangedAttackRefusal(
-      room.state.players.get(room.sessionId) ?? {},
-    );
+    const refused = attackRefusal(room.state.players.get(room.sessionId) ?? {});
     if (refused) return printChatLine(refused);
     showMarker(enemy.tile.x, enemy.tile.y);
     room.send(TARGET_INTENT, enemy.id);

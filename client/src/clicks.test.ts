@@ -1,4 +1,9 @@
-import { CROSS_INTENT, OUT_OF_ARROWS_LINE, TARGET_INTENT } from "@runic/shared";
+import {
+  CROSS_INTENT,
+  NO_SPELL_LINE,
+  OUT_OF_ARROWS_LINE,
+  TARGET_INTENT,
+} from "@runic/shared";
 import { expect, test, vi } from "vitest";
 import { walkOnClick } from "./clicks.ts";
 import type { WorldConnection } from "./players.ts";
@@ -91,6 +96,46 @@ test("a click on an enemy with a bow and no arrows says why and sends no attack"
     Object.assign(new Event("click"), { clientX: 400, clientY: 300 }),
   );
   expect(printChatLine).toHaveBeenCalledWith(OUT_OF_ARROWS_LINE);
+  expect(send).not.toHaveBeenCalled();
+});
+
+test("a click on an enemy with a staff and no spell picked says why and sends no attack", async () => {
+  const { printChatLine } = await import("./bottomBar.ts");
+  vi.stubGlobal("innerWidth", 800);
+  vi.stubGlobal("innerHeight", 600);
+  const send = vi.fn();
+  const room = {
+    send,
+    sessionId: "me",
+    state: {
+      players: new Map([
+        ["me", { action: "", weapon: "birchStaff", combatSpell: "" }],
+      ]),
+    },
+    onLeave: vi.fn(),
+  } as unknown as WorldConnection;
+  walkOnClick(
+    room,
+    [],
+    (() => ({ id: "0", tile: { x: 5, y: 5 } })) as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    none as never,
+    vi.fn(),
+  );
+  renderer.domElement.dispatchEvent(
+    Object.assign(new Event("click"), { clientX: 400, clientY: 300 }),
+  );
+  expect(printChatLine).toHaveBeenCalledWith(NO_SPELL_LINE);
   expect(send).not.toHaveBeenCalled();
 });
 

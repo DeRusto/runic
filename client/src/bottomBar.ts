@@ -245,7 +245,7 @@ export function showBottomBar(
   document
     .getElementById("skills")!
     .replaceChildren(...skills.map((skill) => skill.row), noPins);
-  const sheet = showCharacterSheet(room, openMenu);
+  const sheet = showCharacterSheet(room, openMenu, printChatLine);
 
   const prayer = document.getElementById("prayer-points")!;
   const health = document.getElementById("health")!;
@@ -272,6 +272,7 @@ export function showBottomBar(
     sheet.drawStats(me);
     sheet.drawStance(me);
     sheet.drawAppearance(me);
+    sheet.drawSpellbook(me);
     showHeld = () => {
       shown = me;
       slots.forEach((slot, i) => {

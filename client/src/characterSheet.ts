@@ -7,8 +7,10 @@ import {
   GEAR_SLOTS,
   gearCountField,
   hitOf,
+  magicHitOf,
   rangedHitOf,
   rangedWeaponOf,
+  wieldsStaff,
   ITEMS,
   itemParts,
   STACKING_GEAR_SLOTS,
@@ -33,6 +35,7 @@ import { addButtonPanel, panelKey } from "./panels.ts";
 import type { WorldConnection } from "./players.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { showAppearance } from "./appearance.ts";
+import { showSpellbook } from "./spellbook.ts";
 import { showStances } from "./stances.ts";
 import { addTip } from "./tooltip.ts";
 
@@ -65,8 +68,13 @@ const PIN_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6l-1
 /**
  * The floating window's controls and rows. The page holds it, and `hidden` only takes it
  * out of sight, so the open tab and each tab's scroll position last through closing it.
+ * `say` prints a refusal in the chat.
  */
-export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
+export function showCharacterSheet(
+  room: WorldConnection,
+  openMenu: OpenMenu,
+  say: (line: string) => void,
+) {
   const sheet = document.getElementById("sheet")!;
   const button = document.getElementById("character")!;
   const setOpen = addButtonPanel(sheet, button, "right");
@@ -79,7 +87,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     if (key === "c" || key === "C") toggle();
   };
 
-  const tabs = ["gear", "skills", "appearance"].map((name) => ({
+  const tabs = ["gear", "skills", "spellbook", "appearance"].map((name) => ({
     tab: document.getElementById(`sheet-tab-${name}`)!,
     pane: document.getElementById(`sheet-${name}`)!,
   }));
@@ -141,6 +149,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
 
   const drawStance = showStances(room);
   const drawAppearance = showAppearance(room);
+  const drawSpellbook = showSpellbook(room, say);
 
   const combat = document.createElement("p");
   const note = document.createElement("p");
@@ -207,8 +216,12 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     },
     /** In raw numbers, as the bottom bar's health is (issue #216). */
     drawStats(me: SyncedPlayer) {
-      // A bow's rows are a shot's (Ranged spec §4).
-      const hit = rangedWeaponOf(me) ? rangedHitOf(me) : hitOf(me);
+      // A bow's rows are a shot's, and a staff's a cast's (Ranged spec §4, Magic spec §5).
+      const hit = wieldsStaff(me)
+        ? magicHitOf(me)
+        : rangedWeaponOf(me)
+          ? rangedHitOf(me)
+          : hitOf(me);
       const avoidance = avoidanceOf(me);
       const block = blockOf(me);
       const health = maxHealthOf(me);
@@ -229,6 +242,7 @@ export function showCharacterSheet(room: WorldConnection, openMenu: OpenMenu) {
     },
     drawStance,
     drawAppearance,
+    drawSpellbook,
     /** Only ever changes the rows in place, so pinning doesn't move the list. */
     drawPins(me: SyncedPlayer) {
       const count = me.pinnedSkills.length;

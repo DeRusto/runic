@@ -3,6 +3,7 @@ import {
   rangedWeaponOf,
   STANCE_INTENT,
   STANCES,
+  wieldsStaff,
 } from "@runic/shared";
 import type { SyncedPlayer } from "./characterSheet.ts";
 import type { WorldConnection } from "./players.ts";
@@ -11,7 +12,7 @@ import { addTip } from "./tooltip.ts";
 /**
  * The Gear tab's stance buttons, which show only the stances of the weapon in hand: Balanced,
  * Precise and Forceful with a sword or bare hands, and Steady, Rapid and Longrange with a bow or
- * knives (Ranged spec §6). Returns what draws the player's own as pressed.
+ * knives (Ranged spec §6), and none with a staff (Magic spec §5). Returns what draws the player's own as pressed.
  */
 export function showStances(room: WorldConnection) {
   // Toggle buttons, one pressed, so each is a plain button a keyboard reaches.
@@ -39,10 +40,17 @@ export function showStances(room: WorldConnection) {
     });
   const meleeStances = stanceButtons(STANCES);
   const rangedStances = stanceButtons(RANGED_STANCES);
-  let stancesShown: "melee" | "ranged" | undefined;
+  let stancesShown: "melee" | "ranged" | "magic" | undefined;
 
   /** Swaps the buttons only when the style in hand changes, so a screen reader isn't handed new ones each patch. */
   return (me: SyncedPlayer) => {
+    // Magic has no stances (Magic spec §5).
+    if (wieldsStaff(me)) {
+      if (stancesShown !== "magic") stanceGroup.replaceChildren();
+      stancesShown = "magic";
+      stanceTrains.textContent = "A staff has no stances.";
+      return;
+    }
     const style = rangedWeaponOf(me) ? "ranged" : "melee";
     const { buttons, chosen, trains } =
       style === "ranged"

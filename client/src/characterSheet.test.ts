@@ -2,6 +2,7 @@ import {
   GEAR_SLOTS,
   APPEARANCE_INTENT,
   PIN_INTENT,
+  SPELL_INTENT,
   STANCE_INTENT,
   TAKE_OFF_INTENT,
   xpForLevel,
@@ -98,6 +99,7 @@ const TODAY = [
 
 let room: { send: ReturnType<typeof vi.fn> };
 let openMenu: Mock<OpenMenu>;
+let say: Mock<(line: string) => void>;
 let sheet: ReturnType<typeof showCharacterSheet>;
 const isOpen = () => !el("sheet").hidden;
 /** A row's children are its text, pin and progress bar. */
@@ -124,7 +126,8 @@ beforeEach(() => {
   el("sheet-skills").hidden = true;
   room = { send: vi.fn() };
   openMenu = vi.fn<OpenMenu>();
-  sheet = showCharacterSheet(room as unknown as WorldConnection, openMenu);
+  say = vi.fn();
+  sheet = showCharacterSheet(room as unknown as WorldConnection, openMenu, say);
 });
 
 describe("the Gear tab", () => {
@@ -382,6 +385,20 @@ describe("the Gear tab's stats", () => {
     ]);
   });
 
+  test("a staff's rows are a cast's: Magic's curves, the staff's Accuracy and the picked spell's bonus", () => {
+    expect(
+      stats({
+        magicXp: xpForLevel(20),
+        weapon: "birchStaff",
+        combatSpell: "earthDart",
+      }).slice(1, 4),
+    ).toEqual([
+      "Hit chance 54.5%",
+      "Min hit 300 (+100/+200)",
+      "Max hit 500 (+300/+200)",
+    ]);
+  });
+
   test("the rows follow health and experience on each draw", () => {
     stats({});
     expect(stats({ health: 600, attackXp: xpForLevel(2) }).slice(0, 2)).toEqual(
@@ -558,6 +575,15 @@ describe("the stance", () => {
     expect(el("stance-trains").textContent).toBe("Trains Strength");
     holding("birchBow", "forceful", "rapid");
     expect(pressed()).toEqual(["false", "true", "false"]);
+  });
+
+  test("a staff shows no stances, and says so", () => {
+    holding("birchBow");
+    holding("oakStaff");
+    expect(names()).toEqual([]);
+    expect(el("stance-trains").textContent).toBe("A staff has no stances.");
+    holding("copperSword");
+    expect(names()).toEqual(["Balanced", "Precise", "Forceful"]);
   });
 
   test("a click on a Ranged stance sends it", () => {
@@ -750,5 +776,86 @@ describe("the Skills tab", () => {
     sheet.drawPins(me(TODAY.slice(1)));
     sheet.drawSkills(me(TODAY.slice(1)));
     expect(el("sheet-skills").children).toBe(before);
+  });
+});
+
+describe("the Spellbook tab", () => {
+  const spells = () => el("spellbook").children;
+  const drawn = (fields: object = {}) =>
+    sheet.drawSpellbook({
+      ...me([]),
+      combatSpell: "",
+      ...fields,
+    } as unknown as SyncedPlayer);
+  const labels = () =>
+    spells().map((spell: any) => spell.attributes["aria-label"]);
+
+  test("lists the eight combat spells in gate order, each with its gate, runes, hit bonus and effect", () => {
+    drawn();
+    expect(labels()).toEqual([
+      "Air dart: Magic 1, 1 air, 1 focus, +100 hit, 5 points off Accuracy for 20 ticks",
+      "Water dart: Magic 5, 1 water, 1 air, 1 focus, +150 hit, Next swing 4 ticks late",
+      "Earth dart: Magic 10, 2 earth, 1 air, 1 focus, +200 hit, Held for 6 ticks",
+      "Air surge: Magic 15, 1 air, 1 fury, +250 hit, 10 points off Accuracy for 20 ticks",
+      "Fire dart: Magic 20, 3 fire, 2 air, 1 focus, +300 hit, Burns for 3 hits of 10% over 6 ticks",
+      "Water surge: Magic 25, 1 water, 1 air, 1 fury, +350 hit, Next swing 8 ticks late",
+      "Earth surge: Magic 30, 2 earth, 1 air, 1 fury, +400 hit, Held for 12 ticks",
+      "Fire surge: Magic 35, 3 fire, 2 air, 1 fury, +450 hit, Burns for 3 hits of 20% over 6 ticks",
+    ]);
+    expect(spells()[0].children.map((part: any) => part.textContent)).toEqual([
+      "Air dart",
+      "Magic 1 · 1 air, 1 focus · +100 hit",
+      "5 points off Accuracy for 20 ticks",
+    ]);
+  });
+
+  test("greys the spells above the player's Magic level", () => {
+    drawn({ magicXp: xpForLevel(10) });
+    expect(
+      spells().map((spell: any) => spell.attributes["aria-disabled"]),
+    ).toEqual([
+      "false",
+      "false",
+      "false",
+      "true",
+      "true",
+      "true",
+      "true",
+      "true",
+    ]);
+  });
+
+  test("highlights the picked spell, and none for a player with none picked", () => {
+    drawn();
+    expect(
+      spells().map((spell: any) => spell.attributes["aria-pressed"]),
+    ).toEqual(Array(8).fill("false"));
+    drawn({ magicXp: xpForLevel(5), combatSpell: "waterDart" });
+    expect(
+      spells().map((spell: any) => spell.attributes["aria-pressed"]),
+    ).toEqual(["false", "true", ...Array(6).fill("false")]);
+  });
+
+  test("a click picks a spell the player can cast", () => {
+    drawn({ magicXp: xpForLevel(5) });
+    spells()[1].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(SPELL_INTENT, "waterDart");
+    expect(say).not.toHaveBeenCalled();
+  });
+
+  test("a click on a spell above the player's level is refused in the chat, and nothing is sent", () => {
+    drawn();
+    spells()[7].onclick();
+    expect(say).toHaveBeenLastCalledWith(
+      "You need Magic level 35 to cast Fire surge.",
+    );
+    expect(room.send).not.toHaveBeenCalled();
+  });
+
+  test("is a tab beside Gear, Skills and Appearance", () => {
+    el("sheet-tab-spellbook").onclick!();
+    expect(el("sheet-tab-spellbook").attributes["aria-selected"]).toBe("true");
+    expect(el("sheet-spellbook").hidden).toBe(false);
+    expect(el("sheet-gear").hidden).toBe(true);
   });
 });
