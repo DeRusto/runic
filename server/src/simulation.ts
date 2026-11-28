@@ -1,6 +1,5 @@
 import {
   GATHERING_SKILLS,
-  logoutRefusal,
   type Deal,
   type GatheringSkill,
   type GearSlot,
@@ -14,7 +13,6 @@ import { setAppearance } from "./appearance.ts";
 import { Bank } from "./banking.ts";
 import { pickSpell } from "./casting.ts";
 import { respawned, respawnIfDue } from "./death.ts";
-import { dropFromSlot } from "./dropping.ts";
 import { Eating } from "./eating.ts";
 import { Enemies } from "./enemies.ts";
 import { Fighting } from "./fighting.ts";
@@ -24,6 +22,7 @@ import { GatheringSites } from "./gatheringSites.ts";
 import { Gear } from "./gear.ts";
 import { GeneralStore } from "./generalStore.ts";
 import { Inventory } from "./inventory.ts";
+import { Logouts } from "./logouts.ts";
 import { Making } from "./making.ts";
 import { mixPotion } from "./mixing.ts";
 import { pinSkill } from "./pinning.ts";
@@ -33,11 +32,13 @@ import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
 import { togglePrayer } from "./prayers.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
+import { applySlotIntents, queueDrop, queueEat } from "./slotIntents.ts";
 import { Taking } from "./taking.ts";
+import { castIntent } from "./utilitySpells.ts";
 import { ThievingTargets } from "./thievingTargets.ts";
 import { VillagerWindows } from "./villagerWindows.ts";
 import { Walking } from "./walking.ts";
-import { isAmount, isInventorySlot, World } from "./worldContext.ts";
+import { isInventorySlot, World } from "./worldContext.ts";
 
 /** The whole game: rules and state, with no network. Tests and the room both drive it through tick(). */
 export class Simulation {
@@ -70,9 +71,9 @@ export class Simulation {
   private readonly agility: Agility;
   private readonly inventory: Inventory;
   private readonly taking: Taking;
-  private queuedLogouts = new Set<string>();
+  private readonly logouts: Logouts;
   /** Players whose log out intent was accepted, for the room to disconnect. */
-  readonly loggedOut: string[] = [];
+  readonly loggedOut: string[];
 
   constructor(
     tiles: TileKind[][],
@@ -83,6 +84,8 @@ export class Simulation {
     this.world = new World(tiles, () => this.random());
     this.state = this.world.state;
     this.events = this.world.events;
+    this.logouts = new Logouts(this.world);
+    this.loggedOut = this.logouts.loggedOut;
     this.quests = new Quests(this.world);
     this.windows = new VillagerWindows(this.world, this.quests);
     this.bank = new Bank(this.world, this.windows);
@@ -164,7 +167,7 @@ export class Simulation {
     this.queuedActions.delete(id);
     this.world.queuedEats.delete(id);
     this.world.queuedDrops.delete(id);
-    this.queuedLogouts.delete(id);
+    this.logouts.forget(id);
     this.windows.forget(id);
     this.world.stopFollowersOf(id);
     // A leaver has no inventory to fill (spec D8).
@@ -179,7 +182,7 @@ export class Simulation {
     this.queuedActions.delete(id);
     this.world.queuedEats.delete(id);
     this.world.queuedDrops.delete(id);
-    this.queuedLogouts.delete(id);
+    this.logouts.forget(id);
   }
 
   reconnectPlayer(id: string) {
@@ -196,8 +199,7 @@ export class Simulation {
   }
 
   queueLogout(id: string) {
-    if (this.state.players.has(id) && !this.world.isCrossing(id))
-      this.queuedLogouts.add(id);
+    this.logouts.queue(id);
   }
 
   /** `to` comes straight off the network, so anything but a tile on the grid is ignored. */
@@ -360,19 +362,14 @@ export class Simulation {
     this.queue(id, () => this.taking.takeIntent(id, groundItem));
   }
 
-  /** `slot` comes straight off the network, so anything but a slot's index is ignored. */
+  /** `slot` comes straight off the network; see `queueEat`. */
   queueEat(id: string, slot: number) {
-    if (!this.world.canAct(id)) return;
-    if (!isInventorySlot(slot)) return;
-    this.world.queuedEats.set(id, slot);
+    queueEat(this.world, id, slot);
   }
 
-  /** Both come straight off the network, so anything but a slot's index and a whole number above 0 is ignored. */
+  /** Both come straight off the network; see `queueDrop`. */
   queueDrop(id: string, slot: number, amount: number) {
-    if (!this.world.canAct(id)) return;
-    if (!isInventorySlot(slot)) return;
-    if (!isAmount(amount)) return;
-    this.world.queuedDrops.set(id, { slot, amount });
+    queueDrop(this.world, id, slot, amount);
   }
 
   /** A drag; both come straight off the network. See `Inventory.moveItem`. */
@@ -393,6 +390,11 @@ export class Simulation {
   /** `spell` comes straight off the network; see `pickSpell`. */
   pickSpell(id: string, spell: unknown) {
     pickSpell(this.world, id, spell);
+  }
+
+  /** Comes straight off the network; see `castIntent`. */
+  queueCast(id: string, intent: unknown) {
+    this.queue(id, () => castIntent(intent));
   }
 
   /** `prayer` comes straight off the network; see `togglePrayer`. */
@@ -458,18 +460,8 @@ export class Simulation {
     for (const [id, intent] of this.queuedActions)
       this.walking.start(id, intent);
     this.queuedActions.clear();
-    for (const [id, slot] of this.world.queuedEats) this.eating.eat(id, slot);
-    this.world.queuedEats.clear();
-    for (const [id, { slot, amount }] of this.world.queuedDrops)
-      dropFromSlot(this.world, id, slot, amount);
-    this.world.queuedDrops.clear();
-    for (const id of this.queuedLogouts) {
-      const refusal = logoutRefusal(this.lockRunning(id));
-      if (refusal)
-        this.events.push({ type: "told", player: id, line: refusal });
-      else this.loggedOut.push(id);
-    }
-    this.queuedLogouts.clear();
+    applySlotIntents(this.world, this.eating);
+    this.logouts.apply();
   }
 
   /** Each player's respawn once their death is over, or else their healing, then Prayer recovery and burial. */

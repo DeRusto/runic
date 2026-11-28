@@ -14,7 +14,7 @@ import {
   type WorldEvent,
   itemName,
 } from "@runic/shared";
-import { takeOverSlots } from "./bottomBar.ts";
+import { takeOverSlots } from "./slotTakeover.ts";
 import type { OpenMenu } from "./characterSheet.ts";
 import { iconUrl } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";

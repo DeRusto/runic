@@ -12,6 +12,8 @@ import {
   tilesApart,
   isTall,
   type TileKind,
+  hollowTeleportTile,
+  villageTeleportTile,
 } from "./index.ts";
 
 const read = (name: string) =>
@@ -830,4 +832,24 @@ test("the Cairns shrine and every tile beside it lie beyond each Cairn warden's 
       ([moundX, moundY]) => tilesApart({ x, y }, { x: moundX, y: moundY }) <= 8,
     ),
   ).toBe(true);
+});
+
+describe("the teleports' landing tiles on the region", () => {
+  const reachable = stepsFrom([
+    villageTeleportTile(region).x,
+    villageTeleportTile(region).y,
+  ]);
+
+  test("Village teleport lands on the respawn tile, beside the pedlar in the village square", () => {
+    expect(villageTeleportTile(region)).toEqual({ x: 18, y: 42 });
+  });
+
+  test("Hollow teleport lands on a walkable tile beside Hollis, inside the gap, which leads back out on foot", () => {
+    const landing = hollowTeleportTile(region);
+    expect(landing).toEqual({ x: 96, y: 42 });
+    expect(blocks(landing.x, landing.y)).toBe(false);
+    expect(region[42]![97]!.villager).toBe("hollis");
+    expect(landing.x).toBeGreaterThan(95);
+    expect(reachable.has(key(landing.x, landing.y))).toBe(true);
+  });
 });

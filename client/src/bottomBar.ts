@@ -42,6 +42,7 @@ import { iconUrl } from "./itemIcons.ts";
 import { itemTip, itemTipParts } from "./itemTip.ts";
 import { amountChoices, dragToReorder } from "./movingItems.ts";
 import type { WorldConnection } from "./players.ts";
+import { slotTakeover } from "./slotTakeover.ts";
 import { addTip } from "./tooltip.ts";
 
 const MAX_CHAT_LINES = 200;
@@ -65,16 +66,6 @@ export function printChatLine(...parts: (string | Node)[]) {
     chatLines.firstElementChild!.remove();
   chatLines.scrollTop = chatLines.scrollHeight;
 }
-
-/** What an inventory slot's clicks do while a window takes them over: the store window sells (village spec §5), and the bank deposits (village spec §6). */
-type SlotTakeover = {
-  click: (slot: number, item: string) => void;
-  menu: (slot: number, item: string) => ReturnType<typeof amountChoices>;
-};
-let takeover: SlotTakeover | undefined;
-
-/** Hands the inventory slots' clicks to an open store window or bank, and back with undefined. */
-export const takeOverSlots = (to: SlotTakeover | undefined) => (takeover = to);
 
 let holdingResult = false;
 let showHeld = () => {};
@@ -150,6 +141,7 @@ export function showBottomBar(
     const count = () => shown?.inventoryCounts[i] ?? 1;
     slot.onclick = () => {
       const item = slot.dataset.item!;
+      const takeover = slotTakeover();
       if (takeover) return item && takeover.click(i, item);
       if (FOOD_HEALS.has(itemParts(item).base) || potionOf(item)) eat();
       if (gearOf(item)) equip();
@@ -159,6 +151,7 @@ export function showBottomBar(
       event.preventDefault();
       const item = slot.dataset.item;
       if (!item) return;
+      const takeover = slotTakeover();
       if (takeover) return openMenu(event, takeover.menu(i, item));
       openMenu(event, [
         ...(FOOD_HEALS.has(itemParts(item).base)

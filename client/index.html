@@ -719,16 +719,21 @@
         font-size: 12px;
         opacity: 0.8;
       }
-      #spellbook-note {
+      #spellbook-note,
+      .spellbook-note {
         margin: 0 0 8px;
         font-size: 12px;
         opacity: 0.8;
       }
-      #spellbook {
+      #spellbook,
+      #utility-spells {
         display: grid;
         gap: 4px;
       }
-      #spellbook .spell {
+      #utility-spells-heading {
+        margin: 12px 0 0;
+      }
+      :is(#spellbook, #utility-spells) .spell {
         display: grid;
         gap: 1px;
         padding: 5px 8px;
@@ -741,22 +746,22 @@
         font-size: 12px;
         text-align: left;
       }
-      #spellbook .spell span:first-child {
+      :is(#spellbook, #utility-spells) .spell span:first-child {
         font-size: 13px;
         font-weight: bold;
       }
-      #spellbook .spell span:not(:first-child) {
+      :is(#spellbook, #utility-spells) .spell span:not(:first-child) {
         opacity: 0.85;
       }
-      #spellbook .spell[aria-pressed="true"] {
+      :is(#spellbook, #utility-spells) .spell[aria-pressed="true"] {
         background: #5a4024;
         outline-color: #ffd27a;
         color: #ffd27a;
       }
-      #spellbook .spell[aria-disabled="true"] {
+      :is(#spellbook, #utility-spells) .spell[aria-disabled="true"] {
         opacity: 0.45;
       }
-      #spellbook .spell:focus-visible {
+      :is(#spellbook, #utility-spells) .spell:focus-visible {
         outline: 2px solid #ffd27a;
       }
       #prayer-tab-points {
@@ -1534,6 +1539,13 @@
             Combat spells
             <p id="spellbook-note">A staff in hand casts the picked spell.</p>
             <div id="spellbook" role="group" aria-label="Combat spells"></div>
+            <p id="utility-spells-heading">Utility spells</p>
+            <p class="spellbook-note">Cast with any weapon in hand.</p>
+            <div
+              id="utility-spells"
+              role="group"
+              aria-label="Utility spells"
+            ></div>
           </div>
           <div
             id="sheet-prayer"

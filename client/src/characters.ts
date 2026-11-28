@@ -509,6 +509,12 @@ export class Figure {
     this.once("Spawn_Ground");
   }
 
+  /** Lands from a teleport: on its new tile at once, rising from the ground, with no walk there (Magic spec §9). */
+  teleport() {
+    this.backOnTile();
+    this.once("Spawn_Ground");
+  }
+
   /** A Spider back from the dead, scaling up. */
   reappear() {
     this.backOnTile();

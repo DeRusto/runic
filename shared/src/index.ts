@@ -74,6 +74,8 @@ export const PIN_INTENT = "pin";
 export const STANCE_INTENT = "stance";
 /** The spell intent's message type, for picking a combat spell on the Spellbook tab; its payload is a `CombatSpell` (Magic spec §5). */
 export const SPELL_INTENT = "spell";
+/** The cast intent's message type, for casting a utility spell on the Spellbook tab; its payload is `{ spell, slot }`, a `UtilitySpell` and, for Coin-turn, the inventory slot's index (Magic spec §9). */
+export const CAST_INTENT = "cast";
 /** The prayer intent's message type, for turning a prayer on or off on the Prayer tab; its payload is a `PrayerId` (Prayer spec §5). */
 export const PRAYER_INTENT = "prayer";
 /** The appearance intent's message type; its payload is a `KnightColor` or a `SkinTone`, which sets that one. */
@@ -211,6 +213,8 @@ export type WorldEvent =
   | { type: "enemyDied"; enemy: string }
   | { type: "playerDied"; player: string }
   | { type: "playerRespawned"; player: string }
+  /** A teleport moved the player; the patch before it carries the landing tile (Magic spec §9). */
+  | { type: "teleported"; player: string }
   | { type: "enemyReturned"; enemy: string }
   /** A success carries how many it gave and what it found; a failure carries none. */
   | {
@@ -303,6 +307,8 @@ export * from "./playerMenu.ts";
 export * from "./quests.ts";
 export * from "./ranged.ts";
 export * from "./magic.ts";
+export * from "./spellRunes.ts";
+export * from "./utilitySpells.ts";
 export * from "./sight.ts";
 export * from "./runecrafting.ts";
 export * from "./social.ts";

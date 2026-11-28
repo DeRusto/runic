@@ -1,6 +1,7 @@
 import {
   GEAR_SLOTS,
   APPEARANCE_INTENT,
+  CAST_INTENT,
   PIN_INTENT,
   PRAYER_INTENT,
   SPELL_INTENT,
@@ -15,6 +16,7 @@ import {
   type SyncedPlayer,
 } from "./characterSheet.ts";
 import type { WorldConnection } from "./players.ts";
+import { slotTakeover, takeOverSlots } from "./slotTakeover.ts";
 
 class FakeInput {}
 vi.stubGlobal("HTMLInputElement", FakeInput);
@@ -859,6 +861,104 @@ describe("the Spellbook tab", () => {
     expect(el("sheet-tab-spellbook").attributes["aria-selected"]).toBe("true");
     expect(el("sheet-spellbook").hidden).toBe(false);
     expect(el("sheet-gear").hidden).toBe(true);
+  });
+});
+
+describe("the Spellbook tab's utility spells", () => {
+  const spells = () => el("utility-spells").children;
+  const RUNES = ["airRune", "furyRune", "fireRune", "focusRune", "earthRune"];
+  /** A player at Magic `level` with ten of every rune, then three of `more` in slot 5 and an empty slot. */
+  const drawn = (level: number, more = "oakLog", fields: object = {}) =>
+    sheet.drawSpellbook({
+      ...me([]),
+      combatSpell: "",
+      magicXp: xpForLevel(level),
+      inventory: [...RUNES, more, ""],
+      inventoryCounts: [10, 10, 10, 10, 10, 3, 0],
+      quests: [],
+      questStages: [],
+      ...fields,
+    } as unknown as SyncedPlayer);
+  const labels = () =>
+    spells().map((spell: any) => spell.attributes["aria-label"]);
+
+  beforeEach(() => takeOverSlots(undefined));
+
+  test("lists the three utility spells after the combat spells, in gate order, each with its gate, runes and what it does", () => {
+    drawn(1);
+    expect(labels()).toEqual([
+      "Village teleport: Magic 12, 3 air, 1 fury, Moves you to the village square",
+      "Coin-turn: Magic 20, 3 fire, 1 focus, Turns one item into the store's price in coins",
+      "Hollow teleport: Magic 28, 3 earth, 1 air, 1 fury, Moves you beside Hollis in Runestone Hollow",
+    ]);
+    expect(spells()[0].children.map((part: any) => part.textContent)).toEqual([
+      "Village teleport",
+      "Magic 12 · 3 air, 1 fury",
+      "Moves you to the village square",
+    ]);
+  });
+
+  test("greys the utility spells above the player's Magic level", () => {
+    drawn(20);
+    expect(
+      spells().map((spell: any) => spell.attributes["aria-disabled"]),
+    ).toEqual(["false", "false", "true"]);
+  });
+
+  test("a click casts a teleport the player can cast", () => {
+    drawn(12);
+    spells()[0].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(CAST_INTENT, {
+      spell: "villageTeleport",
+    });
+    expect(say).not.toHaveBeenCalled();
+  });
+
+  test("a click the player can't cast says why in the chat and sends nothing", () => {
+    drawn(11);
+    spells()[0].onclick();
+    expect(say).toHaveBeenLastCalledWith(
+      "You need Magic level 12 to cast Village teleport.",
+    );
+    drawn(28);
+    spells()[2].onclick();
+    expect(say).toHaveBeenLastCalledWith(
+      "You must finish Hollis's quest to cast Hollow teleport.",
+    );
+    expect(room.send).not.toHaveBeenCalled();
+  });
+
+  test("Coin-turn asks for an item, then casts on the slot clicked", () => {
+    drawn(20);
+    spells()[1].onclick();
+    expect(say).toHaveBeenLastCalledWith("Choose an item to turn into coins.");
+    expect(room.send).not.toHaveBeenCalled();
+    expect(spells()[1].attributes["aria-pressed"]).toBe("true");
+    slotTakeover()!.click(5, "oakLog");
+    expect(room.send).toHaveBeenLastCalledWith(CAST_INTENT, {
+      spell: "coinTurn",
+      slot: 5,
+    });
+    expect(slotTakeover()).toBeUndefined();
+    expect(spells()[1].attributes["aria-pressed"]).toBe("false");
+  });
+
+  test("Coin-turn on an item it refuses says why and sends nothing", () => {
+    drawn(20, "coins");
+    spells()[1].onclick();
+    slotTakeover()!.click(5, "coins");
+    expect(say).toHaveBeenLastCalledWith("The store doesn't buy coins.");
+    expect(room.send).not.toHaveBeenCalled();
+  });
+
+  test("a second click on Coin-turn stops asking, and gives the slots back to the window that had them", () => {
+    const store = { click: vi.fn(), menu: vi.fn() };
+    takeOverSlots(store);
+    drawn(20);
+    spells()[1].onclick();
+    spells()[1].onclick();
+    expect(slotTakeover()).toBe(store);
+    expect(room.send).not.toHaveBeenCalled();
   });
 });
 

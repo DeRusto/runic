@@ -691,7 +691,7 @@ A weapon crafted at the workbench: the birch staff from a birch log, the oak sta
 _Avoid_: Wand, rod (that is the fishing tool)
 
 **Spellbook**:
-The character sheet's fourth tab, beside Gear, Skills and Appearance. It lists the combat spells in gate order with each one's Magic gate, runes, hit bonus and effect, greys those above the player's Magic level, and highlights the picked one. Clicking a spell picks it (Magic spec §6).
+The character sheet's fourth tab, beside Gear, Skills and Appearance. It lists the combat spells in gate order with each one's Magic gate, runes, hit bonus and effect, then the utility spells with their gate, runes and what they do. It greys spells above the player's Magic level and highlights the picked combat spell. Clicking a combat spell picks it, and clicking a utility spell casts it (Magic spec §6, §9).
 _Avoid_: Spell list, magic tab
 
 **Combat spell**:
@@ -705,6 +705,22 @@ _Avoid_: Bolt, strike
 **Surge**:
 The greater combat spell of an element, spending a fury rune with its elemental runes, with a higher gate and hit bonus than its dart: air surge at Magic 15, water surge at 25, earth surge at 30 and fire surge at 35 (Magic spec §5).
 _Avoid_: Blast, wave
+
+**Utility spell**:
+A spell cast from the Spellbook with any weapon in hand, for travel or trade rather than a fight: Village teleport, Coin-turn and Hollow teleport. Each has a Magic gate, pays its Magic experience and spends its runes on every cast. Casting one replaces the player's current action, as a click does, and a refused cast names why and spends nothing (Magic spec §9).
+_Avoid_: Spell (alone), skill spell, non-combat spell
+
+**Village teleport**:
+The utility spell that moves the caster to the village square, onto the respawn tile, at Magic 12 for 3 air runes and 1 fury rune, paying 15 experience. The combat lock refuses it (Magic spec §9).
+_Avoid_: Home teleport, recall
+
+**Hollow teleport**:
+The utility spell that moves the caster just inside Runestone Hollow's gap, onto the tile west of Hollis, at Magic 28 for 3 earth runes, 1 air rune and 1 fury rune, paying 25 experience. It needs Hollis's quest done, and the combat lock refuses it (Magic spec §9).
+_Avoid_: Altar teleport
+
+**Coin-turn**:
+The utility spell that turns one item into the general store's buy price in coins, anywhere, at Magic 20 for 3 fire runes and 1 focus rune, paying 10 experience. The player clicks the spell, then an inventory slot, and one item leaves that slot. It refuses coins, quest items (Odo's proof essences, the Hollow essence and the bone sigil) and anything else the store does not buy. The combat lock does not stop it (Magic spec §9).
+_Avoid_: Alchemy, sell spell
 
 **Hold**:
 The effect of a landed earth spell. The enemy stays on its tile for 6 ticks from a dart or 12 from a surge, and can still attack in reach. The label above it reads Held (Magic spec §8).
