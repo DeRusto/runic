@@ -36,12 +36,12 @@ One migration adds Magic's experience column with a default of 0, so no row need
 
 | Rune | Runecrafting gate | Doubles at | Experience | Store value | The store pays |
 | --- | --- | --- | --- | --- | --- |
-| Focus rune | 1 | 2 | 5 | 8 | 3 |
-| Fury rune | 15 | 30 | 16 | 24 | 9 |
+| Focus rune | 1 | 2 | 5 | 20 | 8 |
+| Fury rune | 15 | 30 | 16 | 60 | 24 |
 
 Both are made at the altar in Runestone Hollow from rune essence, one essence to one rune, or two at the doubling level, and a make never fails (#230, #320). There is no new station. The altar's Runecrafting section lists the six runes in gate order.
 
-The values 8 and 24 sit on the elementals' ladder: the focus rune is worth what the air rune is, at the same gate, and the fury rune falls between the earth rune (18) and the fire rune (30). The store pays 40% of value, as for every item, and stocks neither rune (owner, 2026-11-27).
+The store pays 8 coins for a focus rune and 24 coins for a fury rune and keeps both off the shelf when players sell them (#327). Their values of 20 and 60 produce those payouts under the store's usual 40% rule.
 
 Both strongboxes' rune picks grow from the four elementals to all six runes, an even pick, with today's counts: 2 to 5 of one rune from the Boneyard's, and 4 to 10 from Runestone Hollow's.
 

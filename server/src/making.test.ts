@@ -834,32 +834,50 @@ describe("crafting at the workbench (#225)", () => {
     expect(made()).toEqual(["birchStaff"]);
   });
 
-  test("the oak and charwood staves need their gem and Crafting 10 and 20 (Magic spec §2)", () => {
-    craft(
-      [
-        ["oakLog", 1],
-        ["ashstone", 1],
-      ],
-      { craftingXp: xpForLevel(9) },
-    );
-    sim.queueMake("a", { item: "oakStaff", all: false });
-    run(7);
-    expect(lines()).toEqual(["Needs Crafting 10"]);
-    expect(items()).toEqual([
-      ["oakLog", 1],
-      ["ashstone", 1],
-    ]);
-    craft(
-      [
-        ["charwoodLog", 1],
-        ["cinderglass", 1],
-      ],
-      { id: "b", craftingXp: xpForLevel(20) },
-    );
-    sim.queueMake("b", { item: "charwoodStaff", all: false });
-    run(7);
-    expect(items("b")).toEqual([["charwoodStaff", 1]]);
-    expect(sim.state.players.get("b")!.craftingXp).toBe(xpForLevel(20) + 25);
+  describe.each([
+    ["oakStaff", "oakLog", "ashstone", 10, 16],
+    ["charwoodStaff", "charwoodLog", "cinderglass", 20, 25],
+  ] as const)("%s at the workbench", (item, log, gem, level, xp) => {
+    test("needs its Crafting level", () => {
+      craft(
+        [
+          [log, 1],
+          [gem, 1],
+        ],
+        { craftingXp: xpForLevel(level - 1) },
+      );
+      sim.queueMake("a", { item, all: false });
+      run(7);
+      expect(lines()).toEqual([`Needs Crafting ${level}`]);
+      expect(items()).toEqual([
+        [log, 1],
+        [gem, 1],
+      ]);
+    });
+
+    test("needs its gem", () => {
+      craft([[log, 1]], { craftingXp: xpForLevel(level) });
+      sim.queueMake("a", { item, all: false });
+      run(7);
+      expect(lines()).toEqual(["Not enough materials"]);
+      expect(items()).toEqual([[log, 1]]);
+    });
+
+    test("uses its log and gem and pays Crafting at the gate", () => {
+      craft(
+        [
+          [log, 1],
+          [gem, 1],
+        ],
+        { craftingXp: xpForLevel(level) },
+      );
+      sim.queueMake("a", { item, all: false });
+      run(7);
+      expect(items()).toEqual([[item, 1]]);
+      expect(sim.state.players.get("a")!.craftingXp).toBe(
+        xpForLevel(level) + xp,
+      );
+    });
   });
 
   test("a staff rolls improved like all gear, at its Crafting level (Magic spec §2)", () => {

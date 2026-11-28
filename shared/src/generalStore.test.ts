@@ -53,11 +53,9 @@ describe("value", () => {
     expect(valueOf("charwoodStaff")).toBe(62);
   });
 
-  test("the focus and fury runes are worth 8 and 24, so the store pays 3 and 9 for them and stocks neither (Magic spec §4)", () => {
-    expect(valueOf("focusRune")).toBe(8);
-    expect(valueOf("furyRune")).toBe(24);
-    expect(storePaysFor(valueOf("focusRune"))).toBe(3);
-    expect(storePaysFor(valueOf("furyRune"))).toBe(9);
+  test("the store pays 8 for a focus rune and 24 for a fury rune and stocks neither (Magic spec §4)", () => {
+    expect(storePaysFor(valueOf("focusRune"))).toBe(8);
+    expect(storePaysFor(valueOf("furyRune"))).toBe(24);
     expect(STARTING_STOCK).not.toHaveProperty("focusRune");
     expect(STARTING_STOCK).not.toHaveProperty("furyRune");
   });

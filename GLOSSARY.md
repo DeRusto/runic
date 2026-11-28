@@ -612,7 +612,7 @@ An essence a vein gives only while a quest asks for it, and only until the playe
 _Avoid_: Proof piece, quest ore
 
 **Rune**:
-A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Six exist, by their Runecrafting gate: the four elementals, the **air rune** (1), the **water rune** (5), the **earth rune** (10) and the **fire rune** (20), and Magic's **focus rune** (1) and **fury rune** (15), which the spells will spend (Magic spec §4).
+A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Six exist, by their Runecrafting gate: the **air rune** (1), **focus rune** (1), **water rune** (5), **earth rune** (10), **fury rune** (15) and **fire rune** (20) (Magic spec §4).
 _Avoid_: Talisman (there are none), magic stone
 
 **Emberbone**:
@@ -662,11 +662,11 @@ A weapon crafted at the workbench: the birch staff from a birch log, the oak sta
 _Avoid_: Wand, rod (that is the fishing tool)
 
 **Focus rune**:
-The rune the darts will spend, made at the altar from rune essence at Runecrafting 1 for 5 experience, two to an essence from Runecrafting 2 (Magic spec §4).
+A rune for Magic spells, made at the altar from rune essence at Runecrafting 1 for 5 experience, two to an essence from Runecrafting 2 (Magic spec §4).
 _Avoid_: Mind rune
 
 **Fury rune**:
-The rune the surges will spend, made at the altar from rune essence at Runecrafting 15 for 16 experience, two to an essence from Runecrafting 30 (Magic spec §4).
+A rune for Magic spells, made at the altar from rune essence at Runecrafting 15 for 16 experience, two to an essence from Runecrafting 30 (Magic spec §4).
 _Avoid_: Chaos rune, death rune
 
 **Improved item**:

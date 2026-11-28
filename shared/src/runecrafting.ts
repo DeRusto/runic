@@ -7,7 +7,7 @@ export const RUNE_ESSENCE = "runeEssence";
 /** The chance, tunable, that any successful mine also gives essence (#232). */
 export const ESSENCE_FIND_CHANCE = 0.2;
 
-/** The four elemental runes (#232) and Magic's focus and fury runes (Magic spec §4), gates lowest first. */
+/** The four elemental runes (#232) and Magic's focus and fury runes (Magic spec §4), gates lowest first, with air before focus at the same gate. */
 export const RUNES = [
   "airRune",
   "focusRune",
