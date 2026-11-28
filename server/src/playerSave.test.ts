@@ -26,6 +26,7 @@ describe("player save", () => {
       pinnedSkills: ["Cooking", "Mining"],
       stance: "forceful",
       rangedStance: "longrange",
+      combatSpell: "earthDart",
       knightColor: "violet",
       skinTone: "brown",
       riggedShortcuts: ["cragLine", "brambleSwing"],
@@ -65,6 +66,14 @@ describe("player save", () => {
     expect(save.bank).toHaveLength(BANK_SLOTS);
     expect(save.bankCounts).toHaveLength(BANK_SLOTS);
     expect(save.pinnedSkills).not.toHaveLength(0);
+  });
+
+  it("gives a new account no combat spell picked, and keeps a picked one through saving (#329)", () => {
+    const fresh = playerFrom(newSave({ x: 1, y: 2 }));
+    expect(fresh.combatSpell).toBe("");
+    fresh.combatSpell = "airDart";
+    expect(saveOf(fresh).combatSpell).toBe("airDart");
+    expect(playerFrom(saveOf(fresh)).combatSpell).toBe("airDart");
   });
 
   it("starts a save from before Ranged's stances Steady, keeping its melee stance (#280)", () => {

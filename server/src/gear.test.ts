@@ -1002,25 +1002,35 @@ describe("staves (Magic spec §2)", () => {
     expect(told()).toEqual([]);
   });
 
-  test("add their Accuracy to the chance to hit and fight in melee with no hit bonus, until casting comes", () => {
-    // 40% bare-handed at Attack 1, and 55% with a charwood staff's 15 points: a roll of 0.5
-    // lands only with the staff. The landed swing is the bottom of the range, 100, and nothing from the staff.
-    start({ weapon: "charwoodStaff", magicXp: LEVEL_20_XP });
-    rolls = [0.5, 0];
-    sim.queueTarget("a", "0");
-    sim.tick();
-    expect(swings()).toEqual([100]);
-    expect(me().attackXp + me().strengthXp).toBeGreaterThan(0);
-    expect(me().magicXp).toBe(LEVEL_20_XP);
-    start();
-    rolls = [0.5, 0];
-    sim.queueTarget("a", "0");
-    sim.tick();
-    expect(swings()).toEqual([0]);
+  test("add their Accuracy to a cast's chance to hit, and carry no hit bonus of their own (#329)", () => {
+    // At Magic 20 against the Spider's melee: 64.5% with a birch staff's 5 points and 74.5% with
+    // a charwood staff's 15, so a roll of 0.7 lands only with the charwood. The landed cast is
+    // the bottom of the range, 100, plus air dart's 100 and nothing from the staff.
+    const cast = (weapon: string) => {
+      start({
+        weapon,
+        magicXp: LEVEL_20_XP,
+        combatSpell: "airDart",
+        held: ["airRune", "focusRune"],
+      });
+      rolls = [0.7, 0, MISS];
+      sim.queueTarget("a", "0");
+      sim.tick();
+      return swings();
+    };
+    expect(cast("charwoodStaff")).toEqual([200]);
+    expect(me()).toMatchObject({ attackXp: 0, strengthXp: 0 });
+    expect(me().magicXp).toBeGreaterThan(LEVEL_20_XP);
+    expect(cast("birchStaff")).toEqual([0]);
   });
 
   test("a worn staff drops on death like any worn gear", () => {
-    start({ weapon: "birchStaff", health: 100 });
+    start({
+      weapon: "birchStaff",
+      health: 100,
+      combatSpell: "airDart",
+      held: ["airRune", "focusRune"],
+    });
     rolls = [MISS, 0, 0]; // The swing misses, then the Spider hits for 100.
     sim.queueTarget("a", "0");
     ticks(5);

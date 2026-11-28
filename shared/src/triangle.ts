@@ -1,6 +1,6 @@
 import { gearOf, type GearSlot } from "./gear.ts";
 
-/** How a fighter fights: a player's comes from the weapon in hand, an enemy's from its stats (#271). Magic has no fighters until Phase 9. */
+/** How a fighter fights: a player's comes from the weapon in hand, an enemy's from its stats (#271). */
 export type Style = "melee" | "ranged" | "magic";
 
 /** The style each style beats: melee beats ranged, ranged beats magic, magic beats melee (#72, #271). */
@@ -21,8 +21,11 @@ export const trianglePointsOf = (style: Style, against: Style) =>
       ? -TRIANGLE_POINTS
       : 0;
 
-/** A player's style, from the weapon in hand now: a bow or throwing knives are ranged, and a sword or bare hands melee (#271). */
+/** A player's style, from the weapon in hand now: a staff is magic, a bow or throwing knives ranged, and a sword or bare hands melee (#271, #317). */
 export const playerStyleOf = (
   player: Partial<Record<GearSlot, string>>,
-): Style =>
-  gearOf(player.weapon ?? "")?.reachTiles === undefined ? "melee" : "ranged";
+): Style => {
+  const weapon = gearOf(player.weapon ?? "");
+  if (weapon?.gate === "Magic") return "magic";
+  return weapon?.reachTiles === undefined ? "melee" : "ranged";
+};

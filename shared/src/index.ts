@@ -68,6 +68,8 @@ export const TAKE_OFF_INTENT = "takeOff";
 export const PIN_INTENT = "pin";
 /** The stance intent's message type; its payload is a melee `Stance` or a `RangedStance`, which sets that style's stance. */
 export const STANCE_INTENT = "stance";
+/** The spell intent's message type, for picking a combat spell on the Spellbook tab; its payload is a `CombatSpell` (Magic spec §5). */
+export const SPELL_INTENT = "spell";
 /** The appearance intent's message type; its payload is a `KnightColor` or a `SkinTone`, which sets that one. */
 export const APPEARANCE_INTENT = "appearance";
 /** The log out intent's message type; it has no payload. */
@@ -293,6 +295,7 @@ export * from "./stats.ts";
 export * from "./playerMenu.ts";
 export * from "./quests.ts";
 export * from "./ranged.ts";
+export * from "./magic.ts";
 export * from "./sight.ts";
 export * from "./runecrafting.ts";
 export * from "./social.ts";

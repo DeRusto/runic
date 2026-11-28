@@ -1,3 +1,4 @@
+import { playerStyleOf } from "@runic/shared";
 import type {
   DialogueAction,
   FireLog,
@@ -7,6 +8,7 @@ import type {
   PickpocketTarget,
   StallKind,
   StrongboxKind,
+  Style,
   Tile,
   VillagerId,
   Virtue,
@@ -29,8 +31,8 @@ export type Crossing = { obstacle: ObstacleKind; from: Tile; landing: Tile };
 export type UnsyncedAction =
   | ApproachObstacle
   | { kind: "burying"; slot: number; item: string; doneTick: number }
-  /** `ranged` when it began with a bow, so taking the bow off ends it rather than turning it to melee (#277). */
-  | { kind: "fighting"; enemy: string; ranged: boolean }
+  /** `style` is the weapon in hand's when it began, so taking a bow or staff off ends it rather than turning it to melee (#277). */
+  | { kind: "fighting"; enemy: string; style: Style }
   | { kind: GatheringSkill; site: string }
   | {
       kind: "visiting";
@@ -59,6 +61,12 @@ export type UnsyncedAction =
     }
   /** The log is already burnt: a new click or a death during the lighting loses it (#224). */
   | { kind: "lighting"; log: FireLog; doneTick: number };
+
+/** Whether the bow or staff an attack began with has left the hand, which ends the attack rather than turning it to melee (#277). */
+export const lostWeaponFor = (
+  { style }: { style: Style },
+  player: Parameters<typeof playerStyleOf>[0],
+) => style !== "melee" && playerStyleOf(player) !== style;
 
 /** A click waiting for the next tick, named for the action it starts. */
 export type QueuedAction =

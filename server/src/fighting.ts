@@ -1,5 +1,7 @@
 import {
   AMMO_RECOVERY_CHANCE,
+  atRangeOf,
+  attackRefusal,
   AVOIDANCE_POTION_POINTS,
   ENEMIES,
   enemyHit,
@@ -10,23 +12,27 @@ import {
   isRangedStance,
   isStance,
   itemTag,
+  magicHit,
   MIGHT_POTION_HIT,
   PLAYER_DEAD_TICKS,
   playerHit,
   OUT_OF_KNIVES_LINE,
-  rangedAttackRefusal,
+  playerStyleOf,
   rangedHit,
   rangedWeaponOf,
   respawnTile,
   SWING_INTERVAL_TICKS,
   type LootWon,
+  type Style,
   type Tile,
 } from "@runic/shared";
 import { canBeHit } from "./busy.ts";
+import { spendRunes } from "./casting.ts";
 import { dropFromSlot } from "./dropping.ts";
 import { spendArrow, spendKnife, wear } from "./gear.ts";
 import type { Enemies, Enemy } from "./enemies.ts";
 import { nextTo } from "./pathfinding.ts";
+import { lostWeaponFor } from "./playerActions.ts";
 import type { Quests } from "./quests.ts";
 import type { VillagerWindows } from "./villagerWindows.ts";
 import type { SyncedPlayer, World } from "./worldContext.ts";
@@ -61,29 +67,31 @@ export class Fighting {
       const player = this.world.state.players.get(id)!;
       const enemy = this.world.state.enemies.get(action.enemy)!;
       if (this.world.state.tick < unsynced.nextSwingTick) continue;
-      const ranged = rangedWeaponOf(player);
-      // Rechecked before every attack, so nothing is spent on a gone target or a bow taken off (#277).
-      if (enemy.state === "dead" || (action.ranged && !ranged)) {
+      // Rechecked before every attack, so nothing is spent on a gone target or a bow or staff
+      // taken off (#277).
+      if (enemy.state === "dead" || lostWeaponFor(action, player)) {
         this.world.clearAction(id);
         continue;
       }
-      // Before reach and sight, so arrows taken off on the way stop the attack once a shot falls due.
+      // Before reach and sight, so arrows or runes taken off on the way stop the attack once an attack falls due.
       if (this.stopForRefusal(id, player)) continue;
+      const atRange = atRangeOf(player);
       if (
-        ranged
-          ? !canShootAt(this.world.tiles, player, enemy, ranged.reachTiles)
+        atRange
+          ? !canShootAt(this.world.tiles, player, enemy, atRange.reachTiles)
           : !nextTo(this.world.tiles, player, enemy)
       )
         continue;
       unsynced.nextSwingTick =
-        this.world.state.tick + (ranged?.intervalTicks ?? SWING_INTERVAL_TICKS);
-      this.playerSwing(id, player, action.enemy, enemy, ranged);
+        this.world.state.tick +
+        (atRange?.intervalTicks ?? SWING_INTERVAL_TICKS);
+      this.playerSwing(id, player, action.enemy, enemy, playerStyleOf(player));
     }
   }
 
-  /** Ends the attack and tells the player why, if the weapon in hand can't attack: a bow with no arrows (Ranged spec §4). */
+  /** Ends the attack and tells the player why, if the weapon in hand can't attack: a bow with no arrows, or a staff with no spell or runes (Ranged spec §4, Magic spec §5). */
   private stopForRefusal(id: string, player: SyncedPlayer) {
-    const refusal = rangedAttackRefusal(player);
+    const refusal = attackRefusal(player);
     if (!refusal) return false;
     this.stop(id, refusal);
     return true;
@@ -94,14 +102,15 @@ export class Fighting {
     this.world.tell(id, line);
   }
 
-  /** One swing, or one ranged attack, which spends an arrow or a knife hit or miss (Ranged spec §4, §5). */
+  /** One swing, one ranged attack, which spends an arrow or a knife, or one cast, which spends its runes, each hit or miss (Ranged spec §4, §5, Magic spec §5). */
   private playerSwing(
     id: string,
     player: SyncedPlayer,
     enemyId: string,
     enemy: InstanceType<typeof Enemy>,
-    ranged: ReturnType<typeof rangedWeaponOf>,
+    style: Style,
   ) {
+    const ranged = rangedWeaponOf(player);
     this.world.lock(id);
     // A Might potion adds to the hit like the sword bonus does, while its buff lasts (#222).
     const might =
@@ -110,17 +119,21 @@ export class Fighting {
         : 0;
     // The enemy's fixed style is the target's side of the combat triangle; the weapon in hand,
     // read now, picks the shot or the swing and so the player's side (#271).
-    const { style } = ENEMIES[enemy.kind];
-    const { damage, critical, xp } = ranged
-      ? rangedHit(player, style, might, enemy.health, this.world.random)
-      : playerHit(
-          player,
-          player.stance,
-          style,
-          might,
-          enemy.health,
-          this.world.random,
-        );
+    const against = ENEMIES[enemy.kind].style;
+    const { random } = this.world;
+    const { damage, critical, xp } =
+      style === "magic"
+        ? magicHit(player, against, might, enemy.health, random)
+        : ranged
+          ? rangedHit(player, against, might, enemy.health, random)
+          : playerHit(
+              player,
+              player.stance,
+              against,
+              might,
+              enemy.health,
+              random,
+            );
     for (const [field, gained] of xp) this.world.earnXp(player, field, gained);
     this.world.fitHealth(id);
     this.world.events.push({
@@ -148,6 +161,9 @@ export class Fighting {
         this.world.unsynced(id).ranDryAgainst = enemyId;
       }
     } else if (ranged && !spendArrow(this.world, id)) {
+      this.stopForRefusal(id, player);
+    } else if (style === "magic") {
+      spendRunes(this.world, id);
       this.stopForRefusal(id, player);
     }
     const loot = this.enemies.takeHit(
@@ -262,14 +278,14 @@ export class Fighting {
   private fightBack(id: string, player: SyncedPlayer, enemyId: string) {
     const unsynced = this.world.unsyncedPlayers.get(id)!;
     if (unsynced.dropped || this.world.isBusy(id)) return;
-    // A bow with nothing to fire stays idle, as does a hand its last knife left, against that
-    // enemy until the player's next order; the chat said so when they ran out (#279).
-    if (rangedAttackRefusal(player) || unsynced.ranDryAgainst === enemyId)
-      return;
+    // A bow with nothing to fire stays idle, as does a staff with no spell or runes and a hand
+    // its last knife left, against that enemy until the player's next order; the chat said so
+    // when they ran out (#279).
+    if (attackRefusal(player) || unsynced.ranDryAgainst === enemyId) return;
     unsynced.action = {
       kind: "fighting",
       enemy: enemyId,
-      ranged: !!rangedWeaponOf(player),
+      style: playerStyleOf(player),
     };
     unsynced.nextSwingTick = Math.max(
       unsynced.nextSwingTick,

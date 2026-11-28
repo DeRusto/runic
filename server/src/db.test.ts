@@ -53,8 +53,9 @@ const LATEST_COLUMNS = [
   "magic_xp",
   "prayer_xp",
   "prayer_points",
+  "combat_spell",
 ];
-const LATEST_MIGRATIONS = 25;
+const LATEST_MIGRATIONS = 26;
 
 /** Forgets the newest migration's journal row after its schema changes are undone. */
 function forgetNewestMigration(sqlite: DatabaseSync) {
@@ -63,8 +64,15 @@ function forgetNewestMigration(sqlite: DatabaseSync) {
   );
 }
 
-/** Makes the Prayer migration pending again. */
+/** Makes the combat spell's migration pending again. */
+function unapplyCombatSpell(sqlite: DatabaseSync) {
+  sqlite.exec("ALTER TABLE players DROP COLUMN combat_spell");
+  forgetNewestMigration(sqlite);
+}
+
+/** Makes the Prayer migration pending again, and the combat spell's after it. */
 function unapplyPrayer(sqlite: DatabaseSync) {
+  unapplyCombatSpell(sqlite);
   sqlite.exec("ALTER TABLE players DROP COLUMN prayer_xp");
   sqlite.exec("ALTER TABLE players DROP COLUMN prayer_points");
   forgetNewestMigration(sqlite);
@@ -252,6 +260,7 @@ describe("a save from the first slice, written before the stacks migration", () 
       identifiesEssence: false,
       stance: "balanced",
       rangedStance: "steady",
+      combatSpell: "",
       knightColor: "crimson",
       skinTone: "fair",
       riggedShortcuts: [],
@@ -570,6 +579,39 @@ describe("a save from just before Magic (#327)", () => {
     });
     await database.shutdown();
   });
+});
+
+test("a save from before casting has no combat spell picked and keeps all its progress (#329)", async () => {
+  const database = await openDatabase();
+  db.insert(accounts)
+    .values({ username: "Mage", usernameLower: "mage", passwordHash: "x" })
+    .run();
+  writeSave(1, {
+    ...NO_EXPERIENCE,
+    x: 4,
+    y: 1,
+    health: 900,
+    hitpointsXp: 4050,
+    magicXp: 200,
+    prayerXp: 50,
+    weapon: "birchStaff",
+    weaponCount: 1,
+    inventory: ["airRune", "focusRune"],
+    inventoryCounts: [30, 20],
+  });
+  const baseline = readSave(1)!;
+  await database.shutdown();
+
+  const sqlite = new DatabaseSync(path);
+  unapplyCombatSpell(sqlite);
+  sqlite.close();
+
+  const upgraded = await openDatabase();
+  try {
+    expect(readSave(1)).toEqual({ ...baseline, combatSpell: "" });
+  } finally {
+    await upgraded.shutdown();
+  }
 });
 
 test("only the last five copies are kept", async () => {
