@@ -30,6 +30,7 @@ const room = {
 const shrine = { x: 21, y: 45 };
 
 beforeEach(() => {
+  me.inventoryCounts = [1, 3];
   send.mockClear();
   chatLines.children = [];
 });

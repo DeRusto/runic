@@ -22,9 +22,10 @@ export const STATIONS = {
 } as const satisfies Record<string, StationRow>;
 export type FixedStation = keyof typeof STATIONS;
 
-/** Whether a fixed place offers Prayer actions. */
+/** Whether a fixed place is one of the two shrines, which offer Pray and Offer bones (#330). */
 export const isShrine = (station: StationKind | undefined) =>
   station === "villageShrine" || station === "cairnsShrine";
+
 /** A fixed station, or a fire, which a player places and which burns out, so no tile is one (#224). */
 export type StationKind = FixedStation | "fire";
 

@@ -630,7 +630,7 @@ A small open stone shrine where a player prays to refill prayer points twenty a 
 _Avoid_: Prayer altar, chapel, temple
 
 **Offer**:
-The shrine action that gives up every bone and heavy bone in the bag, one every two ticks in bag order, for 15 Prayer experience a bone and 40 a heavy bone: three times what burying pays. It stops when the bag holds no more bones or the player moves or clicks elsewhere, and is refused with no bones.
+The shrine action that gives up every bone and heavy bone in the bag, one every two ticks in bag order, for 15 Prayer experience a bone and 40 a heavy bone, about three times what burying pays. It stops when the bag holds no more bones or the player moves or clicks elsewhere, and is refused with no bones.
 _Avoid_: Sacrifice, donate
 
 **Bury**:
