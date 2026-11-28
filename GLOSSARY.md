@@ -97,11 +97,11 @@ A fixed place in the smithy, beside the furnace and north of the anvil, where a 
 _Avoid_: Crafting table, work table
 
 **Altar**:
-A stone slab in Runestone Hollow, with a ring stone behind it and an obelisk on either side, where a player turns rune essence into runes (#232). It opens once Hollis's quest is done, asks no level of its own, gives no tools, and never runs out; the walk there is part of the gate. Its old place on the Boneyard's far side is a ring of rocks around bare ground.
-_Avoid_: Stone circle, rune stone
+A stone slab in Runestone Hollow, with a ring stone behind it and an obelisk on either side, where a player turns rune essence into runes (#232). It opens once Hollis's quest is done, asks no level of its own, gives no tools, and never runs out; the walk there is part of the gate. Its old place on the Boneyard's far side is a ring of rocks around bare ground. The altar only makes runes: the place to pray is a shrine.
+_Avoid_: Stone circle, rune stone, prayer altar
 
 **Station**:
-A furnace, an anvil, a range, a workbench or an altar: a fixed place where a player makes something. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
+A furnace, an anvil, a range, a workbench or an altar: a fixed place where a player makes something. A shrine is a fixed place of the same sort, where a player prays instead. It never runs out, and any number of players can share one. A fire is a station too, but the one a player places, and the only one that runs out. The Blacksmith is not a station.
 _Avoid_: Workstation, crafting table
 
 **Villager**:
@@ -620,19 +620,27 @@ A material needed to make Emberite gear. Each player who damages a Skeleton has 
 _Avoid_: Trophy, token
 
 **Prayer**:
-A combat skill trained by burying bones. Its level adds to Combat level at half weight and sets the maximum number of prayer points.
+A combat skill trained by burying bones, or by offering them at a shrine. Its level adds to Combat level at half weight and sets the maximum number of prayer points.
 
 **Prayer points**:
-A pool of ten points per Prayer level. New players start full. The current amount is saved, and one point returns every twenty ticks while no prayer is active.
+A pool of ten points per Prayer level. New players start full. The current amount is saved, and one point returns every twenty ticks while no prayer is active. Praying at a shrine refills twenty a tick.
+
+**Shrine**:
+A small open stone shrine where a player prays to refill prayer points twenty a tick, or offers bones (#330). Two stand on the region: the village shrine on the village square's south-east corner, and the Cairns shrine just west of the Cairns, beyond every Cairn warden's reach. A shrine blocks walking but not shots, never runs out, and any number of players can share one.
+_Avoid_: Prayer altar, chapel, temple
+
+**Offer**:
+The shrine action that gives up every bone and heavy bone in the bag, one every two ticks in bag order, for 15 Prayer experience a bone and 40 a heavy bone, about three times what burying pays. It stops when the bag holds no more bones or the player moves or clicks elsewhere, and is refused with no bones.
+_Avoid_: Sacrifice, donate
 
 **Bury**:
 An inventory action that takes two ticks and consumes one bone on completion. Bones give 5 Prayer experience and heavy bones give 13. A new action can interrupt the burial.
 
 **Bones**:
-A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. Burying one gives 5 Prayer experience. Each bone has a store value of 4 coins and sells to the store for 1.
+A stackable material left by Skeletons, Tarn Oxen, Bristlebacks and Fenwings. Each player who damaged the enemy has a two-in-three chance of finding one on its tile, separate from its other loot. Burying one gives 5 Prayer experience, and offering one at a shrine 15. Each bone has a store value of 4 coins and sells to the store for 1.
 
 **Heavy bones**:
-A stackable material left by Skeleton Mages, Cinderhorns and Cairn wardens at the same chance as bones. Burying one gives 13 Prayer experience. Each heavy bone has a store value of 8 coins and sells to the store for 3.
+A stackable material left by Skeleton Mages, Cinderhorns and Cairn wardens at the same chance as bones. Burying one gives 13 Prayer experience, and offering one at a shrine 40. Each heavy bone has a store value of 8 coins and sells to the store for 3.
 
 **Spider silk**:
 A thread a Spider leaves behind, needed to make rope and to augment capes. Every Spider kill leaves 1 or 2, at even odds, for each player who damaged it (#272).

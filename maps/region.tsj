@@ -1,11 +1,11 @@
-{ "columns":44,
+{ "columns":46,
  "image":"region.png",
  "imageheight":16,
- "imagewidth":704,
+ "imagewidth":736,
  "margin":0,
  "name":"region",
  "spacing":0,
- "tilecount":44,
+ "tilecount":46,
  "tiledversion":"1.12.2",
  "tileheight":16,
  "tiles":[
@@ -583,6 +583,34 @@
                  "name":"prop",
                  "type":"string",
                  "value":"burialMound"
+                }]
+        }, 
+        {
+         "id":44,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"station",
+                 "type":"string",
+                 "value":"villageShrine"
+                }]
+        }, 
+        {
+         "id":45,
+         "properties":[
+                {
+                 "name":"blocks",
+                 "type":"bool",
+                 "value":true
+                },
+                {
+                 "name":"station",
+                 "type":"string",
+                 "value":"cairnsShrine"
                 }]
         }],
  "tilewidth":16,

@@ -10,6 +10,7 @@ import {
   parseRegion,
   tileHash,
   tilesApart,
+  isTall,
   type TileKind,
 } from "./index.ts";
 
@@ -90,6 +91,9 @@ const IS = {
   range: (tile) => tile.station === "range",
   workbench: (tile) => tile.station === "workbench",
   altar: (tile) => tile.station === "altar",
+  villageShrine: (tile) => tile.station === "villageShrine",
+  cairnsShrine: (tile) => tile.station === "cairnsShrine",
+  well: (tile) => tile.prop === "well",
   blacksmith: (tile) => tile.villager === "odo",
   villager: (tile) => !!tile.villager,
   mark: (tile) => !!tile.mark,
@@ -791,4 +795,39 @@ test("four reachable Cairn warden homes stand above the Boneyard among burial mo
   expect([...homes, ...mounds].every(inCairns)).toBe(true);
   for (const [x, y] of homes) expect(reachable.has(key(x, y))).toBe(true);
   for (const [x, y] of mounds) expect(blocks(x, y)).toBe(true);
+});
+
+test("one shrine stands by the village square and one at the Cairns' edge, both reachable and neither stopping shots", () => {
+  const village = tilesOf("villageShrine");
+  const cairns = tilesOf("cairnsShrine");
+  expect(village).toHaveLength(1);
+  expect(cairns).toHaveLength(1);
+  const reachable = stepsFrom(tilesOf("respawn")[0]!);
+  for (const [x, y] of [...village, ...cairns]) {
+    expect(blocks(x, y)).toBe(true);
+    expect(isTall(region[y]![x]!)).toBe(false);
+    expect(
+      neighbours({ x, y }).some((tile) => reachable.has(key(tile.x, tile.y))),
+    ).toBe(true);
+  }
+  const [[wellX, wellY]] = tilesOf("well") as [[number, number]];
+  const [[x, y]] = village as [[number, number]];
+  expect(tilesApart({ x, y }, { x: wellX, y: wellY })).toBeLessThanOrEqual(6);
+  expect(region[y]![x]!.ground).toBe("cobble");
+});
+
+test("the Cairns shrine and every tile beside it lie beyond each Cairn warden's wander, notice range and leash", () => {
+  const [[x, y]] = tilesOf("cairnsShrine") as [[number, number]];
+  const { wanderTiles, noticeTiles, leashTiles } = ENEMIES.cairnWarden;
+  const reach = wanderTiles + Math.max(noticeTiles!, leashTiles);
+  const homes = tilesOf("cairnWarden");
+  expect(homes).toHaveLength(4);
+  for (const [homeX, homeY] of homes)
+    for (const tile of [{ x, y }, ...neighbours({ x, y })])
+      expect(tilesApart(tile, { x: homeX, y: homeY })).toBeGreaterThan(reach);
+  expect(
+    tilesOf("burialMound").some(
+      ([moundX, moundY]) => tilesApart({ x, y }, { x: moundX, y: moundY }) <= 8,
+    ),
+  ).toBe(true);
 });

@@ -21,6 +21,8 @@ import {
   DROP_INTENT,
   MOVE_INTENT,
   BURY_INTENT,
+  PRAY_INTENT,
+  OFFER_INTENT,
   EAT_INTENT,
   LIGHT_INTENT,
   MIX_INTENT,
@@ -117,6 +119,10 @@ export class WorldRoom extends Room {
       this.sim.deal(client.sessionId, deal),
     [CLOSE_STORE_INTENT]: (client: Client) =>
       this.sim.closeStore(client.sessionId),
+    [PRAY_INTENT]: (client: Client, at: Tile) =>
+      this.sim.queuePray(client.sessionId, at),
+    [OFFER_INTENT]: (client: Client, at: Tile) =>
+      this.sim.queueOfferBones(client.sessionId, at),
     [BURY_INTENT]: (client: Client, slot: number) =>
       this.sim.queueBury(client.sessionId, slot),
     [EAT_INTENT]: (client: Client, slot: number) =>

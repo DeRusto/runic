@@ -37,6 +37,10 @@ export const DEAL_INTENT = "deal";
 export const CLOSE_STORE_INTENT = "closeStore";
 /** The bury intent carries the inventory slot of the bone to bury. */
 export const BURY_INTENT = "bury";
+/** The pray intent carries the clicked shrine's Tile. */
+export const PRAY_INTENT = "pray";
+/** The offer bones intent carries the clicked shrine's Tile. */
+export const OFFER_INTENT = "offerBones";
 
 /** The eat intent's message type; its payload is the clicked inventory slot's index. */
 export const EAT_INTENT = "eat";

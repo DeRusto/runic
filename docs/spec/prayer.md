@@ -20,3 +20,21 @@ Select a bone in the bag to bury it on the current tile. Burying takes two ticks
 | Heavy bones | 13               | 8 coins     |
 
 The general store pays 1 coin for bones and 3 for heavy bones. Existing enemy drops and store prices carry over.
+
+## 4. Shrines
+
+A shrine is a fixed place, like a station, that never runs out and that any number of players can use at once. It blocks walking and does not stop shots. Clicking a shrine offers Pray and Offer bones; the player walks next to it first.
+
+Praying refills 20 prayer points a tick until the pool is full or the player moves. It pays no experience and costs nothing.
+
+Offering bones takes one bone every two ticks (600 ms) after arrival, every bone and heavy bone in the bag in bag order, until none are left or the player moves or clicks elsewhere. With no bones in the bag it is refused with "You have no bones to offer."
+
+| Item        | Offered at a Shrine |
+| ----------- | ------------------- |
+| Bones       | 15                  |
+| Heavy bones | 40                  |
+
+Two shrines stand on the region, each one tile of four stone columns under a carved roof:
+
+- **The village shrine**, on the south-east corner of the village square (21, 45). No new building stands with it.
+- **The Cairns shrine**, west of the Cairns field among its burial mounds (64, 9). Every tile beside it lies more than 8 tiles from each Cairn warden's home, past the 3 tiles it wanders plus the larger of its 4-tile notice range and 5-tile leash.

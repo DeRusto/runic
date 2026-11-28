@@ -3,7 +3,6 @@ import {
   logoutRefusal,
   MAX_PINNED_SKILLS,
   respawnTile,
-  burialXp,
   siteId,
   SKILLS,
   type Deal,
@@ -32,7 +31,7 @@ import { Making } from "./making.ts";
 import { mixPotion } from "./mixing.ts";
 import type { QueuedAction } from "./playerActions.ts";
 import { newSave, playerFromSave, saveOf } from "./playerSave.ts";
-import { advancePrayer } from "./prayer.ts";
+import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
 import { Taking } from "./taking.ts";
@@ -271,14 +270,18 @@ export class Simulation {
     this.queuedActions.set(id, { kind: "lighting", slot });
   }
 
-  /** Queues burial only for a slot that holds a bone. */
+  /** `slot` comes straight off the network; see `buryIntent`. */
   queueBury(id: string, slot: number) {
-    this.queue(id, () => {
-      if (!isInventorySlot(slot)) return;
-      const item = this.world.player(id).inventory[slot];
-      if (item && burialXp(item) !== undefined)
-        return { kind: "burying", slot, item };
-    });
+    this.queue(id, () => buryIntent(this.world, id, slot));
+  }
+
+  /** `at` comes straight off the network; see `shrineIntent`. */
+  queuePray(id: string, at: Tile) {
+    this.queue(id, () => shrineIntent(this.world, id, "praying", at));
+  }
+
+  queueOfferBones(id: string, at: Tile) {
+    this.queue(id, () => shrineIntent(this.world, id, "offering", at));
   }
 
   /** Both come straight off the network; see `VillagerWindows.visitIntent`. */

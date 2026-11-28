@@ -24,6 +24,8 @@ Marta's stalls (#252) are feature tiles with a `stall` property (`food`, `fish` 
 
 The strongboxes (#253) are feature tiles with a `strongbox` property (`boneyard` or `hollow`), one in the Boneyard and one in Runestone Hollow. They block like a stall, and the loader refuses a second of either kind.
 
+The shrines (#330) are station tiles: `villageShrine` on the village square and `cairnsShrine` west of the Cairns. Keep the Cairns shrine and the tiles beside it more than 8 tiles from every Cairn warden home, past its wander and leash; the region test checks it.
+
 Whether a feature tile blocks walking comes from its `blocks` property in the tileset, so there's no collision layer to keep in step. Ground tiles have no `blocks`: water always blocks, and every other ground never does. Don't flip or rotate tiles: a tile's rotation comes from `tileHash`.
 
 An object's class is one of these:

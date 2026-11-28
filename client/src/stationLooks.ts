@@ -15,6 +15,27 @@ export type StationPart = {
   onTop?: true;
 };
 
+/** How tall the shrine's columns stand, in tiles: the column model is 3⅓ times as tall as it is wide. */
+const SHRINE_COLUMN_HEIGHT = 0.53;
+
+/**
+ * A small open stone shrine on one tile (#330): four Nature Kit columns hold up the Graveyard Kit's
+ * carved crypt roof, the burial mounds' own, over a low stone slab. Both shrines look alike.
+ */
+const SHRINE_LOOK = {
+  parts: [
+    ...[-0.3, 0.3].flatMap((x) =>
+      [-0.3, 0.3].map((z): StationPart => ({
+        file: "statueColumn.glb",
+        width: 0.16,
+        at: [x, z],
+      })),
+    ),
+    { file: "altarStone.glb", width: 0.4 },
+    { file: "BurialMound.glb", width: 0.9, y: SHRINE_COLUMN_HEIGHT },
+  ],
+};
+
 /**
  * How each fixed station looks and is worked: its models, an optional flame (as a fire's, at `at`
  * and `size` times as big), and whether a player hammers at it rather than working with their hands.
@@ -93,4 +114,6 @@ export const STATION_LOOKS: Record<
       { file: "statueObelisk.glb", width: 0.47, at: [1, 0.4] },
     ],
   },
+  villageShrine: SHRINE_LOOK,
+  cairnsShrine: SHRINE_LOOK,
 };

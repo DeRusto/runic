@@ -77,6 +77,8 @@ export class Walking {
       case "lighting":
         this.firemaking.startLighting(id, intent.slot);
         break;
+      case "praying":
+      case "offering":
       case "visiting":
       case "pickpocketing":
       case "stealing":
@@ -119,6 +121,8 @@ export class Walking {
   private nextToOf(action?: UnsyncedAction): Tile | Tile[] | undefined {
     if (action?.kind === "making")
       return action.at ?? this.world.stations[stationOf(action.item)];
+    if (action?.kind === "praying" || action?.kind === "offering")
+      return action.shrine;
     if (action?.kind === "visiting")
       return this.world.villagers.get(action.villager);
     const target = action && this.thieving.nextToOf(action);
@@ -196,6 +200,8 @@ export class Walking {
       player.action = crossing
         ? "crossing"
         : action &&
+            action.kind !== "praying" &&
+            action.kind !== "offering" &&
             action.kind !== "visiting" &&
             action.kind !== "taking" &&
             action.kind !== "following" &&
