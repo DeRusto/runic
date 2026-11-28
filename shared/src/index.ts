@@ -74,6 +74,8 @@ export const PIN_INTENT = "pin";
 export const STANCE_INTENT = "stance";
 /** The spell intent's message type, for picking a combat spell on the Spellbook tab; its payload is a `CombatSpell` (Magic spec §5). */
 export const SPELL_INTENT = "spell";
+/** The prayer intent's message type, for turning a prayer on or off on the Prayer tab; its payload is a `PrayerId` (Prayer spec §5). */
+export const PRAYER_INTENT = "prayer";
 /** The appearance intent's message type; its payload is a `KnightColor` or a `SkinTone`, which sets that one. */
 export const APPEARANCE_INTENT = "appearance";
 /** The log out intent's message type; it has no payload. */
@@ -285,6 +287,7 @@ export * from "./tools.ts";
 export * from "./making.ts";
 export * from "./potions.ts";
 export * from "./prayer.ts";
+export * from "./prayers.ts";
 export * from "./mining.ts";
 export * from "./region.ts";
 export * from "./regionMap.ts";

@@ -12,6 +12,7 @@ import {
   regeneratePrayerPoints,
 } from "@runic/shared";
 import { tilesNextTo } from "./pathfinding.ts";
+import { drainPrayers } from "./prayers.ts";
 import type {
   OfferingAction,
   QueuedAction,
@@ -95,10 +96,11 @@ function takeOne(player: ReturnType<World["player"]>, slot: number) {
     player.inventory[slot] = EMPTY_SLOT;
 }
 
-/** Refills a praying player, steps a living player's offering, or recovers points and completes a burial whose bone is still there. */
+/** Drains active prayers, then refills a praying player, steps a living player's offering, or recovers points with no prayer on and completes a burial whose bone is still there. */
 export function advancePrayer(world: World, id: string) {
   const player = world.player(id);
   const { tick } = world.state;
+  const praying = drainPrayers(world, id);
   const { action } = world.unsynced(id);
   const shrineAction =
     !player.dead &&
@@ -113,11 +115,12 @@ export function advancePrayer(world: World, id: string) {
       world.clearAction(id);
     return;
   }
-  player.prayerPoints = regeneratePrayerPoints(
-    player.prayerPoints,
-    player.prayerXp,
-    tick,
-  );
+  if (!praying)
+    player.prayerPoints = regeneratePrayerPoints(
+      player.prayerPoints,
+      player.prayerXp,
+      tick,
+    );
   if (shrineAction && action.kind === "offering")
     return offerNextBone(world, id, action);
   if (player.dead) return;

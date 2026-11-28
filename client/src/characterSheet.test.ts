@@ -2,6 +2,7 @@ import {
   GEAR_SLOTS,
   APPEARANCE_INTENT,
   PIN_INTENT,
+  PRAYER_INTENT,
   SPELL_INTENT,
   STANCE_INTENT,
   TAKE_OFF_INTENT,
@@ -41,6 +42,7 @@ const element = () => ({
   textContent: "",
   title: "",
   value: 0,
+  max: 0,
   onclick: undefined as undefined | (() => void),
   oncontextmenu: undefined as undefined | ((event: unknown) => void),
 });
@@ -857,5 +859,105 @@ describe("the Spellbook tab", () => {
     expect(el("sheet-tab-spellbook").attributes["aria-selected"]).toBe("true");
     expect(el("sheet-spellbook").hidden).toBe(false);
     expect(el("sheet-gear").hidden).toBe(true);
+  });
+});
+
+describe("the Prayer tab", () => {
+  const prayers = () => el("prayers").children;
+  const drawn = (fields: object = {}) =>
+    sheet.drawPrayers({
+      ...me([]),
+      prayerXp: 0,
+      prayerPoints: 10,
+      prayers: [],
+      ...fields,
+    } as unknown as SyncedPlayer);
+  const labels = () =>
+    prayers().map((prayer: any) => prayer.attributes["aria-label"]);
+
+  test("lists the twelve prayers in level order, each with its level, effect and drain", () => {
+    drawn();
+    expect(labels()).toEqual([
+      "Sure Hand: Prayer 1, +3 points to land, drains 10 points a minute",
+      "Firm Grip: Prayer 4, +50 hit, drains 10 points a minute",
+      "Light Step: Prayer 7, +3 Avoidance, drains 10 points a minute",
+      "True Aim: Prayer 10, +6 points to land, drains 20 points a minute",
+      "Stone Fist: Prayer 13, +100 hit, drains 20 points a minute",
+      "Quick Shadow: Prayer 16, +6 Avoidance, drains 20 points a minute",
+      "Far Sight: Prayer 20, +10 points to land, drains 30 points a minute",
+      "Giant's Wrath: Prayer 22, +150 hit, drains 30 points a minute",
+      "Mist Walker: Prayer 25, +10 Avoidance, drains 30 points a minute",
+      "Ward of Arrows: Prayer 28, Halves ranged enemies' landed hits, drains 40 points a minute, coming soon",
+      "Ward of Steel: Prayer 31, Halves melee enemies' landed hits, drains 40 points a minute, coming soon",
+      "Ward of Runes: Prayer 34, Halves magic enemies' landed hits, drains 40 points a minute, coming soon",
+    ]);
+    expect(prayers()[1].children.map((part: any) => part.textContent)).toEqual([
+      "Firm Grip",
+      "Prayer 4 · Drains 10 a minute",
+      "+50 hit",
+    ]);
+  });
+
+  test("shows the points as a bar and a number", () => {
+    drawn({ prayerXp: xpForLevel(4), prayerPoints: 25 });
+    expect(el("prayer-tab-points").textContent).toBe("Prayer points 25 / 40");
+    expect(el("prayer-tab-bar").value).toBe(25);
+    expect(el("prayer-tab-bar").max).toBe(40);
+  });
+
+  test("greys the prayers above the player's level, and the wards until they arrive", () => {
+    drawn({ prayerXp: xpForLevel(99) });
+    expect(
+      prayers().map((prayer: any) => prayer.attributes["aria-disabled"]),
+    ).toEqual([...Array(9).fill("false"), ...Array(3).fill("true")]);
+    drawn({ prayerXp: xpForLevel(7) });
+    expect(
+      prayers().map((prayer: any) => prayer.attributes["aria-disabled"]),
+    ).toEqual([...Array(3).fill("false"), ...Array(9).fill("true")]);
+  });
+
+  test("lights the active prayers", () => {
+    drawn({ prayerXp: xpForLevel(10), prayers: ["firmGrip", "trueAim"] });
+    expect(
+      prayers()
+        .slice(0, 5)
+        .map((prayer: any) => prayer.attributes["aria-pressed"]),
+    ).toEqual(["false", "true", "false", "true", "false"]);
+  });
+
+  test("a click turns a prayer on, and a click on an active one turns it off", () => {
+    drawn({ prayerXp: xpForLevel(4) });
+    prayers()[1].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(PRAYER_INTENT, "firmGrip");
+    drawn({ prayerXp: xpForLevel(4), prayerPoints: 0, prayers: ["sureHand"] });
+    prayers()[0].onclick();
+    expect(room.send).toHaveBeenLastCalledWith(PRAYER_INTENT, "sureHand");
+    expect(say).not.toHaveBeenCalled();
+  });
+
+  test("a click above the level or at 0 points is refused in the chat, and nothing is sent", () => {
+    drawn();
+    prayers()[1].onclick();
+    expect(say).toHaveBeenLastCalledWith("You need Prayer 4 for that.");
+    drawn({ prayerPoints: 0 });
+    prayers()[0].onclick();
+    expect(say).toHaveBeenLastCalledWith(
+      "You have no prayer points left. Pray at a shrine to refill them.",
+    );
+    expect(room.send).not.toHaveBeenCalled();
+  });
+
+  test("a ward does nothing on a click yet", () => {
+    drawn({ prayerXp: xpForLevel(99) });
+    prayers()[11].onclick?.();
+    expect(room.send).not.toHaveBeenCalled();
+    expect(say).not.toHaveBeenCalled();
+  });
+
+  test("is a tab after Spellbook", () => {
+    el("sheet-tab-prayer").onclick!();
+    expect(el("sheet-tab-prayer").attributes["aria-selected"]).toBe("true");
+    expect(el("sheet-prayer").hidden).toBe(false);
+    expect(el("sheet-spellbook").hidden).toBe(true);
   });
 });

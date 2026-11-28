@@ -97,6 +97,7 @@ export function rangedHit(
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
+  accuracyBonus = 0,
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     rangedHitOf(player),
@@ -105,6 +106,7 @@ export function rangedHit(
     mightBonus,
     enemyHealth,
     random,
+    accuracyBonus,
   );
   const { rangedXp, defenseXp } = rangedXpOf(
     player.rangedStance ?? STARTING_RANGED_STANCE,

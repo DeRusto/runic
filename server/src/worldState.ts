@@ -54,6 +54,8 @@ export const Player = schema(
     health: t.uint16(),
     maxHealth: t.uint16(),
     prayerPoints: t.uint16(),
+    /** The active prayers' ids, which everyone sees as a mark over the player. Not saved, so logging out turns them off (Prayer spec §5). */
+    prayers: t.array("string"),
     inventory: t.array("string"),
     /** Parallel to `inventory`: how many in each slot, 0 for an empty one. */
     inventoryCounts: t.array("uint32"),

@@ -1,10 +1,8 @@
 import {
   GATHERING_SKILLS,
   logoutRefusal,
-  MAX_PINNED_SKILLS,
   respawnTile,
   siteId,
-  SKILLS,
   type Deal,
   type GatheringSkill,
   type GearSlot,
@@ -29,9 +27,11 @@ import { GeneralStore } from "./generalStore.ts";
 import { Inventory } from "./inventory.ts";
 import { Making } from "./making.ts";
 import { mixPotion } from "./mixing.ts";
+import { pinSkill } from "./pinning.ts";
 import type { QueuedAction } from "./playerActions.ts";
 import { newSave, playerFromSave, saveOf } from "./playerSave.ts";
 import { advancePrayer, buryIntent, shrineIntent } from "./prayer.ts";
+import { togglePrayer } from "./prayers.ts";
 import { Quests } from "./quests.ts";
 import type { PlayerSave } from "./saves.ts";
 import { Taking } from "./taking.ts";
@@ -398,21 +398,19 @@ export class Simulation {
     mixPotion(this.world, id, slot);
   }
 
-  /** Comes straight off the network, so anything invalid is ignored. A tick reads no pins, so like chat this skips the queue. */
+  /** Comes straight off the network; see `pinSkill`. */
   pinSkill(id: string, intent: { skill: string; pinned: boolean }) {
-    if (this.world.isCrossing(id)) return;
-    const pins = this.state.players.get(id)?.pinnedSkills;
-    const { skill, pinned } = intent ?? {};
-    if (!pins || !SKILLS.some(([name]) => name === skill)) return;
-    const at = pins.indexOf(skill);
-    if (pinned === false && at >= 0) pins.splice(at, 1);
-    if (pinned === true && at < 0 && pins.length < MAX_PINNED_SKILLS)
-      pins.push(skill);
+    pinSkill(this.world, id, intent);
   }
 
   /** `spell` comes straight off the network; see `pickSpell`. */
   pickSpell(id: string, spell: unknown) {
     pickSpell(this.world, id, spell);
+  }
+
+  /** `prayer` comes straight off the network; see `togglePrayer`. */
+  togglePrayer(id: string, prayer: unknown) {
+    togglePrayer(this.world, id, prayer);
   }
 
   /** `stance` comes straight off the network; see `Fighting.setStance`. */

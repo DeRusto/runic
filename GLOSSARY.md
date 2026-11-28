@@ -313,11 +313,11 @@ The skill that makes a player harder to hit, by giving Avoidance; trained by bei
 _Avoid_: Armour, defence
 
 **Avoidance**:
-How many percentage points come off an enemy's chance to hit a player, from Defense and the Avoidance Virtue on worn gear. An enemy always keeps at least a 5% chance.
+How many percentage points come off an enemy's chance to hit a player, from Defense, the Avoidance Virtue on worn gear, an Avoidance potion and an Avoidance prayer. An enemy always keeps at least a 5% chance.
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring, a bow and a staff add their Accuracy to the player's side (#238, #268, Magic spec §2).
+Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring, a bow and a staff add their Accuracy to the player's side (#238, #268, Magic spec §2), and so does an Accuracy prayer (Prayer spec §5).
 _Avoid_: Precision, attack bonus
 
 **Style**:
@@ -620,10 +620,10 @@ A material needed to make Emberite gear. Each player who damages a Skeleton has 
 _Avoid_: Trophy, token
 
 **Prayer**:
-A combat skill trained by burying bones, or by offering them at a shrine. Its level adds to Combat level at half weight and sets the maximum number of prayer points.
+A combat skill trained by burying bones, or by offering them at a shrine. Its level adds to Combat level at half weight, sets the maximum number of prayer points and gates the prayers. A **prayer** is one of twelve boosts a player turns on from the Prayer tab, which drains prayer points while it runs: three steps each of the Accuracy, Might and Avoidance prayers, and three wards still to come (Prayer spec §5). Active prayers switch off at 0 points, on death and on logout.
 
 **Prayer points**:
-A pool of ten points per Prayer level. New players start full. The current amount is saved, and one point returns every twenty ticks while no prayer is active. Praying at a shrine refills twenty a tick.
+A pool of ten points per Prayer level. New players start full. The current amount is saved, and one point returns every twenty ticks while no prayer is active. Praying at a shrine refills twenty a tick. Each active prayer drains its own rate per 200 ticks, and the rates add up.
 
 **Shrine**:
 A small open stone shrine where a player prays to refill prayer points twenty a tick, or offers bones (#330). Two stand on the region: the village shrine on the village square's south-east corner, and the Cairns shrine just west of the Cairns, beyond every Cairn warden's reach. A shrine blocks walking but not shots, never runs out, and any number of players can share one.
@@ -632,6 +632,18 @@ _Avoid_: Prayer altar, chapel, temple
 **Offer**:
 The shrine action that gives up every bone and heavy bone in the bag, one every two ticks in bag order, for 15 Prayer experience a bone and 40 a heavy bone, about three times what burying pays. It stops when the bag holds no more bones or the player moves or clicks elsewhere, and is refused with no bones.
 _Avoid_: Sacrifice, donate
+
+**Accuracy prayer**:
+A prayer ladder that adds points to the player's chance to land with every style, on the same scale as worn Accuracy: Sure Hand adds 3 at Prayer 1, True Aim 6 at Prayer 10 and Far Sight 10 at Prayer 20. Only one step runs at a time.
+_Avoid_: Attack prayer, clarity
+
+**Might prayer**:
+A prayer ladder that adds to a landed hit with every style, on top of a Might potion: Firm Grip adds 50 at Prayer 4, Stone Fist 100 at Prayer 13 and Giant's Wrath 150 at Prayer 22. Only one step runs at a time.
+_Avoid_: Strength prayer, damage prayer
+
+**Avoidance prayer**:
+A prayer ladder that adds to the player's Avoidance against every enemy, which still keeps its 5% chance: Light Step adds 3 at Prayer 7, Quick Shadow 6 at Prayer 16 and Mist Walker 10 at Prayer 25. Only one step runs at a time.
+_Avoid_: Defense prayer, dodge prayer
 
 **Bury**:
 An inventory action that takes two ticks and consumes one bone on completion. Bones give 5 Prayer experience and heavy bones give 13. A new action can interrupt the burial.

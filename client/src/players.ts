@@ -80,7 +80,10 @@ export function showPlayers(
     camera.updateMatrixWorld();
     for (const [id, overhead] of overheads) {
       const player = room.state.players.get(id);
-      if (player) overhead.showHealth(player.health, player.maxHealth);
+      if (player) {
+        overhead.showHealth(player.health, player.maxHealth);
+        overhead.showPrayerMark(player.prayers.length > 0);
+      }
       overhead.place(figures.get(id)!.model.position);
     }
     nextFrame = requestAnimationFrame(frame);

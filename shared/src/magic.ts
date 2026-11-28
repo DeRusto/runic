@@ -207,6 +207,7 @@ export function magicHit(
   mightBonus: number,
   enemyHealth: number,
   random: () => number,
+  accuracyBonus = 0,
 ) {
   const { damage, critical, xp } = rollPlayerHit(
     magicHitOf(player),
@@ -215,6 +216,7 @@ export function magicHit(
     mightBonus,
     enemyHealth,
     random,
+    accuracyBonus,
   );
   const spell = pickedSpellOf(player);
   const base = spell ? COMBAT_SPELLS[spell].baseXp : 0;

@@ -68,9 +68,19 @@ export const enemyHitChance = (
     MIN_ENEMY_HIT_CHANCE,
   );
 
-/** A player's `chance` (0..1) to land, moved by the combat triangle for a `style` fighter against an `against` one and kept on the scale (#271). */
-export const landChanceOf = (chance: number, style: Style, against: Style) =>
-  onScale(chance + trianglePointsOf(style, against) / POINTS_PER_HIT_CHANCE, 0);
+/** A player's `chance` (0..1) to land, moved by the combat triangle for a `style` fighter against an `against` one and by `accuracyBonus` points (an Accuracy prayer's), and kept on the scale (#271, Prayer spec §5). */
+export const landChanceOf = (
+  chance: number,
+  style: Style,
+  against: Style,
+  accuracyBonus = 0,
+) =>
+  onScale(
+    chance +
+      (trianglePointsOf(style, against) + accuracyBonus) /
+        POINTS_PER_HIT_CHANCE,
+    0,
+  );
 
 /**
  * The hit curves every style shares, from the level that lands hits and the level that sets
