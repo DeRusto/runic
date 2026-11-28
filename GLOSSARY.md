@@ -296,6 +296,10 @@ The one melee skill before Phase 8, which raised both how often and how hard a p
 The skill that gates bows, arrows and throwing knives and sets how often and how hard a ranged attack lands (#268, #279). A shot pays 6 experience per 100 damage dealt, rounded once per shot, with none for overkill, to Ranged or split with Defense as the Ranged stance directs, and Hitpoints the same again. A save from before it starts at 0 experience.
 _Avoid_: Archery, Range
 
+**Magic**:
+The skill that gates staves (Magic spec §2). Casting, which will train it and set how a spell lands, comes in a later build ticket; until then nothing pays Magic experience. A save from before it starts at 0 experience.
+_Avoid_: Spellcraft, sorcery, Runecrafting (that makes the runes)
+
 **Hitpoints**:
 The skill that sets a player's maximum health; trained by dealing damage. Players start at level 10.
 _Avoid_: HP skill, vitality, constitution
@@ -313,7 +317,7 @@ How many percentage points come off an enemy's chance to hit a player, from Defe
 _Avoid_: Dodge, evasion
 
 **Accuracy**:
-Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring and a bow add their Accuracy to the player's side (#238, #268).
+Points an entity adds to its own chance to hit, against a player's Avoidance. The Skeleton Mage has 10 Accuracy, and the other enemies have 0. A ring, a bow and a staff add their Accuracy to the player's side (#238, #268, Magic spec §2).
 _Avoid_: Precision, attack bonus
 
 **Style**:
@@ -370,7 +374,7 @@ The skill trained by lighting fires from logs. It gates each log's fire, and pay
 _Avoid_: Burning
 
 **Crafting**:
-The skill trained by making the game's utilities and working reagents into capes at the workbench: rope from spider silk, torches from a log and a rope, vials from a gem, and the Gossamer cloak from a cape and silk (#225). It gates each product and pays its experience.
+The skill trained by making the game's utilities and working reagents into capes at the workbench: rope from spider silk, torches from a log and a rope, vials from a gem, staves from a log and, from oak up, a gem (Magic spec §2), and the Gossamer cloak from a cape and silk (#225). It gates each product and pays its experience.
 _Avoid_: Handicraft, construction
 
 **Fletching**:
@@ -378,7 +382,7 @@ The skill trained by making the archer's stock at the workbench: arrow shafts fr
 _Avoid_: Woodwork, carpentry
 
 **Runecrafting**:
-The skill trained by making runes from rune essence at the altar. It gates each rune and pays its experience, and a make never fails (#232). Once it is at a rune's doubling level, one essence makes two of that rune. Higher runes come with Phase 9's spells.
+The skill trained by making runes from rune essence at the altar. It gates each rune and pays its experience, and a make never fails (#232). Once it is at a rune's doubling level, one essence makes two of that rune. It makes six runes: the four elementals and Magic's focus and fury runes (Magic spec §4).
 _Avoid_: Magic, spellcraft
 
 **Leatherworking**:
@@ -442,7 +446,7 @@ One of the Storekeeper's carts outside the general store, holding food, fish or 
 _Avoid_: Market stall, cart, booth
 
 **Strongbox**:
-A locked box out where the danger is, in the Boneyard or Runestone Hollow, that a player opens for gems, runes and coins. It empties for that player alone, for a long while. If a player fails, a trap springs that hits harder than a failed pickpocket and can kill.
+A locked box out where the danger is, in the Boneyard or Runestone Hollow, that a player opens for gems, runes and coins. Its runes are an even pick of all six (Magic spec §4). It empties for that player alone, for a long while. If a player fails, a trap springs that hits harder than a failed pickpocket and can kill.
 _Avoid_: Chest (that's the bank's avoided word), coffer
 
 ### Players
@@ -608,7 +612,7 @@ An essence a vein gives only while a quest asks for it, and only until the playe
 _Avoid_: Proof piece, quest ore
 
 **Rune**:
-A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Today only the four elementals exist — the **air rune** (1), the **water rune** (5), the **earth rune** (10) and the **fire rune** (20); higher runes come with Phase 9's spells.
+A small carved stone made at the altar from one rune essence, paid in Runecrafting experience and bought by the store (#232). Six exist, by their Runecrafting gate: the **air rune** (1), **focus rune** (1), **water rune** (5), **earth rune** (10), **fury rune** (15) and **fire rune** (20) (Magic spec §4).
 _Avoid_: Talisman (there are none), magic stone
 
 **Emberbone**:
@@ -646,12 +650,24 @@ A ranged weapon smithed from one bar at the anvil, plus an Emberbone at Emberite
 _Avoid_: Dagger, knife (alone)
 
 **Gear**:
-What a player equips to fight better: a weapon (a sword raises how hard they hit, and a bow how often), arrows in the ammo slot, a shield, which gives them a chance to block, or armour. It never wears out.
+What a player equips to fight better: a weapon (a sword raises how hard they hit, a bow how often, and a staff how often it lands), arrows in the ammo slot, a shield, which gives them a chance to block, or armour. It never wears out.
 _Avoid_: Equipment
 
 **Bow**:
 A weapon fletched at the workbench from a log and a rope: the birch bow, the oak bow and the charwood bow, from their own wood. It goes in the weapon slot, gated on Ranged at 1, 10 and 20, and adds 5, 10 or 15 points of Accuracy; it carries no hit bonus, since the arrow decides how hard a shot hits (#268). A bow worn before the Ranged gate came stays worn. Bows can still roll improved versions; arrows never do.
 _Avoid_: Ranged weapon, longbow
+
+**Staff**:
+A weapon crafted at the workbench: the birch staff from a birch log, the oak staff from an oak log and an ashstone, and the charwood staff from a charwood log and a cinderglass, at Crafting 1, 10 and 20. It goes in the weapon slot, gated on Magic at 1, 10 and 20, adds 5, 10 or 15 points of Accuracy, and carries no hit bonus. A shield can be worn with it. Staves roll improved versions on Crafting. Until casting comes, a staff fights in melee (Magic spec §2).
+_Avoid_: Wand, rod (that is the fishing tool)
+
+**Focus rune**:
+A rune for Magic spells, made at the altar from rune essence at Runecrafting 1 for 5 experience, two to an essence from Runecrafting 2 (Magic spec §4).
+_Avoid_: Mind rune
+
+**Fury rune**:
+A rune for Magic spells, made at the altar from rune essence at Runecrafting 15 for 16 experience, two to an essence from Runecrafting 30 (Magic spec §4).
+_Avoid_: Chaos rune, death rune
 
 **Improved item**:
 Gear of uncommon or rare Quality, which carries a Virtue. Today only making gives one, but nothing rules out enemy loot giving one later.

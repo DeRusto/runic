@@ -162,6 +162,23 @@ describe("a deal", () => {
     expect(held()).toEqual([[COINS, coins]]);
   });
 
+  test.each([
+    ["focusRune", 8],
+    ["furyRune", 24],
+  ])(
+    "Marta buys %s for %i coins and never offers it for sale",
+    (item, coins) => {
+      addShopper("a", [item, 1]);
+      openStore();
+      deal("a", { sell: [{ item, count: 1 }] });
+      expect(held()).toEqual([[COINS, coins]]);
+      expect(shelf()).toEqual(STARTING_SHELF);
+
+      deal("a", { buy: [{ item, count: 1 }] });
+      expect(held()).toEqual([[COINS, coins]]);
+    },
+  );
+
   test("sells first, then buys with the proceeds, and the sold items go on the shelf", () => {
     addShopper("a", ["ironSword", 1], ["tin", 3]);
     openStore();

@@ -6,6 +6,7 @@ export const SKILLS = [
   ["Strength", "strengthXp"],
   ["Defense", "defenseXp"],
   ["Ranged", "rangedXp"],
+  ["Magic", "magicXp"],
   ["Herblaw", "herblawXp"],
   ["Hitpoints", "hitpointsXp"],
   ["Mining", "miningXp"],
@@ -31,10 +32,7 @@ export type XpField = Exclude<(typeof SKILLS)[number][1], "masteryXp">;
 export const MASTERY_SHARE_PERCENT = 7;
 
 /** Moves up to `SKILLS` when its content lands, which builds its synced field and save column; then run `npm run db:generate -w server`. Until then its experience is 0. */
-const UPCOMING_SKILLS = [
-  ["Prayer", "prayerXp"],
-  ["Magic", "magicXp"],
-] as const;
+const UPCOMING_SKILLS = [["Prayer", "prayerXp"]] as const;
 
 /** The 23 skills total level counts. */
 export const SKILL_REGISTRY = [...SKILLS, ...UPCOMING_SKILLS];

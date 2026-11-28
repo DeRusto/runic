@@ -21,12 +21,29 @@ import {
 import { TIERS } from "./region.ts";
 import { MAX_XP, xpForLevel } from "./skills.ts";
 
-const attack = (attackXp: number) => ({ attackXp, defenseXp: 0, rangedXp: 0 });
-const ranged = (rangedXp: number) => ({ attackXp: 0, defenseXp: 0, rangedXp });
+const attack = (attackXp: number) => ({
+  attackXp,
+  defenseXp: 0,
+  rangedXp: 0,
+  magicXp: 0,
+});
+const ranged = (rangedXp: number) => ({
+  attackXp: 0,
+  defenseXp: 0,
+  rangedXp,
+  magicXp: 0,
+});
+const magic = (magicXp: number) => ({
+  attackXp: 0,
+  defenseXp: 0,
+  rangedXp: 0,
+  magicXp,
+});
 const defense = (defenseXp: number, attackXp = 0) => ({
   attackXp,
   defenseXp,
   rangedXp: 0,
+  magicXp: 0,
 });
 
 test("swords add 100, 150, 200, 250 and 300 by tier", () => {
@@ -140,6 +157,51 @@ test("bows gate on Ranged at 1, 10 and 20 and add 5, 10 and 15 points of Accurac
     xp: "rangedXp",
     level: 10,
   });
+});
+
+test("staves gate on Magic at 1, 10 and 20 and add 5, 10 and 15 points of Accuracy, with no hit bonus and no reach of their own (Magic spec §2)", () => {
+  const staves = [
+    ["birchStaff", 1, 5],
+    ["oakStaff", 10, 10],
+    ["charwoodStaff", 20, 15],
+  ] as const;
+  for (const [staff, level, accuracy] of staves) {
+    expect(GEAR.get(staff)).toMatchObject({
+      slot: "weapon",
+      level,
+      accuracy,
+      does: `Adds ${accuracy} points to your chance to hit`,
+    });
+    expect(GEAR.get(staff)?.hitBonus).toBeUndefined();
+    // Until casting lands, a staff fights in melee, as anything without a reach does.
+    expect(GEAR.get(staff)?.reachTiles).toBeUndefined();
+    expect(gateOf(staff)).toEqual({ skill: "Magic", xp: "magicXp", level });
+    expect(gearRefusal(staff, magic(xpForLevel(level)))).toBeUndefined();
+    expect(wornAccuracyOf({ weapon: staff })).toBe(accuracy);
+    expect(canBeImproved(staff)).toBe(true);
+  }
+  expect(gearRefusal("oakStaff", magic(xpForLevel(9)))).toBe(
+    "You need Magic 10 to equip this.",
+  );
+  expect(gearRefusal("charwoodStaff", magic(xpForLevel(19)))).toBe(
+    "You need Magic 20 to equip this.",
+  );
+  // Attack and Ranged don't open a staff, and Magic opens neither a sword nor a bow.
+  expect(gearRefusal("charwoodStaff", attack(MAX_XP))).toBe(
+    "You need Magic 20 to equip this.",
+  );
+  expect(gearRefusal("charwoodStaff", ranged(MAX_XP))).toBe(
+    "You need Magic 20 to equip this.",
+  );
+  expect(gearRefusal("emberiteSword", magic(MAX_XP))).toBe(
+    "You need Attack 20 to equip this.",
+  );
+  expect(gearRefusal("charwoodBow", magic(MAX_XP))).toBe(
+    "You need Ranged 20 to equip this.",
+  );
+  expect(wornAccuracyOf({ weapon: "charwoodStaff", ring: "copperRing" })).toBe(
+    20,
+  );
 });
 
 test("arrows go in the ammo slot, gate on Ranged 1, 5, 10, 15 and 20, and add 100 to 300 to a hit (Ranged spec §2)", () => {

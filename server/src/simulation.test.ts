@@ -369,6 +369,7 @@ const SAVED = {
   strengthXp: 20,
   defenseXp: 2,
   rangedXp: 26,
+  magicXp: 27,
   herblawXp: 3,
   hitpointsXp: 4100,
   miningXp: 4,

@@ -59,6 +59,13 @@ test("identifying turns every strange material held into rune essence, bank incl
   expect(player.bankCounts.slice(0, 5)).toEqual([0, 12, 4, 5, 0]);
 });
 
-test("the four elemental runes are the whole rune list, gates lowest first", () => {
-  expect(RUNES).toEqual(["airRune", "waterRune", "earthRune", "fireRune"]);
+test("the four elemental runes and Magic's focus and fury runes are the whole rune list, gates lowest first (Magic spec §4)", () => {
+  expect(RUNES).toEqual([
+    "airRune",
+    "focusRune",
+    "waterRune",
+    "earthRune",
+    "furyRune",
+    "fireRune",
+  ]);
 });

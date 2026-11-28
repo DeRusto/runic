@@ -157,7 +157,7 @@ test("the workbench lists Crafting's and Fletching's recipes under two sections 
     ["Fletching", "", true],
     ["Leatherworking", "", true],
   ]);
-  expect(shownRows()).toHaveLength(38);
+  expect(shownRows()).toHaveLength(41);
   expect(texts(shownRows()[0]).slice(1, 2)).toEqual(["Rope"]);
   expect(line(shownRows()[1])).toEqual([
     "Torch",
@@ -167,52 +167,73 @@ test("the workbench lists Crafting's and Fletching's recipes under two sections 
     "Vial",
     "1 Cinderglass · Needs Crafting 10",
   ]);
-  // The cloak's own tip says what it keeps, and its cape is any cape.
+  // Magic spec §2's staves: their wood, and from oak a gem.
   expect(line(shownRows()[3])).toEqual([
+    "Birch staff",
+    "1 Birch log · Not enough materials",
+  ]);
+  expect(line(shownRows()[4])).toEqual([
+    "Oak staff",
+    "1 Oak log + 1 Ashstone · Needs Crafting 10",
+  ]);
+  expect(line(shownRows()[5])).toEqual([
+    "Charwood staff",
+    "1 Charwood log + 1 Cinderglass · Needs Crafting 20",
+  ]);
+  // The cloak's own tip says what it keeps, and its cape is any cape.
+  expect(line(shownRows()[6])).toEqual([
     "Gossamer cloak",
     "1 Spider silk + 1 Cape · Needs Crafting 15",
   ]);
   // A shaft's log is any tier's, and the arrow's head is its own tier's.
-  expect(line(shownRows()[4])).toEqual([
+  expect(line(shownRows()[7])).toEqual([
     "Arrow shaft",
     "1 Log · Not enough materials",
   ]);
-  expect(line(shownRows()[5])).toEqual([
+  expect(line(shownRows()[8])).toEqual([
     "Copper arrow",
     "10 Arrow shaft + 10 Copper arrowhead + 10 Feather · Not enough materials",
   ]);
-  expect(line(shownRows()[9])).toEqual([
+  expect(line(shownRows()[12])).toEqual([
     "Emberite arrow",
     "10 Arrow shaft + 10 Emberite arrowhead + 10 Feather · Not enough materials",
   ]);
-  expect(line(shownRows()[10])).toEqual([
+  expect(line(shownRows()[13])).toEqual([
     "Birch bow",
     "1 Birch log + 1 Rope · Not enough materials",
   ]);
-  expect(line(shownRows()[11])).toEqual([
+  expect(line(shownRows()[14])).toEqual([
     "Oak bow",
     "1 Oak log + 1 Rope · Needs Fletching 10",
   ]);
-  expect(line(shownRows()[12])).toEqual([
+  expect(line(shownRows()[15])).toEqual([
     "Charwood bow",
     "1 Charwood log + 1 Rope · Needs Fletching 20",
   ]);
 });
 
-test("the altar lists the four elemental runes under one Runecrafting section (#232)", () => {
+test("the altar lists the four elemental runes and Magic's focus and fury runes under one Runecrafting section, gates lowest first (#232, Magic spec §4)", () => {
   open("altar");
   expect(byId.get("smithing-title")!.textContent).toBe("Altar");
   expect(headers()).toEqual([["Runecrafting", "", true]]);
-  expect(shownRows()).toHaveLength(4);
+  expect(shownRows()).toHaveLength(6);
   expect(line(shownRows()[0])).toEqual([
     "Air rune",
     "1 Rune essence · Not enough materials",
   ]);
   expect(line(shownRows()[1])).toEqual([
+    "Focus rune",
+    "1 Rune essence · Not enough materials",
+  ]);
+  expect(line(shownRows()[2])).toEqual([
     "Water rune",
     "1 Rune essence · Needs Runecrafting 5",
   ]);
-  expect(line(shownRows()[3])).toEqual([
+  expect(line(shownRows()[4])).toEqual([
+    "Fury rune",
+    "1 Rune essence · Needs Runecrafting 15",
+  ]);
+  expect(line(shownRows()[5])).toEqual([
     "Fire rune",
     "1 Rune essence · Needs Runecrafting 20",
   ]);
@@ -221,12 +242,12 @@ test("the altar lists the four elemental runes under one Runecrafting section (#
 test("a rune row is refused on Runecrafting alone, whatever the Smithing level", () => {
   open("altar");
   patch(me([], { runecraftingXp: xpForLevel(9), smithingXp: xpForLevel(99) }));
-  expect(line(shownRows()[2])).toEqual([
+  expect(line(shownRows()[3])).toEqual([
     "Earth rune",
     "1 Rune essence · Needs Runecrafting 10",
   ]);
   patch(me([["runeEssence", 1]], { runecraftingXp: xpForLevel(10) }));
-  expect(line(shownRows()[2])).toEqual(["Earth rune", "1 Rune essence"]);
+  expect(line(shownRows()[3])).toEqual(["Earth rune", "1 Rune essence"]);
 });
 
 test("a crafting row is refused on Crafting, and the cloak also on its cape and silk", () => {
@@ -238,7 +259,7 @@ test("a crafting row is refused on Crafting, and the cloak also on its cape and 
     }),
   );
   expect(line(shownRows()[0])).toEqual(["Rope", "2 Spider silk"]);
-  expect(line(shownRows()[3])).toEqual([
+  expect(line(shownRows()[6])).toEqual([
     "Gossamer cloak",
     "1 Spider silk + 1 Cape · Not enough materials",
   ]);
@@ -251,11 +272,11 @@ test("a crafting row is refused on Crafting, and the cloak also on its cape and 
       { craftingXp: xpForLevel(15) },
     ),
   );
-  expect(line(shownRows()[3])).toEqual([
+  expect(line(shownRows()[6])).toEqual([
     "Gossamer cloak",
     "1 Spider silk + 1 Cape",
   ]);
-  const make = buttons(shownRows()[3])[1]!;
+  const make = buttons(shownRows()[6])[1]!;
   make.onclick!(undefined as never);
   expect(send).toHaveBeenCalledWith("make", {
     item: "gossamerCloak",
@@ -382,8 +403,8 @@ test("the anvil's arrowhead and knife rows name the piece alone, and a fletching
   expect(line(shownRows()[5])).toEqual(["Arrowhead", "1 bars"]);
   expect(line(shownRows()[6])).toEqual(["Throwing knife", "1 bars"]);
   open("workbench");
-  expect(line(shownRows()[4])).toEqual(["Arrow shaft", "1 Log"]);
-  expect(line(shownRows()[5])).toEqual([
+  expect(line(shownRows()[7])).toEqual(["Arrow shaft", "1 Log"]);
+  expect(line(shownRows()[8])).toEqual([
     "Copper arrow",
     "10 Arrow shaft + 10 Copper arrowhead + 10 Feather",
   ]);

@@ -32,8 +32,8 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   ashstone: 25,
   cinderglass: 50,
   heartflame: 100,
-  // #232's essence: the masked find is worth a coin until it is identified, and a rune
-  // outsells the essence it is made of, by its gate.
+  // #232's essence: the masked find is worth a coin until it is identified, and an
+  // elemental rune outsells the essence it is made of, by its gate.
   strangeMaterial: 1,
   runeEssence: 6,
   // Odo's proof pieces are only for him, so the store gives a coin like the masked find.
@@ -46,6 +46,9 @@ export const RAW_VALUES: Partial<Record<ItemId, number>> = {
   waterRune: 12,
   earthRune: 18,
   fireRune: 30,
+  // Values that yield the rune payouts in Magic spec §4 under the store's 40% rule.
+  focusRune: 20,
+  furyRune: 60,
   // Low, and rising by tier like ore (#208).
   birchLog: 3,
   oakLog: 6,
@@ -161,6 +164,11 @@ export const STARTING_STOCK: Partial<Record<ItemId, number>> = {
   /** From day one, so a new Fletching can get arrows (#228); a mob drop is Phase 8's. */
   feather: 20,
 };
+/** Items the store buys but never puts on its shelf: Magic's runes (Magic spec §4). */
+export const NEVER_SHELVED: ReadonlySet<string> = new Set([
+  "focusRune",
+  "furyRune",
+]);
 /** One of each item below its starting stock comes back this often: 30 s (village spec §5). */
 export const RESTOCK_TICKS = 100;
 /** One of each item above its starting stock goes this often, by Quality: 60 s, 5 min, 20 min, and Delicious with the rare (village spec §5, #221). */

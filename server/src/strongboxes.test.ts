@@ -296,3 +296,20 @@ describe("strongboxes", () => {
     expect(itemsHeld(sim)).toBe(0);
   });
 });
+
+describe.each([["boneyard"], ["hollow"]] as const)(
+  "the %s strongbox's runes (Magic spec §4)",
+  (kind) => {
+    test.each([
+      [0.25, "focusRune"],
+      [0.75, "furyRune"],
+    ])("rolling %d gives focus or fury runes", (roll, rune) => {
+      // Thieving 99 never fails, so every roll goes to the loot.
+      const sim = thief(() => roll, 99);
+      open(sim, kind);
+      expect(held(sim, rune)).toBeGreaterThanOrEqual(
+        STRONGBOXES[kind].runes[0]!.fewest,
+      );
+    });
+  },
+);

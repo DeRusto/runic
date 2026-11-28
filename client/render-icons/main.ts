@@ -71,6 +71,9 @@ Object.assign(PACK_ICONS, {
   birchBow: icon("bow-and-crossbow-rpg-icons", 1),
   oakBow: icon("bow-and-crossbow-rpg-icons", 12),
   charwoodBow: icon("bow-and-crossbow-rpg-icons", 17),
+  birchStaff: icon("50-rpg-staff-icons", 2),
+  oakStaff: icon("50-rpg-staff-icons", 1),
+  charwoodStaff: icon("50-rpg-staff-icons", 49),
   oakLog: icon(DWARF, 35),
   gossamerCloak: icon("50-rpg-armor-icons", 38),
 });
@@ -969,6 +972,7 @@ const OWNER_MODELS: [id: string, file: string, turn: Turn][] = [
   ["brownPants", "Meshy_AI_Low_Poly_Brown_Pants_20261027_texture.glb", WORN],
   ["burlapBoots", "Meshy_AI_Low_Poly_Burlap_Boot_20261125_texture.glb", WORN],
 ];
+// shortcut: focusRune.png and furyRune.png are the air and fire icons hue-shifted outside this tool and saved by hand (Magic spec §4), so a run here leaves them as they are; render them here once the owner has medallions for them.
 for (const [id, file, turn] of OWNER_MODELS) {
   const { scene: model } = await loader.loadAsync(`/personal/${file}`);
   draw(model, turn);

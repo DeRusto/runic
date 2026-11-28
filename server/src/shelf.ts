@@ -2,6 +2,7 @@ import type { ArraySchema } from "@colyseus/schema";
 import {
   DRAIN_TICKS,
   itemParts,
+  NEVER_SHELVED,
   RESTOCK_TICKS,
   SHELF_SLOTS,
   STARTING_STOCK,
@@ -30,8 +31,9 @@ export class Shelf {
     }
   }
 
-  /** Puts sold items on the shelf. With no slot of theirs and none free, they are gone. */
+  /** Puts eligible sales on the shelf. With no slot of theirs and none free, they are gone. */
   stock(item: string, count: number, tick: number) {
+    if (NEVER_SHELVED.has(item)) return;
     let at = this.items.indexOf(item);
     if (at < 0) {
       if (this.items.length >= SHELF_SLOTS) return;

@@ -974,3 +974,66 @@ describe("bows (Ranged spec §2)", () => {
     expect(sim.saveOf("a")).toMatchObject({ rangedXp: 1234 });
   });
 });
+
+describe("staves (Magic spec §2)", () => {
+  test("equip at their Magic gate, and are refused below it whatever the Attack or Ranged level", () => {
+    start({
+      held: ["oakStaff"],
+      attackXp: MAX_XP,
+      rangedXp: MAX_XP,
+      magicXp: LEVEL_10_XP - 1,
+    });
+    sim.equip("a", 0);
+    expect(me().weapon).toBe("");
+    expect(told()).toEqual(["You need Magic 10 to equip this."]);
+    start({ held: ["oakStaff"], magicXp: LEVEL_10_XP });
+    sim.equip("a", 0);
+    expect(me()).toMatchObject({ weapon: "oakStaff", weaponCount: 1 });
+  });
+
+  test("a birch staff equips at Magic 1, beside a shield", () => {
+    start({ held: ["birchStaff", "copperShield"] });
+    sim.equip("a", 0);
+    sim.equip("a", 1);
+    expect(me()).toMatchObject({
+      weapon: "birchStaff",
+      shield: "copperShield",
+    });
+    expect(told()).toEqual([]);
+  });
+
+  test("add their Accuracy to the chance to hit and fight in melee with no hit bonus, until casting comes", () => {
+    // 40% bare-handed at Attack 1, and 55% with a charwood staff's 15 points: a roll of 0.5
+    // lands only with the staff. The landed swing is the bottom of the range, 100, and nothing from the staff.
+    start({ weapon: "charwoodStaff", magicXp: LEVEL_20_XP });
+    rolls = [0.5, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([100]);
+    expect(me().attackXp + me().strengthXp).toBeGreaterThan(0);
+    expect(me().magicXp).toBe(LEVEL_20_XP);
+    start();
+    rolls = [0.5, 0];
+    sim.queueTarget("a", "0");
+    sim.tick();
+    expect(swings()).toEqual([0]);
+  });
+
+  test("a worn staff drops on death like any worn gear", () => {
+    start({ weapon: "birchStaff", health: 100 });
+    rolls = [MISS, 0, 0]; // The swing misses, then the Spider hits for 100.
+    sim.queueTarget("a", "0");
+    ticks(5);
+    expect(me().dead).toBe(true);
+    expect([...sim.state.groundItems.values()].map(({ item }) => item)).toEqual(
+      ["birchStaff"],
+    );
+    expect(me().weapon).toBe("");
+  });
+
+  test("Magic experience is saved and loaded", () => {
+    start({ magicXp: 1234 });
+    expect(me().magicXp).toBe(1234);
+    expect(sim.saveOf("a")).toMatchObject({ magicXp: 1234 });
+  });
+});

@@ -58,12 +58,13 @@ test("the registry holds 23 different skills, with Attack and Strength where Com
   expect(names).toContain("Herblaw");
 });
 
-test("only the skills that can be trained reach the sheet, the bar and pinning, Ranged among them (Ranged spec §1)", () => {
+test("only the skills that can be trained reach the sheet, the bar and pinning, Ranged and Magic among them (Ranged spec §1, Magic spec §1)", () => {
   expect(SKILLS.map(([skill]) => skill)).toEqual([
     "Attack",
     "Strength",
     "Defense",
     "Ranged",
+    "Magic",
     "Herblaw",
     "Hitpoints",
     "Mining",
