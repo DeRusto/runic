@@ -2,6 +2,7 @@ import type { CombatSpell } from "./magic.ts";
 
 export type SpellElement = "air" | "water" | "earth";
 
+/** Strength is Accuracy points for air and ticks for water and earth. */
 export type SpellEffect = {
   element: SpellElement;
   strength: number;
@@ -23,7 +24,7 @@ const EFFECTS: Partial<Record<CombatSpell, SpellEffect>> = {
 
 export const effectOf = (spell: CombatSpell) => EFFECTS[spell];
 
-/** Restarts the same element's strongest running effect. Water starts its delay at the undelayed swing. */
+/** Restarts the same element's strongest running effect at startTick. */
 export function refreshEffect(
   incoming: SpellEffect,
   current: ActiveSpellEffect | undefined,

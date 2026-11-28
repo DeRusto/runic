@@ -94,7 +94,7 @@ One migration adds the picked combat spell's column with a default of "", so eve
 A landed cast applies its effect to the enemy it hits, including elites and docile creatures. Each element has its own timer. A repeat cast restarts that element's effect at full length. A surge replaces a dart, and a dart refreshes a running surge at surge strength.
 
 - Air lowers the enemy's Accuracy by 5 points for a dart or 10 for a surge, for 20 ticks. The enemy's chance to hit still has a 5% floor. The label above the enemy reads **Weakened**.
-- Water delays the enemy's next swing by 4 ticks for a dart or 8 for a surge. The delay starts when the enemy could otherwise swing, or on the cast tick if it could already swing. A recast uses the undelayed swing timer and keeps the stronger running effect, so delays never add together. The label reads **Slowed** while the delay runs.
+- Water delays the enemy's next swing by 4 ticks for a dart or 8 for a surge. On each cast, the delay starts at the later of the cast tick and the tick the enemy could swing without water. A recast keeps the stronger running delay, and the delays never add together. The label reads **Slowed** while the delay runs.
 - Earth holds the enemy for 6 ticks for a dart or 12 for a surge. It stops every step, whether the enemy would wander, chase or return home. The enemy still attacks a player in reach. The label reads **Held**.
 
 Effects clear on death or when the enemy reaches home after leashing. The labels reflect the server's state, and several labels can appear together.

@@ -11,7 +11,7 @@ const EFFECT_LABELS = {
 } satisfies Record<SpellElement, string>;
 const elements = Object.keys(EFFECT_LABELS) as SpellElement[];
 
-/** The HTML over a player's head: their username, a mark while any prayer is on, and whatever they just said. */
+/** Shows chat, prayer and combat information above players and enemies. */
 export class Overhead {
   private element = document.createElement("div");
   private said = document.createElement("div");
